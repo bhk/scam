@@ -1,0 +1,311 @@
+TODO:
+
+ * fix: (begin (set x (+ x 1)) x)
+
+ * Bind file name to error: "E.pos.filename ..."  (extract from
+   env)
+
+ * Macro bug related to up-values?
+   
+    (define `(macro x)
+      (f (lambda () x)))
+
+    (define (f a)
+       (define `sym (g a))
+       (let ((...))
+          (macro sym)))
+
+ * Figure out what to do with:
+   euler.scm examples.scm fp.scm recur.scm rev.scm strlen.scm test.scm
+
+ * scam -x file : when file requires other files...
+
+ * Document allowable chars for var names and assert when they are used: "%"
+   (bug?), "!", "$" (lambda markers), "&" (gensym, "&rest")?  "(" or ")"?
+   Make has problem with ":" ... $(a:x) ...  ":" or "$" in variable names
+   causes problems for make's $(call NAME,...)
+
+ * properly locate errors in macros (associate with the right file)
+
+ * num: / --> i/,  + --> i+,  ...
+
+WISHLIST
+
+ * arbitrary precision floating point
+    - fp divide w/ specified precision
+    - bug: (^ 2 100)  [in fp]
+
+ * "rest" and "spread" with "..." syntax
+
+   This would enable reasonably efficient vararg `append`, etc..
+
+   (define (f a ...v)
+      (g b a ...v))
+
+     (c1 "VA $ 7") ->  $(call ^d,$7) $(call ^d,^8) $9
+     (c1 "VA $ 6") ->  $(foreach n,6 7 8,$(call ^d,$($n)))
+
+     spread 7..9:  $(call ^n,1,REST),$(call ^n,2,REST),$(wordlist 3,9999,REST)
+     $(call ^n,2,$(call ^d,$7) ... )       --> $7
+     $(call ^n,2,<WORD> $(call ^d,$8) ...) --> $8
+     ["f" "^n" "Q 1" ["VA" "$" 6]]         --> ["R" "$8"]
+     $(wordlist 3,9999,<WORD> <WORD> $(wordlist A,B,R)) --> $(wordlist A,B,R))
+     ["F" "wordlist" "Q 3" "Q 9999" ["VA" "$" 6]]       --> ["R" "$9"]
+
+ * aliases: (define `X Y) should bind Y's defn (minus 'priv' bit) to X
+   ... but this would break rewind.
+
+ * Identify arguments using special IL record (vs. R)
+      A n level           ->   local (arg)       $n 
+
+   (To simplify optimization.)
+
+ * Integrate `strlen` with core.scm and use `strlen` to report column
+   for errors.
+
+ * check arg counts for all functions (not just inline functions)
+    - export/import arg count
+
+ * opt: replace "!0" with "~" ?
+
+ * opt: constant folding across 'C' nodes, ^u, ^d, ^n, pure builtins
+
+   - reduces size of qquote results
+
+ * opt: (if (not x) a)  -->  (if x "" a)
+
+   (if (not x) a b)  -->  (if (if x "" 1) a b)  -->  (if x b a)
+
+   (*if* (*if* <exp> *C1* *C2*) <a> <b>)       where C1, C2 are constants
+   --> (if <exp> (if C1 <b>) (if C2 <a>))
+
+ * opt: transformations
+
+    - constant folding
+
+        $(call demote,a b)  -->  a!0b
+
+    - (if x (f a) (f b))  -->  (f (if x a b))
+      
+        f can take many forms: $(a/b),  $(call a/b,x,y,z),  [a/b ...]
+        f represents the commonality between the forms (top-down?)
+
+    - $(call scall,$(value v),...)  -->  $(call v,...)
+
+    - Naming anonymous functions (when there are no upvalues).
+
+      $$1$$2  -->  $(value <tmp>)     [where <tmp> = $1$2]
+
+      With scall elimination:
+
+         $(call scall,$$1$$2,...)  -->  $(call <tmp>,...)
+
+    - upvalue elimination
+
+      A: (let ((x y)) ...a...)  -->  (let ((x y) (a a)) ...a...)
+      B: ((lambda (x) ...a...) y)  -->  ((lambda (x y) ...a...) y a)
+
+            $(call scall,$(call escape,$1)$$1,$2)
+        --> $(call scall,$$2$$1,$2,$1)
+
+ * lib: `while` that does not recurse indefinitely
+
+ * opt: (void (if x a b)) == (void a) and (void b)
+
+ * opt: interleave compile with parsing of top-level expressions
+
+ * unlimited looping without O(N) recursion?
+
+ * { key value[,] key value }
+
+ * Throw error on shadowing/redefinition.
+   **AT LEAST FOR BUILTINS!**
+ 
+ * deconstruction in assignments:
+
+    (let ( ([a b c] (f x)) ... ) ...)
+    (case (f x)
+       (["X" ,a ,b] ...)
+       (["Y" ,a ,b ,c] ...)
+       (,x ...))
+
+   ["X" ,a ,@b]  =>  (append (demote "X") (demote ,a) ,b)
+   (string ,x)   =>  ["S" (demote ,x)]
+                 =>  (append (demote "S") (demote ,x))
+                 =>  (append "S" (demote ,x))
+                 =>  (concat "S" " " (demote ,x))
+   MATCH x (append C p) x
+     => (if (eq (wordlist 1 (words C) x) C)
+            (unpack p (wordlist (+ 1 (words C)) 99999 x)))
+
+   MATCH x (concat "str" p) x
+     => (foreach ndx (indices a) (if 
+
+ * eval-when-compile
+
+ * .min -> .mk
+
+ * Note potentially fatal:
+      > (set "")
+      v0/repl.min:40: *** empty variable name.  Stop.
+      make: *** [interact] Error 2
+
+ * To make hashes easily sortable by key, something other than
+   "!=" -- maybe "!+" -- would be required.  (This could be subst'ed
+   when sorting, however.)
+
+ * ?: Use "file marker" to store file name in environment.
+   (avoid globals, and fix improper reporting when dealing with macros?)
+
+ * opt: Use "require markers" to reduce size of exports
+
+
+Examples to be written:
+
+ - cleanPath
+ - numerical ordering
+ - sort with arbitrary function
+ - sortUnique
+ - regular expressions
+ - makefile lisp templating
+ - syracuse / ackerman / HOTPO
+ - web server
+
+
+Macros, Namespaces, eval-when-compile
+--------------------------------
+
+Namespaces can be introduced as optional with minimal impact.  The
+compiler's own modules could use this to minimize naming conflicts -- only
+"exported" symbols would have to be unique.
+
+ * (define `(macro a b c) ...)
+   - execute require'd MIN files
+   - declare & define macro: defmacro
+   - macroexpand
+   - splicing
+   - gensym
+   - macrolet
+
+ * namespaces: V0 can compile & execute V1 without clobbering V0
+    - (ns "prefix")
+    - (declare (f a b c) (global "FULLNAME"))
+    - (declare x (global "FULLNAME"))
+    - (require LIB (prefix PREFIX)? (re-export)? ...)
+
+ * compile-time tests
+     (eval-when-compie
+       (expect z (f  y)))
+
+Compile-time execution should warn about clobbering the compiler's own
+functions!
+
+1. Macros require compile-time "execution".  It defines something at
+   compile-time that affects how subsequent things are compiled.
+
+2. How does compile-time execution relate to run-time?
+
+   We cannot expect external inputs to match exactly,so execution path may
+   differ.  What if the compile-time path runs through one 'defmacro' but
+   the run-time path runs through another?
+
+     (if (eq (DEBUG 1))
+         (defmacro print (a) )
+       (defmacro print (a) (info a)))
+
+3. In CL, "compiler macros" must preserve semantics and cannot extend syntax.
+
+   Does this mean that macros are fundamentally run-time?
+
+
+macros into runtime?
+--------------------
+
+ * defmacro (compile time only)
+
+    * compiler wants "run time only" behavior: emit code that sets
+      "ml-macro-X" at run time.
+
+    * compiler may elsewhere want "compile time only" behavior (for macros
+      intended only for the compiler itself).
+
+    * user code typically wants "compile time only", but may also want
+      runtime only (macros in libraries)
+
+    * Supporting (eval-at-compile ...) would work if:
+
+        - compiler itself must be careful to cleanly segregate
+          compile-time-only from runtime-only things (to avoid conflict with
+          previous compiler) -- runtime is tricky here.
+
+        - user code must avoid stepping on compiler
+
+ * gen0 <-> macros dependency inversion
+
+   gen0 has run-time dependency on macros, but not compile dependency.
+
+----------------------------------------------------------------
+
+Root causes of some BUGS I've encountered:
+
+ * Wrong number of arguments (misplaced parentheses)  X2
+
+   e.g.: (if ( ... ) ( ... ))
+   vs:   (if ( ... )) ( ... )
+
+         (f (g a b c) d)
+   vs:   (f (g a) b c d)
+
+ * Used `func` instead of `"func"`
+
+ * undefined variable name (at least 6 times)
+
+ * .v1/parse-q.min:51: *** target pattern contains no `%'.  Stop.
+
+   (Top-level function returning value that gets re-interpreted by make.)
+
+ * Overloaded "eval" with user-defined function!
+
+ * Insufficient arguments to (word, ...)  -- could check at compile time.
+
+
+----------------------------------------------------------------
+
+(transform (node)
+ ( `(car ,form) `(wordlist 2 99999999 ,form) )
+ ( `(car ,@other) (form-error "car takes one argument" node)))
+
+ ( `(let* ( (,name ,value) ,@bindings ) ,body)
+   `( (lambda (,name)
+        (let* ,bindings ,body))
+      ,value ) ))
+
+
+(transform ('car name)
+           `(wordlist 2 99999999 ,name))
+
+(transform ('let* ((name value) ...bindings) ...body)
+           `( (lambda (,name)
+                (let* ,bindings ,@body))
+              ,value ))
+
+(transform ('let* () ...body)
+           `(progn ...body))
+
+----------------------------------------------------------------
+Optimization
+
+ * interleave parse / c0 / c1
+    - avoid multiple N^2 concatenations
+    - better way to abstract iteration, without mutation or upvalues?
+
+
+;; ??? maybe...
+;; ?   R <module>             ==  require marker
+;; ?
+;; ? Require markers are not true bindings.  They indicate where/when symbols
+;; ? were exported from other files (so require markers will occur adjacent
+;; ? to other bindings with a <priv> field value of "i").
+;;
+
+ * list? / symbol?  -->  ast-list? / ast-symbol?
