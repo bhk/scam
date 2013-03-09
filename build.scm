@@ -223,7 +223,8 @@
                   (let ((self (quote-sh-arg *self*))
                         (main (quote-sh-arg (patsubst "%.min" "%" qmin))))
                     (lambda () 
-                      (concat "make -f " self " SCAM_XRT=1 SCAM_MAIN=" main)))
+                      (declare MAKE)
+                      (concat MAKE " -s -f " self " SCAM_XRT=1 SCAM_MAIN=" main)))
                   (concat "touch " okfile) ]))
 
 
