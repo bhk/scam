@@ -11,7 +11,7 @@
 
 (define `bootstrap
 "#!/bin/bash
-:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; ARGS=${a[*]} exec make -f\"$0\"
+:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; ARGS=${a[*]} exec make --no-print-directory -f\"$0\"
 
 ")
 
