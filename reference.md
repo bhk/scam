@@ -572,12 +572,16 @@ Syntax:
     private and public bindings imported.  Otherwise, only public
     bindings are imported.
 
-    Symbols are imported from previously compiled scam files, stored
-    with a ".min" extension in the output directory (the same directory
-    as the file being compiled.) In interactive mode, `require` will
-    load modules that have been bundled with the SCAM executable, unless
-    a file path including a "/" character is specified as the module
-    name.
+    Symbols are imported from previously compiled scam files, stored with a
+    ".min" extension in the output directory (the same directory as the file
+    being compiled.) In interactive mode, `require` will load modules that
+    have been "bundled" with the interpreter unless a file path including a
+    "/" character is specified as the module name.
+
+    ["Bundled" modules are those that have been incorporated into a SCAM
+    executable.  The `scam` command, for example, bundles all modules
+    required for compilation (it needs them in order to compile) and it
+    bundles `num` so that it will also be available in interactive mode.]
 
   * At run time, it will load the specified module unless it has already
     been loaded.  In this case, the required module is expected to

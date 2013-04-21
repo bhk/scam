@@ -35,7 +35,7 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
      - Compile-time warnings for many coding errors, such as references to
        undefined variables or functions.
 
-     - Tracing facilities.
+     - Tracing facilities. (See [trace.scm](trace.scm).)
 
      - An interactive mode (REPL).
 
@@ -47,8 +47,11 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
    plays chess.
 
 
-Take a look at an [interactive tour of SCAM](intro.md), or the [SCAM
-language reference](reference.md), or just peruse the compiler source files.
+Take a look at an [introduction to SCAM](intro.md), the [SCAM language
+reference](reference.md), or some [examples](examples). When looking at the
+SCAM sources, [scam.scm](scam.scm) is a good top-down starting point, and
+[core.scm](core.scm) is a good bottom-up starting point.
+
 
 
 ## Project Structure
