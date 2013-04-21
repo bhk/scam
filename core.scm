@@ -116,41 +116,39 @@
   (indicesX list "." 1))
 
 
-(declare (rev10 a z))
-
-(define (rev10ranges a z nextz)
+;; Reverse a list in groups sized by powers of ten.
+;; If z == "000", we return:
+;;    rev(9001..10000) rev(8001..9000) ... rev(0001..1000)
+;;
+(define (rev-by-10s list z)
   &private
-  (foreach
-   range
-   (subst "z" z "0-" "1-"
-          "9z-10z 8z-9z 7z-8z 6z-7z 5z-6z 4z-5z 3z-4z 2z-3z 1z-2z z-1z")
-   (rev10 (wordlist (word 1 (subst "-" " " range))
-                    (word 2 (subst "-" " " range))
-                    a)
-          nextz)))
+  (define `(1- n) (word n "0 1 2 3 4 5 6 7 8 9"))
+  (define `z+1 (patsubst "%0" "%1" z))
+  (define `z/10 (patsubst "0%" "%" z))
 
-;; Reverse a list recursively (recurse at each factor of 10)
-(define (rev10 a z)
-  &private
-  (if z
-      (rev10ranges a z (patsubst "%0" "%" z))
-      (foreach w "10 9 8 7 6 5 4 3 2 1" (word w a))))
+  ;; When z="00", (group 3) --> (wordlist 201 300 list)
+  (define `(group prefix)
+    (wordlist (concat (1- prefix) z+1) (concat prefix z) list))
 
+  (if list
+      (if z
+            (foreach p [10 9 8 7 6 5 4 3 2 1] (rev-by-10s (group p) z/10))
+            (foreach p [10 9 8 7 6 5 4 3 2 1] (word p list)))))
 
 ;; Detect length of list to the nearest order of magnitude.
 ;; 0..10 items => "";  11-100 => "0";  101..1000 => "00", ...
-(define (revzeros a z)
+(define (rev-zeroes list z)
   &private
-  (if (word (concat "1" z "1") a)
-      (revzeros a (concat 0 z))
+  (if (word (concat 1 z 1) list)
+      (rev-zeroes list (concat 0 z))
       z))
 
 ;; Simpler implementations of `reverse` are O(n^2) because `rest` is
 ;; an O(n) operation.
-(define (reverse a)
-  (foreach w (rev10 a (if (word 11 a)
-                          (revzeros a "0")))
-           w))
+(define (reverse list)
+  (define `z (if (word 11 list) (rev-zeroes list 0)))
+  (nth-rest 1 (rev-by-10s list z)))
+
 
 ;; Keep applying `fn` to `value` while `(pref value)` is true.
 ;;
