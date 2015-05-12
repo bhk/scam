@@ -458,10 +458,12 @@ name can produce unexpected results. The following example demonstrates
     "xx"
 
 The names [`foreach`] (#foreach) and [`subst`] (#subst) builtins are
-actually special forms.  The actual builtins are available by the names
-`.foreach` and `.subst`.
+actually special forms that invoke the true builtins, which are available
+in their raw forms by the names `.foreach` and `.subst`.
 
-Directly using the `.foreach` builtin can be awkward:
+Directly using the `.foreach` builtin can be awkward, because the referenced
+variable name is unknown to SCAM and will trigger an error unless a declaration
+is used:
 
     > (.foreach "x" "1 2 3" (1+ x))
     line 1: undefined variable: x
@@ -469,9 +471,9 @@ Directly using the `.foreach` builtin can be awkward:
     > (.foreach "x" "1 2 3" (begin (declare x) (1+ x)))
     "2 3 4"
 
-The [`foreach`] (#foreach) special form avoids these problems.  The
-[`subst`] (#subst) special form allows multiple substitutions to be
-performed.
+The [`foreach`] (#foreach) special form avoids this problem.  The
+[`subst`] (#subst) special form enhances `.subst` by allowing multiple
+substitutions to be performed.
 
 
 ## Debugging
@@ -531,7 +533,7 @@ source code. Refer to `parse.scm` for more information on forms.
 
 Encloses a *block* of expressions.  A block is a sequence of expressions
 that are evaluated in order.  The result of that last expression is
-returned (or nil is no expressions are given.
+returned (or nil if no expressions are given).
 
 Syntax:
 
@@ -667,7 +669,7 @@ Some examples:
     (declare foo)
     (set foo (wildcard "*")) 
 
-... which compiles to:
+... which compiles to the following Make syntax:
 
     foo := $(wildcard *)
 
@@ -682,7 +684,7 @@ A function definition:
 
 ... and compiles to:
 
-   func = $(wildcard $1)
+    func = $(wildcard $1)
 
 
 ### `declare`
