@@ -77,11 +77,7 @@
 ;; Base 4 is optimal for size: digit len = (4+1)/2 ; num digits = 1/Ln(4)
 ;; Base 10 is easy to convert to decimal ASCII, however.
 
-(define (^K)
-  (eval (concat (native "^K_$0") ":="
-                (subst "ioooooooooo" "oi"
-                       (concat (native "$(^K_$0:o%=io%)") "o")))))
-
+(eval "^K = $(eval ^K_$0:=$(subst ioooooooooo,oi,$(^K_$0:o%=io%)o))")
 
 (define (trace-digits k)
   ;; normalize
@@ -90,7 +86,7 @@
       (if (findstring "ioooooooooo" k)
           (trace-digits (subst "ioooooooooo" "oi" k))
 
-          (let& 
+          (let&
            ((digits (foreach d (subst "i" " i" k)
                              (words (subst "o" " o" "i" "" d)))))
            (subst " " ""
@@ -133,20 +129,20 @@
                 (if recur
                     ;; more complicated when recursion must be supported
                     "$(if $(^X),$(call if,,,$(value NAME)),$(if $(foreach ^X,N-1,$(if $(NAME),)),)$(foreach ^X,0,$(NAME)))"
-                    
+
                     ;; simpler when we assume it will not recurse
                     "$(NAME)$(if $(foreach ^xx,N-1,$(NAME)),)"))))
-                    
-                    
+
+
 (define (trace-warn str)
   (info (concat "TRACE: " str)))
 
 
 ;; Return functions identified by `pat`.
-;; 
+;;
 (define (trace-match-funcs pat warn)
   (or (foreach v (concat pat " " (filter pat (filter-out
-                                              *trace-V0* 
+                                              *trace-V0*
                                               (subst "%" "()" .VARIABLES))))
                (if (filter "recur%" (flavor v))
                    v))
@@ -159,16 +155,16 @@
 (define (trace-instrument action name defn warn)
   (cond
    ;; display matching names
-   ((filter "v" action) 
+   ((filter "v" action)
     (warn (concat "instrumenting '" name "'"))
     defn)
 
    ;; count invocations
    ((filter "c" action) (concat "$(^K)" defn))
-   
+
    ;; multiply invocations
    ((filter "x% X%" action)
-    (call "^fset" (concat name "~0~") defn)
+    (set-rglobal (concat name "~0~") defn)
     (trace-repeater (concat name "~0~")
                     (patsubst "x%" "%" (subst "X" "x" action))
                     (filter "X%" action)))
@@ -200,14 +196,14 @@
                             (or warn trace-warn))
     (foreach
      action (or (wordlist 2 999 (subst ":" " " (concat "." w))) "t")
-     (let ((catvar (concat "*traced*-" 
+     (let ((catvar (concat "*traced*-"
                            (patsubst "x%" "x" (subst "X" "x" action)))))
 
        (if (filter name (value catvar))
            "" ; already instrumented in this manner
-           (begin 
-             (call "^set" catvar (concat (value catvar) " " name))
-             (call "^fset" name (trace-instrument action name (value name)
+           (begin
+             (set-global catvar (concat (value catvar) " " name))
+             (set-rglobal name (trace-instrument action name (value name)
                                            (or warn trace-warn))))))))))
 
 
@@ -220,7 +216,7 @@
       (begin
         (trace-warn "function invocations")
         (foreach r
-                 (trace-rev (sort 
+                 (trace-rev (sort
                              (foreach V (filter "^K_%" .VARIABLES)
                                       (concat (trace-digits (value V))
                                               (patsubst "^K_%" "::%" V)))))

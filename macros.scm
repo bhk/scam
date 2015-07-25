@@ -40,20 +40,11 @@
 
 (define (ml.special-current-file-line args env form)
   ;; '#pos' marks the position of a macro invocation
-  (define `pos (or (word 2 (get "#pos" env))
+  (define `pos (or (word 2 (hash-get "#pos" env))
                    (form-index form)))
   (define `lnum (describe-lnum pos *compile-subject*))
 
   ["Q" (concat *compile-file* ":" lnum)])
-               
-
-
-;; (native STRING)
-
-(define (ml.special-native args env form)
-  (or (check-argc 1 args form)
-      (check-type "Q" (first args) form "CODE" "(native CODE)")
-      ["R" (string-value (first args)) ] ))
 
 
 ;; (concat FORMS...)
@@ -69,7 +60,7 @@
   (if strs
       (subst-x (rrest strs) ["F" "subst" (nth 1 strs) (nth 2 strs) value])
       value))
-      
+
 (define (ml.special-subst args env form)
   (or (if (filter "%2 %4 %6 %8 %0 1" (words args))
           (gen-error (or (first args) form)
@@ -80,12 +71,12 @@
 ;; (vector FORMS...)
 
 ;; Return IL node for demotion of IL node.  In general the resulting
-;; code calls `demote` at run time, but for quoted strings we can 
+;; code calls `demote` at run time, but for quoted strings we can
 ;; demote at compile time.
 (define (c1-demote node)
   (if (string? node)
       (concat "Q " (demote (word 2 node)))
-      ["F" "call" "Q ^d" node]))
+      ["f" "^d" node]))
 
 (define (ml.special-vector args env)
   (concat "C " (subst " " " Q!0!10 " (map-call "c1-demote" (c0-vec args env)))))
@@ -122,14 +113,14 @@
   (define `b (first blist))
   (define `sym (nth 2 b))                ;; symbol for var being set
   (define `val (nth 3 b))                ;; value being assigned to var
-  
+
   (if (not blist)
       ;; no more vars to bind
       (begin-block body)
       (or (letg-error "L" b form "(VAR VALUE)")
           (letg-error "S" sym b "VAR")
           (letg-error "" val  b "VALUE")
-          
+
           `(set ,sym
                 (set ,sym ,val ,sym)
                 ,(letg-expand (rest blist) body form)))))
@@ -142,7 +133,7 @@
   (or (letg-error "L" bform form "((VAR VALUE)...)")
       (letg-expand (rest bform) body form)))
 
-         
+
 (define (ml.special-let-global args env form)
   (c0 (ml.macro-let-global form) env))
 
@@ -156,7 +147,7 @@
     (filter-out "F#" (filter "B% F%" (subst " " "" (wordlist 1 2 defn)))))
 
   (or (check-type "S" func form "FUNC" "(? FUNC ...)")
-      (if (not (traceable? (get (symbol-name func) env)))
+      (if (not (traceable? (hash-get (symbol-name func) env)))
           (gen-error func "FUNC in (? FUNC ...) is not a function variable"))
       (append [ "f" "^trace" (symbol-to-string func)]
               (c0-vec (rest args) env))))
@@ -181,7 +172,7 @@
 (define (let&-env nvs env)
   (append (reverse
            (foreach b nvs
-                    (bind (nth 2 (nth 2 (promote b)))  ;; symbol name
+                    (hash-bind (nth 2 (nth 2 (promote b)))  ;; symbol name
                           ["M" (nth 3 (promote b))]))) ;; expr
           env))
 
@@ -215,7 +206,7 @@
   (define `body  (nth-rest 4 form))
   (define `vars  (append "L" (for b blist (nth 2 b))))
   (define `vals  (for b blist (nth 3 b)))
-        
+
   (or (let-error "L" bform form "((VAR VALUE)...)")
       (vec-or (for b blist (or (let-error "L" b form "(VAR VALUE)")
                                (let-error "S" (nth 2 b) b "VAR")
@@ -238,7 +229,7 @@
             (exp (nth 3 args))
             (env env))
         (c0 `(.foreach ,(symbol-to-string var) ,wrds ,exp)
-            (bind (nth 2 var) (concat "V " (word 2 var)) env)))))
+            (hash-bind (nth 2 var) (concat "V " (word 2 var)) env)))))
 
 
 ;; ==> (foreach "&f" LIST (^d (let& ((VAR (^u &f))) BODY)))
@@ -254,7 +245,7 @@
   (c0 `(foreach ,(gensym var) ,vec
                 (call "^d" (let& ((,var (call "^u" ,(gensym var))))
                           ,@body)))
-      
+
       env))
 
 ;; (print args...)
@@ -286,7 +277,7 @@
                    ,@(if more
                          [(cond-expand (first more) (rest more) form)]))))))
 
-  
+
 (define (ml.macro-cond form)
   (or (cond-expand (nth 3 form) (nth-rest 4 form) form)
       "Q !."))

@@ -6,8 +6,8 @@
 ;;   c0:  form --> IL        [gen0.scm]
 ;;   c1:  IL --> object      [gem1.scm]
 ;;
-;; A form is an AST node, as described in parse.scm, with one additional
-;; node that is used for code generation purposes:
+;; A "form" is an AST node, as described in parse.scm, or an additional
+;; node type that is used for code generation purposes:
 ;;
 ;;   I <IL>   -->  IL pass-through
 ;;
@@ -16,17 +16,19 @@
 ;; "IL" is an intermediate language, structured as a tree of vectors.  The
 ;; first word of each vector describes its type.  IL constructs map closely
 ;; to GNU Make constructs.
-;; 
-;;   Q str               ->   literal           str
-;;   V str               ->   var reference     $(str)
-;;   F str <a> <b> ...   ->   call builtin      $(str <a>,<b>,...)
-;;   f str <a> <b> ...   ->   call user func    $(call str,<a>,<b>,...)
-;;   Y <f> <a> <b> ...   ->   lambda call       $(call ^Y,<a>,...,<f>)
-;;   C <a> <b> <c> ...   ->   concatenation     <a><b><c>
-;;   R str               ->   raw object code   str
-;;   B <a> <b> <c> ...   ->   sequence (block)
-;;   X <a>               ->   nested function   quote (c1 <a>)
-;;   E <description>     ->   error
+;;
+;;   Q.<n> str             literal            str
+;;   V str                 var reference      $(str)
+;;   F str <a> <b> ...     call builtin       $(str <a>,<b>,...)
+;;   f str <a> <b> ...     call user func     $(call str,<a>,<b>,...)
+;;   Y <f> <a> <b> ...     lambda call        $(call ^Y,<a>,...,<f>)
+;;   C <a> <b> <c> ...     concatenation      <a><b><c>
+;;   R str                 raw object code    str
+;;   B <a> <b> <c> ...     sequence (block)
+;;   X <a>                 nested function    quote (c1 <a>)
+;;   E.<n> <description>   error
+;;
+;; NOTE: "Q" and "E" nodes may have ".LOC" appended to their first word.
 ;;
 ;; Blocks
 ;;
@@ -46,14 +48,10 @@
 ;;--------------------------------------------------------------
 ;; Environment
 ;;
-;; The environment is a hash that maps symbol names to *definitions*.  An
-;; additional constraint on the environment is that order is significant:
-;; newer bindings are prepended and redundant ones are not removed, so it can
-;; be thought of as a stack (similar to the layering of nested scopes in the
-;; source file).
-;;
-;; Each binding maps a symbol name to a definition, which is a vector of one
-;; of the following forms:
+;; The environment is a stack of bindings: a vector of hash entries with
+;; newer (lexically closer) bindings toward the beginning.  When used as a
+;; hash, it maps a symbol name to its in-scope *definition*.  Each
+;; definition is a vector in one of the following formats:
 ;;
 ;;    F <name> <priv> <dfn>  ==  function variable (recursive) or compound macro
 ;;    V <name> <priv>        ==  data variable (simple)
@@ -63,7 +61,8 @@
 ;;    I <il>                 ==  pre-compiled IL node
 ;;
 ;; The special key "$" is used for "lambda markers" that identify the
-;; current level of function nesting.  Values for these bindings are:
+;; current level of function nesting.  Values for these bindings are also
+;; tagged with "$":
 ;;
 ;;    $ <level>       == lambda marker
 ;;
@@ -106,7 +105,7 @@
 ;; environment, and marked as imported: their <priv> fields are set to "i",
 ;; or (for imported inline functions and macros) "iFILE", where FILE is
 ;; the MIN file from which they were imported.
-;; 
+;;
 ;; Exports are also used when a macro or inline function is expanded.  In
 ;; this case, all exports (public, private, imported) will be used, since
 ;; the goal is to reconstruct the environment as it was when the
@@ -138,7 +137,7 @@
 (declare *compile-subject*)
 
 ;; *compile-file* is the name of the source file neing compiled.
-(declare *compile-file*) 
+(declare *compile-file*)
 
 ;; *compile-outfile* is the name of the MIN file being generated.  This is
 ;; used to find modules when `require` expressions are encountered.
@@ -166,10 +165,10 @@
 
 ;; Add a binding for symbol `sym` to `env`.  `type` = "F", "V", ...
 (define (bind-sym symbol type priv fdef env)
-  (append 
-   (bind (symbol-name symbol)
-         (concat type " " (trimvec (symbol-name symbol) priv fdef))
-         env)))
+  (append
+   (hash-bind (symbol-name symbol)
+              (concat type " " (trimvec (symbol-name symbol) priv fdef))
+              env)))
 
 
 ;; Generate a unique symbol name derived from `base`.  Returns a symbol
@@ -204,8 +203,8 @@
 ;; any lambda markers that are currently in effect.
 ;;
 (define (env-rewind-M env name)
-  (append (find "$" env)
-          (after (find name env) env)))
+  (append (hash-find "$" env)
+          (after (hash-find name env) env)))
 
 
 ;; Construct an error node.  The resulting error node inherits the document
@@ -235,7 +234,7 @@
       (gen-error (or form parent)
                  (concat
                   (if form "invalid" "missing") " " desc " in " context
-                  (if type (concat "; expected a " 
+                  (if type (concat "; expected a "
                                    (concat-vec (map-call "form-typename" type)
                                                " or ")))))))
 
@@ -255,7 +254,7 @@
 ;; env-compress: compress a vector of nested vectors for inclusion in a line
 ;; of text.  The result should contain no newlines and generally be much
 ;; smaller.
-;; 
+;;
 (define (env-compress v)
   (subst "," "!a" ";" "!b" ":" "!c" "/" "!d" "=" "!e" "|" "!f" "~" "!g"
          "!!e" "=" "!11111" "!5" "!1111" "!4" "!111" "!3" "!11" "!2"
@@ -273,17 +272,17 @@
 
 ;; Return all bindings exported from a MIN file.  The keys of non-public
 ;; entries are prefixed with "(".
-;; 
+;;
 (define (env-parse text)
   (env-expand (first (filtersub ["# Exports:%"] "%" (split "\n" text)))))
 
 
 (define (tag-binding key defn filename)
-  (bind key (append (wordlist 1 2 defn)
-                    (concat "i" (if (or (nth 4 defn)
-                                        (filter "M%" (word 1 defn)))
-                                    [filename]))
-                    (nth-rest 4 defn))))
+  (hash-bind key (append (wordlist 1 2 defn)
+                         (concat "i" (if (or (nth 4 defn)
+                                             (type? "M%" defn))
+                                         [filename]))
+                         (nth-rest 4 defn))))
 
 
 ;; Import the bindings from a MIN file's exports. Return an environment.
@@ -306,7 +305,7 @@
 ;;
 (define (env-export env)
  (concat "# Exports: "
-          (env-compress 
+          (env-compress
            (foreach b env
                     (concat
                      (if (nth 3 (hash-value b))
@@ -315,24 +314,15 @@
           "\n"))
 
 
-(define (cache funcname a b c)
-  (define `varname (concat "**memo*" funcname "*" a "*" b "*" c "**"))
-  (if (not (bound? varname))
-      (set-global varname (call funcname a b c)))
-  (value varname))
-
-
-(define (mod-read filename)
-  (if (filter "///%" filename)
-      (value filename)
-      (read-file filename)))
-
-
+;; Read a module from a file or a bundled variable
+;;
 (define (env-load filename)
-  (env-parse (mod-read filename)))
+  (define `(read-module filename)
+    (if (filter "///%" filename)
+        (value filename)
+        (read-file filename)))
 
-
-(memoize "env-load")
+  (env-parse (read-module filename)))
 
 
 ;; Import symbols from `filename`.  `priv` means return all
@@ -344,10 +334,62 @@
 (memoize "env-from-file")
 
 
+;;----------------------------------------------------------------
+;; Load imports from an object file
+
+(declare SCAM_MAIN)
+
+
+(define (mod-check path)
+  &private
+  (if (or (and (filter "///%" path) (bound? path))
+          (file-exists? path))
+      path))
+
+
+;; Find actual location of MIN file (bundled or not), in either:
+;;
+;;  1. The object directory (where the compilation results will be written).
+;;
+;;  2. (dir SCAM_MAIN) [the directory holding the compiler's main module] In
+;;     the case of `scam -e ...` or `scam -x ...` this references bundled
+;;     modules.  In the case of `make -f runtime.min SCAM_MAIN=...`, this will
+;;     be some directory (typically the same as the object directory.)
+;;
+(define (mod-find name obj-dir)
+  &private
+  (or (mod-check (concat obj-dir (notdir name) ".min"))
+      (mod-check (concat (dir SCAM_MAIN) (notdir name) ".min"))))
+
+
+;; Find compiled module and return its exports.
+;;   priv = non-nil to import private definitions
+;;
+;; Returns: ["S" <newenv>... ] on success
+;;      or: ["E..." <description>] on error
+;; Returns: ENV value (hash from names -> env entries)
+;;      or: "E <description>" : error finding/loading/reading module
+;;
+(define (require-imports module form priv)
+  (or
+   ;; error?
+   (check-type "Q" module form "STRING" "(require STRING)")
+
+   ;; found?
+   (let ((fname (mod-find (string-value module) (dir *compile-outfile*)))
+         (priv priv))
+     (if fname
+         (append "S" (env-from-file fname priv))))
+
+   ;; not found
+   (gen-error form "require: Cannot find module %s" (string-value module))))
+
+
+
 ;; Find original environment for `name` and return entries that preceded it.
 ;;
 (define (env-rewind-x env name)
-  (let ((pair (find name env))
+  (let ((pair (hash-find name env))
         (env env)
         (name name))
     (define `defn (hash-value pair))
@@ -369,11 +411,11 @@
 ;;  defn = definition (in env) [when rewinding to an "F" definition]
 ;;
 (define (env-rewind env name defn)
-  (append (find "$" env)
+  (append (hash-find "$" env)
           ;; non-inline binding
           (and defn
                (not (filter "#" (word 2 defn)))
-               (bind name (wordlist 1 2 defn)))
+               (hash-bind name (wordlist 1 2 defn)))
           (env-rewind-x env name)))
 
 
@@ -416,27 +458,33 @@
    ;; `.foreach` names the actual builtin; `foreach` is a special form
    (foreach b (append builtins-1 builtins-2
                       builtins-3 builtins-other)
-            (bind (concat (if (filter "subst foreach" b) ".") b)
-                  ["B" b "b"]))
+            (hash-bind (concat (if (filter "subst foreach" b) ".") b)
+                       ["B" b "b"]))
+
+   ;; Manifest functions
+   (hash-bind "promote" ["F" "^u"])
+   (hash-bind "demote" ["F" "^d"])
+   (hash-bind "nth" ["F" "^n"])
+   (hash-bind "set-global" ["F" "^set"])
+   (hash-bind "set-rglobal" ["F" "^fset"])
+   (hash-bind "apply" ["F" "^apply"])
 
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
    (foreach v ["*file*" "*args*" "MAKEFILE_LIST" ".DEFAULT_GOAL" "MAKE_RESTARTS"
                ".RECIPEPREFIX" ".VARIABLES" ".FEATURES" ".INCLUDE_DIRS"]
-            (bind v ["V" v "b"]))))
-
+            (hash-bind v ["V" v "b"]))))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.
 ;; For non-symbols, return "-" (meaning, essentially, "not applicable").
 ;;
 (define (resolve form env)
-  ;(if (symbol? form)
-  ;    (or (get (symbol-name form) env)
-  ;        (get (symbol-name form) base-env))
-  ;    "-"))))
+  (define `(find-name form hash)
+    ;; equivalent to `(hash-find (symbol-name form) hash)` but quicker
+    (filter (concat (word 2 form) "!=%") hash))
+
   (if (symbol? form)
-      (nth 2 (subst "!=" " " 
-                    (or (filter (concat (word 2 form) "!=%") env)
-                        (filter (concat (word 2 form) "!=%") base-env))))
+      (hash-value (or (find-name form env)
+                      (find-name form base-env)))
       "-"))

@@ -48,17 +48,12 @@
 ;;--------------------------------------------------------------
 
 
-;; extract type from IL node
-(define (node-type form)
-  (word 1 (subst "." " " form)))
-  
-
 ;; returns demoted name of builtin or user function (if builtin = call)
 ;; or empty string if 'node' is not a function invocation
 (define (il-funcname node)
-  (if (filter "f%" (word 1 node))
+  (if (type? "f" node)
       (word 2 node)
-      (if (filter "F" (word 1 node))
+      (if (type? "F" node)
           (or (filter-out "call" (word 2 node))
               (word 2 (nth 3 node))))))
 
@@ -66,7 +61,7 @@
 ;; Could be  [F call FNSYM var val ret]
 ;;       or  [f FNNAME var val ret]
 (define `(il-user-args node)
-  (nth-rest (if (filter "F%" (word 1 node)) 4 3) node))
+  (nth-rest (if (type? "F" node) 4 3) node))
 
 
 ;; Detect whether an IL node will always evaluate to "".
@@ -77,7 +72,7 @@
   ;; void-names are builtins and runtime functions that we know always
   ;; return nil
   (define `void-names
-    "error eval info ^require ^eval")
+    "error eval info ^require")
 
   (filter void-names name))
 
@@ -98,14 +93,17 @@
 
 
 (define (c1-arg node)
-  (if (filter "f% F%" (word 1 node))
+  (if (type? "f F" node)
       ;; c1-f and c1-F generate balanced expressions
       (c1 node)
       (protect-arg (c1 node))))
 
 
+;; protect an expression from having leading/trailing whitespace trimmed (as
+;; in `and` and `or` expressions)
+;;
 (define (c1-arg-trim node)
-  (if (filter "f% F%" (word 1 node))
+  (if (type? "f F" node)
       ;; c1-f and c1-F generate balanced expressions that don't trim
       (c1 node)
       (protect-trim (protect-arg (c1 node)))))
@@ -155,7 +153,7 @@
 (define (c1-f node)
   (define `ename (protect-ltrim (gen-escape-literal (nth 2 node))))
   (define `args (c1-args9 (rrest node)))
-  
+
   (concat "$(call " ename (if args ",") args ")"))
 
 
@@ -186,21 +184,20 @@
 (define (c1-X node)
   (gen-escape-lambda (c1 (nth 2 node))))
 
+(define `(c1-Q node)
+  (subst "$" "$$" (nth 2 node)))
 
 (define (c1 node)
-  (define `arg (nth 2 node))
-  (define `ty (word 1 node))
-
-  (cond ((filter "Q%" ty) (subst "$" "$$" arg))
-        ((filter "R%" ty) arg)
-        ((filter "f%" ty) (c1-f node))
-        ((filter "V%" ty) (c1-V node))
-        ((filter "C%" ty) (c1-vec (rest node)))
-        ((filter "X%" ty) (c1-X node))
-        ((filter "B%" ty) (c1-B node))
-        ((filter "Y%" ty) (c1-Y node))
-        ((filter "F%" ty) (c1-F node))
-        (else             (c1-E node))))
+  (cond ((type? "Q%" node) (c1-Q node))
+        ((type? "R" node) (nth 2 node))
+        ((type? "f" node) (c1-f node))
+        ((type? "V" node) (c1-V node))
+        ((type? "C" node) (c1-vec (rest node)))
+        ((type? "X" node) (c1-X node))
+        ((type? "B" node) (c1-B node))
+        ((type? "Y" node) (c1-Y node))
+        ((type? "F" node) (c1-F node))
+        (else               (c1-E node))))
 
 
 ;;--------------------------------------------------------------
@@ -227,7 +224,7 @@
               (findstring "\n" rhs)
               ;; leading whitespace?
               (filter "~%" (subst "\t" "~" " " "~" rhs)))
-          
+
           ;; Use 'define ... endef' so that $(value F) will be *identical*
           ;; to rhs almost always.
           (concat "define " (protect-lhs lhs) "\n"
@@ -241,7 +238,7 @@
 (define (c1-file* nodes)
   (if nodes
       (subst ".$. " ""
-             (concat 
+             (concat
               (foreach a nodes
                        (concat (c1-file (promote a))
                                ".$."))
@@ -251,6 +248,12 @@
 ;; compile one expression for statement context
 (define (c1-file node)
   (or
+   ;; top-level (eval STR) equivalent to STR
+   (and (type? "F" node)
+        (filter "eval" (word 2 node))
+        (filter "Q%" (word 3 node))
+        (concat (string-value (nth 3 node)) "\n"))
+
    ;; use makefile syntax for assignments, versus "$(call ^set,...)
    (if (filter "^fset ^set" (il-funcname node))
           (let ((args (il-user-args node))
@@ -259,12 +262,12 @@
                 ( (if (filter "^set" name) c1-set c1-fset)
                   (c1 (nth 1 args))
                   (c1 (nth 2 args))))))
-            
+
    (cond
-    ((filter "B" (word 1 node)) (c1-file* (rest node)))
-    
-    ((filter "R" (word 1 node)) (concat (c1 node) "\n"))
-    
+    ((type? "B" node) (c1-file* (rest node)))
+
+    ((type? "R" node) (concat (c1 node) "\n"))
+
     (else (concat (protect-expr (c1 (voidify node))) "\n")))))
 
 
@@ -276,4 +279,3 @@
                   (c1-file* nodes)
                   (c1 (append "B" nodes)))) )
     [ (gen-extract c1o) c1o ]))
-

@@ -3,6 +3,9 @@
 (require "core")
 (require "repl")
 (require "build")
+(require "getopts")
+(if nil
+    (require "trace"))  ;; include just for bundling purposes
 
 
 (define (usage ...)
@@ -13,30 +16,39 @@
     scam -o EXE FILE...    : build an executable from SRC
     scam -e EXPR           : eval and print value of expression
     scam [-x] FILE         : compile and execute FILE
+
+Options:
+
+  --symbols : when building an executable, retain symbol information.  This
+              is useful when building an interpreter or compiler.
 ")
   (if ... 1))
 
 
+(define (opt-err opt)
+  (usage "Unrecognized command option '%s'" opt))
+
 
 (define (main argv)
-  (define `(opt? pat)
-    (filter (concat "-" pat) (word 1 argv)))
+  (let ((o (getopts argv "-e= -h -i -o= -x= --symbols" opt-err)))
+    (define `files (nth 1 o))
+    (define `opts (nth 2 o))
+    (define `(opt name) (hash-get name opts))
+    (define `runfile (or (opt "-x") (first files)))
+    (define `(exec file argv)
+      (set main "")
+      (repl-file file)
+      (main argv))
 
-  (cond
-   ((or (not argv)
-        (opt? "i")) (repl))
+    (cond
+     ((opt "-o")  (build (opt "-o") files (opt "--symbols")))
 
-   ((opt? "h") (usage))
+     ((opt "-h")  (usage))
 
-   ((opt? "o") (if (not (word 3 argv))
-                   (usage "error: '-o' must be followed by EXE and at least one source file")
-                   (build (nth 2 argv) (rrest argv))))
+     ((opt "-e")  (repl-rep (opt "-e")))
 
-   ((opt? "e") (repl-rep (nth 2 argv)))
+     ((opt "-x")  (lambda () (exec (opt "-x") files)))
 
-   ((opt? "x") (repl-file (nth 2 argv)))
-   
-   ((opt? "%") (usage "Unrecognized option: %q\n" (nth 1 argv)))
+     (files       (exec (first files) (rest files)))
 
-   (else (repl-file (first argv)))))
-
+     (else        (repl)))))

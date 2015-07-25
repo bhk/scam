@@ -13,10 +13,10 @@
 ;; Remove all position markers from an environment, IL, or AST node.
 ;;
 (define (postrim node)
-  (foreach 
+  (foreach
    w node
    (if (findstring "!=" w)
-       (bind (hash-key w) (postrim (hash-value w)))
+       (hash-bind (hash-key w) (postrim (hash-value w)))
        (if (or (findstring "!1" w)
                (findstring "!0" w))
            (demote (postrim (promote w)))
@@ -28,9 +28,9 @@
 ;;
 (define (il-visit-x node fn)
   (let&
-   ((children (if (filter "F% f% Y%" (word 1 node))
+   ((children (if (type? "F% f% Y%" node)
                   (nth-rest 3 node)
-                  (if (filter "C% B% X%" (word 1 node))
+                  (if (type? "C% B% X%" node)
                       (nth-rest 2 node)))))
    (if node
        (append (fn node)
@@ -74,18 +74,18 @@
 
 
 ;; Q: string
-(expect ["Q" " x "] 
+(expect ["Q" " x "]
         (c0 ["Q" " x "]))
 
 
 ;; S: global data variable
 (expect ["V" "DATA"]
-        (c0 ["S" "v!"] (bind "v!" ["V" "DATA"])))
+        (c0 ["S" "v!"] (hash-bind "v!" ["V" "DATA"])))
 
 
 ;; S: global function variable
 (expect ["F" "value" "Q FUNC"]
-        (c0 ["S" "var"] (bind "var" ["F" "FUNC"])))
+        (c0 ["S" "var"] (hash-bind "var" ["F" "FUNC"])))
 
 
 ;; S: undefined variables
@@ -95,23 +95,23 @@
 
 ;; L: (functionvar ...)
 (expect ["f" "FUNC" "Q 7"]
-        (c0 ["L" "S var" "Q 7"] (bind "var" ["F" "FUNC"])))
+        (c0 ["L" "S var" "Q 7"] (hash-bind "var" ["F" "FUNC"])))
 
 
 ;; L: (inlinefunc ...)
 
 (expect ["F" "patsubst" "Q 1" "Q 2" "V oldG"]
         (c0 ["L" "S var" "Q 1" "Q 2"]
-            (bind "g" "V newG"
-                  (bind "var" ["F" "FNAME" ""
+            (hash-bind "g" "V newG"
+                  (hash-bind "var" ["F" "FNAME" ""
                                [ "a b"                               ; args
                                  [ "L" "S patsubst" "S a" "S b" "S g"]]] ; body
-                        (bind "g" "V oldG")))))
-                 
+                        (hash-bind "g" "V oldG")))))
+
 ;; L: (datavar ...)
 
 (expect ["Y" ["V" "DATA"] "Q 7"]
-        (c0 ["L" "S var" "Q 7"] (bind "var" ["V" "DATA"])))
+        (c0 ["L" "S var" "Q 7"] (hash-bind "var" ["V" "DATA"])))
 
 
 ;; L: (<builtin> ...)
@@ -134,41 +134,50 @@
 
 ;; S: argument
 
-(expect (bind "$" "$ $$"
-          (bind "b" ["A" "$$1"]
-            (bind "$" "$ $"
-              (bind "a" ["A" "$1"]))))
+(expect (hash-bind "$" "$ $$"
+          (hash-bind "b" ["A" "$$1"]
+            (hash-bind "$" "$ $"
+              (hash-bind "a" ["A" "$1"]))))
         (lambda-env ["S b"] (lambda-env ["S a"] "")))
 
 (expect ["R" "$1"]
         (c0 ["S" "var"] (lambda-env ["S var"])))
 
 
-(expect (bind "$" "$ $"
-              (bind "a" "A $1"
-                    (bind "b" "A $2")))
+(expect (hash-bind "$" "$ $"
+              (hash-bind "a" "A $1"
+                    (hash-bind "b" "A $2")))
         (lambda-env ["S a" "S b"]))
 
 ;; extended args: 9th -> (nth 1 $9), 10th -> (nth 2 $9), ...
-(expect (bind "X" ["M" ["L" "S call" "Q ^n" "Q 1" "S arg9&"]]
-              (bind "Y" ["M" ["L" "S call" "Q ^n" "Q 2" "S arg9&"]]
-                    (bind "arg9&" ["A" "$9"])))
+(expect (hash-bind "X" ["M" ["L" "S call" "Q ^n" "Q 1" "S arg9&"]]
+              (hash-bind "Y" ["M" ["L" "S call" "Q ^n" "Q 2" "S arg9&"]]
+                    (hash-bind "arg9&" ["A" "$9"])))
         (wordlist 10 99
-                  (lambda-env ["S a" "S a" "S a" "S a" "S a" 
+                  (lambda-env ["S a" "S a" "S a" "S a" "S a"
 
                                "S a" "S a" "S a" "S X" "S Y"])))
 
 
 ;; S: symbol macro
 (expect ["F" "call" "Q ^n" "Q 1" "R $9"]
-        (c0 "S X" (lambda-env ["S a" "S a" "S a" "S a" "S a" 
+        (c0 "S X" (lambda-env ["S a" "S a" "S a" "S a" "S a"
                                "S a" "S a" "S a" "S X" "S Y"])))
+
+;; S: manifest functions
+
+(expect ["f" "^u" "Q 1"] (c0 ["L" "S promote" "Q 1"] nil))
+(expect ["f" "^d" "Q 1"] (c0 ["L" "S demote" "Q 1"] nil))
+(expect ["f" "^n" "Q 1"] (c0 ["L" "S nth" "Q 1"] nil))
+(expect ["f" "^set" "Q A" "Q 1"] (c0 ["L" "S set-global" "Q A" "Q 1"] nil))
+(expect ["f" "^fset" "Q B" "Q 1"] (c0 ["L" "S set-rglobal" "Q B" "Q 1"] nil))
+
 
 ;; L: (lambda NAMES BODY)
 
 ;; (lambda (a) v)
 (expect ["X" ["V" "DATA"]]
-   (c0 ["L" "S lambda" ["L" "S a"] "S v"] (bind "v" ["V" "DATA"])))
+   (c0 ["L" "S lambda" ["L" "S a"] "S v"] (hash-bind "v" ["V" "DATA"])))
 
 ;; (lambda (a b) a b)
 (expect ["X" ["B" ["R" "$1"] ["R" "$2"]]]
@@ -200,9 +209,9 @@
 
 (define (CQ text)
   (C0 text (append
-            (bind "q" ["I" ["Q" "Q q"]])
-            (bind "v" "V v")
-            (bind "l" ["I" ["Q" ["S a" "S b"]]]))))
+            (hash-bind "q" ["I" ["Q" "Q q"]])
+            (hash-bind "v" "V v")
+            (hash-bind "l" ["I" ["Q" ["S a" "S b"]]]))))
 
 (expect ["Q" "S x"]
         (CQ "`x"))
@@ -250,7 +259,7 @@
 
 (expect [ "C"
           ["Q" "L Q!01"]
-          ["V" "v"] 
+          ["V" "v"]
           ["Q" "Q!02"]]
         (CQ "`(1 ,@v 2)"))
 
@@ -262,7 +271,7 @@
                (c0 ["S" "quatloo"])))
 
 (expect 1 (see ["attempt to obtain value of builtin"]
-               (c0 ["S" "subst"] (bind "subst" ["B" "subst"]))))
+               (c0 ["S" "subst"] (hash-bind "subst" ["B" "subst"]))))
 
 
 ;;--------------------------------------------------------------
@@ -280,18 +289,18 @@
 ;;
 ;; declare & define
 ;;
-(define env0 (bind "x" "V x"))
+(define env0 (hash-bind "x" "V x"))
 
 ;; declare VAR
-(expect (bind "var" "V var")
+(expect (hash-bind "var" "V var")
         (C0env "(declare var)"))
-(expect (bind "var" "V var p")
+(expect (hash-bind "var" "V var p")
         (C0env "(declare var &private)"))
 
 ;; declare FUNC
-(expect (bind "fn" "F fn")
+(expect (hash-bind "fn" "F fn")
         (C0env "(declare (fn a b))"))
-(expect (bind "fn" "F fn p")
+(expect (hash-bind "fn" "F fn p")
         (C0env "(declare (fn a b) &private)"))
 
 ;; declare errors
@@ -315,16 +324,16 @@
 
 ;; define compound macro
 (expect [""
-         (bind "M" ["F" "#" "" ["a" ["L" "S concat" "S a" "S a"]]])]
+         (hash-bind "M" ["F" "#" "" ["a" ["L" "S concat" "S a" "S a"]]])]
         (C0both "(define `(M a) (concat a a))"))
 (expect [""
-         (bind "M" ["F" "#" "p" ["a" ["L" "S concat" "S a" "S a"]]])]
+         (hash-bind "M" ["F" "#" "p" ["a" ["L" "S concat" "S a" "S a"]]])]
         (C0both "(define `(M a) &private (concat a a))"))
 
 ;; define symbol macro
-(expect ["" (bind "I" ["M" ["L" "S info" "Q 1"] ""] env0)]
+(expect ["" (hash-bind "I" ["M" ["L" "S info" "Q 1"] ""] env0)]
         (C0both "(define `I (info 1))" env0))
-(expect ["" (bind "I" ["M" "Q 7" "p"] env0)]
+(expect ["" (hash-bind "I" ["M" "Q 7" "p"] env0)]
         (C0both "(define `I &private 7)" env0))
 
 
@@ -357,9 +366,9 @@
 
 ;; define inline FUNC
 (expect (append
-         (bind "g" ["F" "g" "" ["x" ["L" "S info" "Q hi"]
+         (hash-bind "g" ["F" "g" "" ["x" ["L" "S info" "Q hi"]
                                     ["L" "S info" "S x"] ]])
-         (bind "f" ["F" "f" "" ["a b" ["L" "S join" "S a" "S b"]]]))
+         (hash-bind "f" ["F" "f" "" ["a b" ["L" "S join" "S a" "S b"]]]))
 
          (C0env "(define (f a b) &inline (join a b))
                (define (g x) &inline (info \"hi\") (info x))"))
@@ -372,11 +381,12 @@
 
 
 ;;
-;; Test macro & inline function exporting/importing 
+;; Test macro & inline function exporting/importing
 ;;
 
 (define (canned-MIN name)
   (cond
+   ((eq "D/M" name) "(declare X &private) (declare Y)")
    ((eq "M" name) "(declare X &private) (declare Y)")
    ((eq "F" name) "(define X &private 1) (define (f) &inline X)")
    ((eq "CM" name) "(define `(F) &private 3) (define `(G) (F))")
@@ -387,27 +397,24 @@
 (define (canned-read-file name)
   (env-export (C0env (canned-MIN name))))
 
-(declare (^mod-find modname scamdir))
+(declare (mod-find name obj-dir))
 
 (let-global
- ;; NOTE: Overriding a runtime function can be tricky because it could
- ;; affect the execution of this test program (not just the code under
- ;; test).  For example, calling `require` within this block would produce
- ;; unexpected results.
- ((^mod-find (lambda (m f p) m))
+ ;; Override function for looking up modules (!).
+ ((mod-find (lambda (m f p) m))
   (read-file canned-read-file))
 
  ;; (require MOD)
 
  (expect ["f" "^require" "Q M"]
-         (C0 "(require \"M\")"))
+         (C0 "(require \"D/M\")"))
 
- (expect (bind "Y" "V Y i")
+ (expect (hash-bind "Y" "V Y i")
          (C0env "(require \"M\")"))
 
  ;; (require MOD &private)
 
- (expect (bind "Y" "V Y" (bind "X" "V X p"))
+ (expect (hash-bind "Y" "V Y" (hash-bind "X" "V X p"))
          (C0env "(require \"M\" &private)"))
 
  ;; Verify that IMPORTED inline functions & macros are expanded in their
@@ -437,6 +444,6 @@
              ["F" "if" "Q 1" "Q 2" ["f" "f" "Q 2" ["Q" ""]]]]
         (C0 "(define (f a b) &inline (if a b (f b \"\")))
              (f 1 2)"))
- 
+
 
 (print "gen0 ok")

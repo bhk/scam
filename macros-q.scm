@@ -28,10 +28,6 @@
 
 ;; compile and execute form
 ;;
-;; WARNING: Executing generated code may invoke runtime functions, which
-;; may be out of sync with the compiler sources when we are compiling the
-;; compiler (when building/testing v1 we execute with v0's runtime).
-;;
 (define (XT text)
   ((CX text)))
 
@@ -51,25 +47,12 @@
 (expect "$(info 1)" (CX "(print 1)"))
 (expect "$(info 123)" (CX "(print 1 2 3)"))
 
-;; native
-(expect "$x"
-        (CX "(native \"$x\")"))
-
-(expect ["E" "invalid CODE in (native CODE); expected a literal string"]
-        (strip-indices (first (gen-extract (CX "(native FOO)")))))
-           
-;; expect
-
-;(expect "" (CX "(expect (parse 1 2) 2)"))
-
-
 ;; concat
 
 (expect "ab$(or 1)" (CX "(concat \"a\" \"b\" (or 1))"))
 
 (expect "$$1$$(call ^n,1,$$9)"
         (CX "(lambda (a b c d e f g h i) (concat a i))"))
-
 
 ;; vector
 
@@ -83,27 +66,23 @@
 (expect "$(call ^fset,fn,1)" (CX "(declare (fn)) (set fn 1)"))
 (expect "$(call ^fset,fn,1,2)" (CX "(declare (fn)) (set fn 1 2)"))
 
-
 ;; ?
 
-(expect "$(call ^trace,f,1)" (CX "(? f 1)" (bind "f" "F f")))
-
-
+(expect "$(call ^trace,f,1)" (CX "(? f 1)" (hash-bind "f" "F f")))
 
 ;; let&
 
-(expect (bind "y" ["M" "Q Y"]
-          (bind "x" ["M" "Q 1"]
-            (bind "a" "Q.1 S")))
+(expect (hash-bind "y" ["M" "Q Y"]
+          (hash-bind "x" ["M" "Q 1"]
+            (hash-bind "a" "Q.1 S")))
        (let&-env [ ["L" "S x" "Q 1"] ["L" "S y" "Q Y"] ]
-                 (bind "a" "Q.1 S")))
+                 (hash-bind "a" "Q.1 S")))
 
 
-(expect (bind "x" ["M" "S a"]
+(expect (hash-bind "x" ["M" "S a"]
               (lambda-env ["S a"] ""))
         (let&-env [ ["L" "S x" "S a"] ]
                   (lambda-env ["S a"] "")))
-
 
 (expect "1" (CX "(let& ((a 1)) a)"))
 (expect "2" (CX "(let& ((a 1) (b 2)) b)"))
@@ -115,9 +94,7 @@
     (expect "$$(call ^Y,x,,,,,,,,,$$$$1$$(call ^e,$$1))"
             (CX "(lambda (a) (let& ((x a)) (let ((b \"x\")) (concat b x))))")))
 
-
 ;; let
-
 
 (define (macrotest in out)
   (let&
@@ -129,7 +106,6 @@
          (begin
            (print "Result: " (subst "\n" "\n        " (format-form result)))
            (print "   Not: " (subst "\n" "\n        " (format-form expected))))))))
-
 
 (expect 1 (macrotest
            '(let ((a 1) (b "q")) (+ a b))

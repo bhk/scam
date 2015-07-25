@@ -56,14 +56,14 @@
   &private
   (cond
    ;; (nth 2 ...) == (word 2 ...) for "A" cases:
-   ((filter "A" (word 1 defn))  (c0-local (word 2 defn) (word 2 (get "$" env)) form))
-   ((filter "V" (word 1 defn))  (wordlist 1 2 defn))
-   ((filter "F" (word 1 defn))  (if (filter "#" (word 2 defn))
+   ((type? "A" defn)  (c0-local (word 2 defn) (word 2 (hash-get "$" env)) form))
+   ((type? "V" defn)  (wordlist 1 2 defn))
+   ((type? "F" defn)  (if (filter "#" (word 2 defn))
                                     (gen-error form "attempt to obtain value of compound macro")
                                     ["F" "value" ["Q" (nth 2 defn)]]))
-   ((filter "M" (word 1 defn))  (c0 (nth 2 defn) (env-rewind env (nth 2 form))))
-   ((filter "I" (word 1 defn))  (nth 2 defn))
-   (else (gen-error form (if (filter "B" (word 1 defn))
+   ((type? "M" defn)  (c0 (nth 2 defn) (env-rewind env (nth 2 form))))
+   ((type? "I" defn)  (nth 2 defn))
+   (else (gen-error form (if (type? "B" defn)
                              "attempt to obtain value of builtin: %q"
                              (if defn
                                  (concat "internal error: bad defn '" [defn]"'")
@@ -101,12 +101,12 @@
   (define `finl (nth 4 defn))
   (define `fargs (first finl))  ; formal args
   (define `fbody (rest finl))
-  (define `orig-env (bind "#pos" (concat "P " (form-index form))
-                          (env-rewind env (symbol-name (nth 2 form)) defn)))
+  (define `orig-env (hash-bind "#pos" (concat "P " (form-index form))
+                               (env-rewind env (symbol-name (nth 2 form)) defn)))
   (define `argbindings
     (foreach da fargs
-             (bind (promote da)
-                   ["I" (c0 (nth (find-word fargs 1 da) (rrest form)) env)])))
+             (hash-bind (promote da)
+                        ["I" (c0 (nth (find-word fargs 1 da) (rrest form)) env)])))
   (or (check-argc (words fargs) (rrest form) form)
       (c0-block fbody (append argbindings orig-env))))
 
@@ -126,33 +126,33 @@
   (cond
    ;; global function variable
    ;;(il-F form env "call" [["Q" (nth 2 defn)]])
-   ((filter "F" (word 1 defn))
+   ((type? "F" defn)
     (if (filter-out "!." (word 4 defn))
         (c0-inline-fn form env defn)
         (append "f" (word 2 defn) (c0-vec (rrest form) env))))
-   
+
    ;; builtin
-   ((filter "B" (word 1 defn))  (il-builtin form env (nth 2 defn) nil))
+   ((type? "B" defn)  (il-builtin form env (nth 2 defn) nil))
 
    ;; empty parens
    ((not (word 2 form)) (gen-error form "missing function/macro name"))
 
    ;; general case (non-symbol, argument, data var, etc.)
    (defn (concat "Y " (c0-vec (rest form) env)))
-   
+
    ;; macro/special form?
    ((bound? (concat "ml.special-" opname))
     (call (concat "ml.special-" opname) (rrest form) env form inblock))
-   
+
    ;; none of the above
    (else (gen-error op "undefined symbol: %q" opname))))
 
 
 ;; Collect "define flags" -- &private or &inline -- in one list.
 ;; Return [flags body...]
-;; 
+;;
 (define (collect-flags forms flags)
-  (if (and (filter "S%" (firstword forms))
+  (if (and (type? "S%" forms)
            (filter "&private &inline" (symbol-name (first forms))))
       (collect-flags (rest forms) (append flags (word 1 forms)))
       (cons flags forms)))
@@ -164,32 +164,6 @@
   &private &inline
   (firstword (filter (concat "%" name) flags)))
 
-
-;; runtime dependency
-(declare (^mod-find modname scamdir))
-
-;; Find compiled module and return its exports.
-;;   priv = non-nil to import private definitions
-;;
-;; Returns: ["S" <newenv>... ] on success
-;;      or: ["E..." <description>] on error
-;; Returns: ENV value (hash from names -> env entries)
-;;      or: "E <description>" : error finding/loading/reading module
-;; 
-(define (require-imports module form priv)
-  &private
-  (or 
-   ;; error?
-   (check-type "Q" module form "STRING" "(require STRING)")
-
-   ;; found?
-   (let ((fname (^mod-find (string-value module) (dir *compile-outfile*)))
-         (priv priv))
-     (if fname
-         (append "S" (env-from-file fname priv))))
-   
-   ;; not found
-   (gen-error form "require: Cannot find module %s" (string-value module))))
 
 
 ;; Env-modifying functions can return an environment when `inblock` is true.
@@ -212,7 +186,7 @@
   (define `body (rest fb))
   (define `is-var (symbol? what))
   (define `is-func (list? what))
-  (define `is-quoted (filter "`% '%" (word 1 what))) ; (qquoted? what)
+  (define `is-quoted (type? "`% '%" what))   ; quoted? or qquoted?
   (define `qwhat (nth 2 what))
   (define `xwhat (if is-quoted qwhat what))  ; X in "X" or "`X)
   (define `fargs (rrest what))
@@ -221,7 +195,7 @@
   (define `value (nth 2 fb))
   (define `priv (if (find-flag "&private" flags) "p"))
   (define `is-inline (find-flag "&inline" flags))
-  
+
   ;; inline function definition (to be embedded in env entry)
   (define `fdefn (append [ (for sym (rrest xwhat) (symbol-name sym)) ]
                          body))
@@ -235,7 +209,7 @@
                  (concat "(" (or is-declare "define") " "
                          (if is-declare "" (if is-quoted "`")) "FORM"
                          (if is-declare "" " ...") ")"))
-     
+
      (if is-declare
          (if body
              (gen-error body "too many arguments to (declare ...)"))
@@ -247,7 +221,7 @@
                  (gen-error (nth 2 body)
                             "too many arguments to (define %sVAR EXPR)"
                             (if is-quoted "`")))))
-     
+
      ;; ensure FNAME/MNAME & FARGS/MARGS are symbols
      (if (list? xwhat)
          (foreach
@@ -260,7 +234,7 @@
                                              (or is-declare "define")
                                              (if is-quoted "`")))]))
           (promote _err)))
-     
+
      (and is-inline
           (or is-declare (not is-func))
           (gen-error is-inline
@@ -270,18 +244,18 @@
   (define `env-in (if is-func
                       (bind-sym fname "F" nil nil env)
                       env))
-  
+
   ;; make function/variable known *after* the definition (include
   ;; inline-expanded definition, in the case of an inline function)
   (define `env-out (cond
                     (is-func (bind-sym fname "F" priv (if is-inline fdefn) env))
                     (is-var  (bind-sym what "V" priv nil env))
-                    ((symbol? qwhat) (bind (symbol-name qwhat)
-                                           ["M" (first body) priv]
-                                           env))
-                    (else    (bind (symbol-name mname)
-                                   ["F" "#" priv fdefn]
-                                   env))))
+                    ((symbol? qwhat) (hash-bind (symbol-name qwhat)
+                                                ["M" (first body) priv]
+                                                env))
+                    (else    (hash-bind (symbol-name mname)
+                                        ["F" "#" priv fdefn]
+                                        env))))
 
   ;; setform = expression that assigns the value to the name
   ;;           define var/func = declare + set
@@ -321,7 +295,7 @@
         (env env) (inblock inblock) (module module))
     (define `node (if (error? imports)
                       imports
-                      ["f" "^require" module]))
+                      ["f" "^require" (notdir module)]))
     (block-result inblock (append (rest imports) env) node)))
 
 
@@ -329,14 +303,14 @@
 ;;
 ;;   forms = vector of forms
 ;;   k = fuction to call: (k nodes new-env)
-;;   prev-env = environment for previous form 
+;;   prev-env = environment for previous form
 ;;   prev-results = results (not including previous compiled form)
 ;;   o = result of compiling previous form EXCEPT the first time
 ;;       this function is called, when it is nil.
 ;;       This may be a regular IL node *or* ["env" ENV NODE]
 
 (define (c0-block-cc forms prev-env k prev-results o)
-  (define `got-env (filter "env" (word 1 o)))
+  (define `got-env (type? "env" o))
   (define `env     (if got-env (nth 2 o) prev-env))
   (define `node    (if got-env (nth-rest 3 o) o))
   (define `results (if (not o)
@@ -371,26 +345,26 @@
             (level level))
         (append
          (foreach n (indices xargs)
-                  (bind (symbol-name (nth n xargs))
-                        ["M" ["L" "S call" "Q ^n" 
-                              (concat "Q " n)
-                              (concat "S " arg9)]]))
-         (bind arg9 ["A" (concat level 9)])))))
+                  (hash-bind (symbol-name (nth n xargs))
+                             ["M" ["L" "S call" "Q ^n"
+                                   (concat "Q " n)
+                                   (concat "S " arg9)]]))
+         (hash-bind arg9 ["A" (concat level 9)])))))
 
 (define (lambda-env2 args env level)
   &private
-  (bind "$" ["$" level]
-        (append
-         ;; first 8 args = $1 ... $8
-         (foreach n (indices (wordlist 1 8 args))
-                  (bind (symbol-name (nth n args))
-                        ["A" (concat (concat level n))]))
-         ;; args 9 and up = (nth 1 $9), (nth 2 $9), ...
-         (lambda-arg9 (wordlist 9 9999 args) level env)
-         env)))
+  (hash-bind "$" ["$" level]
+             (append
+              ;; first 8 args = $1 ... $8
+              (foreach n (indices (wordlist 1 8 args))
+                       (hash-bind (symbol-name (nth n args))
+                                  ["A" (concat (concat level n))]))
+              ;; args 9 and up = (nth 1 $9), (nth 2 $9), ...
+              (lambda-arg9 (wordlist 9 9999 args) level env)
+              env)))
 
 (define (lambda-env args env)
-  (lambda-env2 args env (or (subst "$" "$$" (word 2 (get "$" env))) "$")))
+  (lambda-env2 args env (or (subst "$" "$$" (word 2 (hash-get "$" env))) "$")))
 
 
 ;;---------------------------------------------------------------
@@ -456,7 +430,7 @@
 ;;    node = original node (word 1 will be preserved)
 ;;    args = vector of IL nodes to be appended to word 1
 ;;           These must be pre-demoted with il-demote
-;; 
+;;
 (define (c0-mq-vec node args)
   (il-foldcat
    (il-qmerge (subst " " (concat " " [["Q" " "]] " ") args)
@@ -466,7 +440,7 @@
 ;;
 (define (c0-mq-node node arg)
   (c0-mq-vec node [(il-demote arg)]))
-                   
+
 
 ;; The result is an IL node that evaluates to the list.
 ;;
@@ -477,7 +451,7 @@
 ;;                  -->  (il-concat ["f" "^d" ["Q" "L"]] ["Q" " "]
 ;;                                  ["f" "^d" ["Q" "S a"]])
 ;;                  -->  ["Q" "L S!0a"]
-;; 
+;;
 ;;   ["Q L" ["," ["S a"]  -->  (il-vector ["Q" "L"] ["V" "a"])
 ;;                        -->  (il-concat ["f" "^d" ["Q" "L"]] ["Q" " "]
 ;;                                        ["f" "^d" ["V" "a"])

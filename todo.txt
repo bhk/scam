@@ -1,12 +1,26 @@
 TODO:
 
+ * Bundle needed indirect dependencies
+
+ * document limitations of interactive mode (interpreted mode, "scam -e",
+   and "scam [-x] FILE"):
+
+    - `require` needs to be satisfied by bundled modules
+    - symbols might conflict with the compiler implementation
+
+ * Namespaces (see below)
+
+ * WARN when shadowing variables!
+    - most common error case
+    - helps with problem of redefining built-ins in REPL, at least
+
  * fix: (begin (set x (+ x 1)) x)
 
  * Bind file name to error: "E.pos.filename ..."  (extract from
    env)
 
  * Macro bug related to up-values?
-   
+
     (define `(macro x)
       (f (lambda () x)))
 
@@ -56,7 +70,7 @@ WISHLIST
    ... but this would break rewind.
 
  * Identify arguments using special IL record (vs. R)
-      A n level           ->   local (arg)       $n 
+      A n level           ->   local (arg)       $n
 
    (To simplify optimization.)
 
@@ -86,7 +100,7 @@ WISHLIST
         $(call demote,a b)  -->  a!0b
 
     - (if x (f a) (f b))  -->  (f (if x a b))
-      
+
         f can take many forms: $(a/b),  $(call a/b,x,y,z),  [a/b ...]
         f represents the commonality between the forms (top-down?)
 
@@ -110,6 +124,8 @@ WISHLIST
 
  * lib: `while` that does not recurse indefinitely
 
+      (while VAR INITIAL TEST BODY...)
+
  * opt: (void (if x a b)) == (void a) and (void b)
 
  * opt: interleave compile with parsing of top-level expressions
@@ -120,7 +136,7 @@ WISHLIST
 
  * Throw error on shadowing/redefinition.
    **AT LEAST FOR BUILTINS!**
- 
+
  * deconstruction in assignments:
 
     (let ( ([a b c] (f x)) ... ) ...)
@@ -139,7 +155,7 @@ WISHLIST
             (unpack p (wordlist (+ 1 (words C)) 99999 x)))
 
    MATCH x (concat "str" p) x
-     => (foreach ndx (indices a) (if 
+     => (foreach ndx (indices a) (if
 
  * eval-when-compile
 
@@ -293,19 +309,16 @@ Root causes of some BUGS I've encountered:
            `(progn ...body))
 
 ----------------------------------------------------------------
-Optimization
+Currently-unused runtime functions
 
- * interleave parse / c0 / c1
-    - avoid multiple N^2 concatenations
-    - better way to abstract iteration, without mutation or upvalues?
+   ;; When hacking .min files, prepending "$?" is a quick way to trace calls
+   ;;
+   (eval "? = $(info ?: ($0$(^fmt-args)))")
 
-
-;; ??? maybe...
-;; ?   R <module>             ==  require marker
-;; ?
-;; ? Require markers are not true bindings.  They indicate where/when symbols
-;; ? were exported from other files (so require markers will occur adjacent
-;; ? to other bindings with a <priv> field value of "i").
-;;
-
- * list? / symbol?  -->  ast-list? / ast-symbol?
+   ;; ^v : runtime detection of undefined references
+   ;;
+   (define (^v name is-func)
+     (and (filter "undefined" (flavor name))
+          (info (concat "warning: " (if is-func "call to" "read of")
+                        " undefined variable: " name))
+          name))

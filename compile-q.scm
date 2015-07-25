@@ -12,7 +12,7 @@
         (compile-text "(define a 1)" "" "(test)" "test.tmp"))
 
 ;; for eval
-(expect ["" "$(call ^set,a,1)" (bind "a" "V a")]
+(expect ["" "$(call ^set,a,1)" (hash-bind "a" "V a")]
         (compile-text "(define a 1)" "" "(test)" ""))
 
 (expect "a := 1\nb := 2\n"
@@ -30,5 +30,3 @@
             (expect "xx/foo.min" wname)
             (expect 1 (see "# Exports: x" wtext))
             (expect 1 (see "x := 1" wtext)))
-
-

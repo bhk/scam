@@ -30,45 +30,37 @@
 ;;==============================================================
 ;; Form value accessors
 
-(define (symbol? form)
-  &inline
-  (filter "S%" (word 1 form)))
+(define `(symbol? form)
+  (type? "S%" form))
 
-(define (string? form)
-  &inline
-  (filter "Q%" (word 1 form)))
+(define `(string? form)
+  (type? "Q%" form))
 
-(define (list? form)
-  &inline
-  (filter "L%" (word 1 form)))
+(define `(list? form)
+  (type? "L%" form))
 
-(define (error? form)
-  &inline
-  (filter "E%" (word 1 form)))
+(define `(error? form)
+  (type? "E%" form))
 
-(define (quoted? form)
-  &inline
-  (filter "'%" (word 1 form)))
+(define `(quoted? form)
+  (type? "'%" form))
 
-(define (qquoted? form)
-  &inline
-  (filter "`%" (word 1 form)))
+(define `(qquoted? form)
+  (type? "`%" form))
 
-(define (unquoted? form)
-  &inline
-  (filter ",%" (word 1 form)))
+(define `(unquoted? form)
+  (type? ",%" form))
 
-(define (sunquoted? form)
-  &inline
-  (filter "@%" (word 1 form)))
+(define `(sunquoted? form)
+  (type? "@%" form))
 
 (define form-types
-  (bind "L" "list"
-    (bind "Q" "literal string"
-      (bind "S" "symbol"))))
+  (hash-bind "L" "list"
+             (hash-bind "Q" "literal string"
+                        (hash-bind "S" "symbol"))))
 
 (define (form-typename form)
-  (or (get (word 1 form) form-types)
+  (or (hash-get (word 1 form) form-types)
       "invalid form"))
 
 (define (form-index form)
@@ -115,7 +107,7 @@
 ;; parsing if input tree was valid).  Does not rigorously validate.
 ;;
 (define (format-form form)
-  (cond ((list? form)   (concat "(" (foreach n (rest form) 
+  (cond ((list? form)   (concat "(" (foreach n (rest form)
                                              (format-form (promote n))) ")"))
         ((string? form) (format (string-value form)))
         ((symbol? form) (symbol-name form))
@@ -135,7 +127,7 @@
 ;; This encoding is performed once, and parsing operations operate on
 ;; the encoded string *many* times, so the encoding step is designed to
 ;; minimize the word count and the overall size of the subject string.
-;; 
+;;
 ;; Before `"` is surrounded by spaces, the \" sequence is converted to a
 ;; special substring -- !Q -- in order to simplify parsing literal strings.
 ;; This means that `\\` must be first be similarly processed so that `\\"`
@@ -148,7 +140,7 @@
 ;; Consecutive spaces are then compressed ( !0!0 --> !2!2 ).  This
 ;; compression must not change the initial character (e.g. "!0") since that
 ;; is used to identify the type of the lexeme.
-;; 
+;;
 
 ;; Collapse spaces following a ";" up to the next "\n" or "\""
 (define (compact-comments str)
@@ -183,7 +175,7 @@
   (compress-spaces
    (compact-comments
     (subst "," " , " ", @" ",@ " "`" " ` " "'" " ' " "\\\\" "!b" "\\\"" "!Q"
-           ";" " ; " "!0" " !0 " "\n" " \n " "\"" " \" " "]" " ] " "[" " [ " 
+           ";" " ; " "!0" " !0 " "\n" " \n " "\"" " \" " "]" " ] " "[" " [ "
            ")" " ) " "(" " ( " "0  !" "0!" "  " " "
            ["\t"] (concat " " [" \t"] " ")
            (if text (demote text))))))
@@ -259,7 +251,7 @@
   &private
   (if (filter "." (word 3 item))
       ;; unmatched at EOF => unterminated
-      (concat (word 1 succ) " E." (word 1 succ) " " 
+      (concat (word 1 succ) " E." (word 1 succ) " "
               (subst ")" "(" "]" "[" endch))
       ;; mismatched end, etc.
       (concat item " " endch)))
@@ -273,7 +265,7 @@
           (concat (word 1 item) " L." succ " " lst)
           ;; mis-matched/unmatched
           (parse-seq-err endch succ item))
-      (parse-seq str endch succ 
+      (parse-seq str endch succ
                  (parse-exp str (1+ (word 1 item)))
                  (if (word 2 item) (conj lst (rest item))))))
 
@@ -375,10 +367,10 @@
 
         ((filter "( ) [ ]" code)
          (concat "unmatched \"" code "\""))
-        
+
         ((filter "\"" code)
          "unterminated string")
-        
+
         (else code)))
 
 
@@ -416,7 +408,7 @@
       (if (filter "." (word 3 o))
           lst                      ; EOF
           (conj lst (rest o)))     ; error
-      (parse-subj-r subj 
+      (parse-subj-r subj
                     (parse-exp subj (1+ (word 1 o)))
                     (conj lst (rest o)))))
 
@@ -429,4 +421,3 @@
 
 (define (parse-text text)
   (parse-subject (penc text)))
-

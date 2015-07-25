@@ -7,10 +7,10 @@
 
 ;; bind-sym
 
-(expect (bind "f" "F f")
+(expect (hash-bind "f" "F f")
         (bind-sym "S f" "F" ""))
 
-(expect (bind "f" "F f p DEFN")
+(expect (hash-bind "f" "F f p DEFN")
         (bind-sym "S f" "F" "p" "DEFN"))
 
 ;; after, env-rewind
@@ -20,20 +20,20 @@
 (expect ""       (after "f" "a b c d e f"))
 (expect ""       (after "z" "a b c d e f"))
 
-(expect (bind "a" "asdf")
-        (env-rewind-M (bind "x" 1
-                            (bind "m" "-"
-                                  (bind "a" "asdf")))
+(expect (hash-bind "a" "asdf")
+        (env-rewind-M (hash-bind "x" 1
+                            (hash-bind "m" "-"
+                                  (hash-bind "a" "asdf")))
                       "m"))
 
 (expect (append
-         (bind "$" "$$")
-         (bind "f" ["F" "f"])
-         (bind "a" "asdf"))
-        (env-rewind (bind "x" 1
-                          (bind "$" "$$"
-                                (bind "f" ["F" "f" "" ""]
-                                      (bind "a" "asdf"))))
+         (hash-bind "$" "$$")
+         (hash-bind "f" ["F" "f"])
+         (hash-bind "a" "asdf"))
+        (env-rewind (hash-bind "x" 1
+                          (hash-bind "$" "$$"
+                                (hash-bind "f" ["F" "f" "" ""]
+                                      (hash-bind "a" "asdf"))))
                     "f"
                     ["F" "f" "priv" "defn"]))
 
@@ -43,7 +43,7 @@
 
 (expect "foo&"   (gensym-name "foo"))
 (expect "S foo&" (gensym "S foo"))
-(expect "S foo&1" (gensym "S foo" (bind (symbol-name (gensym "S foo")) "V x")))
+(expect "S foo&1" (gensym "S foo" (hash-bind (symbol-name (gensym "S foo")) "V x")))
 
 
 ;; gen-error
@@ -64,39 +64,39 @@
 
 ;; import only public members
 
-(expect (append (bind "f" "F f i")
-                (bind "v" "V X i")
-                (bind "I" ["F" "I" "iFile Name.min" ["a b" "S a"]])
-                (bind "m" ["M" "Q 1" "iFile Name.min"])
-                (bind "a:n\n,x" "V xyz i"))
+(expect (append (hash-bind "f" "F f i")
+                (hash-bind "v" "V X i")
+                (hash-bind "I" ["F" "I" "iFile Name.min" ["a b" "S a"]])
+                (hash-bind "m" ["M" "Q 1" "iFile Name.min"])
+                (hash-bind "a:n\n,x" "V xyz i"))
 
         (export-round-trip
-         (append (bind "f" "F f")
-                 (bind "v" "V X")
-                 (bind "I" ["F" "I" "" ["a b" "S a"]])
-                 (bind "g" "F g p")  ;; private
-                 (bind "g" "F g i")  ;; imported
-                 (bind "m" ["M" "Q 1" ""])
-                 (bind "a:n\n,x" "V xyz"))
+         (append (hash-bind "f" "F f")
+                 (hash-bind "v" "V X")
+                 (hash-bind "I" ["F" "I" "" ["a b" "S a"]])
+                 (hash-bind "g" "F g p")  ;; private
+                 (hash-bind "g" "F g i")  ;; imported
+                 (hash-bind "m" ["M" "Q 1" ""])
+                 (hash-bind "a:n\n,x" "V xyz"))
          ""
          "File Name.min"))
 
 
 ;; import public AND private members
 
-(expect (append (bind "f" "F f")
-                (bind "v" "V X")
-                (bind "I" ["F" "I" "i" ["a b" "S a"]])
-                (bind "g" "F g p")
-                (bind "g" "M g i")  ;; imported
-                (bind "a:n\n,x" "V xyz"))
+(expect (append (hash-bind "f" "F f")
+                (hash-bind "v" "V X")
+                (hash-bind "I" ["F" "I" "i" ["a b" "S a"]])
+                (hash-bind "g" "F g p")
+                (hash-bind "g" "M g i")  ;; imported
+                (hash-bind "a:n\n,x" "V xyz"))
 
         (export-round-trip
-         (append (bind "f" "F f")
-                 (bind "v" "V X")
-                 (bind "I" ["F" "I" "i" ["a b" "S a"]])
-                 (bind "g" "F g p")  ;; private
-                 (bind "g" "M g i")  ;; imported macro
-                 (bind "a:n\n,x" "V xyz"))
+         (append (hash-bind "f" "F f")
+                 (hash-bind "v" "V X")
+                 (hash-bind "I" ["F" "I" "i" ["a b" "S a"]])
+                 (hash-bind "g" "F g p")  ;; private
+                 (hash-bind "g" "M g i")  ;; imported macro
+                 (hash-bind "a:n\n,x" "V xyz"))
          1
          "File Name.min"))

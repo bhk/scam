@@ -31,9 +31,9 @@
 ;;
 
 (define envtypes
-  (append (bind "F" "function")
-          (bind "V" "variable")
-          (bind "B" "builtin")))
+  (append (hash-bind "F" "function")
+          (hash-bind "V" "variable")
+          (hash-bind "B" "builtin")))
 
 (define (describe-binding b)
   (define `type (word 1 b))
@@ -42,7 +42,7 @@
   (define `desc (or (and (filter "F" type)
                          (filter "#" name)
                          "compound macro")
-                    (get type envtypes)
+                    (hash-get type envtypes)
                     "<unknown>"))
 
   (if (filter "M" type)
@@ -92,7 +92,7 @@
                (for err errors
                     (info (describe-error err text)))
                ["" env]))
-     
+
      ;; execute & display result
      (else (begin
              (set *2 (set *1 (exe) *1))
@@ -129,7 +129,7 @@
 
 (define `initial-env
   (foreach v "*1 *2"
-           (bind v ["V" v "i"])))
+           (hash-bind v ["V" v "i"])))
 
 (define `initial-state
   (eval-and-print
@@ -149,17 +149,17 @@
 ;;
 (define (repl-rep text filename)
   (define `env (nth 2 initial-state))
-  
+
   (let ((o (compile-text text env (or filename "[commandline]") "")))
     (define `errors (nth 1 o))
     (define `exe    (nth 2 o))
-    
+
     (if errors
         (begin
           (for err errors
                (info (describe-error err text)))
           1)
-        
+
         ;; execute & display result
         (print (exe)))))
 
@@ -172,7 +172,7 @@
         (let ((o (compile-text text nil file "///~" nil)))
           (define `errors (nth 1 o))
           (define `exe    (nth 2 o))
-    
+
           (if errors
               (begin
                 (for err errors
@@ -181,4 +181,3 @@
               (eval exe)))
         (begin (printf "error: empty/missing file %q" file)
                1))))
-    

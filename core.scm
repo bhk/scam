@@ -4,15 +4,6 @@
 
 (declare SCAM_DEBUG)
 
-;; Leverage the runtime's current implementation to reduce code
-;; duplications.
-;;
-(declare (^u val) &private)
-(declare (^d val) &private)
-(declare (^set a b) &private)
-(declare (^fset a b) &private)
-
-
 (define `nil "")
 
 (define (not v)
@@ -26,29 +17,14 @@
 
 (define (identity a)
   a)
-  
+
 ;; Return the parameter that is not nil (unless both or none are nil)
 (define (xor a b)
   (if a (if b nil a) b))
 
-(define `(set-global name value)
-  (^set name value))
-
-(define `(set-rglobal name value)
-  (^fset name value))
-
-(define (demote str)
-  (or (subst "!" "!1" "\t" "!+" " " "!0" str) "!."))
-
-(define (promote str)
-  (subst "!." "" "!0" " " "!+" "\t" "!1" "!" str))
-
-(define (nth n vec)
-  (subst "!." "" "!0" " " "!+" "\t" "!1" "!" (word n vec)))
-
 (define (first vec)
   &inline
-  (^u (word 1 vec)))
+  (promote (word 1 vec)))
 
 ;; (nth-rest n vec) == vector starting at `n`th item in `vec`
 (define (nth-rest n vec)
@@ -165,7 +141,7 @@
   (define `b (subst "0" "" (patsubst "-%" "%" a)))
   ;; after removing '.' and 'e', there should be nothing left
   (define `c (patsubst ".%" "%" (patsubst "%e" "%" b)))
-  
+
   (if (filter "0% 1% 2% 3% 4% 5% 6% 7% 8% 9%" (subst "-" "" s))
       (if c "" s)))
 
@@ -216,7 +192,7 @@
       (if (findstring "O" SCAM_DEBUG)
           (print "OK: " (format o)))
     (begin
-      (print file-line ": error: assertion failed" 
+      (print file-line ": error: assertion failed"
              "\nExpected: " (format o)
              "\n     Got: " (format i) "\n")
       (error ""))))
@@ -239,7 +215,7 @@
 ;; a quoted symbol: (bound? "map"), not (bound? 'map).
 ;;
 (define (bound? var)
-  (filter-out "undefined" (flavor var)))
+  (if (filter-out "u%" (flavor var)) 1))
 
 ;; (count-chars STR SUB) count number of occurrences of SUB in TEXT
 (define (count-chars text ch)
@@ -256,7 +232,7 @@
 ;; A `map` is a vector of pairs: [ KEY!=VAL KEY!=VAL .. ]
 
 ;; create/extend new hash
-(define (bind key val hash)
+(define (hash-bind key val hash)
   (concat (subst "%" "!8" [key]) "!=" [val]
           (if hash " ")
           hash))
@@ -271,14 +247,13 @@
 
 ;; Return the first key/value pair in hash matching 'key'.
 ;; Result is encoded according the the has structures internal rules.
-(define (find key hash)
+(define (hash-find key hash)
   (word 1 (filter (concat (subst "%" "!8" [key]) "!=%") hash)))
 
-;; (get KEY HASH) returns the value associated with KEY in a map.
-(define (get key hash default)
-  (nth 2 (concat (subst "!=" " " (find key hash))
+;; (hash-get KEY HASH) returns the value associated with KEY in a map.
+(define (hash-get key hash default)
+  (nth 2 (concat (subst "!=" " " (hash-find key hash))
                  (if default (concat " x " (demote default))))))
-               
 
 
 ;; concatenate one or more (potentially empty) vectors
@@ -298,11 +273,13 @@
 
 (define (uniq-x in out)
   &private
-  &inline
   (if in
       (uniq-x (rest in) (concat out " " (filter-out out (word 1 in))))
       (filter "%" out)))
 
+
+;; Return a vector/wordlist of the unique members of a vector/wordlist.
+;; Order is preserved; the first occurrence of each member is retained.
 (define (uniq vec)
   (subst "^p" "%" "^1" "^"
          (uniq-x (subst "^" "^1" "%" "^p" vec)
@@ -356,7 +333,24 @@
       (let ((func (value funcname))
             (varbase (concat "*memo" (memoenc funcname)))
             (funcname funcname))
-        (set-rglobal funcname 
+        (set-rglobal funcname
                      (lambda (a b c d e f g h)
-                       (mcache (concat varbase (memoenc a b c)) func a b c 
+                       (mcache (concat varbase (memoenc a b c)) func a b c
                                (or d e f g h)))))))
+
+(define (sort-by key-func values)
+  (foreach w
+           (sort (foreach w values
+                          (concat (demote (key-func (promote w)))
+                                  "!!"
+                                  w)))
+           (word 2 (subst "!!" " " w))))
+
+;; Check the "type" of a "structure".  This assumes the convention used
+;; throughout scam sources, in which structures are stored in vectors, with
+;; the first element identifying the type.
+;;
+;; `pat` can contain multiple patterns in order to match one or more types.
+;;
+(define `(type? pat struct)
+  (filter pat (word 1 struct)))

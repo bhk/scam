@@ -2,8 +2,6 @@
 ;; general purpose function tests
 ;;--------------------------------
 
-(require "runtime-test")
-
 (require "core" &private)
 
 (if (eq 1 2)
@@ -31,10 +29,6 @@
 (expect 1 (xor 1 ""))
 (expect 2 (xor "" 2))
 (expect "" (xor 1 2))
-
-(expect "a !b!0\t\nc" (promote (word 1 (demote "a !b!0\t\nc"))))
-
-(expect "a b" (nth 2 (concat "1 " (demote "a b") " 3")))
 
 (expect "! 1" (first ["! 1" 2]))
 
@@ -104,7 +98,7 @@
 (expect "1,2,3" (concat-vec [1 2 3] ","))
 
 (expect "1" (not (bound? "_xya13")))
-(expect "" (not (bound? "bound?")))
+(expect "1" (bound? "bound?"))
 
 (expect 0 (count-chars "a" "b"))
 (expect 1 (count-chars "b" "b"))
@@ -114,21 +108,25 @@
 (expect 3 (count-words "a b c b d e b" "b"))
 (expect 0 (count-words "a b c b d e b" "x"))
 
-(expect "x!=y a!=!." (bind "x" "y" (bind "a" "")))
+(expect "x!=y a!=!." (hash-bind "x" "y" (hash-bind "a" "")))
 
-(expect "a b c" (hash-key (bind "a b c" " d e ")))
-(expect " d e " (hash-value (bind "a b c" " d e ")))
+(expect "a b c" (hash-key (hash-bind "a b c" " d e ")))
+(expect " d e " (hash-value (hash-bind "a b c" " d e ")))
 
-(expect "!0!=x" (find " " (bind " " "x")))
-(expect "x!=M" (find "x" (bind "x" "M" (bind "x" "K"))))
+(expect "!0!=x" (hash-find " " (hash-bind " " "x")))
+(expect "x!=M" (hash-find "x" (hash-bind "x" "M" (hash-bind "x" "K"))))
 
-(expect " " (get "" (bind "a" "b" (bind "" " " (bind "x" "y")))))
-(expect "" (get "" (bind "" "") "default"))
-(expect "default" (get "x" (bind "" "") "default"))
-(expect "val1" (get "x%x" (bind "x%x" "val1" (bind "x%x" "%"))))
+(expect " " (hash-get "" (hash-bind "a" "b" (hash-bind "" " " (hash-bind "x" "y")))))
+(expect "" (hash-get "" (hash-bind "" "") "default"))
+(expect "default" (hash-get "x" (hash-bind "" "") "default"))
+(expect "val1" (hash-get "x%x" (hash-bind "x%x" "val1" (hash-bind "x%x" "%"))))
 
-(expect (bind " " 1 (bind "b" 2 (bind "bb" 9)))
-        (compact (bind " " 1 (bind "b" 2 (bind "b" 7 (bind " " 3 (bind "bb" 9)))))))
+(expect (hash-bind " " 1 (hash-bind "b" 2 (hash-bind "bb" 9)))
+        (compact (hash-bind " " 1
+                            (hash-bind "b" 2
+                                       (hash-bind "b" 7
+                                                  (hash-bind " " 3
+                                                             (hash-bind "bb" 9)))))))
 
 (expect "" (append))
 (expect "a b c" (append "a" "" "b" "" "" "c"))
@@ -166,5 +164,15 @@
 (set mprefix 9)
 (expect 9753 (mtest 3 5 7))
 (expect 321 (mtest 1 2 3))
+
+;; sort-by
+
+(expect ["c/a" "c/a b" "a/c!"]
+        (sort-by (lambda (f) (notdir f))
+                 ["c/a b" "a/c!" "c/a"]))
+
+;; type?
+
+(expect "F.1" (type? "A% F%" ["F.1" "Q f"]))
 
 (print "core ok")

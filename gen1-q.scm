@@ -42,21 +42,21 @@
 ;;--------------------------------
 
 
-;; Q
+;; Q: literal strings
 
 (expect " x "
         (c1 ["Q" " x "]))
 
 (expect "xyz"
         (c1 ["Q" "xyz"]))
-        
+
 (expect "$$"
         (c1 ["Q" "$"]))
-        
+
 (expect "$(info $(if ,,,))"
         (c1 ["F" "info" ["Q" ","]]))
 
-;; V
+;; V: variable reference
 
 (expect "$a"
         (c1 "V a"))
@@ -65,7 +65,7 @@
         (c1 "V foo"))
 
 
-;; F
+;; F: buitin function call
 
 (expect "$(value FUNC)"
         (c1 ["F" "value" "Q FUNC"]))
@@ -74,14 +74,20 @@
         (c1 ["F" "info" "Q a"]))
 
 ;; and & or:  protect against trimming
-(expect "$(and $(if ,, a ))"
-        (c1 ["F" "and" ["Q" " a "]]))
 
 (expect "$(or $(if ,, a ))"
         (c1 ["F" "or" ["Q" " a "]]))
 
+(expect "$(and $(if ,,\na\n))"
+        (c1 ["F" "and" ["Q" "\na\n"]]))
 
-;; f (user functions)
+;; ...and execute compiled `and` code
+(expect "2 " ((C1 "(and 1 \"2 \")")))
+(expect "\n2" ((C1 "(and 1 \"\n2\")")))
+(expect "2\n" ((C1 "(and 1 \"2\n\")")))
+
+
+;; f: user function call
 
 (expect "$(call fn)"
         (c1 ["f" "fn"]))
@@ -99,7 +105,7 @@
              "Q 6" "Q 7" "Q 8" "Q 9" "Q )" "V v"]))
 
 
-;; Y
+;; Y: anonymous function call
 
 (expect "$(call ^Y,,,,,,,,,,$1)"
         (c1 ["Y" "R $1"]))
@@ -112,37 +118,39 @@
              "Q f" "Q g" "Q h" "Q i" "Q j" ]))
 
 
-;; C
+;; C: concatenate
 
 (expect "abc"
         (c1 ["C" "Q a" "Q b" "Q c"]))
 
-;; R
+
+;; R: raw object code
 
 (expect "a$ b"
         (c1 ["R" "a$ b"]))
 
-;; B
+
+;; B: sequence
 
 (expect "$(and X1,$(\\L))"
         (c1 ["B" ["Q" "X"] ["Q" "("]]))
 
 
-;; X
+;; X: nested function
 
 ;; (lambda (args...) body) -->  ["X" <form>]
 ;;
 ;; ["X" exp] is similar to ["Q" (c1 exp)], because the nested lambda
 ;; expression will evaluate (un-escape) to a function body.  So, "$$" and
 ;; "$1" references in (c1 exp) become "$$$$" and "$$1".
-;; 
+;;
 ;; (info (lambda (x) (concat "$," x))) --> $(info $$$$,$$1) ==> "$$,$1"
 ;;
 ;; But it is not exactly the same, since the function body can reference
 ;; upvalues (captured variables), which do NOT get quoted. Instead,
 ;; "escaping" turns these references -- eg. "($.^=1)" -- into code that
 ;; escapes the variable at runtime -- e.g. "$(call escape,$1)".
-;; 
+;;
 
 (expect "$$$$"                 (c1 ["X" "Q $"]))
 (expect "$$a"                  (c1 ["X" "V a"]))
@@ -171,8 +179,8 @@
 
 (expect "$(and $(info a)1,$(call print,hi)1,$(call ^set,var,val))"
         (C1 "(begin (info \"a\") (print \"hi\") (^set \"var\" \"val\"))"
-            (bind "print" ["F" "print"]
-                  (bind "^set" ["F" "^set"]))))
+            (hash-bind "print" ["F" "print"]
+                  (hash-bind "^set" ["F" "^set"]))))
 
 (expect "a$$b := A$$B\n"
         (c1-file ["f" "^set" "Q a$b" "Q A$B"]))
@@ -211,14 +219,17 @@
 (expect "$(if $(call ^set,x,1,$(info 2)),)\n"
     (CXT "(declare (^set a b)) (^set \"x\" 1 (info 2))"))
 
-
-;;(print "----------------------------------------------------------------")
-;;(expect "x := )"
-;;        (c1-file (c0-block [ ["L" "S define" "S x" "Q )"] ]
-;;                          default-env)))
-
 ;; discard return values in file syntax
+
+;; non-void function
 (expect "$(if $(shell ls),)\n" (CXT "(shell \"ls\")"))
+
+;; void function
+(expect "$(error hi)\n" (CXT "(error \"hi\")"))
+
+;; eval of literal
+(expect "x=$1\n"
+        (CXT "(eval \"x=$1\")"))
 
 
 ;;--------------------------------------------------------------
@@ -261,28 +272,3 @@
 
 (foreach SCAM_DEBUG "-"
   (expect "$(call f,1)" (CX "(declare (f)) (f 1)")))
-
-
-;;---------------------------------------------------------------
-;; Test execution of compiled code
-;;---------------------------------------------------------------
-
-;; assignments
-(define (do-set var exp)
-  (eval (c1-set var exp))
-  (value var))
-
-(define (do-fset exp)
-  (eval (c1-fset "fval" exp))
-  (eval "tval := $(value fval)")
-  (value "tval"))
-
-(expect " a # $ "  (do-set "tval" " a # $$ "))
-(expect "a( "      (do-set "tval" "a( "))
-(expect "x"        (do-set " a(b:" "x"))
-
-(expect " a # $ "  (do-fset " a # $$ "))
-(expect "a "        (do-fset "a "))
-(expect "$ endef\na"  (do-fset "endef\na"))
-
-

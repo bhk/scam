@@ -46,7 +46,7 @@
   (if prompt
       (printn prompt))
   (shell! "head -1"))
-              
+
 
 (define (write-file filename data)
   (if filename
@@ -58,3 +58,11 @@
   (if fname
       (shell! (concat "cat < " (quote-sh-arg fname)))
       (print "error: read-file: nil filename")))
+
+
+(define (file-exists? fname)
+  ;; `wildcard` is cached by Make and will not reflect files created/deleted
+  ;; when the program is running.
+  (if
+   (shell (concat "ls " (quote-sh-arg fname) " 2> /dev/null"))
+   1))

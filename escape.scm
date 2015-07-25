@@ -72,11 +72,14 @@
       s
       (concat "$ " s)))
 
-;; Prevent leading and trailing spaces from being trimmed by enclosing
+
+;; Prevent leading and trailing whitespace from being trimmed by enclosing
 ;; in "$(if ,,...)".
 ;;
 (define (protect-trim s)
-  (if (findstring s (wordlist 1 99999999 s))
+  (if (and (findstring s (wordlist 1 99999999 s))
+           (filter-out "\n%" (word 1 s))
+           (filter-out "%\n" (lastword s)))
       s
       (concat "$(if ,," s ")")))
 
@@ -91,10 +94,10 @@
 ;;   &private
 ;;   (if (filter "!R" (word 1 str))
 ;;       (concat "(" (subst "!C" "" pre) ") " (rest str))
-;;     (if str 
+;;     (if str
 ;;         (balance-matchR (rest str) (concat pre " " (word 1 str)))
 ;;       (concat "!L" pre))))
-;; 
+;;
 ;; (define (balance-match str)
 ;;   &private
 ;;   (and str
@@ -123,11 +126,11 @@
             ;; !L
             ((filter "!L%" w)
              (concat stack " " w))
-            
+
             ;; !R matching !L
             ((and (filter "!R" w)
                   (word 2 stack))
-             
+
              ;; butlast is a bit ugly
              (let& ((paired (concat "("
                                     (subst "!C" "" "!L" ""
@@ -243,13 +246,23 @@
 ;; Escape body of "define ... endef" statement
 ;;
 ;;  - protect "define" and "endef" when they appear at the start of a line
+;;  - protect "\\" when it appears at the end of a line
 ;;
 ;; This function conservatively prefixes every 'define' and 'endef' with '$ '.
 ;;
 (define (protect-define str)
   (if (or (findstring "define" str)
-          (findstring "endef" str))
-      (concat-vec (for x (split "\n" str)
-                       (concat (if (filter "define endef" (word 1 x)) "$ ") x))
-                  "\n")
-    str))
+          (findstring "endef" str)
+          (findstring "\\" str))
+      (begin
+        (define `(protect-line line)
+          (concat (if (filter "define endef" (word 1 line))
+                      "$ ")
+                  line
+                  (if (filter "%\\" [line])
+                      "$ ")))
+
+        (concat-vec (for w (split "\n" str)
+                         (protect-line w))
+                    "\n"))
+      str))
