@@ -258,7 +258,7 @@
 (expect "$(call ^fset,f,$(words 1))\n"
         (CXT "(call \"^fset\" \"f\" (words 1))"))
 
-(expect "$(call ^fset,f,$(*args*))\n"
+(expect "$(call ^fset,f,$(^av))\n"
         (CXT "(call \"^fset\" \"f\" *args*)"))
 
 (expect "x := \\#$(\\n)\\\n"

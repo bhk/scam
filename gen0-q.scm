@@ -1,5 +1,4 @@
 ;; Tests for gen0
-
 (require "core")
 (require "io")
 (require "parse")

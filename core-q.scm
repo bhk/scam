@@ -83,9 +83,6 @@
 (expect "!P!. a !\t !0 x" (sprintf "!P!.%s!0%sx" " a !\t " " " "ignored"))
 (expect "a%b%c" (sprintf "a%%b%s" "%c"))
 
-(foreach printf-warn 1  ;; suppress warning message
-         (expect "%z" (sprintf "%z" 1)))
-
 (expect "" (reverse ""))
 (expect [3 2 1] (reverse [1 2 3]))
 (expect [11 10 9 8 7 6 5 4 3 2 1] (reverse [1 2 3 4 5 6 7 8 9 10 11]))
@@ -100,38 +97,33 @@
 (expect "1" (not (bound? "_xya13")))
 (expect "1" (bound? "bound?"))
 
-(expect 0 (count-chars "a" "b"))
-(expect 1 (count-chars "b" "b"))
-(expect 3 (count-chars "a b c b d e b" "b"))
-(expect 4 (count-chars "abc\n\n\ndef\n" "\n"))
-
-(expect 3 (count-words "a b c b d e b" "b"))
-(expect 0 (count-words "a b c b d e b" "x"))
-
 (expect "x!=y a!=!." (hash-bind "x" "y" (hash-bind "a" "")))
 
-(expect "a b c" (hash-key (hash-bind "a b c" " d e ")))
-(expect " d e " (hash-value (hash-bind "a b c" " d e ")))
+(expect "a % c" (hash-key (hash-bind "a % c" " d % ")))
+(expect " d % " (hash-value (hash-bind "a % c" " d % ")))
 
 (expect "!0!=x" (hash-find " " (hash-bind " " "x")))
 (expect "x!=M" (hash-find "x" (hash-bind "x" "M" (hash-bind "x" "K"))))
 
 (expect " " (hash-get "" (hash-bind "a" "b" (hash-bind "" " " (hash-bind "x" "y")))))
-(expect "" (hash-get "" (hash-bind "" "") "default"))
+(expect "%" (hash-get "" (hash-bind "" "%") "default"))
+(expect "" (hash-get "%" (hash-bind "%" "") "default"))
 (expect "default" (hash-get "x" (hash-bind "" "") "default"))
 (expect "val1" (hash-get "x%x" (hash-bind "x%x" "val1" (hash-bind "x%x" "%"))))
 
-(expect (hash-bind " " 1 (hash-bind "b" 2 (hash-bind "bb" 9)))
-        (compact (hash-bind " " 1
-                            (hash-bind "b" 2
-                                       (hash-bind "b" 7
-                                                  (hash-bind " " 3
-                                                             (hash-bind "bb" 9)))))))
+(expect (append (hash-bind " " 1)
+                (hash-bind "b" 2)
+                (hash-bind "bb" 9))
+        (hash-compact (append (hash-bind " " 1)
+                              (hash-bind "b" 2)
+                              (hash-bind "b" 7)
+                              (hash-bind " " 3)
+                              (hash-bind "bb" 9))))
 
 (expect "" (append))
 (expect "a b c" (append "a" "" "b" "" "" "c"))
 (expect "a b c" (append "" "a" "" "b" "" "c"))
-(expect "a b c d" (append "" "" "" "a" "b" "" "" "c" "d"))
+(expect "a b c!1 d!1 e!1" (append "" "" "" "a" "b" "" "" "c!1" "d!1" "e!1"))
 
 (expect "a b c" (uniq "a a b a c a b"))
 
@@ -167,9 +159,9 @@
 
 ;; sort-by
 
-(expect ["c/a" "c/a b" "a/c!"]
+(expect ["" "c/a" "c/a !0" "a/c!"]
         (sort-by (lambda (f) (notdir f))
-                 ["c/a b" "a/c!" "c/a"]))
+                 ["c/a !0" "a/c!" "c/a" ""]))
 
 ;; type?
 

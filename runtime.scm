@@ -54,17 +54,16 @@ endef")
 (eval "^Y = $(call if,,,$(10))")
 
 
-;; *args*: return a vector of all arguments.
+;; ^av: return a vector of all arguments.  The vector length is the index of
+;; the last non-nil argument
 ;;
 ;; We declare *args* as a SCAM variable (not function), but we assign it as a
 ;; recursive variable (not simply-expanded).  References to it will
 ;; therefore compile to $(*args*), so it will be expanded (executed) without
 ;; overriding $1, $2, etc.
-
-(declare *args*)
-
+;;
 (eval
-"*args* = $(foreach n,1 2 3 4 5 6 7 8,$(if $(findstring auto,$(call origin,$n)),$(call ^d,$($n))))$(if $9, $9)")
+ (concat "^av = $(subst !.,!. ,$(filter-out %!,$(subst !. ,!.,$(foreach n,1 2 3 4 5 6 7 8,$(call ^d,$($n)))$(if $9, $9) !)))"))
 
 ;; ^apply
 
@@ -78,24 +77,26 @@ endef")
 
 ;; Format a value as a quoted string.
 ;;
-(define (^fmt a)
+(define (^f a)
   (concat "\""
           (subst "\\" "\\\\" "\"" "\\\"" a)
           "\""))
 
 ;; Display a value to stdout and return it.
 ;;
-(define (^value name value)
+(define (^tp name value)
   (concat
-   (info (concat name " " (^fmt value)))
+   (info (concat name " " (^f value)))
    value))
 
-;; ^trace : trace function call with arguments and results
-
+;; ^t : trace function call with arguments and results
+;; ^tc : call function named by $1, and shift all other args left
+;; ^ta : format arguments
+;;
 (eval
-"^shift = $(call $1,$2,$3,$4,$5,$6,$7,$8,$(call ^n,1,$9),$(wordlist 2,9999,$9))
-^fmt-args = $(if $(or $1,$2,$3,$4,$5,$6,$7,$8,$9), $(^fmt)$(call ^shift,^fmt-args,$2,$3,$4,$5,$6,$7,$8,$9))
-^trace = $(info --> ($1$(call ^shift,^fmt-args,$2,$3,$4,$5,$6,$7,$8,$9)))$(call ^value,<-- $1:,$(call ^shift,$1,$2,$3,$4,$5,$6,$7,$8,$9))")
+"^tc = $(call $1,$2,$3,$4,$5,$6,$7,$8,$(call ^n,1,$9),$(wordlist 2,9999,$9))
+^ta = $(if $(or $1,$2,$3,$4,$5,$6,$7,$8,$9), $(^f)$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9))
+^t = $(info --> ($1$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9)))$(call ^tp,<-- $1:,$(call ^tc,$1,$2,$3,$4,$5,$6,$7,$8,$9))")
 
 
 ;;--------------------------------------------------------------

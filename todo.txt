@@ -1,43 +1,27 @@
 TODO:
 
+ * builtins
+
+    (? subst a b c)           Unsupported.
+
+    subst                     `undefined variable: "subst"`
+
+    (call "subst" 1 2)        Error.
+
+    (define (subst a b c) 1)  Actually defines variable, but...
+    (subst 1 2 123)           Does not call `subst` var, and...
+    (subst 1 2)               Error (make exits).
+
  * Bundle needed indirect dependencies
-
- * document limitations of interactive mode (interpreted mode, "scam -e",
-   and "scam [-x] FILE"):
-
-    - `require` needs to be satisfied by bundled modules
-    - symbols might conflict with the compiler implementation
 
  * Namespaces (see below)
 
  * WARN when shadowing variables!
+    - AT LEAST FOR BUILTINS!
+    - helps with problem of redefining built-ins in REPL
     - most common error case
-    - helps with problem of redefining built-ins in REPL, at least
-
- * fix: (begin (set x (+ x 1)) x)
-
- * Bind file name to error: "E.pos.filename ..."  (extract from
-   env)
-
- * Macro bug related to up-values?
-
-    (define `(macro x)
-      (f (lambda () x)))
-
-    (define (f a)
-       (define `sym (g a))
-       (let ((...))
-          (macro sym)))
-
- * Figure out what to do with:
-   euler.scm examples.scm fp.scm recur.scm rev.scm strlen.scm test.scm
 
  * scam -x file : when file requires other files...
-
- * Document allowable chars for var names and assert when they are used: "%"
-   (bug?), "!", "$" (lambda markers), "&" (gensym, "&rest")?  "(" or ")"?
-   Make has problem with ":" ... $(a:x) ...  ":" or "$" in variable names
-   causes problems for make's $(call NAME,...)
 
  * properly locate errors in macros (associate with the right file)
 
@@ -45,16 +29,34 @@ TODO:
 
 WISHLIST
 
+ * (? macro ...)
+
  * arbitrary precision floating point
     - fp divide w/ specified precision
     - bug: (^ 2 100)  [in fp]
 
+ * (data (Symbol pos name)
+         (String pos text)
+         (List pos @nodes)
+         ...)
+
+   Requires:
+    - Use `case` to deconstruct.
+    - Encode using nth-rest rather than (nth N .):  @ nodes
+    - Encode using word rather than (nth N .):  &word pos
+    - Fix compiler version dependency implicit in macro-style definitions
+      that use "`" or "`".
+
  * "rest" and "spread" with "..." syntax
 
-   This would enable reasonably efficient vararg `append`, etc..
+   More efficient append, vararg, apply, etc..
 
-   (define (f a ...v)
-      (g b a ...v))
+       [a b args... c]  ==>  (append [a b] args [c])
+       (f a b args...)  ==>  (apply f [a b args...])
+                        ==>  (apply f (append [a b] args))
+
+   (define (f a v...)
+      (g b a v...))
 
      (c1 "VA $ 7") ->  $(call ^d,$7) $(call ^d,^8) $9
      (c1 "VA $ 6") ->  $(foreach n,6 7 8,$(call ^d,$($n)))
@@ -86,12 +88,13 @@ WISHLIST
 
    - reduces size of qquote results
 
- * opt: (if (not x) a)  -->  (if x "" a)
-
-   (if (not x) a b)  -->  (if (if x "" 1) a b)  -->  (if x b a)
+ * opt:  (if (not x) a b)  -->  (if (if x "" 1) a b)  -->  (if x b a)
 
    (*if* (*if* <exp> *C1* *C2*) <a> <b>)       where C1, C2 are constants
    --> (if <exp> (if C1 <b>) (if C2 <a>))
+
+   (if TRUENODE a b)  -->  a
+   (if VOIDNODE a b)  -->  b
 
  * opt: transformations
 
@@ -122,24 +125,20 @@ WISHLIST
             $(call scall,$(call escape,$1)$$1,$2)
         --> $(call scall,$$2$$1,$2,$1)
 
- * lib: `while` that does not recurse indefinitely
+ * opt: maximize void-node?
 
-      (while VAR INITIAL TEST BODY...)
-
- * opt: (void (if x a b)) == (void a) and (void b)
+   (void-node? (if x a b)) -->
+      (and (or (void-node? a) (void-node? x))
+           (or (void-node? a) (true-node? x)))
 
  * opt: interleave compile with parsing of top-level expressions
 
- * unlimited looping without O(N) recursion?
-
  * { key value[,] key value }
-
- * Throw error on shadowing/redefinition.
-   **AT LEAST FOR BUILTINS!**
 
  * deconstruction in assignments:
 
     (let ( ([a b c] (f x)) ... ) ...)
+
     (case (f x)
        (["X" ,a ,b] ...)
        (["Y" ,a ,b ,c] ...)
@@ -157,9 +156,26 @@ WISHLIST
    MATCH x (concat "str" p) x
      => (foreach ndx (indices a) (if
 
- * eval-when-compile
+   ACTUALLY... declared variables should be unadorned symbols in the "match"
+   portion of the case statement.  (Think of algebraic types.)
 
- * .min -> .mk
+    (case VAL
+       (["X" a b c] EXPR1)
+       ...
+       (value ...)
+
+
+    (case VAL  ((ast-string n s) EXPR) ...)
+    ==> (case VAL  (["S" n s] EXPR) ...)
+    ==> (cond ((eq "S" (nth 1 VAL)) (let& ((n (nth 2 VAL)) (s nth 3 VAL) EXPR))) ...)
+
+    (eq "X" (nth 1 VAL))
+    ==> (filter "S" (word 1 VAL))
+
+    eq q (promote x)  ==>  eq (demote q) x
+    eq s (word ...)   ==>  filter s (word ...)
+
+ * .min -> .make
 
  * Note potentially fatal:
       > (set "")
@@ -212,6 +228,68 @@ compiler's own modules could use this to minimize naming conflicts -- only
  * compile-time tests
      (eval-when-compie
        (expect z (f  y)))
+
+
+Compile-time execution
+----
+
+A big problem for SCAM is that compile-time assignments might clobber
+running compiler functions.  Namespacing (used to distinguish generations of
+the compiler) could help here.
+
+Lisp-style macros demand compile-time execution of macros, and the functions
+they call.  Arbitrary restrictions on what can be called in compile time
+would limit the power of the feature.  Construction of complex user-defined
+data values at compile-time is also useful.
+
+Where do we draw the line between compile-time and run-time execution?  It's
+clear that `main` can be defined at compile-time and executed only at run
+time.  But what about top-level code (the file body)?
+
+ - Execute it only at run-time.  (Current SCAM; does not allow for
+   user-defined macros.)
+
+ - Execute at run time BY DEFAULT.
+
+   ELisp: compile- vs. run (load) time
+
+    - (eval-and-compile BODY...) is evaluated at compile-time and again
+      at run-time.  (Useful mainly for side-effects?)
+
+    - (require ...) : at compile-time loads (runs) the required file
+      to obtain functions and macros.
+
+    - (defmacro ...) : compile-time and run-time
+
+    - (eval-when-compile BODY...) compiles to a constant.
+
+      (eval-when-compile
+         (defmacro ...))
+
+ - Execute at compile-time BY DEFAULT.
+
+   Think of the module source file as a constructor of a module, and
+   construction being a compile-time thing.  At run-time, the modules are
+   not "executed", but the values they "return" (in SCAM, this means symbols
+   visible in the environment at the end of the file) are assigned.  After
+   modules are loaded, `main` is called, which triggers all "execution".
+
+   Run-time variables and compile-time variables...
+
+   (define X (^ 2 100))  ; computed at compile-time
+   (define `X (^ 2 100)) ; lazy construct (executed where used)
+   (eval-when-run ???)
+
+Compile-time environment: dependencies for compile-time execution clean.
+Compilation should be doable at a different time and place, and should not
+vary with other environmental conditions that might affect the run time
+behavior.  Maybe this should be up to the user (but we shouldn't make his
+job too hard).
+
+Debugging: If compilation involves Turing-complete user-defined operations,
+the compiler/debugger won't know how to reverse the transformation to obtain
+source-level meaning.
+
 
 Compile-time execution should warn about clobbering the compiler's own
 functions!
@@ -309,16 +387,95 @@ Root causes of some BUGS I've encountered:
            `(progn ...body))
 
 ----------------------------------------------------------------
-Currently-unused runtime functions
+Reflections on Self-Hosting
 
-   ;; When hacking .min files, prepending "$?" is a quick way to trace calls
-   ;;
-   (eval "? = $(info ?: ($0$(^fmt-args)))")
+Care must be taken to avoid circular definitions of the sort described in
+the Ken Thompson paper **Reflections on Trusting Trust" (where "\t" is
+defined as "\t").  In the extreme, we could reduce the source of the
+compiler to:
 
-   ;; ^v : runtime detection of undefined references
-   ;;
-   (define (^v name is-func)
-     (and (filter "undefined" (flavor name))
-          (info (concat "warning: " (if is-func "call to" "read of")
-                        " undefined variable: " name))
-          name))
+    (define (main ...) (compile ...))
+
+These circularities leave the definition "lost in the mists of time".  The
+behavior is not present in the source; instead, it is propagated from one
+compiled compiler to its progeny.
+
+The immediate problem (for my purposes) is that the behavior, being absent
+from the source, is not subject to modification, at least not directly. Any
+compiler behavior can, of course, be reinvented, but the point is not to
+maintain all of the behavior in source form.  Keeping the compiler
+"grounded" while self-hosting is the challenge.
+
+This is not cut-and-dried.  After all, whenever we write a compiler for
+language *in* the same language, we are obviously dealing with cyclical
+definitions.  It is acknowledged that a self-hosting compiler cannot serve
+as a formal definition of language semantics.
+
+   ... although I wonder about this.  A fully "grounded" self-hosting
+   compiler might actually completely constrain the language definition,
+   given that it must succeed in replicating itself.
+
+
+How do we clearly distinguish the desirable and undesirable
+circularities?  We can say, simply, that what is desirable is to express the
+behavior of a compiler in its own language, and what is undesirable is to
+have behavior that is not expressed in the sources.  Is that precise enough?
+Let's look at some examples.
+
+
+1. "\t" defined in terms of "\t"
+
+   This is a trivial case, but it does, indeed, leave part of the definition
+   "lost in the mists of time."  Instead, the compiler might emit code point
+   9 (assuming an ASCII-based encoding), or use a tab character in a literal
+   string (using the encoding of the source file.)
+
+2. While compiling one of SCAM's `(if COND A B)` forms, the compiler itself
+   will execute many different `if` forms.
+
+   This is a problem from the formal semantics point of view, if we were to
+   treat the sources as a language definition.  The sources don't tell us
+   what `if` means unless we already know what `if` means.
+
+   But if we do know what `if` means, we can tell whether the compiler
+   sources emobdy the definition and are fully grouned.
+
+
+----------------------------------------------------------------
+
+GNU Make presents an odd set of building blocks.  Many of its builtin
+functions are special-purpose and not suitable for general purpose
+programming.
+
+   wildcard, basename, notdir, dir, shell, ...
+
+It lacks arithmetic.  No add, subtract, or comparison operators.
+
+It lacks a notion of "character" in its string operations: no way to extract
+a character by its index, or construct a character given its code, or obtain
+the code for a character.
+
+If doesn't even have an equality primitive.
+
+But it is Turing-complete.  And you can build all of the above-mentioned
+missing capabilities.
+
+
+The following provide all of the capabilities that SCAM needs:
+
+    if, subst, <concatenation>, <call-lambda>
+
+    eval a = b, eval a := b, value    [not needed to make a useful language]
+
+The following functions make some common operations more efficient (but can
+be fiendishly difficult to employ correctly):
+
+    word, wordlist, filter, filter-out, patsubst, findstring, foreach, join
+
+
+; (define (eq a b)
+;    (if (and (or a b)
+;             (or (subst b "" a)
+;                 (subst a "" b)))
+;       nil
+;       1)

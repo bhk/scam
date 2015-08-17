@@ -4,9 +4,8 @@
 (require "repl")
 (require "build")
 (require "getopts")
-(if nil
-    (require "trace"))  ;; include just for bundling purposes
 
+(declare SCAM_TRACE)
 
 (define (usage ...)
   (if *args*
@@ -38,6 +37,11 @@ Options:
     (define `(exec file argv)
       (set main "")
       (repl-file file)
+      ;; trace any new functions that have been defined
+      (if SCAM_TRACE
+          (begin
+            (require "trace")
+            (trace SCAM_TRACE)))
       (main argv))
 
     (cond

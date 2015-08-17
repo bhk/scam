@@ -275,11 +275,6 @@
   (parse-seq str "]" (concat pos " S!0vector") pos))
 
 
-;;(define (parse-L str pos)
-;;  &private
-;;  (parse-seq str ")" pos pos))
-
-
 ;; quote, backquote, unquote
 
 (define (parse-x2 w pos result)
@@ -324,9 +319,7 @@
           ((filter ";%" w)       (parse-exp str (1+ (find-word str pos "\n%"))))
           ((filter "[" w)        (parse-array str pos))
           ((filter "' ` , ,@" w) (parse-x w str pos))
-          ((and (filter "0% 1% 2% 3% 4% 5% 6% 7% 8% 9% -%" w)
-                (isnumber w))
-                                 (concat pos " Q." pos " " w))
+          ((isnumber w)          (concat pos " Q." pos " " w))
           (else                  (concat pos " S." pos " " w))))
    (concat pos " E." pos " .")))
 
@@ -352,7 +345,7 @@
   &private
   (define `ndx (or pos 1))
   (let ((pre  (last (split "\n" (wordlist 2 ndx (concat "X " subj)))))
-        (post (first (split "\n" (wordlist ndx 99999999 subj)))))
+        (post (first (split "\n" (nth-rest ndx subj)))))
     [ (pdec pre)
       (pdec (word 1 post))
       (pdec (rest post)) ]))

@@ -41,15 +41,10 @@
 
 ;; *args*
 
-(define (rtrim-vec v prev)
-  (if (filter-out "!." v)
-      (concat prev (word 1 v) (rtrim-vec (wordlist 2 99999 v) " "))))
-
-
-(expect (rtrim-vec ((lambda () *args*) 1 2 "" "3 4" "\n"))
+(expect ( (lambda () *args*) 1 2 "" "3 4" "\n")
         [1 2 "" "3 4" "\n"] )
 
-(expect (rtrim-vec ((lambda () *args*)))
+(expect ( (lambda () *args*) "" "")
         [] )
 
 ;; apply

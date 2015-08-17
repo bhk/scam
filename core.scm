@@ -11,12 +11,13 @@
   (if v nil "1"))
 
 (define (eq a b)
-  (if (findstring a (findstring b a))
-      "1"
-      (not (or a b))))
+  (define `aa (concat 1 a))
+  (define `bb (concat 1 b))
+  (if (findstring aa (findstring bb aa))
+      1))
 
-(define (identity a)
-  a)
+(define `identity
+  (lambda (a) a))
 
 ;; Return the parameter that is not nil (unless both or none are nil)
 (define (xor a b)
@@ -93,23 +94,29 @@
 
 
 ;; Reverse a list in groups sized by powers of ten.
-;; If z == "000", we return:
-;;    rev(9001..10000) rev(8001..9000) ... rev(0001..1000)
+;;
+;; z=""    -->      10       9   ...     2       1
+;; z="0"   ->    91-100   81-90  ...  11-20   01-10
+;; z="00"  ->   901-1000 801-900 ... 101-200 001-100
 ;;
 (define (rev-by-10s list z)
   &private
-  (define `(1- n) (word n "0 1 2 3 4 5 6 7 8 9"))
-  (define `z+1 (patsubst "%0" "%1" z))
-  (define `z/10 (patsubst "0%" "%" z))
-
-  ;; When z="00", (group 3) --> (wordlist 201 300 list)
+  (define `z+1
+    (patsubst "%0" "%1" z))
+  (define `z/10
+    (patsubst "0%" "%" z))
+  (define `(1- n)
+    (word n "0 1 2 3 4 5 6 7 8 9"))
   (define `(group prefix)
-    (wordlist (concat (1- prefix) z+1) (concat prefix z) list))
+    (wordlist (concat (1- prefix) z+1)
+              (concat prefix z)
+              list))
 
   (if list
       (if z
-            (foreach p [10 9 8 7 6 5 4 3 2 1] (rev-by-10s (group p) z/10))
-            (foreach p [10 9 8 7 6 5 4 3 2 1] (word p list)))))
+          (foreach p [10 9 8 7 6 5 4 3 2 1] (rev-by-10s (group p) z/10))
+          (foreach p [10 9 8 7 6 5 4 3 2 1] (word p list)))))
+
 
 ;; Detect length of list to the nearest order of magnitude.
 ;; 0..10 items => "";  11-100 => "0";  101..1000 => "00", ...
@@ -122,16 +129,77 @@
 ;; Simpler implementations of `reverse` are O(n^2) because `rest` is
 ;; an O(n) operation.
 (define (reverse list)
-  (define `z (if (word 11 list) (rev-zeroes list 0)))
-  (nth-rest 1 (rev-by-10s list z)))
+  (nth-rest 1 (rev-by-10s list (rev-zeroes list nil))))
 
 
 ;; Keep applying `fn` to `value` while `(pref value)` is true.
 ;;
-(define (while pred fn value)
-  (if (pred value)
-      (while pred fn (fn value))
-      value))
+;; while: This implementation limits recursion depth to log(N).  A very
+;;   simple implementation yields O(N) recursion depth, which can degrade
+;;   performance seriously in Make:
+;;
+;;      (define (while pred fn value)
+;;        (if (pred value)
+;;            (while pred fn (fn value))
+;;            value))
+;;
+;; while-N has two parameters that control its recursion: k and level.  It
+;; invokes itself in three different ways:
+;;    forward: same level, increment k
+;;    downward: decrease level, start k at 1
+;;    upward: increase level, start k at (MAX-1)
+;;
+;; When invoking downward, the are three iterations at each level because 3
+;; is close to `e`, which minimizes x*log(x).  While we are increasing the
+;; recursion depth, however, we iterate only once per level.
+
+(declare (while pred do initial))
+
+(begin
+  ;; The "level 0" iteration recurses 20 times and then returns
+  ;;
+  (define (while-0 pred do value k0)
+    ;; while-0 loops are cheaper than while-N
+    (define `k0-done "iiiiiiiiiiiiiiiiiiii")
+
+    (if (filter k0-done k0)
+        ;; return incomplete status (continue=1)
+        [1 value]
+        ;; too deeply nested
+        (if (pred value)
+            (while-0 pred do (do value) (concat "i" k0))
+            ;; done (continue=0)
+            [0 value])))
+
+  (define (while-N pred do o level k)
+    (define `done (filter 0 (word 1 o)))
+    (define `val (nth 2 o))
+
+    (if done
+        o
+        (if (filter "iii" k)
+            ;; done at this level
+            (if (filter 1 level)
+                ;; We're at the top (haven't been called by a higher level) so
+                ;; expand the recursion depth.
+                (while-N pred do o (concat level " " 0) "ii")
+                ;; return to higher level
+                o)
+
+            ;; recurse and repeat
+            (while-N pred do
+                     (if level
+                         (while-N pred do o (rest level))
+                         (while-0 pred do val))
+                     level
+                     (concat "i" k)))))
+
+  (define (while pred do initial)
+    (if (pred initial)
+        (let ((new-value (do initial)))
+          (nth 2 (while-N pred do (while-0 pred do new-value) 1 "ii")))
+        initial)))
+
 
 (define (isnumber s)
   ;; reduce all digits to '0' and (E|e)[-]<digit> to 'e'
@@ -158,12 +226,19 @@
 
 
 ;;----  printf  ----
-
-(define (printf-warn args)
-  &private
-  (print "** Warning: bad format string: '" (nth 1 args) "'"))
+;;
+;; Usage:
+;;   (printf FMT VALUE...)
+;;
+;; Format expressions:
+;;   %s  ->  argument as-is
+;;   %q  ->  describe argument with SCAM literal or vector syntax
+;;           (number, string, or vector)
 
 (define (vsprintf args)
+  (define `(printf-warn args)
+    (print "** Warning: bad format string: '" (nth 1 args) "'"))
+
   (define `fields
     (subst "%" " !%" " !% !%" "%" (concat "%s" (word 1 args))))
 
@@ -217,21 +292,47 @@
 (define (bound? var)
   (if (filter-out "u%" (flavor var)) 1))
 
-;; (count-chars STR SUB) count number of occurrences of SUB in TEXT
-(define (count-chars text ch)
-  (words (rest (subst (demote ch) ". ." (demote text)))))
 
-;; (count-words STR WORD) --> NUMBER
-(define (count-words str pat)
-  (words (filter pat str)))
+;; concatenate one or more (potentially empty) vectors, word lists, or
+;; hashes.
+;;
+(define (append a b c d e f g h)
+  ;; "$9" is a vector of arguments beyond the eighth
+  (define `... (value 9))
+
+  (filter "%" (concat a " " b " " c " " d " " e " " f " " g " " h " "
+                      (if ... (promote ...)))))
 
 
 ;;---- Hash operations ----
+;;
+;; A `hash` is a word list of key/value pairs.  Keys and values are
+;; encoded and delimited with "!=".
+;;
+;; (hash-bind KEY VALUE [HASH])
+;;     Bind KEY to VALUE, perpending it to HASH (if given).
+;;
+;; (hash-get KEY HASH DEFAULT)
+;;     Return the value bound to KEY.  If more than one entry matches KEY,
+;;     only the first is returned.  If no entry is found, DEFAULT is
+;;     returned.
+;;
+;; (hash-find KEY HASH)
+;;     Return the first hash entry matching KEY.  Unlike hash-get, this
+;;     indicates whether a match was found (every hash word will be
+;;     non-nil).
+;;
+;; (hash-key ENTRY)
+;;     Return the key portion of a hash word.
+;;
+;; (hash-value ENTRY)
+;;     Return the value portion of a hash word.
+;;
+;; (hash-compact HASH)
+;;     Remove entries in a hash that are superseded by earlier entries that
+;;     share the same KEY.
+;;
 
-
-;; A `map` is a vector of pairs: [ KEY!=VAL KEY!=VAL .. ]
-
-;; create/extend new hash
 (define (hash-bind key val hash)
   (concat (subst "%" "!8" [key]) "!=" [val]
           (if hash " ")
@@ -239,51 +340,40 @@
 
 (define (hash-key entry)
   &inline
-  (nth 1 (subst "!=" " " entry)))
+  (promote (subst "!8" "%" (word 1 (subst "!=" " " entry)))))
 
 (define (hash-value entry)
   &inline
   (nth 2 (subst "!=" " " entry)))
 
-;; Return the first key/value pair in hash matching 'key'.
-;; Result is encoded according the the has structures internal rules.
 (define (hash-find key hash)
   (word 1 (filter (concat (subst "%" "!8" [key]) "!=%") hash)))
 
-;; (hash-get KEY HASH) returns the value associated with KEY in a map.
 (define (hash-get key hash default)
   (nth 2 (concat (subst "!=" " " (hash-find key hash))
                  (if default (concat " x " (demote default))))))
 
-
-;; concatenate one or more (potentially empty) vectors
-(define (append a b c d e f g h i)
-  (concat
-   (concat a (and a b " ") b)
-   (if (or c d e f g h i)
-       (concat (if (or a b) " ") (append c d e f g h i)))))
-
-(define (compact hash result)
+(define (hash-compact hash result)
   (if (not hash)
       result
-      (let& ((a (word 1 hash))
-             (name (word 1 (subst "!=" " " (word 1 hash)))))
-            (compact (filter-out (concat name "!=%") (rest hash))
-                     (append result a)))))
-
-(define (uniq-x in out)
-  &private
-  (if in
-      (uniq-x (rest in) (concat out " " (filter-out out (word 1 in))))
-      (filter "%" out)))
+      (let& ((entry (word 1 hash))
+             (prefix (word 1 (subst "!=" "!=% " entry))))
+        (append entry
+                (hash-compact (filter-out prefix (rest hash)))))))
 
 
 ;; Return a vector/wordlist of the unique members of a vector/wordlist.
 ;; Order is preserved; the first occurrence of each member is retained.
-(define (uniq vec)
-  (subst "^p" "%" "^1" "^"
-         (uniq-x (subst "^" "^1" "%" "^p" vec)
-                 "")))
+(declare (uniq vec))
+
+(begin
+  (define (uniq-x lst)
+    (if lst
+        (concat (word 1 lst) " " (uniq-x (filter-out (word 1 lst) (rest lst))))))
+
+  (define (uniq vec)
+    (subst "~p" "%" "~1" "~"
+           (filter "%" (uniq-x (subst "~" "~1" "%" "~p" vec))))))
 
 
 ;; Split STR at each occurrence of DELIM.  Returns vector whose length is one
@@ -339,12 +429,12 @@
                                (or d e f g h)))))))
 
 (define (sort-by key-func values)
-  (foreach w
-           (sort (foreach w values
-                          (concat (demote (key-func (promote w)))
-                                  "!!"
-                                  w)))
-           (word 2 (subst "!!" " " w))))
+  (define `keyed
+    (foreach w values
+             (concat (demote (key-func (promote w))) "!!" w)))
+
+  (filter-out "%!!" (subst "!!" "!! " (sort keyed))))
+
 
 ;; Check the "type" of a "structure".  This assumes the convention used
 ;; throughout scam sources, in which structures are stored in vectors, with

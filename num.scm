@@ -35,7 +35,7 @@
 
 ;; trim MSB zeroes
 (define (nnorm n)
-  (strip (subst "." " ." (butlast (subst " " ""  "i." "i ."  "-." "- ." 
+  (strip (subst "." " ." (butlast (subst " " ""  "i." "i ."  "-." "- ."
                                          (concat n "."))))))
 
 
@@ -127,7 +127,7 @@
              (if sb "a" "b"))
         ;; same sign: compare abs vals and invert result if both are negative
         (filter "a b" (subst "-b" "a" "-a" "b" (concat sa (ucmp ua ub)))))))
-        
+
 
 (define (nodd n)
   (findstring "i" (subst "ii" "" (word 1 n))))
@@ -202,7 +202,7 @@
 ;; Convert up to three digits to string of that many i's.
 ;;  (topdigits "? ? .iii .ii .i" 3)  ->  <123-char-long string of i's>
 (define (topdigits num at)
-  (let ((digits (wordlist at 999999 num)))
+  (let ((digits (nth-rest at num)))
     (subst "." ""
            (concat (word 1 digits)
                    (subst "i" "iiiiiiiiii"
@@ -266,7 +266,7 @@
 ;; where we get an exact answer).  The largest atop that would yield a
 ;; *minimum* of 7 is 87: 87 / 11 => 7.  The *maximum* possible digit in this
 ;; cases is 88 / 10 => 8.
-;; 
+;;
 
 (define (longdiv a more-a b)
   (let ((range (digit-range a b more-a (word 3 b)
@@ -307,7 +307,7 @@
       ;; a is longer than b
       (u/ (rest a) b (append more-a (first a)))
       (longdiv a more-a b)))
-  
+
 
 (define (/ a b)
   (let ((sa (sign a))
@@ -404,12 +404,12 @@
                    "0 1 2 3 4 5 6 7 8 9 ")
                (foreach n (u-range (or (patsubst "%0" "%" min) 1)
                                    (or (patsubst "%9" "%" max) 0))
-                        (concat n "0 " n "1 " n "2 " n "3 " n "4 " 
+                        (concat n "0 " n "1 " n "2 " n "3 " n "4 "
                                 n "5 "n "6 " n "7 " n "8 " n "9 ")))
               (concat (u-range min (- max 1)) " " max))
           (concat min " " (u-range (1+ min) max)))))
 
-  
+
 (define (0- n)
   (subst "--" "" (concat "-" (or n 0))))
 
@@ -423,7 +423,7 @@
                " "
                (if (>= max 0)
                    (u-range 0 max))))))
-  
+
 
 (define (sum-small list)
   (if list
@@ -433,6 +433,5 @@
 (define (sum list)
   (if (word 50 list)
       (+ (sum (wordlist 1 (/ (words list) 2) list))
-         (sum (wordlist (1+ (/ (words list) 2)) 999999999 list)))
+         (sum (nth-rest (1+ (/ (words list) 2)) list)))
       (sum-small list)))
-

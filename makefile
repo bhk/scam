@@ -24,16 +24,17 @@
 #     tests against the v1 compiler.
 #
 #  2. In order to support `scam -o ...`, the v1 compiler must bundle a
-#     current runtime ... NOT the one bundled within itself.  We name
-#     `runtime.scm` on the command line as a source file, which tells the
-#     program to build, test, and bundle THAT runtime, not its own bundled
-#     one.
+#     current runtime into the generated program ... NOT the one bundled
+#     within itself.  We name `runtime.scm` on the command line as a source
+#     file, which tells the program to build, test, and bundle THAT runtime,
+#     not its own bundled one.
 #
 #  3. runtime.scm presents its own potential conflict: it cannot use any
 #     other runtime because of symbol conflicts, and so building the current
 #     runtime sources with a golden compiler would be problematic.  As a
 #     result, we do not build and run .v1/runtime.min or .v1/runtime-q.min.
 #     Instead, we generate v2 binaries for these using the v1 compiler.
+
 
 _@=@
 expect = grep $1 $2 > /dev/null && echo $2 ok || (echo '$2:1: looking for '"$1" && false)
@@ -42,7 +43,7 @@ v1compile = $(call compile,$1,.v1,.v2)
 v2compile = $(call compile,$1,.v2,.v3)
 
 
-.PHONY: v1 v2 v3 v1ok v3ok promote clean
+.PHONY: v1 v2 v3 v1ok v3ok promote install clean
 
 
 v1:      ; $(_@)bin/scam -o .v1/scam --symbols scam.scm
@@ -66,8 +67,9 @@ v1ok: v1
 #   dash-x: compile and execute source file, passing arguments
 
 v2ok: v2
-	$(_@) .v2/scam -x test/dash-x.scm 3 'a b' > .v2/dash-x.out
+	$(_@) SCAM_TRACE='conc:c' .v2/scam -x test/dash-x.scm 3 'a b' > .v2/dash-x.out
 	$(_@) $(call expect,'9:3:a b',.v2/dash-x.out)
+	$(_@) $(call expect,' 4 : conc',.v2/dash-x.out)
 
 
 # To verify the compiler, we ensure that .v2/scam and .v3/scam are
@@ -87,6 +89,9 @@ v3ok: v1 v2 v3
 #
 promote: v3ok
 	$(_@)cp .v2/scam bin/scam
+
+install:
+	cp bin/scam `which scam`
 
 clean:
 	rm -rf .v1 .v2 .v3

@@ -56,7 +56,7 @@
 
 
 (define (describe-env env all)
-  (foreach w (reverse (compact env))
+  (foreach w (reverse (hash-compact env))
            (if (or all (not (nth 3 (hash-value w))))
                (printf "  %s : %s" (hash-key w)
                        (describe-binding (hash-value w))))))

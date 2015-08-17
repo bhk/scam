@@ -1,12 +1,10 @@
 ;;--------------------------------------------------------------
 ;; gen0 : compiler front end  (see gen.scm)
 ;;--------------------------------------------------------------
-
 (require "core")
 (require "parse")
 (require "escape")
 (require "gen")
-
 
 (declare (c0 form env))
 (declare (c0-block forms env))
@@ -174,6 +172,19 @@
   (append (if inblock ["env" env]) (or node "Q")))
 
 
+;; Symbol name restrictions:
+;;   `:` conflicts with Make's `$(name:a=b)` syntax.
+;;   `$` conflicts with Make's `$(call name,...)` syntax.
+;;   `%` would complicate/slow down SCAM's environment lookup.
+;;
+(define (check-name form)
+  (foreach
+   sym (or (findstring ":" form)
+           (findstring "$" form)
+           (findstring "%" form))
+   (gen-error form "names may not contain '%s' characters" sym)))
+
+
 ;; (declare WHAT FLAGS...)
 ;; (declare (FNAME FARGS...) FLAGS...)
 ;; (define WHAT FLAGS... VALUE)
@@ -228,12 +239,18 @@
           _err
           (foreach _sym (rest xwhat)
                    (if (filter "S%" _sym)
-                       ""
+                       nil
                        [(check-type "S" (promote _sym) form "NAME"
                                     (sprintf "(%s %s(NAME...))"
                                              (or is-declare "define")
                                              (if is-quoted "`")))]))
           (promote _err)))
+
+     ;; check variable/function/macro name
+     (check-name (cond (is-func fname)
+                       (is-var  what)
+                       ((symbol? qwhat) qwhat)
+                       (else mname)))
 
      (and is-inline
           (or is-declare (not is-func))
@@ -360,7 +377,7 @@
                        (hash-bind (symbol-name (nth n args))
                                   ["A" (concat (concat level n))]))
               ;; args 9 and up = (nth 1 $9), (nth 2 $9), ...
-              (lambda-arg9 (wordlist 9 9999 args) level env)
+              (lambda-arg9 (nth-rest 9 args) level env)
               env)))
 
 (define (lambda-env args env)

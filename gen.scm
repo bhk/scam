@@ -165,10 +165,9 @@
 
 ;; Add a binding for symbol `sym` to `env`.  `type` = "F", "V", ...
 (define (bind-sym symbol type priv fdef env)
-  (append
-   (hash-bind (symbol-name symbol)
-              (concat type " " (trimvec (symbol-name symbol) priv fdef))
-              env)))
+  (hash-bind (symbol-name symbol)
+             (concat type " " (trimvec (symbol-name symbol) priv fdef))
+             env))
 
 
 ;; Generate a unique symbol name derived from `base`.  Returns a symbol
@@ -462,17 +461,17 @@
                        ["B" b "b"]))
 
    ;; Manifest functions
-   (hash-bind "promote" ["F" "^u"])
-   (hash-bind "demote" ["F" "^d"])
-   (hash-bind "nth" ["F" "^n"])
-   (hash-bind "set-global" ["F" "^set"])
+   (hash-bind "promote"     ["F" "^u"])
+   (hash-bind "demote"      ["F" "^d"])
+   (hash-bind "nth"         ["F" "^n"])
+   (hash-bind "set-global"  ["F" "^set"])
    (hash-bind "set-rglobal" ["F" "^fset"])
-   (hash-bind "apply" ["F" "^apply"])
+   (hash-bind "apply"       ["F" "^apply"])
 
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
-   (foreach v ["*file*" "*args*" "MAKEFILE_LIST" ".DEFAULT_GOAL" "MAKE_RESTARTS"
-               ".RECIPEPREFIX" ".VARIABLES" ".FEATURES" ".INCLUDE_DIRS"]
+   (hash-bind "*args*" ["V" "^av" "b"])
+   (foreach v ["*file*" "MAKEFILE_LIST" ".DEFAULT_GOAL" ]
             (hash-bind v ["V" v "b"]))))
 
 

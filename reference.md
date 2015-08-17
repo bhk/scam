@@ -1,5 +1,16 @@
 # SCAM Reference
 
+## Index
+
+ * [Overview] (#overview)
+ * [Syntax] (#syntax)
+ * [Data Values] (#data-values)
+ * [Symbols] (#symbols)
+ * [Standard Features] (#standard-features)
+ * [Make Features] (#make-features)
+ * [Debugging] (#debugging)
+
+
 ## Overview
 
 A SCAM program consists of *expressions*. Some examples of expressions are
@@ -57,9 +68,10 @@ Symbols are sequences of characters delimited by whitespace, `(`, `)`, `[`,
 `]`, or `;`.
 
     a
-    this-is-a-long-symbol-with-perhaps-*/$@-unusual-characters!
+    this-is-a-long-symbol-with-perhaps-*/@-unusual-characters!
 
-Symbols may not contain `:` or `%`.
+WHen symbols are used to name functions or variables, they may not contain
+`:`, `%`, or `$` characters.
 
 ### Compound Expressions
 
@@ -169,7 +181,7 @@ are not word-encoded).
     +--------------------+------------------------+-----------------------------+
     | Append item        | `(conj VEC ITEM)`      | `(concat LIST " " WORD)`    |
     +--------------------+------------------------+-----------------------------+
-    | Append vectors     | `(append V1 V2)`       | `(concat LIST1 " " LIST2)`  |
+    | Append vectors     | `(append V1 V2...)`    | `(concat LIST1 " " LIST2)`  |
     +--------------------+------------------------+-----------------------------+
     | Count items        | `(words VEC)`          | `(words LIST)`              |
     +--------------------+------------------------+-----------------------------+
@@ -321,7 +333,7 @@ In SCAM, by contrast, the distinction between "execute X" and "return the
 value of X" is explicit in the source code.  `X` means "value of X" whereas
 `(X)` means "execute X". This is true whether X is recursive or simple.
 
-In order to make inter-operability with raw Make code more convenient, SCAM
+In order to make interoperability with raw Make code more convenient, SCAM
 variables that are defined *as* functions will be stored in Make recursive
 variables, and other values will be stored in simple variables.
 
@@ -488,42 +500,7 @@ The [`foreach`] (#foreach) special form avoids this problem.  The
 substitutions to be performed.
 
 
-## Debugging
-
-### Call Site Tracing
-
-The "?" macro can be used for tracing at a function call site. `(? f ...)`
-is equivalent to `(f ...)`, but when it executes the function name, its
-arguments and return value will displayed. For example, in the REPL:
-
-    > (define (f x) (concat x x))
-    > (? f 1)
-    --> (f "1")
-    <-- f: 11
-    11
-
-### Run-time Tracing
-
-The `SCAM_TRACE` variable can be assigned to instrument functions at
-run-time, rather than compile-time.  For complete details, see `trace.scm`.
-The following command line, which counts function invocations across the
-compiler, gives a taste of what SCAM_TRACE is capable of:
-
-    $ SCAM_TRACE=':c' bin/scam num.scm
-
-The `SCAM_DEBUG` variable causes certain debug information to be written to
-stdout based on the presence or absence of certain substrings:
-
-  * "R" ==> "require: <filename>" when a file is included by `require`.
-  * "Rx" ==> "R" + "exited: <filename>" after a required file exits.
-  * "E" ==> "eval: <string>" when SCAM passes text to Make's `eval` builtin.
-  * "O" ==> "OK: ..." when an `expect` macro succeeds. (See [the core library](core.scm).)
-  * "U" ==> display compile-time "warnings" for each upvalue reference
-  * "Tl" ==> "Tl: <func>" each time a function is called
-  * "Tk" ==> invocation counts of functions
-
-
-## Language Reference
+## Standard Features
 
 The following symbols are defined by the SCAM language.  They call into
 three different categories:
@@ -538,26 +515,26 @@ provided by the language itself.  Special forms, builtins, and macros are
 not functions, so they do not have values and cannot be passed to other
 functions; they can only be invoked like a function.
 
+
 ### `begin`
 
 [Special form]
+
+    (begin EXPR...)
 
 Encloses a *block* of expressions.  A block is a sequence of expressions
 that are evaluated in order.  The result of that last expression is
 returned (or nil if no expressions are given).
 
-Syntax:
-
-    (begin EXPR...)
+`begin` can be used to contain multiple expressions in a single expression.
+It can also be used to limit the scope of symbols.  The end of the block
+terminates the scope of any definitions and declarations made within the
+block.
 
 
 ### `lambda`
 
 [Special form]
-
-Constructs a function.
-
-Syntax:
 
     (lambda (ARGS...) BODY...)
 
@@ -574,8 +551,6 @@ to the function.
 
 [Special form]
 
-Syntax:
-
     (require MODULE &private?)
 
 The `require` form provides access to functionality defined in other
@@ -586,33 +561,11 @@ bundled module.
 `MODULE` must be a literal string value, because `require` is processed at
 build time and compile time in addition to run time.
 
-#### Run Time
-
-When a module executes a `require` directive, the module's object file will
-be loaded and executed, unless it has already been required.  Object files
-are in Makefile syntax, and are assigned a ".min" extension by SCAM.
-
-Modules are located using only the `notdir` portion of the module name,
-either in the "object directory" (described below) or as a bundled module in
-the SCAM program itself.  If no matching module is found in either location,
-an error is reported.
-
-#### Compile Time
-
-When a `(require ...)` directive is compiled, the compiler obtains the
-symbol table for the required module by loading its object file.  (Required
-files must be compiled before their requiring files.)
-
-Modules are located as at run time, except that bundled files are located
-within the compiler itself (not the resulting program).
-
-#### Build Time
-
-When SCAM is invoked with the `scam -o EXE SOURCEFILE` command syntax, it
-first constructs a dependency graph that describes all required compilation
-and testing steps for all of the named source files and their direct and
-indirect dependencies.  This graph construction phase is what we mean by
-"build time".
+**Build Time:** When SCAM is invoked with the `scam -o EXE SOURCEFILE`
+command syntax, it first constructs a dependency graph that describes all
+required compilation and testing steps for all of the named source files and
+their direct and indirect dependencies.  This graph construction phase is
+what we mean by "build time".
 
 SCAM discovers dependencies by scanning source files for `require`
 directives.  For each required module, SCAM looks for a corresponding
@@ -620,51 +573,46 @@ source file, whose name is constructed by appending ".scm" to the module
 name and treating that as a path relative to the directory containing the
 requiring source file.
 
-If the source file is found, SCAM will build a corresponding `.min` file
-in the object directory (described below).
+If the source file is found, SCAM will build a corresponding `.min` file in
+the "object directory", which is the directory that contains the target
+executable.  Outside of the context of a `scam -o` command, such as during
+`scam -e` or `scam -x`, the object directory is not in effect, and can be
+thought of as an empty directory.
 
 If the source file is not found, no build step is performed for it (it is
-asumed to exist as a bundled module).
+assumed to exist as a bundled module).
 
-#### Object Directory
+**Compile Time**: When a `(require ...)` directive is compiled, the compiler
+obtains the symbol table for the required module by loading its object file.
+(Required files must be compiled before their requiring files.)
 
-When `scam -o EXE SOURCES...` is invoked, it establishes `(dir EXE)` as the
-"object directory" for all compilation and execution steps that are needed
-to build the program.
+Modules are located as at run time, except that bundled files are located
+within the compiler itself (not the resulting program).
 
-In other contexts -- the interactive interpreter, `scam -e EXPR`, or `scam
-SOURCEFILE` -- the object directory is not in effect.  (It can be thought of
-as an empty directory.)
+**Run Time:** When a module executes a `require` directive, the module's
+object file will be loaded and executed, unless it has already been
+required.  Object files are in Makefile syntax, and are assigned a ".min"
+extension by SCAM.  Modules are located using only the `notdir` portion of
+the module name, either in a module bundled with the running program, or as
+a file in the object directory.
 
-#### Bundling
+ - When execution is triggered by a `scam -o` build, the module will be read
+   from the object directory if it is one of the modules included in the build.
 
-"Bundled" modules are those that have been incorporated into a SCAM
-program.  The `scam` command, for example, contains bundled versions of
+ - Otherwise, if a matching bundled module is present, it will be used.
+
+ - Otherwise, the object directory will be searched.
+
+**Bundling:** "Bundled" modules are those that have been incorporated into a
+SCAM program.  The `scam` command, for example, contains bundled versions of
 all modules required for compilation (it needs them in order to compile).
 When programs are build with `scam -o ...`, all required modules will be
 bundled in the resulting program.
-
-#### The `runtime` Module
-
-When dependencies are scanned, a module named "runtime" is treated as an
-implicit dependency of every SCAM module.  (Modules do not `require` the
-runtime explicitly, because it must be loaded before they can execute.)
-
-When building most programs, we assume that `runtime.scm` will not be
-present in the same directory as the target source file, and the runtime
-module bundled with the compiler will be used.
-
-When we build the compiler, `runtime.scm` is present, so it will be built,
-and all the compiler modules will use that runtime.  In this case, the
-compiled runtime is used to execute any test modules, and there will be no
-bundled modules available when the test modules execute.
 
 
 ### `let`
 
 [Special form]
-
-Syntax:
 
     (let ( (NAME VALUE)... ) BODY... )
 
@@ -681,8 +629,6 @@ the last form in BODY.
 ### `let&`
 
 [Special form]
-
-Syntax:
 
     (let& ( (NAME EXPR)... ) BODY... )
 
@@ -708,17 +654,15 @@ a Make function call (as does `let`).
 
 [Special form]
 
-The `define` special form adds a name to the environment and associates
-it with a definition.  The defined name will be visible to subsequent
-expressions in the same block, and the definition supersedes any
-previous definitions associated with the same name.
-
-Syntax:
-
     (define NAME FLAGS... VALUE)               ; global variable
     (define (NAME ARGS...) FLAGS... BODY...)   ; global function
     (define `NAME EXPR)                        ; symbol macro
     (define `(NAME ARGS...) FLAGS... BODY)     ; compound macro
+
+The `define` special form adds a name to the environment and associates
+it with a definition.  The defined name will be visible to subsequent
+expressions in the same block, and the definition supersedes any
+previous definitions associated with the same name.
 
 `FLAGS` consists of zero or more of the symbols `&private` and `&inline`.
 
@@ -760,14 +704,12 @@ A function definition:
 
 [Special form]
 
+    (declare NAME FLAGS...)              ; declare global variable
+    (declare (NAME ARGS...) FLAGS...)    ; declare global function variable
+
 The `declare` special form declares a global variable without assigning
 a value.  This is usually used to access non-SCAM functions, or when
 mutually recursive functions are defined.
-
-Syntax:
-
-    (declare NAME FLAGS...)              ; declare global variable
-    (declare (NAME ARGS...) FLAGS...)    ; declare global function variable
 
 In GNU Make terms, these forms do not actually *create* a variable since
 they perform no assignment. They do however cause SCAM to *assume* a
@@ -780,12 +722,10 @@ performed within SCAM.
 
 [Special form]
 
-This assigns a value to a previously declared global variable.
-
-Syntax:
-
     (set NAME VALUE RETVAL?)
 
+The `set` special form assigns a value to a previously declared global
+variable.
 
 NAME is given as a symbol, not a string. For example:
 
@@ -799,9 +739,7 @@ NAME is given as a symbol, not a string. For example:
 
 [Special form]
 
-Syntax:
-
-(let-global ( (NAME VALUE)... ) BODY...)
+    (let-global ( (NAME VALUE)... ) BODY...)
 
 This form modifies the value of some number of global variables *during
 the execution of BODY*. Afterwards, the original values are restored.
@@ -812,8 +750,6 @@ This expression evaluates to the value of the last expression in BODY.
 ### `set-global`
 
 [Manifest function]
-
-Syntax:
 
     (set-global NAME-EXPR VALUE)
 
@@ -832,8 +768,6 @@ VALUE. REPL example:
 
 [Manifest function]
 
-Syntax:
-
     (set-rglobal NAME-EXPR VALUE)
 
 This is equivalent to [`set-global`] (#set-global), except that is executes
@@ -850,22 +784,20 @@ a "recursive" global variable assignment.  REPL example:
 
 [Special form]
 
-A `concat` expression concatenates all of its arguments.
+    (concat VALUE...)
+
+This special form concatenates all of its arguments.
 
 
 ### `subst`
 
 [Special form]
 
-Replace one or more substrings with replacement strings within a given
-string.
-
-Syntax:
-
     (subst FROM TO {FROM TO}... VALUE)
 
-This is equivalent to the GNU Make builtin `subst` except that
-it accepts multiple pairs of replacement strings. Example:
+This special form replaces substrings with replacement strings within the
+given VALUE.  It is equivalent to the GNU Make builtin `subst` except that
+it accepts multiple pairs of replacement strings.  For example:
 
     > (subst 2 3 1 2 12)
     23
@@ -877,14 +809,11 @@ it accepts multiple pairs of replacement strings. Example:
 
 [Special form]
 
-The `foreach` special form iterates over words in a list and constructs a
-new list.
-
-list from the results of evaluating an expression.
-
-Syntax:
-
     (foreach VAR LIST EXPR)
+
+The `foreach` special form iterates over a list, evaluates an expression
+once for each word, and constructs a new word list from the results of
+each evaluation.
 
 Each word is bound to the name `VAR` and `EXPR` is evaluated to obtain
 the corresponding word in the new list.
@@ -898,8 +827,6 @@ SCAM provides a macro named `foreach` that is more intuitive:
 
 [Special form]
 
-Syntax:
-
     (for VAR VECTOR EXPR)
 
 `for` iterates over items in a vector, constructing a new vector. Example:
@@ -911,10 +838,7 @@ Syntax:
 
 ### `demote`
 
-
 [Manifest function]
-
-Syntax:
 
     (demote VALUE)
 
@@ -925,8 +849,6 @@ list.  It is used internally to construct vectors.
 
 [Manifest function]
 
-Syntax:
-
     (promote VALUE)
 
 `promote` reverses the encoding done by `demote`.
@@ -935,28 +857,22 @@ Syntax:
 
 [Manifest function]
 
-Syntax:
-
     (nth INDEX VEC)
 
-Returns the value stored at index INDEX (1-based) in vector aVEC.
+Returns the value stored at index INDEX (1-based) in vector VEC.
 
 ### `print`
 
 [Special form]
 
-Syntax:
-
     (print VALUE...)
 
-Contanenates all values and write them to stdout.
+Concatenates all values and write them to stdout.
 
 
 ### `current-env`
 
 [Special form]
-
-Syntax:
 
     (current-env)
 
@@ -968,8 +884,6 @@ this structure.)
 
 [Special form]
 
-Syntax:
-
     (current-file-line)
 
 This special form evaluates to the file name and line number of where it was
@@ -980,8 +894,6 @@ invoked, in this format:  `FILENAME:LINE`
 
 [Special form]
 
-Syntax:
-
     (vector A B C ...)
 
 This constructs a vector.  It is equivalent to `[A B C ...]`.
@@ -991,8 +903,6 @@ This constructs a vector.  It is equivalent to `[A B C ...]`.
 
 [Special form]
 
-Syntax:
-
     (? FUNCNAME ...)
 
 This performs call-site tracing, describe above under "Debugging".
@@ -1000,10 +910,7 @@ This performs call-site tracing, describe above under "Debugging".
 
 ### `cond`
 
-
 [Special form]
-
-Syntax:
 
     (cond (CONDITION BODY)... [(else BODY)] )
 
@@ -1021,11 +928,9 @@ Example:
 
 [Manifest function]
 
-Syntax:
-
     (apply LAMBDA VEC)
 
-Call LAMBDA, passing as arguments the mebers of the vector VEC.
+Call LAMBDA, passing as arguments the members of the vector VEC.
 
 Example:
 
@@ -1036,14 +941,10 @@ Example:
 
 [Manifest macro]
 
-Syntax:
-
-    *args*
-
-Evaluates to a vector of all arguments passed to the function.  This is
-evaluated at run-time, and reflects all arguments passed, not just the list
-of declared arguments.  This is for use by functions that take variable
-numbers of arguments.
+This symbol evaluates to a vector of all arguments passed to the function.
+This is evaluated at run-time, and reflects all arguments passed, not just
+the list of declared arguments.  This is for use by functions that take
+variable numbers of arguments.
 
 Note: `*args*` returns unpredictable results when it is used within a `let`
 or `let*` block.
@@ -1053,16 +954,30 @@ or `let*` block.
 
 [Manifest global]
 
-The file currently being loaded via `require`.  This is evaluated at
-run-time, not compile-time, so it does not necessarily return the name of
-the file in which it appears.
+This symbol evaluates to the file currently being loaded via `require`.
+This is evaluated at run-time, not compile-time, so it does not necessarily
+return the name of the file in which it appears.
+
 
 ## Make Features
 
+Variables and builtin functions defined by Make are available to SCAM
+programs.  See <http://www.gnu.org/software/make/manual/make.html#Name-Index>
+for a complete list.
+
+### Make Variables
+
 The following Make-defined variables are pre-declared for SCAM programs:
 
-    .DEFAULT_GOAL .FEATURES .INCLUDE_DIRS .RECIPEPREFIX .VARIABLES
-    MAKEFILE_LIST MAKE_RESTARTS
+    .DEFAULT_GOAL MAKEFILE_LIST
+
+Other variables can be accessed using the `value` function, or by declaring
+the variable and then referencing its name:
+
+    (declare MAKELEVEL)
+    (print MAKELEVEL)
+
+### Make Builtin Functions
 
 The following Make builtin functions are available to SCAM programs:
 
@@ -1072,4 +987,79 @@ The following Make builtin functions are available to SCAM programs:
     subst wordlist if and or call
 
 Also, the `foreach` builtin is available under the name `.foreach`.  See
-[`foreach`] (#foreach), above.
+[`foreach`] (#foreach), above, for more details.
+
+### Rule Processing
+
+After a SCAM program's `main` executes, make will proceed to perform rule
+processing.  During execution of `main`, the program can create rules using
+`eval`.  For example:
+
+    (eval "foo.o: foo.c ; cc -o $@ $<")
+
+If the program defines rules, then Make will proceed to process them as
+usual, treating the first-defined rule as the default goal.
+
+If the program defines no rules, then the runtime creates a rule to serve as
+the default goal which is used to cause the program to return the exit code
+that `main` returned.
+
+
+## Debugging
+
+### Call Site Tracing
+
+The "?" macro can be used for tracing at a function call site. `(? f ...)`
+is equivalent to `(f ...)`, but when it executes the function name, its
+arguments and return value will displayed. For example, in the REPL:
+
+    > (define (f x) (concat x x))
+    > (? f 1)
+    --> (f "1")
+    <-- f: 11
+    11
+
+### Run-time Tracing
+
+The `SCAM_TRACE` variable can be assigned to instrument functions at
+run-time, rather than compile-time.  For complete details, see `trace.scm`.
+The following command line, which counts function invocations across the
+compiler, gives a taste of what SCAM_TRACE is capable of:
+
+    $ SCAM_TRACE=':c' bin/scam num.scm
+
+The `SCAM_DEBUG` variable causes certain debug information to be written to
+stdout based on the presence or absence of certain substrings:
+
+  * "R" ==> "require: <filename>" when a file is included by `require`.
+  * "Rx" ==> "R" + "exited: <filename>" after a required file exits.
+  * "E" ==> "eval: <string>" when SCAM passes text to Make's `eval` builtin.
+  * "O" ==> "OK: ..." when an `expect` macro succeeds. (See [the core library](core.scm).)
+  * "U" ==> display compile-time "warnings" for each upvalue reference
+  * "Tl" ==> "Tl: <func>" each time a function is called
+  * "Tk" ==> invocation counts of functions
+
+### Profiling
+
+You can use invocation counts (as describe above) to look for potential
+hot spots.
+
+To measure the time spent in a particular function, you can use the
+following approach:
+
+ * Time execution of a use case.  For example:
+
+       $ time ...command...
+
+   The command can invoke your program via `scam -x program.scm ...args...`
+   or it can invoke your program directly, assuming you have compiled it
+   using `scam -o ...`.
+
+ * Use an `x11` trace action to multiply the time spent in an individual
+   function, and run the same use case:
+
+       $ SCAM_TRACE='function-name:x11' time ...command...
+
+ * This second invocation should take longer to execute. Dividing the
+  additional time by 10 will give the amount of time spent in that function
+  during that use case.

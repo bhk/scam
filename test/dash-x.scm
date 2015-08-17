@@ -8,9 +8,15 @@
 (require "core")
 (require "num")
 
+(define (conc vec delim)
+  (if vec
+      (concat (first vec)
+              (if (word 2 vec) delim)
+              (conc (rest vec) delim))))
+
 (define (main argv)
   ;; return exit code (check content and lenth of words
-  (print (concat-vec (append (^ (nth 1 argv) 2)
-                             argv)
-                     ":"))
+  (print (conc (append (^ (nth 1 argv) 2)
+                       argv)
+               ":"))
   0)

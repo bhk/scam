@@ -60,15 +60,22 @@
 
 
 (declare SCAM_TRACE)
+(declare SCAM_DEBUG)
 (declare SCAM_PRE)
+(declare .VARIABLES)
 (define *trace-V0* "")
 
 (define (undef? name)
   (filter "undefined" (flavor name)))
 
+;; avoid dependency on `core.scm`; use this instead of `rest`
+(define `(cdr words)
+  (wordlist 2 99999999 words))
+
 ;; command-line values are recursive (!) and also they are evaluated
 ;; by make after rules are processed, so SCAM_PRE will be executed
 ;; an extra time after the program completes unless we do this...
+;;
 (eval "override SCAM_PRE := $(value SCAM_PRE)")
 
 ;; ^K: increment the count of invocations of $0
@@ -76,8 +83,9 @@
 ;; This counting system requires just patsubst+concat+subst for each increment.
 ;; Base 4 is optimal for size: digit len = (4+1)/2 ; num digits = 1/Ln(4)
 ;; Base 10 is easy to convert to decimal ASCII, however.
-
+;;
 (eval "^K = $(eval ^K_$0:=$(subst ioooooooooo,oi,$(^K_$0:o%=io%)o))")
+
 
 (define (trace-digits k)
   ;; normalize
@@ -125,7 +133,7 @@
 ;;
 (define (trace-repeater fname reps recur)
   (subst "NAME" fname
-         (subst "N-1" (wordlist 2 99999999 (list-of (or reps 11)))
+         (subst "N-1" (cdr (list-of (or reps 11)))
                 (if recur
                     ;; more complicated when recursion must be supported
                     "$(if $(^X),$(call if,,,$(value NAME)),$(if $(foreach ^X,N-1,$(if $(NAME),)),)$(foreach ^X,0,$(NAME)))"
@@ -153,6 +161,8 @@
 ;; body.
 ;;
 (define (trace-instrument action name defn warn)
+  (if (findstring "T" SCAM_DEBUG)
+      (print "instrumenting: " name " for " action))
   (cond
    ;; display matching names
    ((filter "v" action)
@@ -179,7 +189,7 @@
    ;; trace invocations and arguments
    ((filter "t" action)
     (subst "CODE" defn
-           "$(info --> ($0$(^fmt-args)))$(call ^value,<-- $0:,CODE)"))
+           "$(info --> ($0$(^ta)))$(call ^tp,<-- $0:,CODE)"))
 
    (else (begin
            (warn (concat "Unknown action: '" action "'"))
@@ -195,7 +205,7 @@
     name (trace-match-funcs (firstword (subst ":" " % " w))
                             (or warn trace-warn))
     (foreach
-     action (or (wordlist 2 999 (subst ":" " " (concat "." w))) "t")
+     action (or (cdr (subst ":" " " (concat "." w))) "t")
      (let ((catvar (concat "*traced*-"
                            (patsubst "x%" "x" (subst "X" "x" action)))))
 
@@ -209,7 +219,7 @@
 
 (define (trace-rev lst)
   (if lst
-      (concat (trace-rev (wordlist 2 99999999 lst)) " " (firstword lst))))
+      (concat (trace-rev (cdr lst)) " " (firstword lst))))
 
 (define (trace-dump)
   (if (value "*traced*-c")
@@ -224,7 +234,6 @@
                         (count (subst "." " " (word 1 lst)))
                         (name (word 2 lst)))
                  (trace-warn (concat count " : " name)))))))
-
 
 
 (set *trace-V0* (subst "%" "()" .VARIABLES))

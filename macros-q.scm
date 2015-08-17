@@ -68,7 +68,7 @@
 
 ;; ?
 
-(expect "$(call ^trace,f,1)" (CX "(? f 1)" (hash-bind "f" "F f")))
+(expect "$(call ^t,f,1)" (CX "(? f 1)" (hash-bind "f" "F f")))
 
 ;; let&
 

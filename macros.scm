@@ -149,7 +149,7 @@
   (or (check-type "S" func form "FUNC" "(? FUNC ...)")
       (if (not (traceable? (hash-get (symbol-name func) env)))
           (gen-error func "FUNC in (? FUNC ...) is not a function variable"))
-      (append [ "f" "^trace" (symbol-to-string func)]
+      (append [ "f" "^t" (symbol-to-string func)]
               (c0-vec (rest args) env))))
 
 
