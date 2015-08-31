@@ -49,84 +49,97 @@
 ;; This module doesn't use any lexical bindings from "macros" and therefore
 ;; will compile without the following line, but we require it to load the
 ;; module at run-time so that the macros will be known to the compiler.
-(require "macros")
+(if 1
+    (require "macros"))
 
 
-;; Default continutation for compile-forms.  Compiles inline code.
-;; Returns [ <errors> <exe> <newenv> ]
+;; "Boot" modules: implicit dependencies of other source files.
 ;;
-(define (compile-forms-k nodes newenv)
-  (append (gen1 nodes) [newenv]))
-
-
-;; Compile forms.  Call (`fn` nodes pout) and return its result.
-;;
-;;   forms = vector of forms (parsed expressions)
-;;   env = initial environment
-;;   text = SCAM source
-;;   subject = subject text: (penc ttext)  [optional]
-;;   infile = input file name (used in `expect` macro)
-;;   outfile = output file name (used to find required modules)
-;;   k = continuation to be called as:  (k <nodes> <newenv>)
-;;         nodes = IL nodes
-;;         newenv = resulting environment
-;;
-;; Returns: return value of `k`
-;;
-(define (compile-forms forms env text subject infile outfile k)
-  (let-global ((*compile-text*     text)
-               (*compile-subject*  (or subject (penc text)))
-               (*compile-file*     infile)
-               (*compile-outfile*  outfile))
-     (c0-block-cc forms env (or k compile-forms-k))))
+(define `rt-mod "runtime")  ;; run-time module (implicit "require")
+(define `ct-mod "scam-ct")  ;; compile-time module (implicit "use")
 
 
 ;; Compile SCAM source to executable code.
-;; 
+;;
 ;; Returns:
 ;;     [ <errors> <exe> <exports> ]    (if outfile is non-nil)
 ;;     [ <errors> <exe> <newenv> ]     (if outfile == "")
-;;     
+;;
 ;; If `outfile` is non-nil, it compiles the code for inclusion in a file
 ;; (is-file == 1) and returns data required to generate an output file (text
 ;; "exports" in addition to an executable file.
 ;;
 ;; If `outfile` is nil, it compiles the code to a form suitable for
 ;; evaluation (is-file == nil) and returns the final environment.
-;; 
+;;
 ;; See `compile-forms` for descriptions of other arguments.
 ;;
 (define (compile-text text env infile outfile)
-  (let ((subject (penc text))
-        (text text) (env env) (infile infile) (outfile outfile))
-    (compile-forms (parse-subject subject) env text subject infile outfile
-                   (if outfile
-                       (lambda (nodes newenv)
-                         (append (gen1 nodes 1) [(env-export newenv)]))
-                       (lambda (nodes newenv)
-                         (append (gen1 nodes) [newenv]))))))
+  (let-global ((*compile-subject*  (penc text))
+               (*compile-file*     infile)
+               (*compile-outfile*  outfile))
+
+    (c0-block-cc (parse-subject *compile-subject*)
+                 (or env base-env)
+                 (if outfile
+                     (lambda (nodes newenv)
+                       (append (gen1 nodes 1) [(env-export newenv)]))
+                     (lambda (nodes newenv)
+                       (append (gen1 nodes) [newenv]))))))
 
 
-(define `(construct-file infile exports exe)
+;; Return initial environment (standard prelude)
+;;
+;; is-boot = one of:
+;;    nil   => implicitly (require "runtime") and (use "scam-ct")
+;;    true  => no implicit dependencies
+;;
+;; The implicit modules will be satisfied by bundles unless *compile-mods*
+;; contains a matching MIN file name.
+;;
+(define (compile-prelude is-boot)
+  ;; include the runtime if we are building one
+  (foreach r *compile-mods*
+           (if (filter rt-mod (notdir (basename r)))
+               (eval (concat "include " r))))
+
+  (if (not is-boot)
+        (append (require-module rt-mod nil)
+                (use-module ct-mod))))
+
+
+(define `(construct-file infile exports exe reqs uses)
   (concat "# compiled from " infile "\n"
+          (if reqs (concat "# Requires: " reqs "\n"))
+          (if uses (concat "# Requires: " uses "\n"))
           exports
           exe))
 
 
-;; Compile a .min file from a .scm file
+;; Compile a SCAM source file and write out a .min file.
 ;;
-(define (compile-file infile outfile)
-  (let ((text (read-file infile)))
-    (let ((o (compile-text text "" infile outfile))
-          (text text)
-          (infile infile)
-          (outfile outfile))
-      (if (first o)
-          ;; Error
-          (begin
-            (for e (first o)
-                 (info (describe-error e text infile)))
-            (error "error compiling SCAM"))
+;; infile = source file name (to be read)
+;; outfile = object file name (to be written)
+;; is-boot = true when building "boot" files (runtime, scam-ct, etc.)
+;; mod-files = list of files that satisfy `require` and `use` dependencies.
+;; reqs = files directly required by this source file
+;; uses = files indirectly required by this source file
+;;
+(define (compile-file infile outfile is-boot mod-files reqs uses)
+  (let-global ((*compile-mods* mod-files))
+    (let ((text (read-file infile))
+          (outfile outfile)
+          (imports (compile-prelude is-boot)))
+      (let ((o (compile-text text (rest imports) infile outfile))
+            (text text)
+            (infile infile)
+            (outfile outfile))
+        (if (first o)
+            ;; Error
+            (begin
+              (for e (first o)
+                   (info (describe-error e text infile)))
+              (error "error compiling SCAM"))
 
-          ;; Success
-          (write-file outfile (construct-file infile (nth 3 o) (nth 2 o)))))))
+            ;; Success
+            (write-file outfile (construct-file infile (nth 3 o) (nth 2 o) reqs uses)))))))

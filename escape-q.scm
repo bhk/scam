@@ -9,9 +9,10 @@
 (expect "(!1. )"                (protect-arg "(!1. )"))
 (expect "(,)"                   (protect-arg "(,)"))
 (expect "$(if ,,(,),)"          (protect-arg "(,),"))
-(expect "$(\\R)$(\\L)"          (protect-arg ")("))
-(expect "()$(\\L)"              (protect-arg "()("))
-(expect "$(if ,,(a),(,)$(\\L))"  (protect-arg "(a),(,)("))
+(expect "$]$["                  (protect-arg ")("))
+(expect "()$["                  (protect-arg "()("))
+(expect "$(if ,,(a),(,)$[)"     (protect-arg "(a),(,)("))
+(expect "$(if ,,,)"             (protect-arg ","))
 
 (expect "" (findstring "!" (check-balance "a(b)c()")))
 (expect "" (findstring "!" (check-balance "()")))
@@ -29,7 +30,7 @@
 (expect "$(if ,,a\n)"  (protect-trim "a\n"))
 (expect "a\nb"         (protect-trim "a\nb"))
 
-(expect "x$(\\H)"     (protect-lhs "x#"))
+(expect "x$&"         (protect-lhs "x#"))
 (expect "$(if ,,x=)"  (protect-lhs "x="))
 
 (expect "abc\ndef" (protect-define "abc\ndef"))

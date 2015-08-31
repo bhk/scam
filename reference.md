@@ -4,8 +4,8 @@
 
  * [Overview] (#overview)
  * [Syntax] (#syntax)
- * [Data Values] (#data-values)
- * [Symbols] (#symbols)
+ * [Data Types] (#data-types)
+ * [Naming] (#naming)
  * [Standard Features] (#standard-features)
  * [Make Features] (#make-features)
  * [Debugging] (#debugging)
@@ -70,7 +70,7 @@ Symbols are sequences of characters delimited by whitespace, `(`, `)`, `[`,
     a
     this-is-a-long-symbol-with-perhaps-*/@-unusual-characters!
 
-WHen symbols are used to name functions or variables, they may not contain
+When symbols are used to name functions or variables, they may not contain
 `:`, `%`, or `$` characters.
 
 ### Compound Expressions
@@ -113,13 +113,18 @@ for quoting ordinary data structures (as in other Lisps) because ASTs are
 not represented by native data types. Use the vector constructor, instead,
 unless you are actually interested in manipulating source code.
 
-## Data Values
+## Data Types
 
-SCAM has one data type. All values are character strings. Strings are
-immutable. Variable assignments and parameter passing are by value, not by
-reference. Although SCAM lacks many of the data types you may be familiar
-with from other languages -- numbers, booleans, functions, vectors, or
-hashes -- all the same information can be conveyed in strings.
+Strictly speaking, SCAM has one data type. All values are character
+strings. Strings are immutable. Variable assignments and parameter passing
+are by value, not by reference.
+
+Even though the language does not provide static typing (wherein variables
+are restricted to holding certain values) or dynamic typing (wherein each
+value is definitively associated with a specific type), it does support
+conventions for representing many familiar data types as strings.
+
+### Numbers
 
 Numbers are typically represented as a string of decimal digits. GNU Make
 builtin functions and the the `num` module supplied with SCAM expect numbers
@@ -130,18 +135,15 @@ in this format.
     > (+ 12 34)
     46
 
+### Booleans
+
 Boolean results use the empty string to represent the false or failure
 condition, and any other value to represent true.
 
     > (if "" 1 2)
     2
-    > (if "false" 1 2)
+    > (if "false" 1 2)   ; not false...
     1
-
-Complex data structures can be represented by strings that have a
-well-defined internal structure.
-
-Functions are strings that can be executed.
 
 ### Vectors
 
@@ -231,7 +233,6 @@ behavior in the REPL:
     > ("$1$2" "a" "b")
     "ab"
 
-
 ### Syntax Trees
 
 The result of parsing an expression is a SCAM syntax tree. Each node in the
@@ -246,7 +247,7 @@ Forms are not ordinarily manipulated by SCAM code, except in the compiler
 source code. Refer to `parse.scm` for more information on forms.
 
 
-## Symbols
+## Naming
 
 Symbols can be *bound* to a definition, depending on the lexical scope of
 the expression in which they are mentioned. A symbol can identify:
@@ -319,6 +320,31 @@ behavior:
 
   - Avoid very short variable names for local variables.
 
+
+#### Namespaces
+
+Since Make supports only one variable namespace, combining different
+programs can result in errors when they contain variable names that
+conflict.
+
+SCAM supports namespaces in order to help avoid this problem.  When a
+namespace is in effect, SCAM will prepend it to the Make variable names that
+are used for global variables declared in SCAM.  This namespace-prefixed
+name is called the "global name" of the variable, whereas the name used in
+SCAM sources is called the "local name".
+
+The following language features expose namespace functionality:
+
+ - `(global-name SYMBOL)` evaluates to the global name for SYMBOL.
+
+ - `(local-to-global EXPR)` evaluates to the global name corresponding to
+   the local name given by EXPR.
+
+ - The `&global` flag can be used with a `declare` or `define` expression to
+   avoid namespace prefixing.  In this case, the global name of the symbol
+   will be equal to the local name.
+
+
 #### Variable Flavor
 
 One interesting aspect of GNU Make is the notion of flavor: global
@@ -343,6 +369,7 @@ variables, and other values will be stored in simple variables.
     > (define x 1)
     > (flavor "x")
     "simple"
+
 
 ### Inline Functions
 
@@ -403,7 +430,7 @@ the expression.  Here is an example in the REPL:
 
 Compound macros accept arguments.  The syntax for a compound macro definition is:
 
-    (define `(NAME ARGS...) BODY...)
+    (define `(NAME ARG...) BODY)
 
 Macros are invoked just like functions:
 
@@ -471,14 +498,15 @@ name can produce unexpected results. The following example demonstrates
 `value` and `call`:
 
     > (define (g x) (concat x x))
-    > (value "g")    ; NOT (value g)
+    > (define name-of-g "g")
+    > (value name-of-g)    ; NOT (value g)
     "$1$1"
-    > (call "g" "x") ; NOT (call g "x")
+    > (call name-of-g "x") ; NOT (call g "x")
     "xx"
-    > (define f "g")
-    > (value f)      ; same as (value "g")
+    > (define f name-of-g)
+    > (value f)
     "$1$1"
-    > (call f "x")   ; same as (call "g" "x")
+    > (call f "x")
     "xx"
 
 The names [`foreach`] (#foreach) and [`subst`] (#subst) builtins are
@@ -536,15 +564,15 @@ block.
 
 [Special form]
 
-    (lambda (ARGS...) BODY...)
+    (lambda (ARG...) BODY)
 
 A `lambda` expression evaluates to a function value.
 
-`ARGS...` is zero or more symbols that name the formal arguments.
+`ARG...` is zero or more symbols that name the formal arguments.
 
-`BODY...` is a block of one or more expressions (see [`begin`] (#begin) )
+`BODY` is a block of one or more expressions (see [`begin`] (#begin) )
 that will be executed when the function is called. The initial environment
-of `BODY...` contains bindings for the arguments names to the values passed
+of `BODY` contains bindings for the arguments names to the values passed
 to the function.
 
 ### `require`
@@ -561,60 +589,68 @@ bundled module.
 `MODULE` must be a literal string value, because `require` is processed at
 build time and compile time in addition to run time.
 
-**Build Time:** When SCAM is invoked with the `scam -o EXE SOURCEFILE`
-command syntax, it first constructs a dependency graph that describes all
-required compilation and testing steps for all of the named source files and
-their direct and indirect dependencies.  This graph construction phase is
-what we mean by "build time".
+When a `require` directive is executed, the required module will be loaded
+and executed, unless it has already been required.
 
-SCAM discovers dependencies by scanning source files for `require`
-directives.  For each required module, SCAM looks for a corresponding
-source file, whose name is constructed by appending ".scm" to the module
-name and treating that as a path relative to the directory containing the
-requiring source file.
+**Dependency Resolution:***
 
-If the source file is found, SCAM will build a corresponding `.min` file in
-the "object directory", which is the directory that contains the target
-executable.  Outside of the context of a `scam -o` command, such as during
-`scam -e` or `scam -x`, the object directory is not in effect, and can be
-thought of as an empty directory.
+When compiling with the `scam -o EXE SOURCE` command, SCAM first discovers
+dependencies by scanning source files for `require` directives.  For each
+required module, SCAM looks for a file to satisfy the dependency, in the
+following order:
 
-If the source file is not found, no build step is performed for it (it is
-assumed to exist as a bundled module).
+ 1. Source file: A source file name is constructed by appending the `.scm`
+    suffix to the module name and treating that as a path relative to the
+    requiring file.
 
-**Compile Time**: When a `(require ...)` directive is compiled, the compiler
-obtains the symbol table for the required module by loading its object file.
-(Required files must be compiled before their requiring files.)
+ 2. Object file: An object file is constructed, just as for a source file,
+    but using the `.min` suffix instead of `.scm`.
 
-Modules are located as at run time, except that bundled files are located
-within the compiler itself (not the resulting program).
+ 3. Bundle: An object file that has been bundled into the compiler itself
+    can be used to satisfy dependencies.  A matching bundle is one that has
+    the same module name (directory and suffix portions are ignored).
 
-**Run Time:** When a module executes a `require` directive, the module's
-object file will be loaded and executed, unless it has already been
-required.  Object files are in Makefile syntax, and are assigned a ".min"
-extension by SCAM.  Modules are located using only the `notdir` portion of
-the module name, either in a module bundled with the running program, or as
-a file in the object directory.
+SCAM must first compile each *required* module before it can compile the
+*requiring* module.  This is because the required module may define macros,
+functions, and variables that contribute to the environment of the requiring
+module and affect the way subsequent expressions are compiled.
 
- - When execution is triggered by a `scam -o` build, the module will be read
-   from the object directory if it is one of the modules included in the build.
+If a source file is found, SCAM will attempt to compile that file before
+compiling the requiring file.  The compilation step will output an object
+file (named `.min`) in the "object directory", which is the directory that
+contains the target executable.
 
- - Otherwise, if a matching bundled module is present, it will be used.
+Outside of the context of a `scam -o` command, such as during `scam -e` or
+`scam -x`, dependency scanning is not performed.  Dependencies must be
+satisfied by bundled modules.
 
- - Otherwise, the object directory will be searched.
+### `use`
 
-**Bundling:** "Bundled" modules are those that have been incorporated into a
-SCAM program.  The `scam` command, for example, contains bundled versions of
-all modules required for compilation (it needs them in order to compile).
-When programs are build with `scam -o ...`, all required modules will be
-bundled in the resulting program.
+[Special form]
+
+    (use MODULE)
+
+The `use` form specifies a module that defines "executable macros".
+Executable macros are functions written in scam that define syntax
+extensions.  When such a macro is encountered in the "using" source file,
+the executable macro is given the syntax tree as an argument, and it has the
+opportunity to transform it.
+
+`MODULE` must be a literal string value, because `require` is processed at
+build time and compile time in addition to run time.
+
+Dependencies are discovered just as with the `require` directive.
+
+Unlike the `require` directive, `use` does not introduce any run-time
+dependencies.  The specified module is instead loaded by the compiler, at
+compile-time.
 
 
 ### `let`
 
 [Special form]
 
-    (let ( (NAME VALUE)... ) BODY... )
+    (let ( (NAME VALUE)... ) BODY)
 
 The `let` special form assigns values to a number of local variables.
 The VALUE expressions are evaluated, in order.  Then BODY (a block of
@@ -624,13 +660,13 @@ the last form in BODY.
 
 `let` is implemented in terms of `lambda`, as such:
 
-    ((lambda (NAME...) BODY...) (VALUE...))
+    ((lambda (NAME...) BODY) (VALUE...))
 
 ### `let&`
 
 [Special form]
 
-    (let& ( (NAME EXPR)... ) BODY... )
+    (let& ( (NAME EXPR)... ) BODY)
 
 `let&` is a "lazy" let.  It binds the names to symbol macros instead of
 local variables.  It also differs from `let` in that each expression is
@@ -639,12 +675,12 @@ evaluated in the context of the previous bindings -- more like Scheme's
 
     (begin
       (define `NAME EXPR)...
-      BODY...)
+      BODY)
 
 Since `let&` constructs symbol macros, each bound expression is not
 always evaluated exactly once, as with `let`.  Instead, each expression
 is evaluated once each time its associated name is evaluated within
-`BODY...` -- perhaps zero times, perhaps many more.
+`BODY` -- perhaps zero times, perhaps many more.
 
 Aside from the potential for multiple re-evaluations of expressions,
 `let&` generally has lower overhead than `let`, since it does not involve
@@ -654,10 +690,10 @@ a Make function call (as does `let`).
 
 [Special form]
 
-    (define NAME FLAGS... VALUE)               ; global variable
-    (define (NAME ARGS...) FLAGS... BODY...)   ; global function
+    (define NAME FLAG... VALUE)               ; global variable
+    (define (NAME ARG...) FLAG... BODY)   ; global function
     (define `NAME EXPR)                        ; symbol macro
-    (define `(NAME ARGS...) FLAGS... BODY)     ; compound macro
+    (define `(NAME ARG...) FLAG... BODY)     ; compound macro
 
 The `define` special form adds a name to the environment and associates
 it with a definition.  The defined name will be visible to subsequent
@@ -704,8 +740,8 @@ A function definition:
 
 [Special form]
 
-    (declare NAME FLAGS...)              ; declare global variable
-    (declare (NAME ARGS...) FLAGS...)    ; declare global function variable
+    (declare NAME FLAG...)              ; declare global variable
+    (declare (NAME ARG...) FLAG...)    ; declare global function variable
 
 The `declare` special form declares a global variable without assigning
 a value.  This is usually used to access non-SCAM functions, or when
@@ -716,6 +752,16 @@ they perform no assignment. They do however cause SCAM to *assume* a
 flavor of "simple" (in the first case) or "recursive" (in the function
 form). This assumption will affect subsequent references and assignments
 performed within SCAM.
+
+### `defmacro`
+
+[Special form]
+
+    (defmacro (NAME ARGNAME) BODY)
+
+`defmacro` declares an *executable macro*.  An executable macro is a
+function that transforms syntax.  It takes one argument, a form, and returns
+a different form.
 
 
 ### `set`
@@ -739,7 +785,7 @@ NAME is given as a symbol, not a string. For example:
 
 [Special form]
 
-    (let-global ( (NAME VALUE)... ) BODY...)
+    (let-global ( (NAME VALUE)... ) BODY)
 
 This form modifies the value of some number of global variables *during
 the execution of BODY*. Afterwards, the original values are restored.
@@ -763,6 +809,8 @@ VALUE. REPL example:
     > (value "V")
     "abc"
 
+Note: using an empty string for the variable name will cause Make to exit
+with an error.
 
 ### `set-rglobal`
 

@@ -18,7 +18,7 @@
 (require "core")
 (require "parse")
 (require "gen")
-(require "gen0")
+(require "gen0" &private)
 
 
 ;; If exprs has exactly one item, return first item.  Otherwise place
@@ -32,13 +32,13 @@
 
 ;; (current-env)
 
-(define (ml.special-current-env args env)
+(define (ml.special-current-env _ env)
   ["Q" env])
 
 
 ;; (current-file-line)
 
-(define (ml.special-current-file-line args env form)
+(define (ml.special-current-file-line form env)
   ;; '#pos' marks the position of a macro invocation
   (define `pos (or (word 2 (hash-get "#pos" env))
                    (form-index form)))
@@ -47,10 +47,10 @@
   ["Q" (concat *compile-file* ":" lnum)])
 
 
-;; (concat FORMS...)
+;; (concat FORM...)
 
-(define (ml.special-concat args env)
-  (concat "C " (c0-vec args env)))
+(define (ml.special-concat form env)
+  (concat "C " (c0-vec (rrest form) env)))
 
 
 ;; (subst FROM TO {FROM TO}... STR)
@@ -61,47 +61,48 @@
       (subst-x (rrest strs) ["F" "subst" (nth 1 strs) (nth 2 strs) value])
       value))
 
-(define (ml.special-subst args env form)
-  (or (if (filter "%2 %4 %6 %8 %0 1" (words args))
-          (gen-error (or (first args) form)
-                     "wrong number of arguments to (subst {FROM TO}+ STR); must be multiple of 2 + 1"))
-      (subst-x (c0-vec (butlast args) env) (c0 (last args) env))))
+(define (ml.special-subst form env)
+  (let ((args (rrest form))
+        (keyword (nth 2 form))
+        (env env))
+
+    (or (if (filter "%2 %4 %6 %8 %0 1" (words args))
+            (gen-error keyword
+                       "wrong number of arguments to (subst {FROM TO}+ STR); must be multiple of 2 + 1"))
+        (subst-x (c0-vec (butlast args) env) (c0 (last args) env)))))
 
 
-;; (vector FORMS...)
+;; (vector FORM...)
 
-;; Return IL node for demotion of IL node.  In general the resulting
-;; code calls `demote` at run time, but for quoted strings we can
-;; demote at compile time.
-(define (c1-demote node)
-  (if (string? node)
-      (concat "Q " (demote (word 2 node)))
-      ["f" "^d" node]))
-
-(define (ml.special-vector args env)
-  (concat "C " (subst " " " Q!0!10 " (map-call "c1-demote" (c0-vec args env)))))
+(define (ml.special-vector form env)
+  (define `args (rrest form))
+  (concat "C " (subst " " " Q!0!10 " (map-call (global-name il-demote) (c0-vec args env)))))
 
 
 ;; (set SYM VALUE [RETVAL])
 
-(define (ml.special-set args env form)
-  (define `symbol (first args))
-  (define `name (nth 2 symbol))
-  (define `type (word 1 (resolve symbol env)))
+(define (ml.special-set form env)
+  (define `symbol (nth 3 form))
 
-  (or (check-argc "2 or 3" args form)
+  (or (check-argc "2 or 3" form)
+
       (check-type "S" symbol form "NAME" "(set NAME VALUE [RETVAL])")
-      (if (not (filter "V F" type))
-          (gen-error symbol "%q is not a global variable" name))
 
-      (append [ "f"
-                (if (filter "V" type) "^set" "^fset")
-                ["Q" name] ]
-              (c0-vec (rest args) env))))
+      (let ((binding (resolve symbol env))
+            (other-args (nth-rest 4 form))
+            (env env)
+            (symbol symbol))
+
+        (if (not (type? "V F" binding))
+            (gen-error symbol "%q is not a global variable" (symbol-name symbol))
+            (append [ "f"
+                      (if (type? "V" binding) "^set" "^fset")
+                      ["Q" (nth 2 binding)] ]
+                    (c0-vec other-args env))))))
 
 
-;; (let-global ((VAR VALUE)...) BODY...)
-;;   ==>  (^set 'VAR (^set 'VAR VALUE VAR) (begin BODY...))
+;; (let-global ((VAR VALUE)...) BODY)
+;;   ==>  (^set 'VAR (^set 'VAR VALUE VAR) (begin BODY))
 
 (define (letg-error type form parent desc)
   &private
@@ -134,23 +135,26 @@
       (letg-expand (rest bform) body form)))
 
 
-(define (ml.special-let-global args env form)
+(define (ml.special-let-global form env)
   (c0 (ml.macro-let-global form) env))
 
 
 ;; (? <fn> ...args...)
 
-(define (ml.special-? args env form)
-  (define `func (first args))
-  (define `(traceable? defn)
+(define (ml.special-? form env)
+  (define `func (nth 3 form))
+  (define `func-args (nth-rest 4 form))
+  (define `defn (resolve func env))
+
+  (define `traceable?
     ;; (B)uiltin or (F)unction, but not a macro
     (filter-out "F#" (filter "B% F%" (subst " " "" (wordlist 1 2 defn)))))
 
   (or (check-type "S" func form "FUNC" "(? FUNC ...)")
-      (if (not (traceable? (hash-get (symbol-name func) env)))
+      (if (not traceable?)
           (gen-error func "FUNC in (? FUNC ...) is not a function variable"))
-      (append [ "f" "^t" (symbol-to-string func)]
-              (c0-vec (rest args) env))))
+      (append [ "f" "^t" ["Q" (nth 2 defn)] ]
+              (c0-vec func-args env))))
 
 
 ;; (let& ((VAR VAL)...) BODY)
@@ -185,15 +189,16 @@
                    (let&-check "S" (nth 2 b) form "NAME"))))
 
 
-(define (ml.special-let& args env form)
-  (define `nvs (rest (first args)))
-  (define `body (rest args))
-  (or (let&-check "L" (first args) form "((NAME EXPR)...)")
+(define (ml.special-let& form env)
+  (define `nv-list (nth 3 form))
+  (define `nvs (rest nv-list))
+  (define `body (nth-rest 4 form))
+  (or (let&-check "L" nv-list form "((NAME EXPR)...)")
       (let&-check-bindings nvs form)
       (c0-block body (let&-env nvs env))))
 
 
-;; ( let ((VAR VAL)...) BODY... )
+;; ( let ((VAR VAL)...) BODY )
 ;;   ==>  ( (lambda (VAR ...) BODY ) (VAL ...) )
 
 (define (let-error type form parent a)
@@ -214,21 +219,25 @@
       (append ["L" (append ["L" "S lambda" vars] body)] vals)))
 
 
-(define (ml.special-let args env form)
+(define (ml.special-let form env)
   (c0 (ml.macro-let form) env))
 
 
 ;; (for VAR LIST BODY)
 
 ;; (foreach VAR WORDS EXP)
-(define (ml.special-foreach args env form)
-  (or (check-argc 3 args form)
-      (check-type "S" (first args) form "VAR" "(foreach VAR LIST EXPR)")
-      (let ((var (first args))
-            (wrds (nth 2 args))
-            (exp (nth 3 args))
+(define (ml.special-foreach form env)
+  (define `var (nth 3 form))
+  (define `word-list (nth 4 form))
+  (define `exp (nth 5 form))
+
+  (or (check-argc 3 form)
+      (check-type "S" var form "VAR" "(foreach VAR LIST EXPR)")
+      (let ((var var)
+            (word-list word-list)
+            (exp exp)
             (env env))
-        (c0 `(.foreach ,(symbol-to-string var) ,wrds ,exp)
+        (c0 `(.foreach ,(symbol-to-string var) ,word-list ,exp)
             (hash-bind (nth 2 var) (concat "V " (word 2 var)) env)))))
 
 
@@ -237,36 +246,37 @@
 ;; Unlike Make builtin `foreach`, `for` operates on lists, promoting input
 ;; values and demoting results.  Also, VAR is a symbol, not a quoted string.
 
-(define (ml.special-for args env)
-  (define `var (first args))
-  (define `vec (nth 2 args))
-  (define `body (rrest args))
+(define (ml.special-for form env)
+  (define `var (nth 3 form))
+  (define `vec (nth 4 form))
+  (define `body (nth-rest 5 form))
 
   (c0 `(foreach ,(gensym var) ,vec
-                (call "^d" (let& ((,var (call "^u" ,(gensym var))))
+                (call ,["Q" "^d"] (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
                           ,@body)))
 
       env))
 
 ;; (print args...)
 
-(define (ml.special-print args env)
+(define (ml.special-print form env)
+  (define `args (rrest form))
   (c0 `(info (concat ,@args)) env))
 
 
-;; (cond (TEST BODY...)...)
+;; (cond (TEST BODY)...)
 ;;   ==>  (if TEST1 (begin BODY1...)
 ;;            (if TEST2 (begin BODY2...)
 ;;                ... ) )
 
-(define cond-cxt "(cond (TEST BODY...)...)")
+(define cond-cxt "(cond (TEST BODY)...)")
 
 (define (cond-expand clause more form)
   (define `test (nth 2 clause))
   (define `body (rrest clause))
 
   (if clause
-      (or (check-type "L" clause form "(TEST BODY...)" cond-cxt)
+      (or (check-type "L" clause form "(TEST BODY)" cond-cxt)
           (check-type "" test clause "TEST" cond-cxt)
           (check-type "" body clause "BODY" cond-cxt)
           (if (and (symbol? test)
@@ -282,5 +292,62 @@
   (or (cond-expand (nth 3 form) (nth-rest 4 form) form)
       "Q !."))
 
-(define (ml.special-cond args env form)
+(define (ml.special-cond form env)
   (c0 (ml.macro-cond form) env))
+
+
+;; (local-to-global EXPR)
+;;
+(define (ml.special-local-to-global form env)
+  (define `var (nth 3 form))
+
+  (or (check-argc "1" form)
+      ["C" ["Q" (gen-global-name "")]
+           (c0 var env)]))
+
+
+;; (global-name SYM)
+;;
+(define (ml.special-global-name form env)
+  (define `var (nth 3 form))
+  (define `binding (resolve var env))
+
+  (or (check-argc "1" form)
+      (check-type "S" var form "NAME" "(get-global NAME)")
+      (let& ((binding (resolve var env)))
+        (if (type? "V F" binding)
+            ["Q" (nth 2 binding)]
+            (gen-error var "%q is not a global variable" (symbol-name var))))))
+
+
+(define (ml.special-defmacro form env inblock)
+  (define `what (nth 3 form))
+  (define `sym (nth 2 what))
+  (define `name (symbol-name sym))
+
+  (or (check-type "L" what form "(NAME ARG...)" "(defmacro (NAME ARG...) BODY...)")
+      (check-type "S" sym what "NAME" "(defmacro (NAME ARG...) ...)")
+
+      ; `(define WHAT BODY)
+      (let ((o (c0 (append ["L" ["S" "define"]] (nth-rest 3 form))
+                   env
+                   inblock)))
+        (define `env (nth 2 o))
+        (define `node (nth-rest 3 o))
+        (append ["env" (hash-bind name ["X" (gen-global-name name)] env)]
+                node))))
+
+
+;; (use STRING)
+;;
+(define (ml.special-use form env inblock)
+  (define `module (nth 3 form))
+  (define `mod-name (string-value module))
+
+  (or (check-argc "1" form)
+      (check-type "Q" module form "NAME" "(use NAME)")
+      (let ((imports (use-module mod-name))
+            (env env))
+        (if imports
+            (block-result inblock (append imports env) nil)))
+      (gen-error "use: Cannot find module %q" mod-name)))

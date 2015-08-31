@@ -11,8 +11,8 @@
 ;; set of libraries.
 (define LIBS "core io parse escape gen0 gen1 compile num")
 
-(define *1 "")  ; most recent evaluation result
-(define *2 "")  ; previous result
+(define *1 &global nil)  ; most recent evaluation result
+(define *2 &global nil)  ; previous result
 
 (define (help)
   (print "Commands:\n"
@@ -127,14 +127,22 @@
 ;; main
 ;;
 
-(define `initial-env
-  (foreach v "*1 *2"
-           (hash-bind v ["V" v "i"])))
+
+;(define `initial-env
+;  (foreach v "*1 *2"
+;           (hash-bind v ["V" v "i"])))
+;
+;(define `initial-state
+;  (eval-and-print
+;   (concat (foreach lib LIBS (concat "(require \"" lib "\")")) "\n")
+;   initial-env))
 
 (define `initial-state
   (eval-and-print
-   (concat (foreach lib LIBS (concat "(require \"" lib "\")")) "\n")
-   initial-env))
+   (concat "(declare *1 &global)\n"
+           "(declare *2 &global)\n"
+           (foreach lib LIBS (concat "(require \"" lib "\")")) "\n")
+   (compile-prelude)))
 
 
 (define (repl)
@@ -145,7 +153,7 @@
   (print))
 
 
-;; Evaluate 'text' and print results
+;; Evaluate 'text' and print results (without looping).
 ;;
 (define (repl-rep text filename)
   (define `env (nth 2 initial-state))
@@ -169,7 +177,7 @@
 (define (repl-file file)
   (let ((text (read-file file)))
     (if text
-        (let ((o (compile-text text nil file "///~" nil)))
+        (let ((o (compile-text text (compile-prelude) file "///~" nil)))
           (define `errors (nth 1 o))
           (define `exe    (nth 2 o))
 

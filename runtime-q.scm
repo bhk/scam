@@ -1,3 +1,7 @@
+;; runtime-q runs in a special environment (same as the environment for
+;; runtime) in which the runtime is not an implicit requirement.
+(require "runtime")
+
 ;; runtime-test
 ;;
 ;; Note: we do not `require` runtime.scm because it is already loaded.  It
@@ -6,6 +10,7 @@
 ;; Many of the runtime functions are tested by calling the "manifest
 ;; functions" that expose their functionality.  For example, "set-global" makes
 ;; use of `^set`.
+
 
 (define (expect-x o i file-line)
   (if (findstring (concat o 1) (findstring (concat i 1) (concat o 1)))
@@ -17,6 +22,7 @@
 
 (define `(expect o i)
   (expect-x o i (current-file-line)))
+
 
 ;; ^u
 ;; ^d
@@ -61,19 +67,15 @@
 (expect "w" (apply indexarg
                    "24 a b c d e f g h i j k l m n o p q r s t u v w x y z"))
 
-;; ^set-RHS  -- change from macro to function to test
-;; (declare (^set-RHS))
-;; (expect (^set-RHS "\n$#") "$(\\n)$$$(\\H)")
+;; esc-LHS
 
-;; ^set-LHS
-
-(declare (^set-LHS))
-(expect (^set-LHS "a= c ")
+(declare (esc-LHS))
+(expect (esc-LHS "a= c ")
         "$(if ,,a= c )")
-(expect (^set-LHS "a\nb")
-        "$(if ,,a$(\\n)b)")
-(expect (^set-LHS ")$(")
-        "$(if ,,$(\\R)$$$(\\L))")
+(expect (esc-LHS "a\nb")
+        "$(if ,,a$!b)")
+(expect (esc-LHS ")$(")
+        "$(if ,,$]$$$[)")
 
 
 ;; ^ed
@@ -84,7 +86,6 @@
 
 ;; ^e
 
-(declare (^e val lvl))
 (declare (^es s))
 
 (expect (^es "a b c")
@@ -106,10 +107,10 @@
         "$$$$")
 
 (expect (^e ")")
-           "$(\\R)")
+           "$]")
 
 (expect (^e ")" 2)
-           "$$(\\R)")
+           "$$]")
 
 (define (TE str)
   (expect ((^e str))
@@ -127,6 +128,30 @@
 (TE "a,b")
 (TE "x), (a")
 (TE " a ")
+
+;; misc. macros
+
+(expect "" nil)
+
+(expect "1" (not nil))
+(expect nil (not "x"))
+
+(expect nil (bound? "_xya13"))
+(expect "1" (bound? (global-name ^require)))
+
+(expect "4 5" (nth-rest 4 "1 2 3 4 5"))
+
+(expect "! 1" (first ["! 1" 2]))
+
+(expect "b c" (rest "a   b c  "))
+
+(expect "3 4" (rrest "1 2 3 4"))
+
+;; hooks
+
+(define (test) "X")
+(add-hook "foo" (global-name test))
+(expect "X" (run-hooks "foo"))
 
 
 (info "runtime ok")

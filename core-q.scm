@@ -7,6 +7,10 @@
 (if (eq 1 2)
     (error "eq not working"))
 
+(if (eq "1 2" (nth 1 ["1 2"]))
+    nil
+    (error "promote/demote not working"))
+
 (set-global "GG" "$")
 (expect "simple" (flavor "GG"))
 (expect "$" (value "GG"))
@@ -14,9 +18,6 @@
 (set-rglobal "FF" "$")
 (expect "recursive" (flavor "FF"))
 (expect "$" (value "FF"))
-
-(expect "1" (not ""))
-(expect "" (not "x"))
 
 (expect "" (eq "" "a"))
 (expect "" (eq "a" ""))
@@ -30,20 +31,10 @@
 (expect 2 (xor "" 2))
 (expect "" (xor 1 2))
 
-(expect "! 1" (first ["! 1" 2]))
-
-(expect "b c" (rest "a   b c  "))
-
-(expect "3 4" (rrest "1 2 3 4"))
-
-(expect "4 5" (nth-rest 4 "1 2 3 4 5"))
-
 (expect "x A!0B" (conj "x" "A B"))
 
 (expect "c" (last "a b c"))
 (expect "a b" (butlast "a b c"))
-
-(expect ["" 1 ""] (map-call "not" [1 "" 3]))
 
 (expect [[1 2]] (select-vec (lambda (x) (word 2 x)) [[1 2] 3 2]))
 
@@ -70,13 +61,7 @@
 (expect "1.2e-7" (isnumber "1.2e-7"))
 (expect "-1e7" (isnumber "-1e7"))
 (expect "" (isnumber "1e7.1"))
-(expect "" (isnumber " 2 "))   ;; format relies on this
-
-(expect "[\"a\" \" \" [\"\"]]" (format "a !0 !1."))
-(expect "\" !0 \"" (format " !0 "))
-(expect "\"!x\"" (format "!x"))
-(expect "[\" \"]" (format "!0"))
-(expect "-12" (format "-12"))
+(expect "" (isnumber " 2 "))
 
 (expect "[1 \"a b\"] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
 (expect "nada" (sprintf "nada" "ignored"))
@@ -94,8 +79,15 @@
 
 (expect "1,2,3" (concat-vec [1 2 3] ","))
 
-(expect "1" (not (bound? "_xya13")))
-(expect "1" (bound? "bound?"))
+;; append
+
+(expect "" (append))
+(expect "a b c" (append "a" "" "b" "" "" "c"))
+(expect "a b c" (append "" "a" "" "b" "" "c"))
+(expect "a b c!1 d!1 e!1" (append "" "" "" "a" "b" "" "" "c!1" "d!1" "e!1"))
+
+
+;; hash functions
 
 (expect "x!=y a!=!." (hash-bind "x" "y" (hash-bind "a" "")))
 
@@ -120,10 +112,14 @@
                               (hash-bind " " 3)
                               (hash-bind "bb" 9))))
 
-(expect "" (append))
-(expect "a b c" (append "a" "" "b" "" "" "c"))
-(expect "a b c" (append "" "a" "" "b" "" "c"))
-(expect "a b c!1 d!1 e!1" (append "" "" "" "a" "b" "" "" "c!1" "d!1" "e!1"))
+;; format
+
+(expect "[\"a\" \" \" [\"\"]]" (format "a !0 !1."))
+(expect "\" !0 \"" (format " !0 "))
+(expect "\"!x\"" (format "!x"))
+(expect "[\" \"]" (format "!0"))
+(expect "-12" (format "-12"))
+
 
 (expect "a b c" (uniq "a a b a c a b"))
 
@@ -150,7 +146,7 @@
 (define (mtest a b c)
   (concat mprefix c b a))
 
-(memoize "mtest")
+(memoize (global-name mtest))
 
 (expect 321 (mtest 1 2 3))
 (set mprefix 9)
@@ -168,3 +164,19 @@
 (expect "F.1" (type? "A% F%" ["F.1" "Q f"]))
 
 (print "core ok")
+
+;; assoc
+
+(expect [1 2 3]    (assoc 1 [ [2 1 3] [1 2 3] [1] ]))
+(expect [1]        (assoc 1 [ [2 1 3] [1] [1 2 3]]))
+(expect [1 2 3]    (assoc 1 [ [2 1 3] [1 2 3] ]))
+(expect [" " 2]    (assoc " " [ [2 1 3] [" " 2] ]))
+(expect [" "]      (assoc " " [ [2 1 3] [" "] ]))
+(expect ["!" 2]    (assoc "!" [ [2 1 3] ["!" 2] ]))
+(expect ["!"]      (assoc "!" [ [2 1 3] ["!"] ]))
+(expect ["%" 2]    (assoc "%" [ [2 1 3] ["%" 2] ]))
+(expect ["%a !" 2] (assoc "%a !" [ [2 1 3] ["%a !" 2] ]))
+(expect ["%a !"]   (assoc "%a !" [ [2 1 3] ["%a !"] ]))
+
+(expect ["%a !" 2 3]  (assoc-vec ["%a !" 2]
+                               [ ["%a" "!" 2] ["%a !" 1 2] ["%a !" 2 3] ]))

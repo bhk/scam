@@ -111,6 +111,8 @@
                                              (format-form (promote n))) ")"))
         ((string? form) (format (string-value form)))
         ((symbol? form) (symbol-name form))
+        ((quoted? form) (concat "'" (format-form (nth 2 form))))
+        ((qquoted? form) (concat "`" (format-form (nth 2 form))))
         (else           (concat "," (format form)))))
 
 ;;--------------------------------------------------------------

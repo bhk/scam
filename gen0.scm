@@ -105,8 +105,14 @@
     (foreach da fargs
              (hash-bind (promote da)
                         ["I" (c0 (nth (find-word fargs 1 da) (rrest form)) env)])))
-  (or (check-argc (words fargs) (rrest form) form)
+  (or (check-argc (words fargs) form)
       (c0-block fbody (append argbindings orig-env))))
+
+
+;; Special forms are implemented in functions that begin with "ml.special-".
+;;
+(define `(special-form-func name)
+  (local-to-global (concat "ml.special-" name)))
 
 
 ;; L: compound forms
@@ -117,6 +123,7 @@
 ;;    inblock = if true, return: ["env" new-env <node>]
 ;;              if nil, return:  <node>
 ;;
+
 (define (c0-L form env defn inblock)
   &private
   (define `op (nth 2 form))
@@ -135,12 +142,16 @@
    ;; empty parens
    ((not (word 2 form)) (gen-error form "missing function/macro name"))
 
+   ((type? "X" defn)  (if (nth 3 defn)
+                          (c0 (call (nth 2 defn) form) env inblock)
+                          (gen-error form "cannot use xmacro in its own file")))
+
    ;; general case (non-symbol, argument, data var, etc.)
    (defn (concat "Y " (c0-vec (rest form) env)))
 
    ;; macro/special form?
-   ((bound? (concat "ml.special-" opname))
-    (call (concat "ml.special-" opname) (rrest form) env form inblock))
+   ((bound? (special-form-func opname))
+    (call (special-form-func opname) form env inblock))
 
    ;; none of the above
    (else (gen-error op "undefined symbol: %q" opname))))
@@ -151,7 +162,7 @@
 ;;
 (define (collect-flags forms flags)
   (if (and (type? "S%" forms)
-           (filter "&private &inline" (symbol-name (first forms))))
+           (filter "&private &inline &global" (symbol-name (first forms))))
       (collect-flags (rest forms) (append flags (word 1 forms)))
       (cons flags forms)))
 
@@ -161,7 +172,6 @@
 (define (find-flag name flags)
   &private &inline
   (firstword (filter (concat "%" name) flags)))
-
 
 
 ;; Env-modifying functions can return an environment when `inblock` is true.
@@ -185,6 +195,30 @@
    (gen-error form "names may not contain '%s' characters" sym)))
 
 
+;; Construct vector of [a b c], omitting trailing empty items.
+;;
+(define (trimvec a b c)
+  &private
+  (concat [a]
+          (if (or b c)
+              (concat " " [b]
+                      (if c
+                          (concat " " [c]))))))
+
+;; Add a binding for symbol `sym` to `env`.  `type` = "F", "V", ...
+(define (bind-sym env symbol type flags fdef)
+  (define `is-global (find-flag "&global" flags))
+  (define `priv (if (find-flag "&private" flags) "p"))
+  (define `sym-name (symbol-name symbol))
+  (define `name (if is-global
+                    sym-name
+                    (gen-global-name sym-name)))
+
+  (concat (hash-bind sym-name
+                     (concat type " " (trimvec name priv fdef)))
+          (if env (concat " " env))))
+
+
 ;; (declare WHAT FLAGS...)
 ;; (declare (FNAME FARGS...) FLAGS...)
 ;; (define WHAT FLAGS... VALUE)
@@ -206,6 +240,7 @@
   (define `value (nth 2 fb))
   (define `priv (if (find-flag "&private" flags) "p"))
   (define `is-inline (find-flag "&inline" flags))
+  (define `is-global (find-flag "&global" flags))
 
   ;; inline function definition (to be embedded in env entry)
   (define `fdefn (append [ (for sym (rrest xwhat) (symbol-name sym)) ]
@@ -259,26 +294,30 @@
 
   ;; make function name known *within* the function body
   (define `env-in (if is-func
-                      (bind-sym fname "F" nil nil env)
+                      (bind-sym env fname "F" flags)
                       env))
 
   ;; make function/variable known *after* the definition (include
   ;; inline-expanded definition, in the case of an inline function)
   (define `env-out (cond
-                    (is-func (bind-sym fname "F" priv (if is-inline fdefn) env))
-                    (is-var  (bind-sym what "V" priv nil env))
+                    (is-func (bind-sym env fname "F" flags (if is-inline fdefn)))
+                    (is-var  (bind-sym env what "V" flags))
                     ((symbol? qwhat) (hash-bind (symbol-name qwhat)
                                                 ["M" (first body) priv]
                                                 env))
                     (else    (hash-bind (symbol-name mname)
                                         ["F" "#" priv fdefn]
                                         env))))
+  (define `(globalize sym)
+    ["Q" (if (find-flag "&global" flags)
+             (symbol-name sym)
+             (gen-global-name (symbol-name sym)))])
 
   ;; setform = expression that assigns the value to the name
   ;;           define var/func = declare + set
   (define `setform (if is-var
-                       `(call "^set" ,(symbol-to-string what) ,value)
-                       `(call "^fset" ,(symbol-to-string fname)
+                       `(call ,["Q" "^set"] ,(globalize what) ,value)
+                       `(call ,["Q" "^fset"] ,(globalize fname)
                               (lambda (,@fargs) ,@body))))
 
   (define `node (or error
@@ -289,31 +328,34 @@
   (block-result inblock env-out node))
 
 
-(define (ml.special-define args env form inblock)
+(define (ml.special-define form env inblock)
   (c0-declare-define form env inblock (nth 3 form) ""
                      (collect-flags (nth-rest 4 form))))
 
-(define (ml.special-declare args env form inblock)
+(define (ml.special-declare form env inblock)
   (c0-declare-define form env inblock (nth 3 form) "declare"
                      (collect-flags (nth-rest 4 form))))
 
 
 ;; (require STRING [&private])
 ;;
-;; Ths emits code to call `^require`, and adds the module's symbols to the
-;; environment.
+;; Emit code to call REQUIRE, and add the module's exported symbols to the
+;; current environment.
 ;;
-;;   rforms = remaining forms (after this `require` form)
-;;
-(define (ml.special-require args env form inblock)
+(define (ml.special-require form env inblock)
   (define `module (nth 3 form))
+  (define `mod-name (string-value module))
   (define `priv (find-flag "&private" (nth-rest 4 form)))
-  (let ((imports (require-imports module form priv))
-        (env env) (inblock inblock) (module module))
-    (define `node (if (error? imports)
-                      imports
-                      ["f" "^require" (notdir module)]))
-    (block-result inblock (append (rest imports) env) node)))
+
+  (or (check-type "Q" module form "STRING" "(require STRING)")
+      (let ((imports (require-module mod-name priv))
+            (env env)
+            (mod-name mod-name))
+        (if imports
+            (block-result inblock
+                          (append imports env)
+                          ["f" "^require" ["Q" (notdir mod-name)]])))
+      (gen-error form "require: Cannot find module %q" mod-name)))
 
 
 ;; c0-block-cc: Compile a vector of forms, calling `k` with results.
@@ -363,7 +405,7 @@
         (append
          (foreach n (indices xargs)
                   (hash-bind (symbol-name (nth n xargs))
-                             ["M" ["L" "S call" "Q ^n"
+                             ["M" ["L" "S call" ["Q" "^n"]
                                    (concat "Q " n)
                                    (concat "S " arg9)]]))
          (hash-bind arg9 ["A" (concat level 9)])))))
@@ -393,11 +435,11 @@
 
 ;; special form: (lambda ARGS BODY)
 
-(define (ml.special-lambda args env form)
+(define (ml.special-lambda form env)
   &private
-  (define `argform (first args))
+  (define `argform (nth 3 form))
   (define `arglist (rest argform))
-  (define `body (rest args))
+  (define `body (nth-rest 4 form))
 
   (or (lambda-check "L" argform form "(NAME...)")
       (vec-or (for a arglist
@@ -405,8 +447,9 @@
       ["X" (c0-block body (lambda-env arglist env)) ] ))
 
 
-(define (ml.special-begin args env)
+(define (ml.special-begin form env)
   &private
+  (define `args (rrest form))
   (c0-block args env))
 
 
@@ -465,14 +508,14 @@
 ;;   (il-vector (append "Q L" (for a (rest node) (c0-mq a env nest))))
 ;;
 ;;   ["Q L" "S a"]  -->  (il-vector ["Q" "L"] ["Q" "S a"])
-;;                  -->  (il-concat ["f" "^d" ["Q" "L"]] ["Q" " "]
-;;                                  ["f" "^d" ["Q" "S a"]])
+;;                  -->  (il-concat ["f" D ["Q" "L"]] ["Q" " "]
+;;                                  ["f" D ["Q" "S a"]])
 ;;                  -->  ["Q" "L S!0a"]
 ;;
 ;;   ["Q L" ["," ["S a"]  -->  (il-vector ["Q" "L"] ["V" "a"])
-;;                        -->  (il-concat ["f" "^d" ["Q" "L"]] ["Q" " "]
-;;                                        ["f" "^d" ["V" "a"])
-;;                        -->  ["C" ["Q" "L "] ["f" "^d" ["V" "a"]]]
+;;                        -->  (il-concat ["f" D ["Q" "L"]] ["Q" " "]
+;;                                        ["f" D ["V" "a"])
+;;                        -->  ["C" ["Q" "L "] ["f" D ["V" "a"]]]
 ;;
 ;;   ["Q L" ["@" ["S a"]  -->  (il-append [["Q" "L"]] ["V" "a"])
 ;;

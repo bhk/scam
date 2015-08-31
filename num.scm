@@ -376,7 +376,7 @@
 
 (define (mod a b)
   (if (filter "1 2 3 5 9 10" b)
-      (call (concat "mod-" b) a)
+      (call (local-to-global (concat "mod-" b)) a)
       (let ((sa (sign a))
             (ua (nnorm (uencode a)))
             (ub (nnorm (uencode b))))

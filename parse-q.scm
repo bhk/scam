@@ -25,15 +25,15 @@
 
 ;; pdec un-does penc
 
-(define (tde s)
-  (check-eq s (pdec (penc s))))
+(define `(pde s)
+  (expect s (pdec (penc s))))
 
-(expect 1 (tde ""))
-(expect 1 (tde " "))
-(expect 1 (tde "x\ty \t z"))
-(expect 1 (tde "                    "))
-(expect 1 (tde "a b !0 c\"d(x);z"))
-(expect 1 (tde "x; \\  ;; \\\" \\\\\" 0 ! "))
+(pde "")
+(pde " ")
+(pde "x\ty \t z")
+(pde "                    ")
+(pde "a b !0 c\"d(x);z")
+(pde "x; \\  ;; \\\" \\\\\" 0 ! ")
 
 ;; pdec-str un-does penc but also decodes backslash sequences
 ;; and returns a demoted string.
@@ -54,8 +54,8 @@
 (define (pexpect pat value)
   (if (not (filter pat value))
       (expect pat value)))
-      
-      
+
+
 ;; form value accessors
 (pexpect "S%" (symbol? `x))
 (expect ""  (symbol? `"x"))
@@ -69,9 +69,10 @@
 ;(expect "S z" (list-nth 3 ["L" "S x" "S y" "S z"]))
 
 ;; format-form
-(expect "(foo (x \"y\"))"  (format-form 
+(expect "(foo (x \"y\"))"  (format-form
                             ["L" "S foo" ["L" "S x" "Q y"]]))
 (expect "(foo ,\"x\")" (format-form ["L" "S foo" "x"]))
+(expect "`(foo)" (format-form ["`" ["L" "S foo"]]))
 
 ;; find-word
 (expect 3 (find-word "b a b c" 2 "b"))
@@ -135,7 +136,7 @@
 
 (define test-lnum-subj
   (penc "A xxx x B\nC D\n\nE\n    \n\nF xx G"))
-    
+
 (define (test-lnum ch)
   (define `ndx (words (concat "x " (first (split ch test-lnum-subj)))))
   (describe-lnum ndx test-lnum-subj))
@@ -172,7 +173,7 @@
 
 (expect 1 (see "TFILE:1: unterminated string\nat: *\"*abc"
                (tde "E.1 \"")))
- 
+
 (expect 1 (see "TFILE:2: unmatched \"(\"\nat: *(*def)\n"
                (tde "E.5 ( blahblah")))
 

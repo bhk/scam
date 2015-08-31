@@ -5,14 +5,6 @@
 (require "gen" &private)
 
 
-;; bind-sym
-
-(expect (hash-bind "f" "F f")
-        (bind-sym "S f" "F" ""))
-
-(expect (hash-bind "f" "F f p DEFN")
-        (bind-sym "S f" "F" "p" "DEFN"))
-
 ;; after, env-rewind
 
 (expect "b c a"  (after "a" "a b c a"))
@@ -52,12 +44,19 @@
         (gen-error "Q.12 x" "Msg: %s %s" "hello" "error"))
 
 
+;; env-compress
+
+(for s [",.;[]\!1!0!11!10!021!10 !. !@#$%^&*()_+=|}{\\][/.,?><';\":`~,i x!=F!0x v!=V!0x"]
+     (expect s (env-expand (env-compress s))))
+
+
 ;; env-export & env-import
 
 (define (export-round-trip env flag filename)
   (env-import
-   (env-parse
-    (concat "# comment\n" (env-export env) "# F F F F F F\n"))
+   (env-parse [ "# comment"
+                (subst "\n" "" (env-export env))
+                "# F F F F F F"])
    flag
    filename))
 
@@ -66,8 +65,8 @@
 
 (expect (append (hash-bind "f" "F f i")
                 (hash-bind "v" "V X i")
-                (hash-bind "I" ["F" "I" "iFile Name.min" ["a b" "S a"]])
-                (hash-bind "m" ["M" "Q 1" "iFile Name.min"])
+                (hash-bind "I" ["F" "I" "iMOD" ["a b" "S a"]])
+                (hash-bind "m" ["M" "Q 1" "iMOD"])
                 (hash-bind "a:n\n,x" "V xyz i"))
 
         (export-round-trip
@@ -79,7 +78,7 @@
                  (hash-bind "m" ["M" "Q 1" ""])
                  (hash-bind "a:n\n,x" "V xyz"))
          ""
-         "File Name.min"))
+         "MOD"))
 
 
 ;; import public AND private members

@@ -24,7 +24,12 @@
 
 ;; compile first expression in text
 (define (CX text env is-file)
-  (nth 2 (DUMP "gen1" (gen1 (DUMP "gen0" (gen0 (parse-text text) env)) is-file))))
+  (define `forms (parse-text text))
+  (define `il (gen0 forms (or env base-env)))
+  (define `errors-exe (gen1 il is-file))
+
+  (nth 2 errors-exe))
+;  (nth 2 (DUMP "gen1" (gen1 (DUMP "gen0" (gen0 (parse-text text) env)) is-file))))
 
 ;; compile and execute form
 ;;
@@ -62,9 +67,9 @@
 
 ;; set
 
-(expect "$(call ^set,var,1)" (CX "(declare var) (set var 1)"))
-(expect "$(call ^fset,fn,1)" (CX "(declare (fn)) (set fn 1)"))
-(expect "$(call ^fset,fn,1,2)" (CX "(declare (fn)) (set fn 1 2)"))
+(expect "$(call ^set,var,1)" (CX "(declare var &global) (set var 1)"))
+(expect "$(call ^fset,fn,1)" (CX "(declare (fn) &global) (set fn 1)"))
+(expect "$(call ^fset,fn,1,2)" (CX "(declare (fn) &global) (set fn 1 2)"))
 
 ;; ?
 
@@ -87,7 +92,7 @@
 (expect "1" (CX "(let& ((a 1)) a)"))
 (expect "2" (CX "(let& ((a 1) (b 2)) b)"))
 (foreach SCAM_DEBUG "-"
-    (expect "$(call f,1)" (CX "(begin (declare (f)) (let& ((x (f 1))) x))")))
+    (expect "$(call f,1)" (CX "(begin (declare (f) &global) (let& ((x (f 1))) x))")))
 
 
 (let-global ((SCAM_DEBUG ""))
@@ -98,14 +103,14 @@
 
 (define (macrotest in out)
   (let&
-   ((name (concat "ml.macro-" (symbol-name (nth 2 in)))))
-   (let ((result (strip-indices (call name in)))
-         (expected (strip-indices out)))
-     (if (eq result expected)
-         1
-         (begin
-           (print "Result: " (subst "\n" "\n        " (format-form result)))
-           (print "   Not: " (subst "\n" "\n        " (format-form expected))))))))
+      ((name (local-to-global (concat "ml.macro-" (symbol-name (nth 2 in))))))
+    (let ((result (strip-indices (call name in)))
+          (expected (strip-indices out)))
+      (if (eq result expected)
+          1
+          (begin
+            (print "Result: " (subst "\n" "\n        " (format-form result)))
+            (print "   Not: " (subst "\n" "\n        " (format-form expected))))))))
 
 (expect 1 (macrotest
            '(let ((a 1) (b "q")) (+ a b))
@@ -160,7 +165,7 @@
 
 (expect (strip-indices (c0 '(foreach a& [1 2]
                                      (call "^d" (let& ((a (call "^u" a&)))
-                                                      (or a))))))
+                                                  (or a))))))
         (strip-indices (c0 '(for a [1 2] (or a)))))
 
 (expect "$(foreach x&,1 2 3,$(call ^d,$(and $(call ^u,$(x&)))))"
@@ -178,3 +183,52 @@
            '(if a b (if c (begin d e) (begin f g)))))
 
 (print "compile ok")
+
+
+;; global-name
+
+
+(let ((form1 ["L" ["S" "local-to-global"] ["Q" "X"]])
+      (form2 ["L" ["S" "global-name"] ["S" "A"]])
+      (form3 ["L" ["S" "global-name"] ["S" "UNDEF"]])
+      (form4 ["L" ["S" "global-name"] ["L"]])
+      (env (hash-bind "A" ["V" "ns~A" "" ""])))
+
+  (expect ["C" ["Q" (gen-global-name "")] ["Q" "X"]]
+          (ml.special-local-to-global form1 env))
+
+  (expect ["Q" "ns~A"]
+          (ml.special-global-name form2 env))
+
+  (expect ["E." "\"UNDEF\" is not a global variable"]
+          (ml.special-global-name form3 env))
+
+  (expect 1 (see "invalid"
+               (ml.special-global-name form4 env))))
+
+;; defmacro
+
+(declare SCAM_NS &global)
+
+(let-global ((SCAM_NS "_"))
+  (let ((o (ml.special-defmacro `(defmacro (foo form env) "Q hello")
+                                (hash-bind "a" "B c")
+                                1)))
+    (define `env (nth 2 o))
+    (expect "env" (first o))
+    (expect (hash-get "foo" env) ["X" "_foo"])
+    (expect (hash-get "a" env) "B c")
+    (expect "F" (word 1 (nth-rest 3 o)))))
+
+;; (use STRING)
+
+(define *use-test* nil)
+(let-global ((^require (lambda (s) (set *use-test* s)))
+             (require-module (lambda (name priv)
+                                   (hash-bind "name" ["X" "name" "i"]))))
+  (define `env (hash-bind "x" "M abc"))
+  (expect "Q" (ml.special-use `(use "foo")))
+  (expect ["env" (hash-bind "name" ["X" "name" "i"] env) "Q"]
+          (ml.special-use `(use "foo") env 1))
+  (expect "foo" *use-test*)
+  (print "ok"))

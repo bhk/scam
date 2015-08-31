@@ -3,7 +3,7 @@
 ;;--------------------------------------------------------------
 
 (require "core")
-(declare SCAM_DEBUG)
+(declare SCAM_DEBUG &global)
 
 
 (define (xshell str)
@@ -35,12 +35,14 @@
 ;; which trims trailing newlins and then converts newlines to spaces.)
 ;;
 (define (shell! cmd)
-  (concat-vec
-   (subst "!n" "\n"
-          (xshell (concat cmd " | sed -e 's/!/!1/g;s/ /!0/g;s/$/!n/g'")))))
+   (subst " " "" "!n" "\n" "!0" " " "!1" "!"
+          (xshell (concat cmd " | sed -e 's/!/!1/g;s/ /!0/g;s/$/!n/g'"))))
 
 
 ;; Read one line from stdin.
+;;
+;; Note: On MacOS, input lines longer than 1023 characters will cause bad
+;; things to happen.
 ;;
 (define (getline prompt)
   (if prompt
@@ -58,6 +60,18 @@
   (if fname
       (shell! (concat "cat < " (quote-sh-arg fname)))
       (print "error: read-file: nil filename")))
+
+
+(define (read-lines fname start end)
+  (define `command
+    (concat "sed -E '"
+            (if start
+                (concat start "," end "!d;"))
+            "s/!/!1/g;s/\t/!+/g;s/ /!0/g;s/$/!n/g' "
+            fname))
+  (if fname
+      (subst " !n" " !." "!n" "" (xshell command))
+      (print "error: read-lines: nil filename")))
 
 
 (define (file-exists? fname)

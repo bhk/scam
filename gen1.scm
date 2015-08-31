@@ -5,17 +5,24 @@
 (require "core")
 (require "parse")
 (require "escape")
+(require "gen")
 (require "gen0")
+
 
 ;;--------------------------------------------------------------
 ;; "gen" coding
 ;;
 ;; To represent up-value references and embed error messages we use
-;; character sequences that are otherwise never seen in generated Make code.
+;; character sequences that are otherwise never seen in a SCAM-generated
+;; Make expression.
 ;;
 ;;  * Upvalue from parent:   ($.^=1)  ($.^=2)  ...
 ;;  * Grandparent upvalue:   ($.^^=1,2) ($.^^=2,2) ...
 ;;  * Errors:                ($.@ERROR@)
+;;  * Temporary usage:       ($)
+
+
+(define `marker "($)")
 
 
 ;; Escape a literal string for a Make expression
@@ -25,7 +32,11 @@
 
 ;; Escape a lambda value for inclusion in a Make expression
 (define (gen-escape-lambda code)
-  (subst "$" "$$" "($$." "($." "($.^" "($." "($.=" "$(call ^e,$" code))
+  (subst "$" "$$"
+         "($$." "($."
+         "($.^" "($."
+         "($.=" "$(call ^e,$"
+         code))
 
 
 ;; Embed arbitrary string into a Make expression.  This will survive any
@@ -111,10 +122,10 @@
 
 ;; c1-vec: compile multiple expressions
 (define (c1-vec args delim quotefn)
-  (subst ".$. " delim ".$." ""
+  (subst (concat marker " ") delim
+         marker ""
          (foreach a args
-                  (concat (call (or quotefn "c1") (promote a))
-                          ".$."))))
+                  (concat (call quotefn (promote a)) marker))))
 
 (define (c1-E node)
   (gen-embed node))
@@ -136,17 +147,17 @@
           " " ; this space is necessary even when there are no arguments
           (protect-ltrim (c1-vec (rrest node) ","
                               (if (filter "and or" name)
-                                  "c1-arg-trim"
-                                  "c1-arg")))
+                                  (global-name c1-arg-trim)
+                                  (global-name c1-arg))))
           ")"))
 
 ;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
 ;;
 (define (c1-args9 nodes)
   (if (word 9 nodes)
-      (concat (c1-vec (wordlist 1 8 nodes) "," "c1-arg")
+      (concat (c1-vec (wordlist 1 8 nodes) "," (global-name c1-arg))
               (concat "," (protect-arg (c1 (il-vector (nth-rest 9 nodes))))))
-      (c1-vec nodes "," "c1-arg")))
+      (c1-vec nodes "," (global-name c1-arg))))
 
 
 ;; Call user-defined function (by name):   ["f" <name> <a> <b>]
@@ -154,7 +165,7 @@
   (define `ename (protect-ltrim (gen-escape-literal (nth 2 node))))
   (define `args (c1-args9 (rrest node)))
 
-  (concat "$(call " ename (if args ",") args ")"))
+  (concat "$(call " ename (if (rrest node) ",") args ")"))
 
 
 ;; Call lambda value:  ["Y" <fn> <a> <b> ... ]
@@ -172,7 +183,7 @@
 ;; return value of last expression
 (define (c1-B node)
   (if (word 3 node)
-      (concat "$(and " (c1-vec (rest node) "1," "c1-arg") ")")
+      (concat "$(and " (c1-vec (rest node) "1," (global-name c1-arg)) ")")
       (if (word 2 node)
           (c1 (nth 2 node)))))
 
@@ -192,7 +203,7 @@
         ((type? "R" node) (nth 2 node))
         ((type? "f" node) (c1-f node))
         ((type? "V" node) (c1-V node))
-        ((type? "C" node) (c1-vec (rest node)))
+        ((type? "C" node) (c1-vec (rest node) "" (global-name c1)))
         ((type? "X" node) (c1-X node))
         ((type? "B" node) (c1-B node))
         ((type? "Y" node) (c1-Y node))
@@ -219,7 +230,7 @@
 (define (c1-fset lhs rhs)
   (if (findstring "$" (subst "$$" "" rhs))
       ;; rhs not constant
-      (concat "$(call ^fset," (protect-arg lhs) "," (protect-arg rhs) ")\n")
+      (concat "$(call " "^fset" "," (protect-arg lhs) "," (protect-arg rhs) ")\n")
       (if (or (findstring "#" rhs)
               (findstring "\n" rhs)
               ;; leading whitespace?
@@ -254,8 +265,8 @@
         (filter "Q%" (word 3 node))
         (concat (string-value (nth 3 node)) "\n"))
 
-   ;; use makefile syntax for assignments, versus "$(call ^set,...)
-   (if (filter "^fset ^set" (il-funcname node))
+   ;; use makefile syntax for assignments, versus "$(call SET,...)
+   (if (filter (concat "^set" " " "^fset") (il-funcname node))
           (let ((args (il-user-args node))
                 (name (il-funcname node)))
             (if (not (nth 3 args))

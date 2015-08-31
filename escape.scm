@@ -57,12 +57,12 @@
 (define (replace-nl str)
   &private
   &inline
-  (subst "\n" "$(\\n)" str))
+  (subst "\n" "$!" str))
 
 (define (replace-hash str)
   &private
   &inline
-  (subst "#" "$(\\H)" str))
+  (subst "#" "$&" str))
 
 
 ;; Prevent leading spaces from being trimmed.
@@ -152,7 +152,7 @@
 (define (balance str)
   &private
   (balance2
-   (subst " " "" "!R" "$(\\R)" "!L" "$(\\L)"
+   (subst " " "" "!R" "$]" "!L" "$["
           (balance-match (subst "," "!C," ")" " !R " "(" " !L"
                                 (demote str))))))
 
@@ -219,7 +219,7 @@
 ;; Escape LHS of "=" or ":=" assignment
 ;;
 ;;  - replace "#" with alternative
-;;  - protect "=", ":", leading space, trailing space
+;;  - protect "=", ":", leading space, trailing space, and keywords
 ;;  - encode newlines
 ;;
 (define (protect-lhs str)

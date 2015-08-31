@@ -20,6 +20,11 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
    `$(filter ...)`, `$(if ...)`, and so on. The SCAM compiler itself is
    written in SCAM, and executes in Make.
 
+   GNU Make presents an odd set of building blocks.  While it does provide a
+   number of string manipulation functions, it does not provide primitives
+   for addressing characters by index, or taking the length of a string.  It
+   lacks arithmetic operators and even a basic comparison operators.
+
  * An easier way to develop complex makefiles.
 
    Makefiles can easily make use of functions written in SCAM. When writing
@@ -32,13 +37,14 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
 
      - First-class functions.
 
+     - Hygienic macros.
+
      - Compile-time warnings for many coding errors, such as references to
        undefined variables or functions.
 
      - Tracing facilities. (See [trace.scm](trace.scm).)
 
      - An interactive mode (REPL).
-
 
  * An esoteric programming language.
 
@@ -73,4 +79,3 @@ use `.v2/scam` to build `.v3/scam`.
 
 `make promote` will replace the golden compiler, `bin/scam`, with `.v2/scam`
 after verifying that `.v3/scam` and `.v2/scam` are identical.
-

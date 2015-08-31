@@ -2,13 +2,7 @@
 ;; core : general-purpose functions
 ;;--------------------------------------------------------------
 
-(declare SCAM_DEBUG)
-
-(define `nil "")
-
-(define (not v)
-  &inline
-  (if v nil "1"))
+(declare SCAM_DEBUG &global)
 
 (define (eq a b)
   (define `aa (concat 1 a))
@@ -16,30 +10,13 @@
   (if (findstring aa (findstring bb aa))
       1))
 
-(define `identity
-  (lambda (a) a))
+(define (identity a)
+  &inline
+  a)
 
 ;; Return the parameter that is not nil (unless both or none are nil)
 (define (xor a b)
   (if a (if b nil a) b))
-
-(define (first vec)
-  &inline
-  (promote (word 1 vec)))
-
-;; (nth-rest n vec) == vector starting at `n`th item in `vec`
-(define (nth-rest n vec)
-  &inline
-  (wordlist n 99999999 vec))
-
-(define (rest vec)
-  &inline
-  (nth-rest 2 vec))
-
-(define (rrest vec)
-  &inline
-  (nth-rest 3 vec))
-
 
 ;; concatenate strings in VEC, separating them with DELIM
 (define (concat-vec vec delim)
@@ -214,85 +191,6 @@
       (if c "" s)))
 
 
-;; Return readable and parseable representation of STR.
-;;
-(define (format str)
-  (if (and (findstring "!" str)
-           (eq str (foreach w str (demote (promote w)))))
-      (concat "[" (foreach w str (format (promote w))) "]")
-    (or (isnumber str)
-        (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" "\t" "\\t"
-                            str) "\""))))
-
-
-;;----  printf  ----
-;;
-;; Usage:
-;;   (printf FMT VALUE...)
-;;
-;; Format expressions:
-;;   %s  ->  argument as-is
-;;   %q  ->  describe argument with SCAM literal or vector syntax
-;;           (number, string, or vector)
-
-(define (vsprintf args)
-  (define `(printf-warn args)
-    (print "** Warning: bad format string: '" (nth 1 args) "'"))
-
-  (define `fields
-    (subst "%" " !%" " !% !%" "%" (concat "%s" (word 1 args))))
-
-  (concat-vec
-   (foreach w (join (concat "!. " (rest args)) fields)
-            (if (findstring "!%s" w)
-                (subst "!%s" "" w)
-                (if (findstring "!%q" w)
-                    (concat (demote (format (first (subst "!%q" " " w))))
-                            (word 2 (subst "!%q" "!. " w)))
-                    (if (findstring "!%" w)
-                        ;; "!%x" => bad format string
-                        ;; otherwise, it's an arg without a format field
-                        (begin (printf-warn args)
-                               (word 2 (subst "!%" "! %" w)))))))))
-
-(define (sprintf format ...)
-  (vsprintf *args*))
-
-(define (printf format ...)
-  (info (vsprintf *args*)))
-
-
-(define (expect-x o i file-line)
-  (if (eq o i)
-      (if (findstring "O" SCAM_DEBUG)
-          (print "OK: " (format o)))
-    (begin
-      (print file-line ": error: assertion failed"
-             "\nExpected: " (format o)
-             "\n     Got: " (format i) "\n")
-      (error ""))))
-
-(define `(expect o i)
-  (expect-x o i (current-file-line)))
-
-
-;; Return 1 if substr appears within str.  Print diagnostic otherwise.
-(define (see substr str)
-  (if (findstring substr str)
-      1
-      (begin (print "Expected: " (subst "\n" "\n          " substr))
-             (print "  Within: " (subst "\n" "\n          " str)))))
-
-
-;; (bound? VAR) -> 1 if variable VAR is defined
-;;
-;; Note that VAR must be a string that names the variable, not
-;; a quoted symbol: (bound? "map"), not (bound? 'map).
-;;
-(define (bound? var)
-  (if (filter-out "u%" (flavor var)) 1))
-
-
 ;; concatenate one or more (potentially empty) vectors, word lists, or
 ;; hashes.
 ;;
@@ -360,6 +258,90 @@
              (prefix (word 1 (subst "!=" "!=% " entry))))
         (append entry
                 (hash-compact (filter-out prefix (rest hash)))))))
+
+
+
+;; Return readable and parseable representation of STR.
+;;
+(define (format str)
+  (define `(format-hash h)
+    (concat
+     "{"
+     (concat-vec (foreach e h
+                          (begin
+                            (define `key (hash-key e))
+                            (define `value (hash-value e))
+                            [(concat (format key) ": " (format value))]))
+                 ", ")
+     "}"))
+
+  (or (if (findstring "!" str)
+          (if (eq str (foreach w str (demote (promote w))))
+              (concat "[" (foreach w str (format (promote w))) "]")
+              (if (findstring "!=" (word 1 str))
+                  (format-hash str))))
+      (isnumber str)
+      (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" "\t" "\\t"
+                          str) "\"")))
+
+
+;;----  printf  ----
+;;
+;; Usage:
+;;   (printf FMT VALUE...)
+;;
+;; Format expressions:
+;;   %s  ->  argument as-is
+;;   %q  ->  describe argument with SCAM literal or vector syntax
+;;           (number, string, or vector)
+
+(define (vsprintf args)
+  (define `(printf-warn args)
+    (print "** Warning: bad format string: '" (nth 1 args) "'"))
+
+  (define `fields
+    (subst "%" " !%" " !% !%" "%" (concat "%s" (word 1 args))))
+
+  (concat-vec
+   (foreach w (join (concat "!. " (rest args)) fields)
+            (if (findstring "!%s" w)
+                (subst "!%s" "" w)
+                (if (findstring "!%q" w)
+                    (concat (demote (format (first (subst "!%q" " " w))))
+                            (word 2 (subst "!%q" "!. " w)))
+                    (if (findstring "!%" w)
+                        ;; "!%x" => bad format string
+                        ;; otherwise, it's an arg without a format field
+                        (begin (printf-warn args)
+                               (word 2 (subst "!%" "! %" w)))))))))
+
+(define (sprintf format ...)
+  (vsprintf *args*))
+
+(define (printf format ...)
+  (info (vsprintf *args*)))
+
+
+(define (expect-x o i file-line)
+  (if (eq o i)
+      (if (findstring "O" SCAM_DEBUG)
+          (print "OK: " (format o)))
+    (begin
+      (print file-line ": error: assertion failed"
+             "\nA: " (format o)
+             "\nB: " (format i) "\n")
+      (error ""))))
+
+(define `(expect o i)
+  (expect-x o i (current-file-line)))
+
+
+;; Return 1 if substr appears within str.  Print diagnostic otherwise.
+(define (see substr str)
+  (if (findstring substr str)
+      1
+      (begin (print "Expected: " (subst "\n" "\n          " substr))
+             (print "  Within: " (subst "\n" "\n          " str)))))
 
 
 ;; Return a vector/wordlist of the unique members of a vector/wordlist.
@@ -444,3 +426,32 @@
 ;;
 (define `(type? pat struct)
   (filter pat (word 1 struct)))
+
+
+;; Return items that match prefix or begin with 'prefix %'.
+;;
+(define (assoc-initial prefix vec)
+  (define `assoc-pct
+    (subst "!8" prefix
+           (filter "!8 !8!0%"
+                   (subst prefix "!8" vec))))
+
+  (promote
+   (firstword
+    (if (findstring "%" prefix)
+        assoc-pct
+        (filter (concat prefix " " prefix [" %"]) vec)))))
+
+
+;; Return the first vector whose initial items match those in key-vec.
+;;
+(define `(assoc-vec key-vec vec)
+  (assoc-initial [key-vec] vec))
+
+
+;; Return the first vector whose first item is `key`, given a vector of
+;; vectors.
+;;
+(define `(assoc key vec)
+  ;; double-demote requires just one subst more than single demote
+  (assoc-initial (subst "!" "!1" [key]) vec))

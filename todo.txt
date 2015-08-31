@@ -1,51 +1,78 @@
-TODO:
+TODO
 
- * builtins
+ * (data (Symbol pos name)
+         (String pos text)
+         (List pos nodes)
+         ...)
 
-    (? subst a b c)           Unsupported.
+   Maybe:
+     (data? CTOR value)
+     (data-tag CTOR)
+     (data-tag value)
+     (data-constructor tag/value)
+     (data-tags)  -->  { tag: [typename args...], ...}  for all tags in scope
 
-    subst                     `undefined variable: "subst"`
+    - Use `case` to deconstruct
+    - Display constructors in `format`
+    - Encode using nth-rest rather than (nth N .):  &vector nodes
+    - Encode using word rather than (nth N .):  &word pos
 
-    (call "subst" 1 2)        Error.
+ * (case EXPR
+      ((CtorA x y)    EXPR)     ; `a` and `b` bound
+      ((CtorB? node)  EXPR)     ; `node.a` and `node.b` bound
+      (["A" a b]      EXPR)     ; `a` and `b` bound
+      (CONST          EXPR)
+      (`SYNTAX        EXPR)
+      (else           EXPR))
 
-    (define (subst a b c) 1)  Actually defines variable, but...
-    (subst 1 2 123)           Does not call `subst` var, and...
-    (subst 1 2)               Error (make exits).
+ * Move syntax quoting to scam-ct
 
- * Bundle needed indirect dependencies
+ * Parse hash syntax (?)
 
- * Namespaces (see below)
+ * builtin enhancements
+
+    word                     ... attempt to obtain value of builtin: "word"
+    (call "word" 1)          Stop. (!)
+    (define (word a b) 1)    Actually defines variable, but...
+    (word 1 2)               Does not call defined function, and ...
+    (word 1)                 Stop. (!)
 
  * WARN when shadowing variables!
-    - AT LEAST FOR BUILTINS!
-    - helps with problem of redefining built-ins in REPL
-    - most common error case
+    - most common error case (esp. builtins) (esp. in REPL)
+    - allow `(let ((x x)) ...)` or `&shadow` exceptions
 
- * scam -x file : when file requires other files...
+ * scam -x: build with `scam -o .scam/NAME` & then run
 
- * properly locate errors in macros (associate with the right file)
+ * Bugs (see gen-test.scm)
 
- * num: / --> i/,  + --> i+,  ...
+ * Deconstruction of vectors in assignments
 
-WISHLIST
+      (let ([one two] ...) ...)
+      (let ([one rest...] ...) ...)
+
+ * c0 functions:  return [IL ...env] consistently.   When `inblock` is nil,
+  `...env` can be nil.
+
+ * (expand NAME)  -->   "$(NAME)"
+   (set-expand NAME)  : replaces set-global
+   (set-value NAME)   : replaces set-rglobal
+
+ * chose alias for keyword collisions (or namespace everything)
+   (define (info a b) ...)  -->  "~info = ..."
+
+ * Display of data
+
+    - @q -->  Undo constructors  "0 1 2 3"       -->  "(Ctor 1 2 3)"
+    - @q -->  Undo hashes   -->  { a: 123,  "str": 234 }
+    - @f -->  Undo parsing?      "(Symbol "a")"  -->  'a  [not true undo, due to loc]
 
  * (? macro ...)
+   (? any ...)  -->  (call "^tv" "any" (any ...))
+                or:  (call "^yt" "any" (lambda (args) (any args)) ...)
 
  * arbitrary precision floating point
     - fp divide w/ specified precision
     - bug: (^ 2 100)  [in fp]
-
- * (data (Symbol pos name)
-         (String pos text)
-         (List pos @nodes)
-         ...)
-
-   Requires:
-    - Use `case` to deconstruct.
-    - Encode using nth-rest rather than (nth N .):  @ nodes
-    - Encode using word rather than (nth N .):  &word pos
-    - Fix compiler version dependency implicit in macro-style definitions
-      that use "`" or "`".
 
  * "rest" and "spread" with "..." syntax
 
@@ -71,275 +98,152 @@ WISHLIST
  * aliases: (define `X Y) should bind Y's defn (minus 'priv' bit) to X
    ... but this would break rewind.
 
- * Identify arguments using special IL record (vs. R)
-      A n level           ->   local (arg)       $n
-
-   (To simplify optimization.)
-
  * Integrate `strlen` with core.scm and use `strlen` to report column
    for errors.
 
  * check arg counts for all functions (not just inline functions)
     - export/import arg count
 
- * opt: replace "!0" with "~" ?
+ * looping constructs
+   http://www.scheme.com/tspl4/control.html#./control:h4
 
- * opt: constant folding across 'C' nodes, ^u, ^d, ^n, pure builtins
+     let:  (let name ((var expr) ...) body...)
 
-   - reduces size of qquote results
+        (define (factorial n)
+           (let f ((i n) (a 1))
+             (if (> i 0)
+                 (f (- i 1) (* a i))
+                 a)))
 
- * opt:  (if (not x) a b)  -->  (if (if x "" 1) a b)  -->  (if x b a)
+     do:   (do ((var init update) ...) (test result ...) expr ...)
 
-   (*if* (*if* <exp> *C1* *C2*) <a> <b>)       where C1, C2 are constants
-   --> (if <exp> (if C1 <b>) (if C2 <a>))
-
-   (if TRUENODE a b)  -->  a
-   (if VOIDNODE a b)  -->  b
-
- * opt: transformations
-
-    - constant folding
-
-        $(call demote,a b)  -->  a!0b
-
-    - (if x (f a) (f b))  -->  (f (if x a b))
-
-        f can take many forms: $(a/b),  $(call a/b,x,y,z),  [a/b ...]
-        f represents the commonality between the forms (top-down?)
-
-    - $(call scall,$(value v),...)  -->  $(call v,...)
-
-    - Naming anonymous functions (when there are no upvalues).
-
-      $$1$$2  -->  $(value <tmp>)     [where <tmp> = $1$2]
-
-      With scall elimination:
-
-         $(call scall,$$1$$2,...)  -->  $(call <tmp>,...)
-
-    - upvalue elimination
-
-      A: (let ((x y)) ...a...)  -->  (let ((x y) (a a)) ...a...)
-      B: ((lambda (x) ...a...) y)  -->  ((lambda (x y) ...a...) y a)
-
-            $(call scall,$(call escape,$1)$$1,$2)
-        --> $(call scall,$$2$$1,$2,$1)
-
- * opt: maximize void-node?
-
-   (void-node? (if x a b)) -->
-      (and (or (void-node? a) (void-node? x))
-           (or (void-node? a) (true-node? x)))
-
- * opt: interleave compile with parsing of top-level expressions
-
- * { key value[,] key value }
-
- * deconstruction in assignments:
-
-    (let ( ([a b c] (f x)) ... ) ...)
-
-    (case (f x)
-       (["X" ,a ,b] ...)
-       (["Y" ,a ,b ,c] ...)
-       (,x ...))
-
-   ["X" ,a ,@b]  =>  (append (demote "X") (demote ,a) ,b)
-   (string ,x)   =>  ["S" (demote ,x)]
-                 =>  (append (demote "S") (demote ,x))
-                 =>  (append "S" (demote ,x))
-                 =>  (concat "S" " " (demote ,x))
-   MATCH x (append C p) x
-     => (if (eq (wordlist 1 (words C) x) C)
-            (unpack p (wordlist (+ 1 (words C)) 99999 x)))
-
-   MATCH x (concat "str" p) x
-     => (foreach ndx (indices a) (if
-
-   ACTUALLY... declared variables should be unadorned symbols in the "match"
-   portion of the case statement.  (Think of algebraic types.)
-
-    (case VAL
-       (["X" a b c] EXPR1)
-       ...
-       (value ...)
-
-
-    (case VAL  ((ast-string n s) EXPR) ...)
-    ==> (case VAL  (["S" n s] EXPR) ...)
-    ==> (cond ((eq "S" (nth 1 VAL)) (let& ((n (nth 2 VAL)) (s nth 3 VAL) EXPR))) ...)
-
-    (eq "X" (nth 1 VAL))
-    ==> (filter "S" (word 1 VAL))
-
-    eq q (promote x)  ==>  eq (demote q) x
-    eq s (word ...)   ==>  filter s (word ...)
+        (define (factorial n)
+            (do ([i n (- i 1)]
+                 [a 1 (* a i)])
+                ((zero? i) a))))
 
  * .min -> .make
-
- * Note potentially fatal:
-      > (set "")
-      v0/repl.min:40: *** empty variable name.  Stop.
-      make: *** [interact] Error 2
 
  * To make hashes easily sortable by key, something other than
    "!=" -- maybe "!+" -- would be required.  (This could be subst'ed
    when sorting, however.)
 
- * ?: Use "file marker" to store file name in environment.
-   (avoid globals, and fix improper reporting when dealing with macros?)
+ * Better reporting of errors during macro expansion
 
- * opt: Use "require markers" to reduce size of exports
+   e.g. undefined symbols
+
+   Keep line numbers in macro defn, and track host file name as arg to
+   expansion.  (Or: embed reference to file in macro env entry.)
 
 
+Optimizations
+----
+
+ * Constant propagation:  (Call PURE CONST...) -->   (Const (PURE CONST...))
+
+   Functions are PURE if they have no side-effects and produce a value that
+   is purely a function of their inputs.  (No references to globals or I/O,
+   and no calls to functions that might do so.)
+
+   Properties of function nodes should be computed from the bottom-up to
+   avoid repeatedly revisiting the same node. (Same for other nodes that
+   contain other nodes.)
+
+    - const?      [if so, will already be a Const node]
+    - nil?        always evaluates to ""  (use in file code gen, blocks, conditionals..)
+    - true?       always evaluates to non-empty string  (e.g. demote)
+    - wordy?      result has no spaces or tabs?
+    - vectory?    "!" occurs *only* in [" " "\t" "!" ""]
+    - plain?      Contains no "!", spaces, tabs.
+    - nout?       evaluation will NOT have side-effects (set, info, shell, ...)
+    - nin?        result IS a purely function of inputs (does NOT read globals)
+
+    wordy? and vectory? and true?  ==>  (demote (promote x)) == x
+    nout? and nin?                 ==>  PURE
+
+ * IF constant propagation:
+
+    (if TRUE a b) -->  (Block TRUE a)
+    (if VOID a b) -->  (Block VOID b)
+
+ * IF strength reduction:
+
+    (if (nth N VEC) ...)       -->  (if (subst "!." "" (word N VEC)) ...)
+    (if (subst X TRUE Y) ...)  -->  (if (begin X TRUE Y) ...)
+
+ * Block reduction:
+
+     (Block PRE... POST)  -->  (Discard PRE)... POST
+
+     (Discard NOUT)  --> ""  [all consts are NOUT]
+     (Discard (Concat A B C)) -->  (Discard A) (Discard B) (Discard C)
+
+ * IF-NOT reduction:  (if (not x) a b) -->  (if x b a)
+ * IF-YES reduction:  (if (if C 1) a b) -->  (if C a b)
+
+     Rule:    (if (if C A B) X Y)   --> (if C (if A X Y) (if B X Y))    [if A and B are true or nil]
+     IF-NOT:  (if (if C nil 1) X Y) --> (if C (if nil X Y) (if 1 X Y))  [+const prop]
+     IF-YES:  (if (if C TRUE) X Y)  --> (if X (if TRUE X Y) (if nil Y)) [+const prop]
+
+ * IF CSE:  (if x (f a) (f b))  -->  (f (if x a b))
+
+     Special case:  (if PURE 1 1) -->  (begin PURE 1)  -->  1
+
+     This can be applied recursively to break apart complex commonality.
+
+ * Misc...
+
+     (word N (wordlist A B VEC))      -->  nil  ...or...  (word N+A-1 VEC)
+     (wordlist A B (wordlist C D VEC) --> (wordlist A+C-1 (min B D-C+1) VEC)
+
+     (demote WORD)          -->  (subst "!" "!1" WORD)  [when word is not nil]
+     (demote PLAIN)         -->  PLAIN
+     (promote PLAIN)        -->  PLAIN
+
+     (subst PURE PURE nil)  -->  nil
+     (word PURE nil)        -->  nil
+
+     (eq A WORD) --> (if (filter A WORD) 1)  ... (const? A), no "%" in A
+
+     (findstring WORD (findstring A WORD))  -->  (filter WORD A)
+
+     (eq CONST (nth N V)) -->  (eq (demote CONST) (word N V))
+                          -->  (filter (demote CONST) (word N V))
+
+     (demote (if COND X Y))   -->   (if COND (demote X) (demote Y))   [maybe reduces]
+
+
+ * Extraction and naming of anonymous functions
+
+     $$1$$2  -->  $(value <tmp>)     [where <tmp> = $1$2]
+
+     * lambda-call reduction:  (call ^Y,(value x),...)  -->  (call x,...)
+     * Requires no up-values.  To eliminate them:
+        A: (let ((x y)) ...a...)     -->  (let ((x y) (a a)) ...a...)
+        B: ((lambda (x) ...a...) y)  -->  ((lambda (x y) ...a...) y a)
+
+            $(call ^Y,$1,...,$$1$(call escape,$2)...)
+        --> $(call ^Y,$1,$2,...,$$1$$2...)
+        --> $(call ^Y,$1,$2,...,funcname)
+
+ * Misc
+    * Interleave compile with parsing of top-level expressions.
+    * Improve void-node?  (void? (if c a b)) --> (and (void? a) (void? b))
+    * Identify arguments using special IL record (vs. R)
+         A n level           ->   local (arg)       $n
+
+
+----------------------------------------------------------------
 Examples to be written:
 
  - cleanPath
  - numerical ordering
- - sort with arbitrary function
- - sortUnique
  - regular expressions
  - makefile lisp templating
  - syracuse / ackerman / HOTPO
  - web server
 
-
-Macros, Namespaces, eval-when-compile
---------------------------------
-
-Namespaces can be introduced as optional with minimal impact.  The
-compiler's own modules could use this to minimize naming conflicts -- only
-"exported" symbols would have to be unique.
-
- * (define `(macro a b c) ...)
-   - execute require'd MIN files
-   - declare & define macro: defmacro
-   - macroexpand
-   - splicing
-   - gensym
-   - macrolet
-
- * namespaces: V0 can compile & execute V1 without clobbering V0
-    - (ns "prefix")
-    - (declare (f a b c) (global "FULLNAME"))
-    - (declare x (global "FULLNAME"))
-    - (require LIB (prefix PREFIX)? (re-export)? ...)
-
- * compile-time tests
-     (eval-when-compie
-       (expect z (f  y)))
-
-
-Compile-time execution
-----
-
-A big problem for SCAM is that compile-time assignments might clobber
-running compiler functions.  Namespacing (used to distinguish generations of
-the compiler) could help here.
-
-Lisp-style macros demand compile-time execution of macros, and the functions
-they call.  Arbitrary restrictions on what can be called in compile time
-would limit the power of the feature.  Construction of complex user-defined
-data values at compile-time is also useful.
-
-Where do we draw the line between compile-time and run-time execution?  It's
-clear that `main` can be defined at compile-time and executed only at run
-time.  But what about top-level code (the file body)?
-
- - Execute it only at run-time.  (Current SCAM; does not allow for
-   user-defined macros.)
-
- - Execute at run time BY DEFAULT.
-
-   ELisp: compile- vs. run (load) time
-
-    - (eval-and-compile BODY...) is evaluated at compile-time and again
-      at run-time.  (Useful mainly for side-effects?)
-
-    - (require ...) : at compile-time loads (runs) the required file
-      to obtain functions and macros.
-
-    - (defmacro ...) : compile-time and run-time
-
-    - (eval-when-compile BODY...) compiles to a constant.
-
-      (eval-when-compile
-         (defmacro ...))
-
- - Execute at compile-time BY DEFAULT.
-
-   Think of the module source file as a constructor of a module, and
-   construction being a compile-time thing.  At run-time, the modules are
-   not "executed", but the values they "return" (in SCAM, this means symbols
-   visible in the environment at the end of the file) are assigned.  After
-   modules are loaded, `main` is called, which triggers all "execution".
-
-   Run-time variables and compile-time variables...
-
-   (define X (^ 2 100))  ; computed at compile-time
-   (define `X (^ 2 100)) ; lazy construct (executed where used)
-   (eval-when-run ???)
-
-Compile-time environment: dependencies for compile-time execution clean.
-Compilation should be doable at a different time and place, and should not
-vary with other environmental conditions that might affect the run time
-behavior.  Maybe this should be up to the user (but we shouldn't make his
-job too hard).
-
-Debugging: If compilation involves Turing-complete user-defined operations,
-the compiler/debugger won't know how to reverse the transformation to obtain
-source-level meaning.
-
-
-Compile-time execution should warn about clobbering the compiler's own
-functions!
-
-1. Macros require compile-time "execution".  It defines something at
-   compile-time that affects how subsequent things are compiled.
-
-2. How does compile-time execution relate to run-time?
-
-   We cannot expect external inputs to match exactly,so execution path may
-   differ.  What if the compile-time path runs through one 'defmacro' but
-   the run-time path runs through another?
-
-     (if (eq (DEBUG 1))
-         (defmacro print (a) )
-       (defmacro print (a) (info a)))
-
-3. In CL, "compiler macros" must preserve semantics and cannot extend syntax.
-
-   Does this mean that macros are fundamentally run-time?
-
-
-macros into runtime?
---------------------
-
- * defmacro (compile time only)
-
-    * compiler wants "run time only" behavior: emit code that sets
-      "ml-macro-X" at run time.
-
-    * compiler may elsewhere want "compile time only" behavior (for macros
-      intended only for the compiler itself).
-
-    * user code typically wants "compile time only", but may also want
-      runtime only (macros in libraries)
-
-    * Supporting (eval-at-compile ...) would work if:
-
-        - compiler itself must be careful to cleanly segregate
-          compile-time-only from runtime-only things (to avoid conflict with
-          previous compiler) -- runtime is tricky here.
-
-        - user code must avoid stepping on compiler
-
- * gen0 <-> macros dependency inversion
-
-   gen0 has run-time dependency on macros, but not compile dependency.
-
 ----------------------------------------------------------------
-
 Root causes of some BUGS I've encountered:
 
  * Wrong number of arguments (misplaced parentheses)  X2
@@ -352,130 +256,30 @@ Root causes of some BUGS I've encountered:
 
  * Used `func` instead of `"func"`
 
- * undefined variable name (at least 6 times)
+ * Undefined variable name (at least 6 times)
 
- * .v1/parse-q.min:51: *** target pattern contains no `%'.  Stop.
-
-   (Top-level function returning value that gets re-interpreted by make.)
-
- * Overloaded "eval" with user-defined function!
-
- * Insufficient arguments to (word, ...)  -- could check at compile time.
-
+ * Shadowed "eval" with user-defined function!
 
 ----------------------------------------------------------------
-
-(transform (node)
- ( `(car ,form) `(wordlist 2 99999999 ,form) )
- ( `(car ,@other) (form-error "car takes one argument" node)))
-
- ( `(let* ( (,name ,value) ,@bindings ) ,body)
-   `( (lambda (,name)
-        (let* ,bindings ,body))
-      ,value ) ))
-
-
-(transform ('car name)
-           `(wordlist 2 99999999 ,name))
-
-(transform ('let* ((name value) ...bindings) ...body)
-           `( (lambda (,name)
-                (let* ,bindings ,@body))
-              ,value ))
-
-(transform ('let* () ...body)
-           `(progn ...body))
-
-----------------------------------------------------------------
-Reflections on Self-Hosting
-
-Care must be taken to avoid circular definitions of the sort described in
-the Ken Thompson paper **Reflections on Trusting Trust" (where "\t" is
-defined as "\t").  In the extreme, we could reduce the source of the
-compiler to:
-
-    (define (main ...) (compile ...))
-
-These circularities leave the definition "lost in the mists of time".  The
-behavior is not present in the source; instead, it is propagated from one
-compiled compiler to its progeny.
-
-The immediate problem (for my purposes) is that the behavior, being absent
-from the source, is not subject to modification, at least not directly. Any
-compiler behavior can, of course, be reinvented, but the point is not to
-maintain all of the behavior in source form.  Keeping the compiler
-"grounded" while self-hosting is the challenge.
-
-This is not cut-and-dried.  After all, whenever we write a compiler for
-language *in* the same language, we are obviously dealing with cyclical
-definitions.  It is acknowledged that a self-hosting compiler cannot serve
-as a formal definition of language semantics.
-
-   ... although I wonder about this.  A fully "grounded" self-hosting
-   compiler might actually completely constrain the language definition,
-   given that it must succeed in replicating itself.
-
-
-How do we clearly distinguish the desirable and undesirable
-circularities?  We can say, simply, that what is desirable is to express the
-behavior of a compiler in its own language, and what is undesirable is to
-have behavior that is not expressed in the sources.  Is that precise enough?
-Let's look at some examples.
-
-
-1. "\t" defined in terms of "\t"
-
-   This is a trivial case, but it does, indeed, leave part of the definition
-   "lost in the mists of time."  Instead, the compiler might emit code point
-   9 (assuming an ASCII-based encoding), or use a tab character in a literal
-   string (using the encoding of the source file.)
-
-2. While compiling one of SCAM's `(if COND A B)` forms, the compiler itself
-   will execute many different `if` forms.
-
-   This is a problem from the formal semantics point of view, if we were to
-   treat the sources as a language definition.  The sources don't tell us
-   what `if` means unless we already know what `if` means.
-
-   But if we do know what `if` means, we can tell whether the compiler
-   sources emobdy the definition and are fully grouned.
-
-
-----------------------------------------------------------------
-
-GNU Make presents an odd set of building blocks.  Many of its builtin
-functions are special-purpose and not suitable for general purpose
-programming.
-
-   wildcard, basename, notdir, dir, shell, ...
-
-It lacks arithmetic.  No add, subtract, or comparison operators.
-
-It lacks a notion of "character" in its string operations: no way to extract
-a character by its index, or construct a character given its code, or obtain
-the code for a character.
-
-If doesn't even have an equality primitive.
-
-But it is Turing-complete.  And you can build all of the above-mentioned
-missing capabilities.
-
 
 The following provide all of the capabilities that SCAM needs:
 
-    if, subst, <concatenation>, <call-lambda>
-
-    eval a = b, eval a := b, value    [not needed to make a useful language]
+     * (if a b c)
+     * (subst a b c)
+     * (word n s)
+     * (f ...) : calling a lambda expression.
+     * (set a b)     [needed only for Make interop]
 
 The following functions make some common operations more efficient (but can
 be fiendishly difficult to employ correctly):
 
-    word, wordlist, filter, filter-out, patsubst, findstring, foreach, join
+    wordlist, filter, filter-out, patsubst, findstring, foreach, join
 
+; (define (concat a b)  (u (subst "!*" (d b) (subst 1 (d a) "1!*")))
 
 ; (define (eq a b)
-;    (if (and (or a b)
-;             (or (subst b "" a)
-;                 (subst a "" b)))
-;       nil
-;       1)
+;    (not (and (or a b)
+;              (or (subst b "" a)
+;                  (subst a "" b)))))
+
+; (define (findstring a b)  (if (not (eq (subst a "" b) b)) a))

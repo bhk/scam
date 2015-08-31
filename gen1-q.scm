@@ -7,17 +7,26 @@
 (require "gen0")
 (require "gen1")
 
+
+;; Expand "^..." to namespaced version *within* STR
+;;
+;(define `(ns str)
+;  (subst "^" (gen-global-name "^") str))
+
+
 ;;--------------------------------
 
+;; Parse and compile first expression in `text`.  Returns "gen-coded"
+;; result.
 (define (C1 text env)
-  (c1 (first (gen0 (parse-text text) env))))
+  (c1 (first (gen0 (parse-text text) (or env base-env)))))
 
-;; parse and compile first expression to exe
+;; Parse and compile `text`, returning just the `exe` portion.
 (define (CX text env is-file)
-  (nth 2 (gen1 (gen0 (parse-text text)) is-file)))
+  (nth 2 (gen1 (gen0 (parse-text text) (or env base-env)) is-file)))
 
-;; parse and compile to file syntax
-(define (CXT text env)
+;; Parse and compile `text` to file syntax.
+(define (CXF text env)
   (CX text env 1))
 
 ;;--------------------------------
@@ -100,7 +109,7 @@
         (c1 ["f" "fn" "Q 1" "Q 2" "Q 3" "Q 4" "Q 5"
              "Q 6" "Q 7" "Q 8" "Q 9" "Q a" "Q b!0"]))
 
-(expect "$(call fn,1,2,3,4,5,6,7,8,9 $(\\R) $(call ^d,$v))"
+(expect "$(call fn,1,2,3,4,5,6,7,8,9 $] $(call ^d,$v))"
         (c1 ["f" "fn" "Q 1" "Q 2" "Q 3" "Q 4" "Q 5"
              "Q 6" "Q 7" "Q 8" "Q 9" "Q )" "V v"]))
 
@@ -132,7 +141,7 @@
 
 ;; B: sequence
 
-(expect "$(and X1,$(\\L))"
+(expect "$(and X1,$[)"
         (c1 ["B" ["Q" "X"] ["Q" "("]]))
 
 
@@ -160,9 +169,9 @@
 (expect "$$(call ^e,$$1)"      (c1 ["X" ["X" ["R" "($.^=1)"]]]))
 (expect "$$$$1"                (c1 ["X" ["X" ["R" "$1"]]]))
 
-(expect "$$(call ^e,$$1,2)"    (c1 ["X" ["X" ["X" ["R" "($.^^=1,2)"]]]]))
-(expect "$$$$(call ^e,$$$$1)"  (c1 ["X" ["X" ["X" ["R" "($.^=1)"]]]]))
-(expect "$$$$$$$$1"            (c1 ["X" ["X" ["X" ["R" "$1"]]]]))
+(expect "$$(call ^e,$$1,2)"         (c1 ["X" ["X" ["X" ["R" "($.^^=1,2)"]]]]))
+(expect "$$$$(call ^e,$$$$1)"       (c1 ["X" ["X" ["X" ["R" "($.^=1)"]]]]))
+(expect "$$$$$$$$1"                 (c1 ["X" ["X" ["X" ["R" "$1"]]]]))
 
 
 ;;--------------------------------------------------------------
@@ -179,8 +188,9 @@
 
 (expect "$(and $(info a)1,$(call print,hi)1,$(call ^set,var,val))"
         (C1 "(begin (info \"a\") (print \"hi\") (^set \"var\" \"val\"))"
-            (hash-bind "print" ["F" "print"]
-                  (hash-bind "^set" ["F" "^set"]))))
+            (append (hash-bind "print" ["F" "print"])
+                    (hash-bind "^set" ["F" "^set"])
+                    base-env)))
 
 (expect "a$$b := A$$B\n"
         (c1-file ["f" "^set" "Q a$b" "Q A$B"]))
@@ -193,17 +203,10 @@
 (expect "$(or $(if ,, A ))" (CX "(or \" A \")"))
 (expect "$(call ^Y,3,5,,,,,,,,$$1$$2)" (CX "(\"$1$2\" 3 5)"))
 
-(expect "$(@G@1H)" (CX "(declare @G@1H) @G@1H"))
-
-;;--------------------------------------------------------------
-;; c1-demote
-;;(expect "Q a" (c1-demote "Q a"))
-;;(expect "Q !10" (c1-demote "Q !0"))
-;;(expect "Q $" (c1-demote "Q $"))
-;;;(expect ["F" "Q call" "Q demote" "F Q!0xx"] (c1-demote "F Q!0xx"))
-;;(expect "Q ab" (c1-concat "Q!0a Q!0b"))
-;;(expect "C Q!0ab F!0f Q!0cd" (c1-concat "Q!0a Q!0b F!0f Q!0c Q!0d"))
-;;--------------------------------------------------------------
+(expect (concat "$("
+                (gen-global-name "@G@1H")
+                ")")
+        (CX "(declare @G@1H) @G@1H"))
 
 
 ;; c1-E
@@ -214,22 +217,22 @@
 
 ;; c1-file
 (expect "x := crank\n"
-    (CXT "(declare (^set a b)) (^set \"x\" \"crank\")"))
+    (CXF "(declare (^set a b) &global) (^set \"x\" \"crank\")"))
 
 (expect "$(if $(call ^set,x,1,$(info 2)),)\n"
-    (CXT "(declare (^set a b)) (^set \"x\" 1 (info 2))"))
+    (CXF "(declare (^set a b) &global) (^set \"x\" 1 (info 2))"))
 
 ;; discard return values in file syntax
 
 ;; non-void function
-(expect "$(if $(shell ls),)\n" (CXT "(shell \"ls\")"))
+(expect "$(if $(shell ls),)\n" (CXF "(shell \"ls\")"))
 
 ;; void function
-(expect "$(error hi)\n" (CXT "(error \"hi\")"))
+(expect "$(error hi)\n" (CXF "(error \"hi\")"))
 
 ;; eval of literal
 (expect "x=$1\n"
-        (CXT "(eval \"x=$1\")"))
+        (CXF "(eval \"x=$1\")"))
 
 
 ;;--------------------------------------------------------------
@@ -243,7 +246,7 @@
 (expect "f = $\n"
         (c1-fset "f" "$$"))  ;; "$$" expands to "$" == $(value f)
 
-(expect "$(call ^fset,f,$(foo))\n"
+(expect (concat "$(call " "^fset" ",f,$(foo))\n")
         (c1-fset "f" "$(foo)"))
 
 (expect "define f\n $1\n$2 \nendef\n"
@@ -253,22 +256,22 @@
         (c1-fset "f" "  define\nendef"))
 
 (expect "f = $$\n"
-        (CXT "(call \"^fset\" \"f\" \"$$\")"))
+        (CXF (concat "(call \"" "^fset" "\" \"f\" \"$$\")")))
 
-(expect "$(call ^fset,f,$(words 1))\n"
-        (CXT "(call \"^fset\" \"f\" (words 1))"))
+(expect (concat "$(call " "^fset" ",f,$(words 1))\n")
+        (CXF (concat "(call \"" "^fset" "\" \"f\" (words 1))")))
 
-(expect "$(call ^fset,f,$(^av))\n"
-        (CXT "(call \"^fset\" \"f\" *args*)"))
+(expect (concat "$(call " "^fset" ",f,$(" "^av" "))\n")
+        (CXF (concat "(call \"" "^fset" "\" \"f\" *args*)")))
 
-(expect "x := \\#$(\\n)\\\n"
-        (CXT "(call \"^set\" \"x\" \"#\n\\\\\")"))
+(expect "x := \\#$!\\\n"
+        (CXF (concat "(call \"" "^set" "\" \"x\" \"#\n\\\\\")")))
 
-(expect "h$(\\H) := \\#\n"
-        (CXT "(call \"^set\" \"h#\" \"#\")"))
+(expect "h$& := \\#\n"
+        (CXF (concat "(call \"" "^set" "\" \"h#\" \"#\")")))
 
 (expect "$(info #)\n"
-        (CXT "(info \"#\")"))
+        (CXF "(info \"#\")"))
 
 (foreach SCAM_DEBUG "-"
-  (expect "$(call f,1)" (CX "(declare (f)) (f 1)")))
+  (expect "$(call f,1)" (CX "(declare (f) &global) (f 1)")))
