@@ -32,7 +32,7 @@
 
 
 ;; Execute command, returning data written to stdout.  (Unlike `shell`,
-;; which trims trailing newlins and then converts newlines to spaces.)
+;; which trims trailing newlines and then converts newlines to spaces.)
 ;;
 (define (shell! cmd)
    (subst " " "" "!n" "\n" "!0" " " "!1" "!"

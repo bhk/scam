@@ -5,8 +5,10 @@
  * [Overview] (#overview)
  * [Syntax] (#syntax)
  * [Data Types] (#data-types)
- * [Naming] (#naming)
- * [Standard Features] (#standard-features)
+ * [Variables] (#variables)
+ * [Macros] (#macros)
+ * [Special Forms] (#special-forms)
+ * [Manifest Symbols] (#manifest-symbols)
  * [Make Features] (#make-features)
  * [Debugging] (#debugging)
 
@@ -70,18 +72,35 @@ Symbols are sequences of characters delimited by whitespace, `(`, `)`, `[`,
     a
     this-is-a-long-symbol-with-perhaps-*/@-unusual-characters!
 
-When symbols are used to name functions or variables, they may not contain
-`:`, `%`, or `$` characters.
+When symbols are used to name variables, they may not contain `:`, `%`, or
+`$` characters.
+
+A symbol can identify:
+
+- A [variable](#variables)
+- A [macro](#macros)
+- A [special form](#special-forms)
 
 ### Compound Expressions
 
-Compound expressions are a number of expressions enclosed in
-parentheses. These denote function calls, macro invocations, or "special
-forms" that can control program flow.
+A compound expression is a parentheses-enclosed, space-delimited list of
+expressions.
 
     (eq a (subst b c d))
 
     (if a (print b))
+
+If the first expression in the list is a symbol that names a "special form",
+the compound expression is handled according to the definition of that
+special form.
+
+If the first expression is a symbol that is bound to a macro, the macro will
+be expanded and the resulting expression evaluated.
+
+Otherwise, the compound expression is treated as a function invocation.  All
+sub-expressions will be evaluated, and the value of the first expression
+will be treated as a function, which will be called with all the other
+sub-expression values as its arguments.
 
 ### Vector Constructors
 
@@ -90,7 +109,7 @@ Vector constructors are a number of expressions enclosed in square brackets.
     [ 1 2 "c" ]
     []
 
-Vectors represent sequences of values.  [vector operations]
+Vectors represent sequences of values.  [Vector operations]
 (#vectors) such as `nth`, `first`, and `rest` can be used extract
 values from vectors.
 
@@ -246,34 +265,9 @@ represented as vectors.
 Forms are not ordinarily manipulated by SCAM code, except in the compiler
 source code. Refer to `parse.scm` for more information on forms.
 
+## Variables
 
-## Naming
-
-Symbols can be *bound* to a definition, depending on the lexical scope of
-the expression in which they are mentioned. A symbol can identify:
-
-- A local "variable"
-- A global variable
-- A Make builtin
-- A symbol macro
-- A compound macro
-
-Some symbol bindings are built in to the SCAM language. For example, all
-Make builtin functions are made available to SCAM modules in the initial
-lexical environment.
-
-SCAM modules can introduce new bindings in the following ways:
-
-- The `define` and `declare` expressions introduce bindings that are visible
-  to subsequent expressions in the same block.
-
-- The `let`, `let&`, and `lambda` expressions introduce bindings that are
-  visible within some of their sub-expressions.
-
-### Variables
-
-Variables are symbols that evaluate to values. This is a bit of a misnomer
-because local variables are immutable.
+Variables are symbols that evaluate to values.
 
 There are three kids of variables in SCAM:
 
@@ -286,13 +280,15 @@ parameters in a `lambda` expression or function definition. The visibility
 of a local variable is limited to the expression in which it is defined, and
 the lifetime of the local variable is limited to the execution of that
 expression. Local variables are immutable. They are assigned a value when
-created, and cannot be assigned a different value.  See [`let`] (#let).
+when their containing expression is evaluated, and they cannot be assigned a
+different value during the evaluation of that expression.  See [`let`]
+(#let).
 
 Global variables are ordinary GNU Make variables. Their lifetime is
 unlimited, and they are visible to other SCAM modules and Makefiles (SCAM
 globals are Make variables). However, to reference a global variable with a
-symbol in SCAM, you must first declare the variable. Global variables can be
-of two "flavors" that correspond to GNU Make "flavors" (described below).
+symbol in SCAM, you must first introduce the binding using the `declare` or
+`define` special forms.
 
 For readers comparing with other Lisp dialects, it is useful to note that
 globals are functionally equivalent to "dynamic" or "special" variables in
@@ -320,8 +316,31 @@ behavior:
 
   - Avoid very short variable names for local variables.
 
+### Variable Flavor
 
-#### Namespaces
+One interesting aspect of GNU Make is the notion of flavor: global variables
+can be "recursive" or "simple".  See the [GNU Make
+manual](https://www.gnu.org/software/make/manual/html_node/Flavors.html#Flavors)
+for more details.
+
+When programming entirely in SCAM one does not need to be aware of variable
+flavor.  In SCAM, the distinction between "expand X" and "return the value
+of X" is explicitly expressed in syntax.  The expression `X` means "the
+value of X", and will not expand X (even if X is a recursive variable).  The
+expression `(X)` will expand X (even if X is a simple variable).
+
+In order to make interoperability with raw Make code more convenient, SCAM
+variables that are defined *as* functions will be stored in Make recursive
+variables, and other values will be stored in simple variables.
+
+    > (define (f) o1)
+    > (flavor "f")
+    "recursive"
+    > (define x 1)
+    > (flavor "x")
+    "simple"
+
+### Namespaces
 
 Since Make supports only one variable namespace, combining different
 programs can result in errors when they contain variable names that
@@ -344,77 +363,15 @@ The following language features expose namespace functionality:
    avoid namespace prefixing.  In this case, the global name of the symbol
    will be equal to the local name.
 
+## Macros
 
-#### Variable Flavor
+Macros are user-defined syntax extensions. Macros are not values and cannot be
+passed to other functions; they can only be used in a compound expression
+similar to function invocation.
 
-One interesting aspect of GNU Make is the notion of flavor: global
-variables can be "recursive" or "simple".
+There are two forms of macros: symbol macros and compound macros.
 
-When a variable is *recursive*, evaluation of the Make expression `$(var)`
-will *expand* the variable, which means that `$`-initiated sequences are
-evaluated and replaced with the resulting value. When a variable is
-*simple*, `$(var)` will simply evaluate to the value of the variable.
-
-In SCAM, by contrast, the distinction between "execute X" and "return the
-value of X" is explicit in the source code.  `X` means "value of X" whereas
-`(X)` means "execute X". This is true whether X is recursive or simple.
-
-In order to make interoperability with raw Make code more convenient, SCAM
-variables that are defined *as* functions will be stored in Make recursive
-variables, and other values will be stored in simple variables.
-
-    > (define (f) o1)
-    > (flavor "f")
-    "recursive"
-    > (define x 1)
-    > (flavor "x")
-    "simple"
-
-
-### Inline Functions
-
-Functions can be designated as "inline functions" by including the flag
-`&inline` before the function body.  For example:
-
-    > (define (f a b)
-    +    &inline
-    +    (concat a b))
-
-When an inline function is called directly by name -- e.g.  `(f 1 2)` -- the
-SCAM compiler will expand the definition of the function inline, instead of
-generating a Make `call` expression.  Since this avoids the overhead of a
-function call, simple functions will often execute faster when inlined.
-However, the resulting generated code will often be larger, and at some
-point the increased size will result in even slower performance than a
-non-inline call.
-
-Be aware that behavior can differ from an ordinary call in the following
-respect: argument expressions may be evaluated zero or more times or in a
-different order, whereas arguments to ordinary function calls are evaluated
-exactly once and in a well-defined order. So if your argument expressions
-include side effects, and an inline function does not evaluate each argument
-exactly once and in-order, the results may differ. Here is one example:
-
-    > (define x 0)
-    > (define (i)
-    +    (set x (1+ x) x))
-    > (define (foo a)
-    +    &inline
-    +    (concat a a a))
-    > (foo (i))
-    012
-
-Like ordinary function definitions, inline function definitions bind a
-global variable to a function value, so the function name can be called from
-Make code, or passed as a argument to a function that accepts function
-values.
-
-### Macros
-
-Macros are user-defined syntax extensions. There are two forms of macros:
-symbol macros and compound macros.
-
-Symbol macros associate a symbol with an expression.  The syntax is:
+The syntax for defining a symbol macro is:
 
     (define `NAME EXPR)
 
@@ -463,78 +420,26 @@ binding that was in scope where the macro was defined.
     123
 
 
-### Builtins
+## Special Forms
 
-Every Make [builtin function]
-(http://www.gnu.org/software/make/manual/make.html#Functions) is available
-from SCAM. For example:
-
-    > (word 2 "a b c")
-    "b"
-    > (addsuffix ".c" "x")
-    "x.c"
-
-Builtins are "special forms". They are not variables bound to function
+Special forms are expressions that have "special" handling -- they have
+semantics that cannot be implemented in ordinary functions.  Special forms
+are compound expressions, and the first element in the parenthesized list is
+a symbol identifying the special form.  These symbols are not bound to
 values.
 
-    > subst
-    Line 1: Attempt to obtain value of builtin: subst
-    at: *subst*
+Examples:
 
-Builtins may also differ from ordinary functions in the way arguments are
-evaluated. Ordinarily, all arguments are evaluated in order *before* a
-function is called. In the case of `if`, `and`, `or`, and `foreach`,
-however, arguments may not be evaluated at all, and in the case of
-`foreach`, they may be evaluated more than once.
+    (if a b c)
 
-    > (if "" (error "unexpected") 1)
-    1
+    (declare foo)
 
-Some builtins accept variable *names*. These builtins -- `value` and `call`
--- are potentially confusing because they cross layers of abstraction. Be
-aware that they use string values to refer to the variables, whereas in SCAM
-you ordinarily reference variables by symbols. Using an unquoted symbol
-name can produce unexpected results. The following example demonstrates
-`value` and `call`:
-
-    > (define (g x) (concat x x))
-    > (define name-of-g "g")
-    > (value name-of-g)    ; NOT (value g)
-    "$1$1"
-    > (call name-of-g "x") ; NOT (call g "x")
-    "xx"
-    > (define f name-of-g)
-    > (value f)
-    "$1$1"
-    > (call f "x")
-    "xx"
-
-The names [`foreach`] (#foreach) and [`subst`] (#subst) builtins are
-actually special forms that invoke the true builtins, which are available
-in their raw forms by the names `.foreach` and `.subst`.
-
-Directly using the `.foreach` builtin can be awkward, because the referenced
-variable name is unknown to SCAM and will trigger an error unless a declaration
-is used:
-
-    > (.foreach "x" "1 2 3" (1+ x))
-    line 1: undefined variable: x
-    at: (.foreach "x" "1 2 3" (1+ *x*))
-    > (.foreach "x" "1 2 3" (begin (declare x) (1+ x)))
-    "2 3 4"
-
-The [`foreach`] (#foreach) special form avoids this problem.  The
-[`subst`] (#subst) special form enhances `.subst` by allowing multiple
-substitutions to be performed.
-
-
-## Standard Features
+## Manifest Symbols
 
 The following symbols are defined by the SCAM language.  They call into
 three different categories:
 
  - Special forms
- - Make builtins
  - Manifest functions
  - Manifest macros
 
@@ -542,7 +447,6 @@ Manifest functions are like other functions in SCAM, except that they are
 provided by the language itself.  Special forms, builtins, and macros are
 not functions, so they do not have values and cannot be passed to other
 functions; they can only be invoked like a function.
-
 
 ### `begin`
 
@@ -558,7 +462,6 @@ returned (or nil if no expressions are given).
 It can also be used to limit the scope of symbols.  The end of the block
 terminates the scope of any definitions and declarations made within the
 block.
-
 
 ### `lambda`
 
@@ -592,7 +495,7 @@ build time and compile time in addition to run time.
 When a `require` directive is executed, the required module will be loaded
 and executed, unless it has already been required.
 
-**Dependency Resolution:***
+**Dependency Resolution:**
 
 When compiling with the `scam -o EXE SOURCE` command, SCAM first discovers
 dependencies by scanning source files for `require` directives.  For each
@@ -690,10 +593,10 @@ a Make function call (as does `let`).
 
 [Special form]
 
-    (define NAME FLAG... VALUE)               ; global variable
-    (define (NAME ARG...) FLAG... BODY)   ; global function
-    (define `NAME EXPR)                        ; symbol macro
-    (define `(NAME ARG...) FLAG... BODY)     ; compound macro
+    (define NAME FLAG... VALUE)             ; global variable
+    (define (NAME ARG...) FLAG... BODY)     ; global function
+    (define `NAME EXPR)                     ; symbol macro
+    (define `(NAME ARG...) FLAG... BODY)    ; compound macro
 
 The `define` special form adds a name to the environment and associates
 it with a definition.  The defined name will be visible to subsequent
@@ -705,9 +608,19 @@ previous definitions associated with the same name.
   * `&private` indicates that the symbol should not be visible outside
     of the file in which it is declared.
 
-  * `&inline` indicates that the function should be expanded inline when it
-    is called by name.  This flag can be used only with `define` (not with
-    `declare`) and only for function definitions.
+  * `&inline` indicates that the function is an inline function.  This flag
+    can be used only with `define` (not with `declare`) and only for
+    function definitions.
+
+    An inline function definition defines both a function and a macro
+    associated with the same symbol.  When the name is used in a function
+    call expression, the macro will be expanded in place.  In all other
+    ways, it is the same as a function definition, so it can be passed to
+    functions that require a function argument, and it can be used by Make
+    code.
+
+    Beware that macro invocations can differ semantically from function
+    invocations in that arguments may be evaluated more than once.
 
 Some examples:
 
@@ -735,12 +648,19 @@ A function definition:
 
     func = $(wildcard $1)
 
+An inline definition being used as a function and a macro:
+
+    > (define (f a) &inline (concat "!" a))
+    > f
+    "!$1"
+    > (lambda (x) (f x x))
+    "!$1"                    ;; versus: "$(call f,$1)" for non-inline
 
 ### `declare`
 
 [Special form]
 
-    (declare NAME FLAG...)              ; declare global variable
+    (declare NAME FLAG...)             ; declare global variable
     (declare (NAME ARG...) FLAG...)    ; declare global function variable
 
 The `declare` special form declares a global variable without assigning
@@ -1006,6 +926,70 @@ This symbol evaluates to the file currently being loaded via `require`.
 This is evaluated at run-time, not compile-time, so it does not necessarily
 return the name of the file in which it appears.
 
+### Builtins
+
+Every Make [builtin function]
+(http://www.gnu.org/software/make/manual/make.html#Functions) is available
+from SCAM as a special form. For example:
+
+    > (word 2 "a b c")
+    "b"
+    > (addsuffix ".c" "x")
+    "x.c"
+
+Since builtins are special forms, they are not variables bound to function
+values.
+
+    > subst
+    Line 1: Attempt to obtain value of builtin: subst
+    at: *subst*
+
+Builtins may also differ from ordinary functions in the way arguments are
+evaluated. Ordinarily, all arguments are evaluated in order *before* a
+function is called. In the case of `if`, `and`, `or`, and `foreach`,
+however, arguments may not be evaluated at all, and in the case of
+`foreach`, they may be evaluated more than once.
+
+    > (if "" (error "unexpected") 1)
+    1
+
+Some builtins accept variable *names*. These builtins -- `value` and `call`
+-- are potentially confusing because they cross layers of abstraction. Be
+aware that they use string values to refer to the variables, whereas in SCAM
+you ordinarily reference variables by symbols. Using an unquoted symbol
+name can produce unexpected results. The following example demonstrates
+`value` and `call`:
+
+    > (define (g x) (concat x x))
+    > (define name-of-g "g")
+    > (value name-of-g)    ; NOT (value g)
+    "$1$1"
+    > (call name-of-g "x") ; NOT (call g "x")
+    "xx"
+    > (define f name-of-g)
+    > (value f)
+    "$1$1"
+    > (call f "x")
+    "xx"
+
+The names [`foreach`] (#foreach) and [`subst`] (#subst) builtins are
+actually special forms that invoke the true builtins, which are available
+in their raw forms by the names `.foreach` and `.subst`.
+
+Directly using the `.foreach` builtin can be awkward, because the referenced
+variable name is unknown to SCAM and will trigger an error unless a declaration
+is used:
+
+    > (.foreach "x" "1 2 3" (1+ x))
+    line 1: undefined variable: x
+    at: (.foreach "x" "1 2 3" (1+ *x*))
+    > (.foreach "x" "1 2 3" (begin (declare x) (1+ x)))
+    "2 3 4"
+
+The [`foreach`] (#foreach) special form avoids this problem.  The
+[`subst`] (#subst) special form enhances `.subst` by allowing multiple
+substitutions to be performed.
+
 
 ## Make Features
 
@@ -1071,21 +1055,21 @@ arguments and return value will displayed. For example, in the REPL:
 
 The `SCAM_TRACE` variable can be assigned to instrument functions at
 run-time, rather than compile-time.  For complete details, see `trace.scm`.
-The following command line, which counts function invocations across the
-compiler, gives a taste of what SCAM_TRACE is capable of:
+The following command line counts function invocations within the SCAM
+compiler itself as it compiles a module, and then lists all called functions
+ranked by frequency:
 
     $ SCAM_TRACE=':c' bin/scam num.scm
 
 The `SCAM_DEBUG` variable causes certain debug information to be written to
 stdout based on the presence or absence of certain substrings:
 
-  * "R" ==> "require: <filename>" when a file is included by `require`.
-  * "Rx" ==> "R" + "exited: <filename>" after a required file exits.
-  * "E" ==> "eval: <string>" when SCAM passes text to Make's `eval` builtin.
   * "O" ==> "OK: ..." when an `expect` macro succeeds. (See [the core library](core.scm).)
   * "U" ==> display compile-time "warnings" for each upvalue reference
-  * "Tl" ==> "Tl: <func>" each time a function is called
-  * "Tk" ==> invocation counts of functions
+  * "R" ==> "require: <filename>" when a file is included by `require`.
+  * "Rx" ==> "R" + "exited: <filename>" after a required file exits.
+  * "S" ==> "shell: <command>" when io.scm executes a shell command.
+  * "B" ==> "Eval: ..." when Make rules are eval'ed by build.scm.
 
 ### Profiling
 

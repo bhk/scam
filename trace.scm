@@ -21,7 +21,8 @@
 ;;
 ;; `fnpat` is a string used to match defined functions (see "Function
 ;; Matching", below).  If empty, it defaults to "%" (matching all
-;; functions).  For each matching functions, each specific action is performed.
+;; functions).  For each matching function, every specified action is
+;; performed.
 ;;
 ;; Each `action` is one of the strings listed below.  If no actions are
 ;; given, `t` is assumed.

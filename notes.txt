@@ -10,7 +10,8 @@ file (module) to executable code, and then packages it as a program.
 
     $ scam -o prog prog.scm
 
-For simplicity, we reduce our compiler sources to three files:
+For simplicity, let us imagine the compiler itself is implemented in only
+three source files:
 
  - C.scm implements a "core" of functionality.
 
@@ -19,7 +20,7 @@ For simplicity, we reduce our compiler sources to three files:
    functionality alone.
 
  - CT.scm builds on what C.scm and RT.scm provide, and adds "executable
-   macros" that define more functionality.
+   macros" that define more functionality. (See `use` in reference.md.)
 
 Together, C + RT + CT provide the base language features of SCAM (all of the
 syntax and functionality available to any module without calling `require`).
@@ -55,13 +56,13 @@ are then used by the compile and link steps:
 Constructing the Compiler
 ----
 
-Since SCAM itself is written in SCAM, we need a pre-existing compiler with
-which to build it.  This "golden" compiler is built from some unknown
-previous version (or completely different implementation) of SCAM, so we do
-not know how it behaves aside from the language definition and document
-command-line syntax.  It is a black box from our point of view.  In
-particular, we cannot make assumptions about its CT or RT libraries.  We can
-only use it to generate a complete program:
+Since SCAM itself is written in SCAM, we need a pre-existing SCAM acompiler
+with which to build it.  This "golden" compiler may be built from some
+unknown previous version of the sources, or it may be a completely different
+implementation, so we do not know how it behaves aside from the language
+definition and document command-line syntax.  It is a black box from our
+point of view.  In particular, we cannot make assumptions about its CT or RT
+libraries.  We can only use it to generate a complete program:
 
     $ C0 -o Ca C.scm
 

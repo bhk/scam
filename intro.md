@@ -39,8 +39,8 @@ associative arrays, and first-class functions -- as strings.  For example:
     +    (f 3 2))
     "1 5 6 9"
 
-SCAM's compiled nature allows for more error reporting than Make programmers
-are used to:
+SCAM's compiled nature allows for more useful error reporting than what Make
+provides:
 
 * syntax error reporting
 
@@ -74,7 +74,7 @@ simplest form:
     > "1 2"
     "1 2"
     > (concat 1 " " [2 3])
-    [1 "2 3"]
+    "1 2 3"
 
 The global variable `*1` holds the most recent return value, and `*2` holds
 the previous return value.
@@ -86,3 +86,4 @@ the previous return value.
     > (* *1 *2)
     63
 
+For more details, proceed to the [language reference](reference.md).
