@@ -9,6 +9,15 @@
 (require "gen0")
 
 
+;; Repeat a word k times.
+;;   Note: k must be >= 1.
+;;         w must contain no whitespace.
+(define (rep-word k w)
+  (if (word k w)
+      (subst " " "" (wordlist 1 k w))
+      (rep-word k (concat w " " w " " w))))
+
+
 ;;--------------------------------------------------------------
 ;; "gen" coding
 ;;
@@ -57,7 +66,6 @@
                   (first (split "@)" w)))))
 
 ;;--------------------------------------------------------------
-
 
 ;; returns demoted name of builtin or user function (if builtin = call)
 ;; or empty string if 'node' is not a function invocation
@@ -168,6 +176,16 @@
   (concat "$(call " ename (if (rrest node) ",") args ")"))
 
 
+(define (c1-U node)
+  (define `n (word 2 node))
+  (define `ups (word 3 node))
+  (define `carets (rep-word ups "^"))
+
+  (if (filter-out 0 ups)
+      (concat "($." carets "=" n (filter-out ",1" (concat "," ups)) ")")
+      (concat "$" n)))
+
+
 ;; Call lambda value:  ["Y" <fn> <a> <b> ... ]
 (define (c1-Y node)
   (define `args (c1-args9 (rrest node)))
@@ -202,6 +220,7 @@
   (cond ((type? "Q%" node) (c1-Q node))
         ((type? "R" node) (nth 2 node))
         ((type? "f" node) (c1-f node))
+        ((type? "U" node) (c1-U node))
         ((type? "V" node) (c1-V node))
         ((type? "C" node) (c1-vec (rest node) "" (global-name c1)))
         ((type? "X" node) (c1-X node))

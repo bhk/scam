@@ -21,6 +21,7 @@
 ;;   V str                 var reference      $(str)
 ;;   F str <a> <b> ...     call builtin       $(str <a>,<b>,...)
 ;;   f str <a> <b> ...     call user func     $(call str,<a>,<b>,...)
+;;   U <n> <ups>           local var ref      $n  or  $(call ^e,$n,UPS)
 ;;   Y <f> <a> <b> ...     lambda call        $(call ^Y,<a>,...,<f>)
 ;;   C <a> <b> <c> ...     concatenation      <a><b><c>
 ;;   R str                 raw object code    str
@@ -71,10 +72,17 @@
 ;;          The name "#" indicates that the binding is a symbol macro, and
 ;;          not an actual function variable.
 ;;
-;; <priv> = nil for ordinary in-file declarations/definitions (to be exported)
-;;          "b" if a default (base) environment member
-;;          "p" if declared/defined with "&private"
-;;          "i<FILENAME>" if imported from via "require".  <FILENAME> is
+;; <priv> describes the scope and origin of top-level bindings.  This scope
+;;        is used to decide which symbols to export from a file.  The origin
+;;        is used to construct environments for the purpose of expanding
+;;        imported macros.
+;;
+;;          nil => ordinary global declarations/definitions (to be exported),
+;;                 or a local definition.  Locals are not exported, but also they
+;;                 are not present in the environment at the end of the file.
+;;          "b" => a default (base) environment member
+;;          "p" => declared/defined with "&private"
+;;          "i<FILENAME>" => imported from via "require".  <FILENAME> is
 ;;               the file from which it was imported IF this binding
 ;;               is a macro or inline function; nil otherwise.
 ;;

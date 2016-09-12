@@ -144,7 +144,12 @@
         (C0err "()"))
 
 
-;; S: argument
+;; S: local variables
+
+(expect "U 3 0" (c0-local "$3" "$"))
+(expect "U 3 1" (c0-local "$3" "$$"))
+(expect "U 3 1" (c0-local "$$3" "$$$$"))
+(expect "U 3 2" (c0-local "$3" "$$$$"))
 
 (expect (hash-bind "$" "$ $$"
           (hash-bind "b" ["A" "$$1"]
@@ -152,7 +157,7 @@
               (hash-bind "a" ["A" "$1"]))))
         (lambda-env ["S b"] (lambda-env ["S a"] "")))
 
-(expect ["R" "$1"]
+(expect ["U" 1 0]
         (c0 ["S" "var"] (lambda-env ["S var"])))
 
 
@@ -172,7 +177,7 @@
 
 
 ;; S: symbol macro
-(expect ["F" "call" ["Q" "^n"] "Q 1" "R $9"]
+(expect ["F" "call" ["Q" "^n"] "Q 1" ["U" 9 0]]
         (c0 "S X" (append
                    (lambda-env ["S a" "S a" "S a" "S a" "S a"
                                 "S a" "S a" "S a" "S X" "S Y"])
@@ -185,12 +190,12 @@
    (c0 ["L" "S lambda" ["L" "S a"] "S v"] (hash-bind "v" ["V" "DATA"])))
 
 ;; (lambda (a b) a b)
-(expect ["X" ["B" ["R" "$1"] ["R" "$2"]]]
+(expect ["X" ["B" ["U" 1 0 ] ["U" 2 0]]]
    (c0 ["L" "S lambda" ["L" "S a" "S b"] "S a" "S b"]))
 
 ;; (lambda (a) (lambda (b) a b)))
 (foreach SCAM_DEBUG "-" ;; avoid upvalue warning
-  (expect ["X" ["X" ["B" ["R" "($.^=1)"] ["R" "$1"]]]]
+  (expect ["X" ["X" ["B" ["U" 1 1] ["U" 1 0]]]]
      (c0 ["L" "S lambda" ["L" "S a"]
            ["L" "S lambda" ["L" "S b"]
              "S a" "S b"]])))
@@ -198,7 +203,7 @@
 
 ;; L: (arg ...)
 
-(expect ["Y" "R $1" "Q 7"]
+(expect ["Y" ["U" 1 0] "Q 7"]
         (c0 ["L" "S var" "Q 7"] (lambda-env ["S var"])))
 
 (define (test-xmacro form) "Q hi")
@@ -331,7 +336,7 @@
           (C0 "(define x 1) (info x)"))
 
 ;; define FUNC
-(expect ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "join" "R $1" "R $2"]]]
+(expect ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "join" ["U" 1 0] ["U" 2 0]]]]
         (C0 "(define (f a b) (join a b))"))
 
 ;; define compound macro
@@ -391,7 +396,7 @@
 
 
 ;; define and use inline FUNC
-(expect [ "B" ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "join" "R $1" "R $2"]]]
+(expect [ "B" ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "join" "U 1 0" "U 2 0"]]]
               ["F" "join" "Q 1" "Q 2"] ]
         (C0 "(define (f a b) &inline (join a b))  (f 1 2)"))
 
@@ -458,7 +463,7 @@
  ;; RECURSIVE INLINE FUNCTION: we should see one level of expansion where it
  ;; is used.
 
-(expect ["B" ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "if" "R $1" "R $2" ["f" gf "R $2" ["Q" ""]]]]]
+(expect ["B" ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "if" "U 1 0" "U 2 0" ["f" gf "U 2 0" ["Q" ""]]]]]
              ["F" "if" "Q 1" "Q 2" ["f" gf "Q 2" ["Q" ""]]]]
         (C0 "(define (f a b) &inline (if a b (f b \"\")))
              (f 1 2)"))

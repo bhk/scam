@@ -9,43 +9,46 @@
 (declare (c0 form env))
 (declare (c0-block forms env))
 
-;; Construct a "raw" IL node that references an argumet or upvalue.
-;;   arg = "$1" for top, "$$1" for nested, "$$$$1" for double nested
-;;   level = level from environment lambda marker (see gen.scm)
-;;           "$" -> top-level function, "$$" -> nested function, "$$$$" ...
-;;
-;; locals: $1, $2, $3, ...
-;; parent: ($.^=1)     ($.^=2)
-;; grand:  ($.^^=1,2)  ($.^^=2,2)
-;;
-(define (c0-local-x arg level ups)
-  &private
-  (if (findstring level arg)
-      ["R" (concat "($." ups "=" (subst "$" "" arg)
-                   (filter-out ",1" (concat "," (words (subst "^" "^ " ups))))
-                   ")") ]
-      ;; up-value: `arg` is above `level`
-      (if (findstring "$$" level)
-          (c0-local-x arg (subst "$$" "$" level) (concat ups "^"))
-          ;; avoid infinite loop no matter what was passed as 'level'
-          (gen-error nil "impossible argument: %q" arg))))
 
+;; ----------------------------------------------------------------
+;; Return number of "escapes" in unary form:
+;;
+;; $        -> ""
+;; $$       -> "1"
+;; $$$$     -> "1 1"
+;; $$$$$$$$ -> "1 1 1"
+;;
+(define (c0-depth level)
+  (if (findstring "$$" level)
+      (concat "1 " (c0-depth (subst "$$" "$" level)))))
+
+
+;; c0-local: Construct a local variable reference
+;;
+;;  arg = "$n" for an argument passed to the outermost function,
+;;        "$$n" for an argument passed to the first nested function,
+;;        "$$$$n" for an argument to a doubly-nested function, and so on.
+;;  level = where the local variable is being referenced.
+;;        "$" for top-level, "$$" for nested lambda, "$$$$" ...
+;;
+;; Returns:
+;;   ["U" n ups]    n = arg number,  ups = 0 for local, 1 for parent, ...
+;;
 (define (c0-local arg level)
-  (if (findstring level arg)
-      ["R" (subst level "$" arg)]
-      (c0-local-x arg (subst "$$" "$" level) "^")))
+  (define `arg-level (subst " " "" (filter "$" (subst "$" "$ " arg))))
+  ["U" (subst "$" "" arg) (words (c0-depth (subst arg-level "$" level))) ])
+
 
 (if (findstring "U" SCAM_DEBUG)
     ;; Print warning for each upvalue [check SCAM_DEBUG again during
     ;; compilation so unit tests can suppress these warnings]
     (begin
-      (declare (c0-local-orig))
-      (set c0-local-orig c0-local)
+      (declare (c0-local-unchecked))
+      (set c0-local-unchecked c0-local)
       (define (c0-local arg level form)
-        (if (and (findstring "U" SCAM_DEBUG)
-                 (not (findstring level arg)))
+        (if (not (findstring level arg))
             (compile-warn form "reference to upvalue '%s'" (symbol-name form)))
-        (c0-local-orig arg level))))
+        (c0-local-unchecked arg level))))
 
 
 ;; S: symbol

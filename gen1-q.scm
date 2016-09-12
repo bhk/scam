@@ -114,6 +114,13 @@
              "Q 6" "Q 7" "Q 8" "Q 9" "Q )" "V v"]))
 
 
+;; U: up-values (or local arguments)
+
+(expect "$3"          (c1-U "U 3 0"))
+(expect "($.^=3)"     (c1-U "U 3 1"))
+(expect "($.^^=3,2)"  (c1-U "U 3 2"))
+
+
 ;; Y: anonymous function call
 
 (expect "$(call ^Y,,,,,,,,,,$1)"
