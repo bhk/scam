@@ -95,8 +95,12 @@
 
      ;; execute & display result
      (else (begin
-             (set *2 (set *1 (exe) *1))
-             (if *1 (print (format *1)))
+             (let ((result (exe)))
+               (if result
+                   (begin
+                     (set *2 *1)
+                     (set *1 result)
+                     (print (format result)))))
              ["" newenv])))))
 
 
