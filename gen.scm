@@ -24,7 +24,6 @@
 ;;   U <n> <ups>           local var ref      $n  or  $(call ^e,$n,UPS)
 ;;   Y <f> <a> <b> ...     lambda call        $(call ^Y,<a>,...,<f>)
 ;;   C <a> <b> <c> ...     concatenation      <a><b><c>
-;;   R str                 raw object code    str
 ;;   B <a> <b> <c> ...     sequence (block)
 ;;   X <a>                 nested function    quote (c1 <a>)
 ;;   E.<n> <description>   error

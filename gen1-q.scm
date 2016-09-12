@@ -124,13 +124,13 @@
 ;; Y: anonymous function call
 
 (expect "$(call ^Y,,,,,,,,,,$1)"
-        (c1 ["Y" "R $1"]))
+        (c1 ["Y" "U 1 0"]))
 
 (expect "$(call ^Y,a,,,,,,,,,$1)"
-        (c1 ["Y" "R $1" "Q a"]))
+        (c1 ["Y" "U 1 0" "Q a"]))
 
 (expect "$(call ^Y,a,b,c,d,e,f,g,h,i j,$1)"
-        (c1 ["Y" "R $1" "Q a" "Q b" "Q c" "Q d" "Q e"
+        (c1 ["Y" "U 1 0" "Q a" "Q b" "Q c" "Q d" "Q e"
              "Q f" "Q g" "Q h" "Q i" "Q j" ]))
 
 
@@ -138,12 +138,6 @@
 
 (expect "abc"
         (c1 ["C" "Q a" "Q b" "Q c"]))
-
-
-;; R: raw object code
-
-(expect "a$ b"
-        (c1 ["R" "a$ b"]))
 
 
 ;; B: sequence
@@ -171,14 +165,14 @@
 (expect "$$$$"                 (c1 ["X" "Q $"]))
 (expect "$$a"                  (c1 ["X" "V a"]))
 (expect "$$(value FUNC)"       (c1 ["X" ["F" "value" "Q FUNC"]]))
-(expect "$$1"                  (c1 ["X" ["R" "$1"]]))
+(expect "$$1"                  (c1 ["X" ["U" 1 0]]))
 
-(expect "$$(call ^e,$$1)"      (c1 ["X" ["X" ["R" "($.^=1)"]]]))
-(expect "$$$$1"                (c1 ["X" ["X" ["R" "$1"]]]))
+(expect "$$(call ^e,$$1)"      (c1 ["X" ["X" ["U" 1 1]]]))
+(expect "$$$$1"                (c1 ["X" ["X" ["U" 1 0]]]))
 
-(expect "$$(call ^e,$$1,2)"         (c1 ["X" ["X" ["X" ["R" "($.^^=1,2)"]]]]))
-(expect "$$$$(call ^e,$$$$1)"       (c1 ["X" ["X" ["X" ["R" "($.^=1)"]]]]))
-(expect "$$$$$$$$1"                 (c1 ["X" ["X" ["X" ["R" "$1"]]]]))
+(expect "$$(call ^e,$$1,2)"         (c1 ["X" ["X" ["X" ["U" 1 2]]]]))
+(expect "$$$$(call ^e,$$$$1)"       (c1 ["X" ["X" ["X" ["U" 1 1]]]]))
+(expect "$$$$$$$$1"                 (c1 ["X" ["X" ["X" ["U" 1 0]]]]))
 
 
 ;;--------------------------------------------------------------

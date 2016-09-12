@@ -218,16 +218,15 @@
 
 (define (c1 node)
   (cond ((type? "Q%" node) (c1-Q node))
-        ((type? "R" node) (nth 2 node))
-        ((type? "f" node) (c1-f node))
         ((type? "U" node) (c1-U node))
+        ((type? "f" node) (c1-f node))
         ((type? "V" node) (c1-V node))
         ((type? "C" node) (c1-vec (rest node) "" (global-name c1)))
         ((type? "X" node) (c1-X node))
         ((type? "B" node) (c1-B node))
         ((type? "Y" node) (c1-Y node))
         ((type? "F" node) (c1-F node))
-        (else               (c1-E node))))
+        (else             (c1-E node))))
 
 
 ;;--------------------------------------------------------------
@@ -295,8 +294,6 @@
 
    (cond
     ((type? "B" node) (c1-file* (rest node)))
-
-    ((type? "R" node) (concat (c1 node) "\n"))
 
     (else (concat (protect-expr (c1 (voidify node))) "\n")))))
 

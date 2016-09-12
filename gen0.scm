@@ -10,7 +10,6 @@
 (declare (c0-block forms env))
 
 
-;; ----------------------------------------------------------------
 ;; Return number of "escapes" in unary form:
 ;;
 ;; $        -> ""
