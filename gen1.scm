@@ -12,15 +12,15 @@
 ;;--------------------------------------------------------------
 ;; "gen" coding
 ;;
-;; To represent up-value references and embed error messages we use
-;; character sequences that are otherwise never seen in a SCAM-generated
-;; Make expression.
+;; To embed up-value references and error messages in generated Make
+;; expressions, we use special character sequences that do not appear
+;; otherwise.
 ;;
 ;;  * Upvalue from parent:   ($.^=1)  ($.^=2)  ...
 ;;  * Grandparent upvalue:   ($.^^=1,2) ($.^^=2,2) ...
 ;;  * Errors:                ($.@ERROR@)
 ;;  * Temporary usage:       ($)
-
+;;
 
 (define `marker "($)")
 
@@ -39,7 +39,7 @@
          code))
 
 
-;; Embed arbitrary string into a Make expression.  This will survive any
+;; Embed an arbitrary string into a Make expression.  This will survive any
 ;; `gen-quote` or `protect-...` operations intact; `gen-extract` should
 ;; recover the exact same string from the final c1 result.
 ;;
@@ -212,14 +212,17 @@
 
 
 ;;--------------------------------------------------------------
-;; c1-file : compile to file syntax
+;; c1-file : compile to "statement" or "file" syntactic context.
+;; (See "File vs. Function Context" in compile.scm.)
+
+(declare (c1-file))
 
 
 ;; construct code for simple assignment
 ;;
 ;; After "LHS := RHS", $(LHS) or $(value LHS) == RHS.
 ;;
-(define (c1-set lhs rhs)
+(define (c1-file-set lhs rhs)
   (concat (protect-lhs lhs) " := " (protect-rhs rhs) "\n"))
 
 
@@ -227,7 +230,7 @@
 ;;
 ;; After "LHS = RHS", $(value LHS) == RHS
 ;;
-(define (c1-fset lhs rhs)
+(define (c1-file-fset lhs rhs)
   (if (findstring "$" (subst "$$" "" rhs))
       ;; rhs not constant
       (concat "$(call " "^fset" "," (protect-arg lhs) "," (protect-arg rhs) ")\n")
@@ -244,19 +247,16 @@
           (concat (protect-lhs lhs) " = " (subst "$$" "$" (protect-rhs rhs)) "\n"))))
 
 
-(declare (c1-file))
-
+;; compile a vector of expressions for file context
+;;
 (define (c1-file* nodes)
-  (if nodes
-      (subst ".$. " ""
-             (concat
-              (foreach a nodes
-                       (concat (c1-file (promote a))
-                               ".$."))
-              " "))))
+  (concat-vec
+   (for node nodes
+        (c1-file node))))
 
 
-;; compile one expression for statement context
+;; compile one expression for file context
+;;
 (define (c1-file node)
   (or
    ;; top-level (eval STR) equivalent to STR
@@ -270,7 +270,7 @@
           (let ((args (il-user-args node))
                 (name (il-funcname node)))
             (if (not (nth 3 args))
-                ( (if (filter "^set" name) c1-set c1-fset)
+                ( (if (filter "^set" name) c1-file-set c1-file-fset)
                   (c1 (nth 1 args))
                   (c1 (nth 2 args))))))
 

@@ -241,19 +241,19 @@
 
 ;; c1-set and c1-fset
 (expect "x := $  $$ \n"
-        (c1-set "x" " $$ "))
+        (c1-file-set "x" " $$ "))
 
 (expect "f = $\n"
-        (c1-fset "f" "$$"))  ;; "$$" expands to "$" == $(value f)
+        (c1-file-fset "f" "$$"))  ;; "$$" expands to "$" == $(value f)
 
 (expect (concat "$(call " "^fset" ",f,$(foo))\n")
-        (c1-fset "f" "$(foo)"))
+        (c1-file-fset "f" "$(foo)"))
 
 (expect "define f\n $1\n$2 \nendef\n"
-        (c1-fset "f" " $$1\n$$2 "))
+        (c1-file-fset "f" " $$1\n$$2 "))
 
 (expect "define f\n$   define\n$ endef\nendef\n"
-        (c1-fset "f" "  define\nendef"))
+        (c1-file-fset "f" "  define\nendef"))
 
 (expect "f = $$\n"
         (CXF (concat "(call \"" "^fset" "\" \"f\" \"$$\")")))
