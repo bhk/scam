@@ -98,16 +98,19 @@
 ;;    value).
 ;;
 (define (c0-inline-fn form env defn)
+  (define `args (rrest form))
   (define `finl (nth 4 defn))
-  (define `fargs (first finl))  ; formal args
+  (define `formal-args (first finl))
   (define `fbody (rest finl))
   (define `orig-env (hash-bind "#pos" (concat "P " (form-index form))
                                (env-rewind env (symbol-name (nth 2 form)) defn)))
+  (define `(zip vec1 vec2)
+    (join (addsuffix "!=" vec1) vec2))
+
   (define `argbindings
-    (foreach da fargs
-             (hash-bind (promote da)
-                        ["I" (c0 (nth (find-word fargs 1 da) (rrest form)) env)])))
-  (or (check-argc (words fargs) form)
+    (zip formal-args (for a args ["I" (c0 a env)])))
+
+  (or (check-argc (words formal-args) form)
       (c0-block fbody (append argbindings orig-env))))
 
 
@@ -272,16 +275,14 @@
 
      ;; ensure FNAME/MNAME & FARGS/MARGS are symbols
      (if (list? xwhat)
-         (foreach
-          _err
-          (foreach _sym (rest xwhat)
-                   (if (filter "S%" _sym)
-                       nil
-                       [(check-type "S" (promote _sym) form "NAME"
-                                    (sprintf "(%s %s(NAME...))"
-                                             (or is-declare "define")
-                                             (if is-quoted "`")))]))
-          (promote _err)))
+         (first
+          (filter-out
+           [""]
+           (for sym (filter-out "S%" (rest xwhat))
+                (check-type "S" sym form "NAME"
+                            (sprintf "(%s %s(NAME...))"
+                                     (or is-declare "define")
+                                     (if is-quoted "`")))))))
 
      ;; check variable/function/macro name
      (check-name (cond (is-func fname)

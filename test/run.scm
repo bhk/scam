@@ -82,6 +82,14 @@
      (expect "recursive" (flavor name))
      (expect name (value name)))
 
+;; append-for
+
+(expect "3 1 2 3" (append-for n "3 4 1" (nth-rest n "1 2 3")))
+
+;; concat-for
+
+(expect " |\t| " (concat-for a [" " "\t" " "] "|" a))
+(expect "(1) (2) (3)" (concat-for a "1 2 3" " " (concat "(" a ")")))
 
 ;; Flies in the ointment (function values)
 

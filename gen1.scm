@@ -31,9 +31,6 @@
 ;;  * Temporary usage:       ($)
 ;;
 
-(define `marker "($)")
-
-
 ;; Escape a literal string for a Make expression
 (define (gen-escape-literal literal)
   (subst "$" "$$" literal))
@@ -130,10 +127,9 @@
 
 ;; c1-vec: compile multiple expressions
 (define (c1-vec args delim quotefn)
-  (subst (concat marker " ") delim
-         marker ""
-         (foreach a args
-                  (concat (call quotefn (promote a)) marker))))
+  (concat-for a args delim
+              (call quotefn a)))
+
 
 (define (c1-E node)
   (gen-embed node))

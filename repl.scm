@@ -51,8 +51,8 @@
               (if defn
                   (sprintf ": (%s) -> %s"
                            (first defn)
-                           (foreach _f (rest defn)
-                                    (format-form (promote _f))))))))
+                           (concat-for f (rest defn) " "
+                                    (format-form f)))))))
 
 
 (define (describe-env env all)

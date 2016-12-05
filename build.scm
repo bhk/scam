@@ -173,8 +173,8 @@
 
   (write-file outfile
               (concat prologue
-                      (foreach obj objects
-                               (bundle (promote obj)))
+                      (concat-for obj objects " "
+                               (bundle obj))
                       (epilogue main (gen-global-name "main") runtime)))
 
   (shell (concat "chmod +x " (quote-sh-arg outfile))))

@@ -8,6 +8,11 @@
 ;;    of the program's `main` function.  The value of SCAM_TRACE is a
 ;;    "trace specification" (described below).
 ;;
+;;    Note that instrumentation of functions is not performed until after a
+;;    module is loaded.  When code within a module that executes at load
+;;    time -- i.e. during the call to `require` -- functions defined within
+;;    that module will not be subject to tracing.
+;;
 ;;  * Any SCAM program can require the "trace" module and call the `trace`
 ;;    function to instrument functions.  `trace` accepts a trace
 ;;    specification as an argument.  The function `trace-dump` can be

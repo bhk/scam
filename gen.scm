@@ -311,9 +311,9 @@
   &private
   (if priv
       exports
-      (filter "%"
-              (foreach b exports
-                       (import-binding (hash-key b) (hash-value b) d-name)))))
+      (strip-vec
+       (foreach b exports
+                (import-binding (hash-key b) (hash-value b) d-name)))))
 
 
 ;; Generate "exports" comment line for MIN file
@@ -407,9 +407,9 @@
     (if imports
         (let-global ((SCAM_MODS *compile-mods*))
           (^require mod)
-          (or (filter "%" (foreach e imports
-                                   (if (type? "X" (hash-value e))
-                                       e)))
+          (or (strip-vec (foreach e imports
+                                  (if (type? "X" (hash-value e))
+                                      e)))
               *dummy-env*)))))
 
 

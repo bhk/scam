@@ -1,5 +1,7 @@
 TODO
 
+ * Make `require` work with source files in `scam [-x] FILE ...` commands.
+
  * (data (Symbol pos name)
          (String pos text)
          (List pos nodes)
@@ -213,20 +215,61 @@ Optimizations
      (demote (if COND X Y))   -->   (if COND (demote X) (demote Y))   [maybe reduces]
 
 
- * Extraction and naming of anonymous functions
+ * Extraction and naming of anonymous functions.  The main motivation is to
+   make nested "let" blocks more efficient.  Currently size expands
+   exponentially ... which directly impacts performance.  Deeper nesting is
+   also a performance hit.
 
-     $$1$$2  -->  $(value <tmp>)     [where <tmp> = $1$2]
+    A) Convert lambda literals to variable references:
 
-     * lambda-call reduction:  (call ^Y,(value x),...)  -->  (call x,...)
-     * Requires no up-values.  To eliminate them:
+          f = ...LAMBDA...  -->   tmpvar = $(unescape LAMBDA)
+                                  f = ...$(value tmpvar)...
+
+       Up-value references make this impossible, since the values are not
+       known at tmpvar assignment time.
+
+       This assumes compilation for file context.  In expression context
+       we could do something like:
+
+          ...LAMBDA...  -->  $(set tmpvar,LAMBDA)...$(value tmpvar)...
+
+       ... but this will be unhelpful if the `set` is immediately prior to
+       the value (the assignment has to be less nested).  Also, the assignment
+       must be idempotent; any up-values will potentially corrupt the result.
+
+    B) Lambda-call reduction:
+
+          $(call ^Y,$(value x),...)  -->  $(call x,...)
+
+    C) Up-value elimination:
+
         A: (let ((x y)) ...a...)     -->  (let ((x y) (a a)) ...a...)
         B: ((lambda (x) ...a...) y)  -->  ((lambda (x y) ...a...) y a)
 
             $(call ^Y,$1,...,$$1$(call escape,$2)...)
         --> $(call ^Y,$1,$2,...,$$1$$2...)
-        --> $(call ^Y,$1,$2,...,funcname)
 
- * Misc
+       This would have to be done at the gen0 phase (without knowledge of
+       file vs. expression context), but it improves performance
+       independently of A & B, so it would be good anyway.  (But this can be
+       done manually by the programmer, so maybe isn't as urgent.)
+
+
+    Looking at the `let` case in particular (where we know A and B are
+    relevant):
+
+    text:   (define (f) (let ((a VAL)) BODY))
+    nodes:  [["F" "call" "Q ^fset" "Q f" ["X" ["Y" ["X" BODY] VAL]]]
+    file:   f = $(call ^Y,VAL,,,,,,,,,ESC_BODY)
+
+
+    One special case that might be easy to approach is when a function
+    begins with `let` (so the generated code begins a lambda call).  This is
+    fairly frequent, but doesn't cover a majority.  Another common case is
+    `(if arg1 (let ...))` and there are lots of other cases.
+
+
+* Misc
     * Interleave compile with parsing of top-level expressions.
     * Improve void-node?  (void? (if c a b)) --> (and (void? a) (void? b))
     * Identify arguments using special IL record (vs. R)

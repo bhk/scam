@@ -797,11 +797,42 @@ SCAM provides a macro named `foreach` that is more intuitive:
 
     (for VAR VECTOR EXPR)
 
-`for` iterates over items in a vector, constructing a new vector. Example:
+`for` iterates over items in a vector, evaluating EXPR for with VAR bound to
+an item, constructing a new vector with the results of EXPR. Example:
 
     > (for x [[1 2] [3 4]]
     +     (reverse x))
     [[2 1] [4 3]]
+
+
+### `append-for`
+
+[Special form]
+
+    (append-for VAR VECTOR EXPR)
+
+`append-for` is similar to `for` but it appends together all of the (vector)
+values of EXPR.  This is functionally similar to what is called `concat-map`
+in some other languages.
+
+    > (append-for x [[1 2] [3 4]]
+    +     x)
+    "1 2 3 4"
+    > (append-for x [7 1 5 3]
+    +    (if (> x 3) [x]))
+    "7 5"
+
+
+### `concat-for`
+
+[Special form]
+
+    (concat-for VAR VECTOR DELIM EXPR)
+
+`concat-for` is similar to `for` but it concatenates the values of EXPR.
+
+    > (concat-for x [1 2 3] ";" (wordlist 1 x "a b c"))
+    "a;a b;a b c"
 
 
 ### `demote`
@@ -940,9 +971,9 @@ from SCAM as a special form. For example:
 Since builtins are special forms, they are not variables bound to function
 values.
 
-    > subst
-    Line 1: Attempt to obtain value of builtin: subst
-    at: *subst*
+    > shell
+    Line 1: Attempt to obtain value of builtin: "shell"
+    at: *shell*
 
 Builtins may also differ from ordinary functions in the way arguments are
 evaluated. Ordinarily, all arguments are evaluated in order *before* a
@@ -984,6 +1015,8 @@ is used:
     line 1: undefined variable: x
     at: (.foreach "x" "1 2 3" (1+ *x*))
     > (.foreach "x" "1 2 3" (begin (declare x) (1+ x)))
+    "2 3 4"
+    > (foreach x "1 2 3" (1+ x))
     "2 3 4"
 
 The [`foreach`] (#foreach) special form avoids this problem.  The

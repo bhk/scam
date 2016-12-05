@@ -175,9 +175,9 @@
 
 (define (let&-env nvs env)
   (append (reverse
-           (foreach b nvs
-                    (hash-bind (nth 2 (nth 2 (promote b)))  ;; symbol name
-                          ["M" (nth 3 (promote b))]))) ;; expr
+           (append-for b nvs
+                       (hash-bind (nth 2 (nth 2 b))  ;; symbol name
+                                  ["M" (nth 3 b)]))) ;; expr
           env))
 
 (define (let&-check type form parent a)
@@ -223,8 +223,6 @@
   (c0 (ml.macro-let form) env))
 
 
-;; (for VAR LIST BODY)
-
 ;; (foreach VAR WORDS EXP)
 (define (ml.special-foreach form env)
   (define `var (nth 3 form))
@@ -241,7 +239,8 @@
             (hash-bind (nth 2 var) (concat "V " (word 2 var)) env)))))
 
 
-;; ==> (foreach "&f" LIST (^d (let& ((VAR (^u &f))) BODY)))
+;; (for VAR VEC BODY)
+;; ==> (foreach "&f" VEC (^d (let& ((VAR (^u &f))) BODY)))
 ;;
 ;; Unlike Make builtin `foreach`, `for` operates on lists, promoting input
 ;; values and demoting results.  Also, VAR is a symbol, not a quoted string.
@@ -254,8 +253,57 @@
   (c0 `(foreach ,(gensym var) ,vec
                 (call ,["Q" "^d"] (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
                           ,@body)))
-
       env))
+
+
+;; (append-for VAR VEC BODY)
+;; ==> (filter "%" (foreach "&f" VEC (let& ((VAR (^u &f))) BODY)))
+;;
+;; Similar to `(for ...)` but evaluates to the result of appending all BODY
+;; values (vectors).
+
+(define (ml.special-append-for form env)
+  (define `var (nth 3 form))
+  (define `vec (nth 4 form))
+  (define `body (nth-rest 5 form))
+
+  (c0 `(filter "%"
+               (foreach ,(gensym var) ,vec
+                        (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
+                              ,@body)))
+      env))
+
+
+;; (concat-for VAR VEC DELIM BODY)
+;;
+;; Similar to `(for ...)` but evaluates to the string concatenation of all
+;; BODY values.
+
+(define (ml.special-concat-for form env)
+  (define `var (nth 3 form))
+  (define `vec (nth 4 form))
+  (define `delim (nth 5 form))
+  (define `body (nth-rest 6 form))
+
+  (define `expansion
+    (if (and (type? "Q%" delim)
+             (eq (nth 2 delim) " "))
+        ;; Simple case (spaces are the default separator)
+        `(foreach ,(gensym var) ,vec
+                  (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
+                        ,@body))
+
+        ;; Replace space separators with DELIM.
+        `(subst "|. " (subst "|" "|1" ,delim)
+                "|." ""
+                "|1" "|"
+                (foreach ,(gensym var) ,vec
+                         (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
+                               (concat (subst "|" "|1" ,@body)
+                                       "|."))))))
+  (c0 expansion env))
+
+
 
 ;; (print args...)
 

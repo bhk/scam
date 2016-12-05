@@ -35,6 +35,13 @@
   &inline
   (promote (lastword vec)))
 
+;; Remove redundant spaces and tabs without removing "\n" characters.  Use
+;; this instead of `strip` when operating on vectors.  Word demotion does
+;; not encode newline characters.
+;;
+(define `(strip-vec vec)
+  (filter "%" vec))
+
 ;; `butlast` is like `rest`, but from the end of the vector
 (define (butlast vec)
   (wordlist 2 (words vec) (concat "X " vec)))
@@ -198,8 +205,8 @@
   ;; "$9" is a vector of arguments beyond the eighth
   (define `... (value 9))
 
-  (filter "%" (concat a " " b " " c " " d " " e " " f " " g " " h " "
-                      (if ... (promote ...)))))
+  (strip-vec (concat a " " b " " c " " d " " e " " f " " g " " h " "
+                     (if ... (promote ...)))))
 
 
 ;;---- Hash operations ----
@@ -355,7 +362,7 @@
 
   (define (uniq vec)
     (subst "~p" "%" "~1" "~"
-           (filter "%" (uniq-x (subst "~" "~1" "%" "~p" vec))))))
+           (strip-vec (uniq-x (subst "~" "~1" "%" "~p" vec))))))
 
 
 ;; Split STR at each occurrence of DELIM.  Returns vector whose length is one

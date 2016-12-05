@@ -172,6 +172,19 @@
      (CX "(for x \"1 2 3\" (and x))"))
 
 
+;; append-for
+
+(expect "$(filter %,$(foreach x&,1 2 3,$(call ^u,$(x&))))"
+        (CX "(append-for x \"1 2 3\" x)"))
+
+;; concat-for
+
+(expect "$(subst |1,|,$(subst |.,,$(subst |. ,$(subst |,|1,D),$(foreach x&,a b,$(subst |,|1,$(call ^u,$(x&)))|.))))"
+        (CX "(concat-for x \"a b\" \"D\" x)"))
+
+(expect "$(foreach x&,a b,$(call ^u,$(x&)))"
+        (CX "(concat-for x \"a b\" \" \" x)"))
+
 ;; cond
 
 (expect 1 (macrotest

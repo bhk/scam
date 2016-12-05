@@ -107,8 +107,8 @@
 ;; parsing if input tree was valid).  Does not rigorously validate.
 ;;
 (define (format-form form)
-  (cond ((list? form)   (concat "(" (foreach n (rest form)
-                                             (format-form (promote n))) ")"))
+  (cond ((list? form)   (concat "(" (concat-for f (rest form) " "
+                                                (format-form f)) ")"))
         ((string? form) (format (string-value form)))
         ((symbol? form) (symbol-name form))
         ((quoted? form) (concat "'" (format-form (nth 2 form))))
@@ -139,7 +139,7 @@
 ;; follow other spaces or newlines are collapsed into a single word, since
 ;; these are syntactically equivalent.
 ;;
-;; Consecutive spaces are then compressed ( !0!0 --> !2!2 ).  This
+;; Consecutive spaces are then compressed ( !0!0 --> !2! ).  This
 ;; compression must not change the initial character (e.g. "!0") since that
 ;; is used to identify the type of the lexeme.
 ;;

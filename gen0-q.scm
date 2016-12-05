@@ -32,11 +32,11 @@
                       (nth-rest 2 node)))))
    (if node
        (append (fn node)
-               (foreach _c children
-                        (il-visit-x (promote _c) fn))))))
+               (append-for c children
+                           (il-visit-x c fn))))))
 
 (define (il-visit node fn)
-  (filter "%" (il-visit-x node fn)))  ;; `strip` without corrupting newlines
+  (strip-vec (il-visit-x node fn)))
 
 
 ;; Extract errors from an IL node
