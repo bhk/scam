@@ -99,3 +99,8 @@
                  (hash-bind "a:n\n,x" "V xyz"))
          1
          "File Name.min"))
+
+;; base-env and resolve
+
+(expect ["V" "^av" "b"]
+        (resolve ["S" "*args*"] base-env))

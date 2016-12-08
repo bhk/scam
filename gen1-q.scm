@@ -7,63 +7,45 @@
 (require "gen0")
 (require "gen1")
 
+;; make-list
 
-;; Expand "^..." to namespaced version *within* STR
-;;
-;(define `(ns str)
-;  (subst "^" (gen-global-name "^") str))
-
-
-;;--------------------------------
-
-;; Parse and compile first expression in `text`.  Returns "gen-coded"
-;; result.
-(define (C1 text env)
-  (c1 (first (gen0 (parse-text text) (or env base-env)))))
-
-;; Parse and compile `text`, returning just the `exe` portion.
-(define (CX text env is-file)
-  (nth 2 (gen1 (gen0 (parse-text text) (or env base-env)) is-file)))
-
-;; Parse and compile `text` to file syntax.
-(define (CXF text env)
-  (CX text env 1))
-
-;;--------------------------------
+(expect "x" (make-list 1 1 "x"))
+(expect "" (make-list 2 1 "x"))
+(expect "xxxx" (make-list 1 4 "x"))
 
 ;; gen-embed / gen-quote
 
-(expect ["Hello, world!($)"] (gen-extract (gen-embed "Hello, world!($)")))
+(let& ((msg "), \n \t ~3 $- $(call $1,2)"))
+      (expect msg (gen-decode (gen-encode msg)))
+      (expect msg (gen-decode (c1-Lambda (protect-trim (gen-encode msg))))))
 
-(expect ["!0!10 x" " x\t\n"]
-        (gen-extract (concat-vec (for s ["!0!10 x" " x\t\n"] (gen-embed s)))))
+(let& ((msg "A B ! !0")
+       (msg2 " \t\n "))
+      (expect [msg] (gen-extract (concat (gen-embed msg) "$x")))
+      (expect [msg] (gen-extract (concat " " (gen-embed msg))))
+      (expect [msg "" msg2]
+              (gen-extract (concat " " (gen-embed msg)
+                                   (gen-embed "")
+                                   (gen-embed msg2)))))
 
-(expect ["Hello, world!($)"]
-        (gen-extract (concat "$(or " (gen-embed "Hello, world!($)") "x)")))
-(expect ["Hello, world!($)"]
-        (gen-extract
-         (protect-arg (concat ")" (gen-embed "Hello, world!($)")))))
-(expect ["Hello, world!($)"]
-        (gen-extract
-         (gen-escape-lambda (concat ")" (gen-embed "Hello, world!($)")))))
-
-
-;;--------------------------------
-
-
-;; Q: literal strings
+;; String: literal values
 
 (expect " x "
-        (c1 ["Q" " x "]))
+        (c1 (String " x ")))
 
 (expect "xyz"
-        (c1 ["Q" "xyz"]))
+        (c1 (String "xyz")))
 
-(expect "$$"
-        (c1 ["Q" "$"]))
+(expect (escape "$")
+        (c1 (String "$")))
 
 (expect "$(info $(if ,,,))"
-        (c1 ["F" "info" ["Q" ","]]))
+        (c1 (Builtin "info" [(String ",")])))
+
+;; Concat: concatenate values
+
+(expect "abc"
+        (c1 (Concat [ (String "a") (String "b") (String "c") ])))
 
 ;; V: variable reference
 
@@ -73,206 +55,143 @@
 (expect "$(foo)"
         (c1 "V foo"))
 
-
-;; F: buitin function call
+;; Builtin: call Make builtin function
 
 (expect "$(value FUNC)"
-        (c1 ["F" "value" "Q FUNC"]))
+        (c1 (Builtin "value" [ (String "FUNC") ])))
 
 (expect "$(info a)"
-        (c1 ["F" "info" "Q a"]))
+        (c1 (Builtin "info" [ (String "a") ])))
 
 ;; and & or:  protect against trimming
 
 (expect "$(or $(if ,, a ))"
-        (c1 ["F" "or" ["Q" " a "]]))
+        (c1 (Builtin "or" [ (String " a ") ])))
 
 (expect "$(and $(if ,,\na\n))"
-        (c1 ["F" "and" ["Q" "\na\n"]]))
+        (c1 (Builtin "and" [ (String "\na\n") ])))
 
-;; ...and execute compiled `and` code
-(expect "2 " ((C1 "(and 1 \"2 \")")))
-(expect "\n2" ((C1 "(and 1 \"\n2\")")))
-(expect "2\n" ((C1 "(and 1 \"2\n\")")))
-
-
-;; f: user function call
+;; Call: call user-defined function by name
 
 (expect "$(call fn)"
-        (c1 ["f" "fn"]))
+        (c1 (Call "fn" [] )))
 
 (expect "$(call fn,1)"
-        (c1 ["f" "fn" "Q 1"]))
+        (c1 (Call "fn" [ (String 1) ])))
 
 ;; many args
 (expect "$(call fn,1,2,3,4,5,6,7,8,9 a b!0)"
-        (c1 ["f" "fn" "Q 1" "Q 2" "Q 3" "Q 4" "Q 5"
-             "Q 6" "Q 7" "Q 8" "Q 9" "Q a" "Q b!0"]))
+        (c1 (Call "fn" (for s "1 2 3 4 5 6 7 8 9 a b!0" (String s)))))
 
 (expect "$(call fn,1,2,3,4,5,6,7,8,9 $] $(call ^d,$v))"
-        (c1 ["f" "fn" "Q 1" "Q 2" "Q 3" "Q 4" "Q 5"
-             "Q 6" "Q 7" "Q 8" "Q 9" "Q )" "V v"]))
+        (c1 (Call "fn" (conj (for s "1 2 3 4 5 6 7 8 9 )" (String s))
+                             (Var "v")))))
 
+;; Local: value of local variable
 
-;; U: up-values (or local arguments)
+(expect "$3"                   (c1-Local 3 0))
+(expect "$-(call ^E,$-3)"      (c1-Local 3 1))
+(expect "$--(call ^E,$--3,`)"  (c1-Local 3 2))
 
-(expect "$3"          (c1-U "U 3 0"))
-(expect "($.^=3)"     (c1-U "U 3 1"))
-(expect "($.^^=3,2)"  (c1-U "U 3 2"))
-
-
-;; Y: anonymous function call
+;; Funcall: call an anonymous function
 
 (expect "$(call ^Y,,,,,,,,,,$1)"
-        (c1 ["Y" "U 1 0"]))
+        (c1 (Funcall (Local 1 0) [] )))
 
 (expect "$(call ^Y,a,,,,,,,,,$1)"
-        (c1 ["Y" "U 1 0" "Q a"]))
+        (c1 (Funcall (Local 1 0) [ (String "a") ])))
 
 (expect "$(call ^Y,a,b,c,d,e,f,g,h,i j,$1)"
-        (c1 ["Y" "U 1 0" "Q a" "Q b" "Q c" "Q d" "Q e"
-             "Q f" "Q g" "Q h" "Q i" "Q j" ]))
+        (c1 (Funcall (Local 1 0) (for s "a b c d e f g h i j"
+                                      (String s)))))
 
-
-;; C: concatenate
-
-(expect "abc"
-        (c1 ["C" "Q a" "Q b" "Q c"]))
-
-
-;; B: sequence
+;; Block: a sequence of expressions
 
 (expect "$(and X1,$[)"
-        (c1 ["B" ["Q" "X"] ["Q" "("]]))
+        (c1 (Block [ (String "X") (String "(") ])))
+(expect "X"
+        (c1 (Block [ (String "X") ])))
 
 
-;; X: nested function
+;; Lambda: construct an anonymous function
+;;    (lambda (args...) body) -->  (Lambda BODY)
 
-;; (lambda (args...) body) -->  ["X" <form>]
-;;
-;; ["X" exp] is similar to ["Q" (c1 exp)], because the nested lambda
-;; expression will evaluate (un-escape) to a function body.  So, "$$" and
-;; "$1" references in (c1 exp) become "$$$$" and "$$1".
-;;
-;; (info (lambda (x) (concat "$," x))) --> $(info $$$$,$$1) ==> "$$,$1"
-;;
-;; But it is not exactly the same, since the function body can reference
-;; upvalues (captured variables), which do NOT get quoted. Instead,
-;; "escaping" turns these references -- eg. "($.^=1)" -- into code that
-;; escapes the variable at runtime -- e.g. "$(call escape,$1)".
-;;
-
-(expect "$$$$"                 (c1 ["X" "Q $"]))
-(expect "$$a"                  (c1 ["X" "V a"]))
-(expect "$$(value FUNC)"       (c1 ["X" ["F" "value" "Q FUNC"]]))
-(expect "$$1"                  (c1 ["X" ["U" 1 0]]))
-
-(expect "$$(call ^e,$$1)"      (c1 ["X" ["X" ["U" 1 1]]]))
-(expect "$$$$1"                (c1 ["X" ["X" ["U" 1 0]]]))
-
-(expect "$$(call ^e,$$1,2)"         (c1 ["X" ["X" ["X" ["U" 1 2]]]]))
-(expect "$$$$(call ^e,$$$$1)"       (c1 ["X" ["X" ["X" ["U" 1 1]]]]))
-(expect "$$$$$$$$1"                 (c1 ["X" ["X" ["X" ["U" 1 0]]]]))
-
-
-;;--------------------------------------------------------------
-;; block-level expressions
-;;--------------------------------------------------------------
-
-;; begin
-
-(expect "$(and xyz1,pdq1,yui)"  ; "$(if xyz,)$(if pdq,)yui"
-        (C1 "(begin \"xyz\" \"pdq\" \"yui\")"))
-
-(expect "$(if 1,2,yuf)"
-        (C1 "(if 1 2 (begin \"yuf\"))"))
-
-(expect "$(and $(info a)1,$(call print,hi)1,$(call ^set,var,val))"
-        (C1 "(begin (info \"a\") (print \"hi\") (^set \"var\" \"val\"))"
-            (append (hash-bind "print" ["F" "print"])
-                    (hash-bind "^set" ["F" "^set"])
-                    base-env)))
-
-(expect "a$$b := A$$B\n"
-        (c1-file ["f" "^set" "Q a$b" "Q A$B"]))
-
-;;--------------------------------------------------------------
-;; end-to-end tests
-
-(expect "$$" (CX "\"$\""))
-(expect "@"  (CX "\"@\""))
-(expect "$(or $(if ,, A ))" (CX "(or \" A \")"))
-(expect "$(call ^Y,3,5,,,,,,,,$$1$$2)" (CX "(\"$1$2\" 3 5)"))
-
-(expect (concat "$("
-                (gen-global-name "@G@1H")
-                ")")
-        (CX "(declare @G@1H) @G@1H"))
-
+(expect "$``"                (c1 (Lambda (String "$"))))
+(expect "$`1"                (c1 (Lambda (Local 1 0))))
+(expect "$(call ^E,$3)"      (c1 (Lambda (Local 3 1))))
+(expect "$-(call ^E,$-3,`)"  (c1 (Lambda (Local 3 2))))
 
 ;; c1-E
 
 (expect ["E.1 undef"]
-        (gen-extract (c1 ["F" "wildcard" "E.1 undef"])))
+        (gen-extract (c1 (Builtin "wildcard" [ "E.1 undef" ]))))
 
+;; c1-file-set and c1-file-fset
 
-;; c1-file
-(expect "x := crank\n"
-    (CXF "(declare (^set a b) &global) (^set \"x\" \"crank\")"))
+(expect "x := $  $` \n"
+        (c1-file-set "x" " $` "))
 
-(expect "$(if $(call ^set,x,1,$(info 2)),)\n"
-    (CXF "(declare (^set a b) &global) (^set \"x\" 1 (info 2))"))
+(expect "x := \\#$'\\\n"
+        (c1-file-set "x" "#\n\\"))
 
-;; discard return values in file syntax
-
-;; non-void function
-(expect "$(if $(shell ls),)\n" (CXF "(shell \"ls\")"))
-
-;; void function
-(expect "$(error hi)\n" (CXF "(error \"hi\")"))
-
-;; eval of literal
-(expect "x=$1\n"
-        (CXF "(eval \"x=$1\")"))
-
-
-;;--------------------------------------------------------------
-;; assignments vs. expressions & escaping
-;;--------------------------------------------------------------
-
-;; c1-set and c1-fset
-(expect "x := $  $$ \n"
-        (c1-file-set "x" " $$ "))
+(expect "x$\" := \\#\n"
+        (c1-file-set "x#" "#"))
 
 (expect "f = $\n"
-        (c1-file-fset "f" "$$"))  ;; "$$" expands to "$" == $(value f)
+        (c1-file-fset "f" "$`"))  ;; "$`" expands to "$" == $(value f)
 
 (expect (concat "$(call " "^fset" ",f,$(foo))\n")
         (c1-file-fset "f" "$(foo)"))
 
 (expect "define f\n $1\n$2 \nendef\n"
-        (c1-file-fset "f" " $$1\n$$2 "))
+        (c1-file-fset "f" " $`1\n$`2 "))
 
 (expect "define f\n$   define\n$ endef\nendef\n"
         (c1-file-fset "f" "  define\nendef"))
 
-(expect "f = $$\n"
-        (CXF (concat "(call \"" "^fset" "\" \"f\" \"$$\")")))
+;; c1-file
 
-(expect (concat "$(call " "^fset" ",f,$(words 1))\n")
-        (CXF (concat "(call \"" "^fset" "\" \"f\" (words 1))")))
+;; (Call "^set" ...)  -->   c1-file-set
+(expect "a := A\n"
+        (c1-file (Call "^set" [ (String "a") (String "A") ])))
 
-(expect (concat "$(call " "^fset" ",f,$(" "^av" "))\n")
-        (CXF (concat "(call \"" "^fset" "\" \"f\" *args*)")))
+;; (Call "^fset" ...)  -->  c1-file-fset
+(expect "a = A\n"
+        (c1-file (Call "^fset" [ (String "a") (String "A") ])))
 
-(expect "x := \\#$!\\\n"
-        (CXF (concat "(call \"" "^set" "\" \"x\" \"#\n\\\\\")")))
+;; (Builtin "call" (String S)) -->  (Call S ...)
+(expect "a := A\n"
+        (c1-file (Builtin "call"
+                          [ (String "^set") (String "a") (String "A") ])))
 
-(expect "h$& := \\#\n"
-        (CXF (concat "(call \"" "^set" "\" \"h#\" \"#\")")))
+;; (Builtin "eval" (String TEXT))  -->  TEXT
+(expect "a=1\nb=2\n"
+        (c1-file (Builtin "eval" [ (String "a=1\nb=2") ])))
 
-(expect "$(info #)\n"
-        (CXF "(info \"#\")"))
+;; (Block ...) -> still in file mode
+(expect "X\n"
+        (c1-file (Block [ (Builtin "eval" [ (String "X") ]) ])))
 
-(foreach SCAM_DEBUG "-"
-  (expect "$(call f,1)" (CX "(declare (f) &global) (f 1)")))
+;; non-void function
+(expect "$(if $(shell ls),)\n"
+        (c1-file (Builtin "shell" [ (String "ls") ])))
+
+;; void function
+(expect "$(error hi)\n"
+        (c1-file (Builtin "error" [ (String "hi") ])))
+
+;; gen1
+
+(define (gen-out node is-file)
+  (nth 2 (gen1 [ node ] is-file)))
+
+(expect "x := 1\n"
+        (gen-out (Call "^set" [ (String "x") (String 1) ]) 1))
+
+(expect "$(call ^set,x,1)"
+        (gen-out (Call "^set" [ (String "x") (String 1) ]) nil))
+
+;; Ensure markers are not confused with RHS literals in file syntax.
+(expect ["" "$(call ^fset,f,$`.{ERR)\n"]
+        (gen1 [ (Call "^fset" [ (String "f") (String "$.{ERR") ]) ]
+              1))

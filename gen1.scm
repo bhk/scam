@@ -8,109 +8,159 @@
 (require "gen")
 (require "gen0")
 
-
-;; Repeat a word k times.
-;;   Note: k must be >= 1.
-;;         w must contain no whitespace.
-(define (rep-word k w)
-  (if (word k w)
-      (subst " " "" (wordlist 1 k w))
-      (rep-word k (concat w " " w " " w))))
-
-
-;;--------------------------------------------------------------
-;; "gen" coding
+;; File vs. Function Syntax
+;; ----------------
 ;;
-;; To embed up-value references and error messages in generated Make
-;; expressions, we use special character sequences that do not appear
-;; otherwise.
+;; Compilation may generate code for different syntactic contexts in Make.
+;; "File" code can appear as a line in a Makefile and is suitable for
+;; passing to Make's `eval` builtin.  "Function" code can appear within a
+;; function body, is suitable for invoking directly or binding to a function
+;; variable.
 ;;
-;;  * Upvalue from parent:   ($.^=1)  ($.^=2)  ...
-;;  * Grandparent upvalue:   ($.^^=1,2) ($.^^=2,2) ...
-;;  * Errors:                ($.@ERROR@)
-;;  * Temporary usage:       ($)
+;;     SCAM source:     (set-global "x" 1)    (+ 1 2)
+;;     Function Code:   $(call ^set,x,1)      $(call +,1,2)
+;;     File Code:       x = 1                 $(if ,,$(call +,1,2))
 ;;
+;; Most of the functions in this module compile to function syntax.  File
+;; syntax is handled by `c1-file-xxx` functions.  A few constructs are
+;; handled specially in file syntax, but in most cases the code is first
+;; compiled to function syntax and then wrapped and/or transformed.
+;;
+;; Function syntax consists of text that, when expanded in Make, will expand
+;; to the *value* described by the corresponding IL node.  For example, the
+;; IL node (String "$") compiles to "$`", which, when evaluated by Make --
+;; as in, say "$(info $`)" -- will yield "$".  So in a sense there is an
+;; "extra" level of escaping in all function syntax, and no literal "$"
+;; will appear un-escaped.  When "$" is escaped, we use "$`", ensuring that
+;; each "$" will be followed only by a restricted set of characters.  We
+;; assign special meaning to a couple of character sequences that do not
+;; represent actual "code":
+;;
+;;    "$." is a marker.
+;;    "$-" is a negative-escape sequence.
+;;
+;; Lambda-escaping handles these specially.  Whereas every "$" usually
+;; escapes to "$`", "$." remains "$." and "$-" becomes "$".
+;;
+;; Lambda Values, Captures, and Lambda-escaping
+;; ----------------
+;;
+;; Code that lies within an anonymous function will be "lambda-escaped" for
+;; inclusion in the body of a parent function.  Consider this example:
+;;
+;;   (define f (lambda () (lambda () (lambda (a) (Concat "$" a)))))
+;;   f  -->  "$```$``1"
+;;   (((f)) "A")   -->  "$A"
+;;
+;; Here, the code generated for the innermost lambda, "$`$1", was escaped
+;; twice to yield the value of `f`, because it had to survive two rounds of
+;; expansion before being executed.
+;;
+;; Now consider this:
+;;
+;;   (define f (lambda (c) (lambda (b) (lambda (a) (concat "$" a b c)))))
+;;   (((f "C") "B") "A")  -->   "$ABC"
+;;
+;; The innermost lambda's IL node looks like this:
+;;
+;;   (Lambda (Concat (String "$") (Local 1 0) (Local 1 1) (Local 1 2)))
+;;
+;; The `Concat` node compiles to:
+;;
+;;   "$`$1$-(call ^E,$-1)$--(call ^E,$--1,`)"
+;;
+;; When evaluated in Make, "$`" expands to "$", and "$1" expands the
+;; innermost local variable value.  The other local variables are
+;; *captures*.  Their numeric variables (e..g "$1") are not accessible when
+;; the innermost lambda executes ... instead, they must have been expanded
+;; earlier when the corresponding ancestor executed.  But the ancestor's
+;; code cannot be generated until after the nested lambda has been compiled.
+;; For this, we have a notion of "negative" escaping.  We can use "$-",
+;; which after a round of escaping, yields a "bare", un-escaped "$".
+;;
+;; The sequence "$-(call ^E,$-1)" will escape to "$(call ^E,$1)", so when
+;; the parent function executes its "$1" argument will be embedded in the
+;; lambda expression.  `^E` escapes the value at run-time, since it must
+;; survive a round of expansion (when the lambda expression is evaluated).
+;; For 'c' -- (Local 1 2) -- an extra "`" argument is passed to `^E` to
+;; indicate that the run-time expansion must survive an additional round of
+;; expansion, since the value will be captured in a lambda expression that
+;; is two levels down.
+;;
+;; The `Concat` code is then expanded to produce the value of the innermost
+;; Lambda -- which constitutes the the *body* of the middle Lambda:
+;;
+;;   "$``$`1$(call ^E,$1)$-(call ^E,$-1,`))"
+;;
+;; This is then escaped to obtain the body of the outer Lambda:
+;;
+;;   "$```$``1$`(call ^E,$`1)$(call ^E,$1,`))"
+;;
+;; Now we have the *value* of `f`, although compiling the outer Lambda
+;; proceeds to escape this once more, producing the compiled form of the
+;; body of `f` (code = escaped value).
+;;
+;;                     f  -->  "$```$``1$`(call ^E,$`1)$(call ^E,$1,`))"
+;;               (f "C")  -->  "$``$`1$(call ^E,$1)C"
+;;         ((f "C") "B")  -->  ("$``$`1$(call ^E,$1)C" "B")
+;;                        -->  "$`$1BC"
+;;   (((f "C") "B") "A")  -->  ("$`$1BC" "A")
+;;                        -->  "$ABC"
 
-;; Escape a literal string for a Make expression
-(define (gen-escape-literal literal)
-  (subst "$" "$$" literal))
 
-
-;; Escape a lambda value for inclusion in a Make expression
-(define (gen-escape-lambda code)
-  (subst "$" "$$"
-         "($$." "($."
-         "($.^" "($."
-         "($.=" "$(call ^e,$"
+;; Lambda-escape CODE
+;;
+(define (c1-Lambda code)
+  (subst "$" "$`"
+         "$`-" "$"
+         "$`." "$."
          code))
 
 
-;; Embed an arbitrary string into a Make expression.  This will survive any
-;; `gen-quote` or `protect-...` operations intact; `gen-extract` should
-;; recover the exact same string from the final c1 result.
+(define `(gen-encode str)
+  (subst "~" "~1" "(" "~L" "," "~C" ")" "~R" "$" "~S" "\n" "~N" str))
+
+
+(define `(gen-decode str)
+  (subst "~N" "\n" "~S" "$" "~R" ")" "~C" "," "~L" "(" "~1" "~" str))
+
+
+;; Embed an arbitrary value into a generated code.  This string will
+;; survive the lambda-escaping, protect-XXX, and other transformations that
+;; may be performed on code before it is returned from `gen1`.
 ;;
 (define (gen-embed str)
-  (concat "($.@"
-          (subst "~" "~1" "(" "~L" "," "~C" ")" "~R" "$" "~S" str)
-          "@)"))
+  (concat "$.{" (gen-encode str) "$.}"))
 
 
 ;; Extract embedded strings.  Returns a vector.
 ;;
 (define (gen-extract code)
-  (foreach w (rest (split "($.@" code))
-           (subst "~L" "(" "~C" "," "~R" ")" "~S" "$" "~1" "~"
-                  (first (split "@)" w)))))
-
-;;--------------------------------------------------------------
-
-;; returns demoted name of builtin or user function (if builtin = call)
-;; or empty string if 'node' is not a function invocation
-(define (il-funcname node)
-  (if (type? "f" node)
-      (word 2 node)
-      (if (type? "F" node)
-          (or (filter-out "call" (word 2 node))
-              (word 2 (nth 3 node))))))
-
-;; Return arguments to a user function
-;; Could be  [F call FNSYM var val ret]
-;;       or  [f FNNAME var val ret]
-(define `(il-user-args node)
-  (nth-rest (if (type? "F" node) 4 3) node))
+  (if (findstring "$.{" code)
+      (for e (rest (split "$.{" code))
+           (gen-decode (first (split "$.}" e))))))
 
 
-;; Detect whether an IL node will always evaluate to "".
-;;    node = IL node
-;;    name = (il-funcname node)
+;; Construct a node that expands NODE but returns nil.
 ;;
-(define `(void-node? node name)
-  ;; void-names are builtins and runtime functions that we know always
-  ;; return nil
-  (define `void-names
-    "error eval info ^require")
+(define `(voidify node)
+  (if (case node
+        ((Builtin name args) (filter "error eval info" name))
+        ((Call name args) (filter "^require" name)))
+      node
+      (Builtin "if" [node (String "")])))
 
-  (filter void-names name))
 
-
-;; return new IL node that discards return value of e, if any
-(define `(voidify e)
-  (if (void-node? e (il-funcname e))
-      e
-      ["F" "if" e ["Q" ""]]))
-
-;;--------------------------------
-
-(define one-char-names
+(define `one-char-names
   (concat "a b c d e f g h i j k l m n o p q r s t u v w x y z "
           "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"))
+
 
 (declare (c1))
 
 
 (define (c1-arg node)
-  (if (type? "f F" node)
-      ;; c1-f and c1-F generate balanced expressions
+  (if (is-balanced? node)
       (c1 node)
       (protect-arg (c1 node))))
 
@@ -119,8 +169,7 @@
 ;; in `and` and `or` expressions)
 ;;
 (define (c1-arg-trim node)
-  (if (type? "f F" node)
-      ;; c1-f and c1-F generate balanced expressions that don't trim
+  (if (is-balanced? node)
       (c1 node)
       (protect-trim (protect-arg (c1 node)))))
 
@@ -132,24 +181,25 @@
 
 
 (define (c1-E node)
-  (gen-embed node))
+  (gen-embed (if (filter "E E.%" node)
+                 node
+                 ["E" "Internal error; mal-formed IL node: " node])))
 
 
 ;; Construct an IL node that evaluates to a vector.  `nodes` is a vector of
 ;; IL nodes containing the item values.
 ;;
 (define (il-vector nodes)
-  (il-foldcat (il-qmerge (subst " " (concat " " [["Q" " "]] " ")
+  (il-foldcat (il-qmerge (subst " " (concat " " [(String " ")] " ")
                                 (for n nodes (il-demote n))))))
 
 
-;; Call built-in function:   ["F" <name> <a> <b>]
-(define (c1-F node)
+;; Call built-in function
+(define (c1-Builtin name args)
   ;; (demote <builtin>) == <builtin> for all builtins
-  (define `name (word 2 node))
   (concat "$(" name
           " " ; this space is necessary even when there are no arguments
-          (protect-ltrim (c1-vec (rrest node) ","
+          (protect-ltrim (c1-vec args ","
                               (if (filter "and or" name)
                                   (global-name c1-arg-trim)
                                   (global-name c1-arg))))
@@ -164,73 +214,74 @@
       (c1-vec nodes "," (global-name c1-arg))))
 
 
-;; Call user-defined function (by name):   ["f" <name> <a> <b>]
-(define (c1-f node)
-  (define `ename (protect-ltrim (gen-escape-literal (nth 2 node))))
-  (define `args (c1-args9 (rrest node)))
+;; Call user-defined function (by name)
+;;
+(define (c1-Call name args)
+  (define `ename (protect-ltrim (escape name)))
 
-  (concat "$(call " ename (if (rrest node) ",") args ")"))
-
-
-(define (c1-U node)
-  (define `n (word 2 node))
-  (define `ups (word 3 node))
-  (define `carets (rep-word ups "^"))
-
-  (if (filter-out 0 ups)
-      (concat "($." carets "=" n (filter-out ",1" (concat "," ups)) ")")
-      (concat "$" n)))
+  (concat "$(call " ename (if args ",") (c1-args9 args) ")"))
 
 
-;; Call lambda value:  ["Y" <fn> <a> <b> ... ]
-(define (c1-Y node)
-  (define `args (c1-args9 (rrest node)))
-  (define `fnval (protect-arg (c1 (nth 2 node))))
-  (define `commas (subst " " "" (filter "," (or (wordlist (words node) 11
-                                                          "x x , , , , , , , , ,")
-                                                ","))))
-
-  (concat "$(call ^Y," args commas fnval ")"))
+;; Repeat WORDS (B - A + 1) times.
+;; Note: A and B must be >= 1
+;;.
+(define (make-list a b words)
+  (if (word b words)
+      (subst " " "" (wordlist a b words))
+      (make-list a b (concat words " " words " " words))))
 
 
-;; block: ["B" <exp> ...]
-;; return value of last expression
-(define (c1-B node)
-  (if (word 3 node)
-      (concat "$(and " (c1-vec (rest node) "1," (global-name c1-arg)) ")")
-      (if (word 2 node)
-          (c1 (nth 2 node)))))
+;; Local variable  (level 0 = current)
+;;
+(define (c1-Local ndx level)
+  (if (filter-out 0 level)
+      ;; ups is non-zero, non-nil
+      (subst "-" (make-list 1 level "-")
+             ",)" ")"
+             (concat "$-(call ^E,$-" ndx "," (make-list 2 level "`") ")"))
+      (concat "$" ndx)))
 
 
-(define (c1-V node)
-  (concat "$" (or (filter one-char-names (word 2 node))
-                  (concat "(" (gen-escape-literal (nth 2 node)) ")"))))
+;; Call lambda value
+(define (c1-Funcall func args)
+  (define `fnval (protect-arg (c1 func)))
+  (define `commas (subst " " "" (or (wordlist (words (concat "x" args)) 9
+                                              ", , , , , , , , ,")
+                                    ",")))
 
-(define (c1-X node)
-  (gen-escape-lambda (c1 (nth 2 node))))
+  (concat "$(call ^Y," (c1-args9 args) commas fnval ")"))
 
-(define `(c1-Q node)
-  (subst "$" "$$" (nth 2 node)))
+
+;; Block: evaluate all nodes and return value of last node
+(define (c1-Block nodes)
+  (if (word 2 nodes)
+      (concat "$(and " (c1-vec nodes "1," (global-name c1-arg)) ")")
+      (if nodes
+          (c1 (first nodes)))))
+
+
+(define (c1-Var name)
+  (concat "$" (or (filter one-char-names name)
+                  (concat "(" (escape name) ")"))))
 
 (define (c1 node)
-  (cond ((type? "Q%" node) (c1-Q node))
-        ((type? "U" node) (c1-U node))
-        ((type? "f" node) (c1-f node))
-        ((type? "V" node) (c1-V node))
-        ((type? "C" node) (c1-vec (rest node) "" (global-name c1)))
-        ((type? "X" node) (c1-X node))
-        ((type? "B" node) (c1-B node))
-        ((type? "Y" node) (c1-Y node))
-        ((type? "F" node) (c1-F node))
-        (else             (c1-E node))))
+  (case node
+    ((String. value) (escape value))
+    ((Local ndx ups) (c1-Local ndx ups))
+    ((Call name args) (c1-Call name args))
+    ((Var name) (c1-Var name))
+    ((Concat nodes) (c1-vec nodes "" (global-name c1)))
+    ((Lambda code) (c1-Lambda (c1 code)))
+    ((Block nodes) (c1-Block nodes))
+    ((Funcall func args) (c1-Funcall func args))
+    ((Builtin name args) (c1-Builtin name args))
+    (else (c1-E node))))
 
 
 ;;--------------------------------------------------------------
-;; c1-file : compile to "statement" or "file" syntactic context.
-;; (See "File vs. Function Context" in compile.scm.)
+;; File Syntax
 
 (declare (c1-file))
-
 
 ;; construct code for simple assignment
 ;;
@@ -245,8 +296,12 @@
 ;; After "LHS = RHS", $(value LHS) == RHS
 ;;
 (define (c1-file-fset lhs rhs)
-  (if (findstring "$" (subst "$$" "" rhs))
-      ;; rhs not constant
+  (define `(unescape str)
+    (subst "$`" "$" str))
+
+  (if (or (findstring "$" (subst "$`" "" rhs))
+          (findstring "$`." rhs))
+      ;; RHS not constant (has unescaped "$"), or would contain "$."
       (concat "$(call " "^fset" "," (protect-arg lhs) "," (protect-arg rhs) ")\n")
       (if (or (findstring "#" rhs)
               (findstring "\n" rhs)
@@ -256,9 +311,9 @@
           ;; Use 'define ... endef' so that $(value F) will be *identical*
           ;; to rhs almost always.
           (concat "define " (protect-lhs lhs) "\n"
-                  (protect-define (subst "$$" "$" rhs))
+                  (protect-define (unescape rhs))
                   "\nendef\n")
-          (concat (protect-lhs lhs) " = " (subst "$$" "$" (protect-rhs rhs)) "\n"))))
+          (concat (protect-lhs lhs) " = " (unescape (protect-rhs rhs)) "\n"))))
 
 
 ;; compile a vector of expressions for file context
@@ -273,32 +328,36 @@
 ;;
 (define (c1-file node)
   (or
-   ;; top-level (eval STR) equivalent to STR
-   (and (type? "F" node)
-        (filter "eval" (word 2 node))
-        (filter "Q%" (word 3 node))
-        (concat (string-value (nth 3 node)) "\n"))
+   (case node
 
-   ;; use makefile syntax for assignments, versus "$(call SET,...)
-   (if (filter (concat "^set" " " "^fset") (il-funcname node))
-          (let ((args (il-user-args node))
-                (name (il-funcname node)))
-            (if (not (nth 3 args))
-                ( (if (filter "^set" name) c1-file-set c1-file-fset)
-                  (c1 (nth 1 args))
-                  (c1 (nth 2 args))))))
+     ((Builtin name args)
+      (case (first args)
+        ((String. value)
+         (if (filter "eval" name)
+             ;; top-level (eval STR) equivalent to STR
+             (concat value "\n")
+             (if (filter "call" name)
+                 ;; normalize (Builtin "call" ...) to (Call ...)
+                 (c1-file (Call value (rest args))))))))
 
-   (cond
-    ((type? "B" node) (c1-file* (rest node)))
+     ;; use makefile syntax for assignments, versus "$(call SET,...)
+     ((Call name args)
+      (if (not (nth 3 args))
+          (if (filter "^set" name)
+              (c1-file-set (c1 (nth 1 args)) (c1 (nth 2 args)))
+              (if (filter "^fset" name)
+                  (c1-file-fset (c1 (nth 1 args)) (c1 (nth 2 args)))))))
 
-    (else (concat (protect-expr (c1 (voidify node))) "\n")))))
+     ((Block nodes) (c1-file* nodes)))
+
+   (concat (protect-expr (c1 (voidify node))) "\n")))
 
 
 ;; Compile a vector of IL nodes to an executable string.
 ;; Returns:  [ errors exe ]
 ;;
-(define (gen1 nodes is-file)
+(define (gen1 node-vec is-file)
   (let ( (c1o (if is-file
-                  (c1-file* nodes)
-                  (c1 (append "B" nodes)))) )
+                  (c1-file* node-vec)
+                  (c1 (Block node-vec)))) )
     [ (gen-extract c1o) c1o ]))

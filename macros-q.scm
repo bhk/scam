@@ -7,7 +7,8 @@
 (require "gen")
 (require "gen0")
 (require "gen1")
-(require "macros")
+(require "escape")
+(require "macros" &private)
 
 
 ;; in case something went very wrong...
@@ -29,7 +30,14 @@
   (define `errors-exe (gen1 il is-file))
 
   (nth 2 errors-exe))
-;  (nth 2 (DUMP "gen1" (gen1 (DUMP "gen0" (gen0 (parse-text text) env)) is-file))))
+;  (nth 2 (DUMP "gen1" (? gen1 (DUMP "gen0" (gen0 (parse-text text) env)) is-file))))
+
+;; TEMP: data
+
+;(printf "data = %q" (CX "(data Type (Ctor a))"))
+(expect
+ (concat "$(call " (global-name ^add-tags) ",!1:Type0!=Ct!0S)")
+ (CX "(data Type (Ct a))"))
 
 ;; compile and execute form
 ;;
@@ -56,7 +64,7 @@
 
 (expect "ab$(or 1)" (CX "(concat \"a\" \"b\" (or 1))"))
 
-(expect "$$1$$(call ^n,1,$$9)"
+(expect (escape "$1$(call ^n,1,$9)")
         (CX "(lambda (a b c d e f g h i) (concat a i))"))
 
 ;; vector
@@ -96,7 +104,7 @@
 
 
 (let-global ((SCAM_DEBUG ""))
-    (expect "$$(call ^Y,x,,,,,,,,,$$$$1$$(call ^e,$$1))"
+    (expect "$`(call ^Y,x,,,,,,,,,$``1$`(call ^E,$`1))"
             (CX "(lambda (a) (let& ((x a)) (let ((b \"x\")) (concat b x))))")))
 
 ;; let
@@ -207,10 +215,10 @@
       (form4 ["L" ["S" "global-name"] ["L"]])
       (env (hash-bind "A" ["V" "ns~A" "" ""])))
 
-  (expect ["C" ["Q" (gen-global-name "")] ["Q" "X"]]
+  (expect (Concat [ (String (gen-global-name "")) (String "X") ])
           (ml.special-local-to-global form1 env))
 
-  (expect ["Q" "ns~A"]
+  (expect (String "ns~A")
           (ml.special-global-name form2 env))
 
   (expect ["E." "\"UNDEF\" is not a global variable"]
@@ -231,7 +239,8 @@
     (expect "env" (first o))
     (expect (hash-get "foo" env) ["X" "_foo"])
     (expect (hash-get "a" env) "B c")
-    (expect "F" (word 1 (nth-rest 3 o)))))
+    (expect (word 1 (Builtin "X" []))
+            (word 1 (nth-rest 3 o)))))
 
 ;; (use STRING)
 
@@ -245,3 +254,50 @@
           (ml.special-use `(use "foo") env 1))
   (expect "foo" *use-test*)
   (print "ok"))
+
+
+;; ml.special-data
+
+(expect ["T" "T1" "Ctor W S L" "a b c"]
+        (get-ctor `(Ctor &word a b &list c) "T1" ["L.1"]))
+
+(expect ["T" "X" "Ctor W S L" "a b c"]
+        (get-ctor `(Ctor "X" &word a b &list c) "T1" ["L.1"]))
+
+;; list not at end => use S, not L encoding
+(expect ["T" "T1" "Ctor W S S" "a b c"]
+        (get-ctor `(Ctor &word a &list b c) "T1" ["L.1"]))
+
+(expect [ ["T" "!:T0" "Ctor W S L" "a b c"]
+          ["T" "!:T1" "CtorB S" "a"] ]
+        (get-ctors `(data) "!:T" [ `(Ctor &word a b &list c) `(CtorB a) ] nil))
+
+(let ((o (ml.special-data `(data T
+                                 (CA a &word b &list c)
+                                 (CB))
+                          (hash-bind "env" "old")
+                          1)))
+
+  (expect ["R" "S W L" "" "!:T0"]
+          (hash-get "CA" (nth 2 o))))
+
+
+;; ml.special-case
+
+(expect (append (hash-bind "a" ["I" (Builtin "word" [ (String 2) (String 123) ])])
+                (hash-bind "b" ["I" (Call "^n" [ (String 3) (String 123) ])]))
+        (arg-bindings [ ["S" "a"] ["S" "b"] ]
+                      "W S"
+                      "Q 123"))
+
+(expect
+ (Builtin "if" [ (Builtin "filter" [ (String "!:T0")
+                                     (Builtin "firstword" [ (String "v") ]) ])
+                 (Builtin "wordlist" [ (String 4) (String 99999999) (String "v") ])
+                 (String "v")])
+
+ (ml.special-case ["L" "S case" "Q v"
+                   ["L" ["L" "S Ctor" "S s" "S w" "S v"]
+                    "S v"]
+                   ["L" "S _" "S _"]]
+                  (hash-bind "Ctor" ["R" "S W L" "" "!:T0"])))

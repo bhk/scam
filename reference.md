@@ -222,6 +222,31 @@ prompt:
     b c
 
 
+#### Word-Encoding Details
+
+The following details are implementation-specific.  This knowledge is not
+necessary to know them in order to write correct SCAM programs.  It may be
+helpful, however, when examining values while debugging.
+
+SCAM's current implementation of word-encoding might be called bang-encoding:
+
+    `!1` encodes `!`
+    `!0` encodes ` `
+    `!+` encodes TAB
+    `!.` represents the empty string
+
+One nice property of this encoding is that lexicographical sorting order is
+preserved for all printable characters and TAB.  This is because ` ` and `!`
+are the first two printable characters (code points 0x20 and 0x21) in ASCII
+and ASCII-derived encodings (such as Unicode).
+
+Note that in a word-encoded value -- and therefore, in a vector -- `!` is
+always followed by one a four characters.  Some sequences that cannot appear
+in a vector or word-encoded value are used elsewhere in SCAM:
+
+    `!=` delimits a key from a value in a hash binding.  Keys and values are
+    word-encoded.
+
 ### Function Values
 
 A *function value* is a string that contains executable code. Functions are

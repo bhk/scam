@@ -25,15 +25,19 @@
 ;; perform pre-order traversal of a tree of IL nodes
 ;;
 (define (il-visit-x node fn)
-  (let&
-   ((children (if (type? "F% f% Y%" node)
-                  (nth-rest 3 node)
-                  (if (type? "C% B% X%" node)
-                      (nth-rest 2 node)))))
+  (define `children
+    (case node
+      ((Builtin name args) args)
+      ((Call name args) args)
+      ((Funcall name args) args)
+      ((Concat nodes) nodes)
+      ((Block nodes) nodes)
+      ((Lambda node) [node])))
+
    (if node
        (append (fn node)
                (append-for c children
-                           (il-visit-x c fn))))))
+                           (il-visit-x c fn)))))
 
 (define (il-visit node fn)
   (strip-vec (il-visit-x node fn)))
@@ -83,17 +87,17 @@
 
 
 ;; Q: string
-(expect ["Q" " x "]
+(expect (String " x ")
         (c0 ["Q" " x "]))
 
 
 ;; S: global data variable
-(expect ["V" "DATA"]
+(expect (Var "DATA")
         (c0 ["S" "v!"] (hash-bind "v!" ["V" "DATA"])))
 
 
 ;; S: global function variable
-(expect ["F" "value" "Q FUNC"]
+(expect (Builtin "value" [ (String "FUNC") ])
         (c0 ["S" "var"] (hash-bind "var" ["F" "FUNC"])))
 
 
@@ -103,13 +107,15 @@
 
 
 ;; L: (functionvar ...)
-(expect ["f" "FUNC" "Q 7"]
+(expect (Call "FUNC" [ (String 7) ])
         (c0 ["L" "S var" "Q 7"] (hash-bind "var" ["F" "FUNC"])))
+(expect (Call "NAME!1" [ (String 7) ])
+        (c0 ["L" "S var" "Q 7"] (hash-bind "var" ["F" "NAME!1"])))
 
 
 ;; L: (inlinefunc ...)
 
-(expect ["F" "patsubst" "Q 1" "Q 2" "V oldG"]
+(expect (Builtin "patsubst" [ (String 1) (String 2) (Var "oldG") ])
         (c0 ["L" "S var" "Q 1" "Q 2"]
             (append
              (hash-bind "g" "V newG")
@@ -121,19 +127,24 @@
 
 ;; L: (datavar ...)
 
-(expect ["Y" ["V" "DATA"] "Q 7"]
+(expect (Funcall (Var "DATA") [ (String 7) ])
         (c0 ["L" "S var" "Q 7"] (hash-bind "var" ["V" "DATA"])))
 
+;; L: (record ...)
+
+(expect (Concat
+         [(String "!:D0") (String " ") (String "1") (String " ") (String "2")])
+        (c0-record ["L" "S CA" "Q 1" "Q 2"] nil ["R" "S L" nil "!:D0"]))
 
 ;; L: (<builtin> ...)  with base-env
 
-(expect ["F" "or" "Q 7"]
+(expect (Builtin "or" [ (String 7) ])
         (c0 ["L" "S or" "Q 7"] base-env))
 
-(expect ["wrong number of arguments: \"if\" accepts 2 or 3"]
+(expect ["\"if\" accepts 2 or 3 arguments, not 1"]
         (C0err "(if 1)"))
 
-(expect ["wrong number of arguments: \"if\" accepts 2 or 3"]
+(expect ["\"if\" accepts 2 or 3 arguments, not 4"]
         (C0err "(if 1 2 3 4)"))
 
 
@@ -146,10 +157,10 @@
 
 ;; S: local variables
 
-(expect "U 3 0" (c0-local "$3" "$"))
-(expect "U 3 1" (c0-local "$3" "$$"))
-(expect "U 3 1" (c0-local "$$3" "$$$$"))
-(expect "U 3 2" (c0-local "$3" "$$$$"))
+(expect (Local 3 0) (c0-local "$3" "$"))
+(expect (Local 3 1) (c0-local "$3" "$$"))
+(expect (Local 3 1) (c0-local "$$3" "$$$$"))
+(expect (Local 3 2) (c0-local "$3" "$$$$"))
 
 (expect (hash-bind "$" "$ $$"
           (hash-bind "b" ["A" "$$1"]
@@ -157,7 +168,7 @@
               (hash-bind "a" ["A" "$1"]))))
         (lambda-env ["S b"] (lambda-env ["S a"] "")))
 
-(expect ["U" 1 0]
+(expect (Local 1 0)
         (c0 ["S" "var"] (lambda-env ["S var"])))
 
 
@@ -177,7 +188,7 @@
 
 
 ;; S: symbol macro
-(expect ["F" "call" ["Q" "^n"] "Q 1" ["U" 9 0]]
+(expect (Builtin "call" [ (String "^n") (String 1) (Local 9 0) ])
         (c0 "S X" (append
                    (lambda-env ["S a" "S a" "S a" "S a" "S a"
                                 "S a" "S a" "S a" "S X" "S Y"])
@@ -186,16 +197,16 @@
 ;; L: (lambda NAMES BODY)
 
 ;; (lambda (a) v)
-(expect ["X" ["V" "DATA"]]
-   (c0 ["L" "S lambda" ["L" "S a"] "S v"] (hash-bind "v" ["V" "DATA"])))
+(expect (Lambda (Var "DATA"))
+        (c0 ["L" "S lambda" ["L" "S a"] "S v"] (hash-bind "v" ["V" "DATA"])))
 
 ;; (lambda (a b) a b)
-(expect ["X" ["B" ["U" 1 0 ] ["U" 2 0]]]
-   (c0 ["L" "S lambda" ["L" "S a" "S b"] "S a" "S b"]))
+(expect (Lambda (Block [ (Local 1 0) (Local 2 0) ]))
+        (c0 ["L" "S lambda" ["L" "S a" "S b"] "S a" "S b"]))
 
 ;; (lambda (a) (lambda (b) a b)))
 (foreach SCAM_DEBUG "-" ;; avoid upvalue warning
-  (expect ["X" ["X" ["B" ["U" 1 1] ["U" 1 0]]]]
+  (expect (Lambda (Lambda (Block [ (Local 1 1) (Local 1 0)])))
      (c0 ["L" "S lambda" ["L" "S a"]
            ["L" "S lambda" ["L" "S b"]
              "S a" "S b"]])))
@@ -203,17 +214,18 @@
 
 ;; L: (arg ...)
 
-(expect ["Y" ["U" 1 0] "Q 7"]
+(expect (Funcall (Local 1 0) [ (String 7) ])
         (c0 ["L" "S var" "Q 7"] (lambda-env ["S var"])))
 
 (define (test-xmacro form) "Q hi")
-(expect ["Q" "hi"]
-        (c0 ["L" "S var" "Q 7"] (hash-bind "var" ["X" (global-name test-xmacro) "i"])))
+(expect (String "hi")
+        (c0 ["L" "S var" "Q 7"]
+            (hash-bind "var" ["X" (global-name test-xmacro) "i"])))
 
 
 ;; ': quote
 
-(expect ["Q" ["L.4" "S.5 joe" "S.7 bob"]]
+(expect (String ["L.4" "S.5 joe" "S.7 bob"])
         (c0 ["'.1" ["L.4" "S.5 joe" "S.7 bob"]]))
 
 ;; `: quasi-quote
@@ -227,32 +239,31 @@
             (hash-bind "v" "V v")
             (hash-bind "l" ["I" ["Q" ["S a" "S b"]]]))))
 
-(expect ["Q" "S x"]
+(expect (String "S x")
         (CQ "`x"))
 
-(expect ["Q" "Q q"]
+(expect (String "Q q")
         (CQ "`,q"))
 
-(expect ["V" "v"]
+(expect (Var "v")
         (CQ "`,v"))
 
-(expect [ "C"
-          ["Q" "L S!0a Q!01"]
-          ["f" "^d" ["V" "v"]]]
+(expect (Concat [ (String "L S!0a Q!01")
+                  (Call "^d" [ (Var "v") ]) ])
         (CQ "`(a 1 ,v)"))
 
 
 ;; nested quote/unquote
-(expect [ "C"
-          ["Q" "L"]
-          ["f" "^d" [ "C"
-                      ["Q" "`"]
-                      ["f" "^d" [ "C"
-                                  ["Q" "L S!0a ,!0S!10v"]
-                                  ["f" "^d" [ "C"
-                                               ["Q" ","]
-                                               ["f" "^d" "V v"]]]]]]]]
-        (CQ "`( `(a ,v ,,v))"))
+(begin
+  (define `(dd node) (Call "^d" [ node ]))
+  (define (cc ...) (Concat *args*))
+
+  (expect (cc (String "L")
+              (dd (cc  (String "`")
+                       (dd  (cc (String "L S!0a ,!0S!10v")
+                                (dd (cc (String ",")
+                                        (dd (Var "v")))))))))
+          (CQ "`( `(a ,v ,,v))")))
 
 
 ;; errors
@@ -268,13 +279,12 @@
 
 ;; splicing
 
-(expect ["Q" ["L" "Q 1" "S a" "S b" "Q 2"]]
+(expect (String ["L" "Q 1" "S a" "S b" "Q 2"])
         (CQ "`(1 ,@l 2)"))
 
-(expect [ "C"
-          ["Q" "L Q!01"]
-          ["V" "v"]
-          ["Q" "Q!02"]]
+(expect (Concat [ (String "L Q!01")
+                  (Var "v")
+                  (String "Q!02") ])
         (CQ "`(1 ,@v 2)"))
 
 ;;--------------------------------------------------------------
@@ -285,7 +295,7 @@
                (c0 ["S" "quatloo"])))
 
 (expect 1 (see ["attempt to obtain value of builtin"]
-               (c0 ["S" "subst"] (hash-bind "subst" ["B" "subst"]))))
+               (c0 ["S" "subst"] (hash-bind "subst" ["B" "subst" ]))))
 
 
 ;;--------------------------------------------------------------
@@ -330,13 +340,14 @@
 (define gx (gen-global-name "x"))
 (define gf (gen-global-name "f"))
 
-(expect [ "B"
-          ["F" "call" ["Q" "^set"] ["Q" gx] "Q 1"]
-          ["F" "info" ["V" gx] ]]
-          (C0 "(define x 1) (info x)"))
+(expect (Block [ (Builtin "call" [ (String "^set") (String gx) (String 1) ])
+                 (Builtin "info" [ (Var gx) ]) ])
+        (C0 "(define x 1) (info x)"))
 
 ;; define FUNC
-(expect ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "join" ["U" 1 0] ["U" 2 0]]]]
+(expect (Builtin "call" [ (String "^fset")
+                          (String gf)
+                          (Lambda (Builtin "join" [ (Local 1 0) (Local 2 0) ])) ])
         (C0 "(define (f a b) (join a b))"))
 
 ;; define compound macro
@@ -370,12 +381,13 @@
 
 ;; define and use symbol macro
 
-(expect "Q 3"
+(expect (String 3)
         (C0 "(define `X 3) X"))
 
 ;; define and use compound macro
 
-(expect ["B" ["F" "info" "Q 2"] "Q 3"]
+(expect (Block [ (Builtin "info" [ (String 2) ])
+                 (String 3) ])
         (C0 "(define `(M a) (info a) 3) (M 2)"))
 (expect ["attempt to obtain value of compound macro"]
         (C0err "(define `(M a) (info a)) M"))
@@ -396,8 +408,12 @@
 
 
 ;; define and use inline FUNC
-(expect [ "B" ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "join" "U 1 0" "U 2 0"]]]
-              ["F" "join" "Q 1" "Q 2"] ]
+(expect (Block
+         [ (Builtin "call" [ (String "^fset")
+                             (String gf)
+                             (Lambda (Builtin "join" [ (Local 1 0)
+                                                       (Local 2 0) ])) ])
+           (Builtin "join" [ (String 1) (String 2) ]) ])
         (C0 "(define (f a b) &inline (join a b))  (f 1 2)"))
 
 
@@ -429,7 +445,7 @@
 
  ;; (require MOD)
 
- (expect ["f" "^require" "Q M"]
+ (expect (Call "^require" [ (String "M") ])
          (C0 "(require \"D/M\")"))
 
  (expect (hash-bind "x" ["V" gx "i"])
@@ -445,26 +461,35 @@
  ;; see private members.
 
  ;; IMPORTED inline function
- (expect ["B" ["f" "^require" "Q F"]
-              ["V" gX]]
+ (expect (Block [ (Call "^require" [ (String "F") ])
+                  (Var gX) ])
          (C0 "(require \"F\") (f)"))
 
  ;; IMPORTED compound macro
- (expect ["B" ["f" "^require" "Q CM"]
-              "Q 3"]
+ (expect (Block [ (Call "^require" [ (String "CM") ])
+                  (String 3) ])
          (C0 "(require \"CM\") (G)"))
 
  ;; IMPORTED symbol macro
- (expect ["B" ["f" "^require" "Q SM"]
-              "Q 7"]
+ (expect (Block [ (Call "^require" [ (String "SM") ])
+                  (String 7) ])
          (C0 "(require \"SM\") B")))
 
 
  ;; RECURSIVE INLINE FUNCTION: we should see one level of expansion where it
  ;; is used.
 
-(expect ["B" ["F" "call" ["Q" "^fset"] ["Q" gf] ["X" ["F" "if" "U 1 0" "U 2 0" ["f" gf "U 2 0" ["Q" ""]]]]]
-             ["F" "if" "Q 1" "Q 2" ["f" gf "Q 2" ["Q" ""]]]]
+(expect (Block [ (Builtin
+                  "call"
+                  [ (String "^fset")
+                    (String gf)
+                    (Lambda
+                     (Builtin
+                      "if" [ (Local 1 0)
+                             (Local 2 0)
+                             (Call gf [ (Local 2 0) (String "") ]) ])) ])
+                 (Builtin "if" [ (String 1) (String 2)
+                                 (Call gf [ (String 2) (String "") ]) ]) ])
         (C0 "(define (f a b) &inline (if a b (f b \"\")))
              (f 1 2)"))
 

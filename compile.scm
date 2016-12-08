@@ -26,18 +26,6 @@
 ;; (hopefully empty) vector of errors.  The form and IL data structures can
 ;; convey errors as well as successful results; c1 must output a separate
 ;; value for error information.
-;;
-;; File vs. Function Syntax
-;;
-;; The `c1` phase may generate code for different syntactic contexts in
-;; Make.  "File" code can appear as a line in a Makefile and is suitable for
-;; passing to Make's `eval` builtin.  "Function" code can appear within a
-;; function body, is suitable for invoking directly or binding to a function
-;; variable.
-;;
-;;     SCAM source:     (set-global "x" 1)    (+ 1 2)
-;;     Function Code:   $(call ^set,x,1)      $(call +,1,2)
-;;     File Code:       x = 1                 $(if ,,$(call +,1,2))
 
 (require "core")
 (require "parse")
@@ -49,8 +37,8 @@
 ;; This module doesn't use any lexical bindings from "macros" and therefore
 ;; will compile without the following line, but we require it to load the
 ;; module at run-time so that the macros will be known to the compiler.
-(if 1
-    (require "macros"))
+(begin
+  (require "macros"))
 
 
 ;; "Boot" modules: implicit dependencies of other source files.

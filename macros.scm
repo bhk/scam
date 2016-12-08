@@ -18,8 +18,7 @@
 (require "core")
 (require "parse")
 (require "gen")
-(require "gen0" &private)
-
+(require "gen0")
 
 ;; If exprs has exactly one item, return first item.  Otherwise place
 ;; them in a list form with 'sym' as the first element.
@@ -33,7 +32,7 @@
 ;; (current-env)
 
 (define (ml.special-current-env _ env)
-  ["Q" env])
+  (String env))
 
 
 ;; (current-file-line)
@@ -44,13 +43,13 @@
                    (form-index form)))
   (define `lnum (describe-lnum pos *compile-subject*))
 
-  ["Q" (concat *compile-file* ":" lnum)])
+  (String (concat *compile-file* ":" lnum)))
 
 
 ;; (concat FORM...)
 
 (define (ml.special-concat form env)
-  (concat "C " (c0-vec (rrest form) env)))
+  (Concat (c0-vec (rrest form) env)))
 
 
 ;; (subst FROM TO {FROM TO}... STR)
@@ -58,7 +57,8 @@
 (define (subst-x strs value)
   &private
   (if strs
-      (subst-x (rrest strs) ["F" "subst" (nth 1 strs) (nth 2 strs) value])
+      (subst-x (rrest strs)
+               (Builtin "subst" (conj (wordlist 1 2 strs) value)))
       value))
 
 (define (ml.special-subst form env)
@@ -76,7 +76,7 @@
 
 (define (ml.special-vector form env)
   (define `args (rrest form))
-  (concat "C " (subst " " " Q!0!10 " (map-call (global-name il-demote) (c0-vec args env)))))
+  (Concat (subst " " " Q!0!10 " (map-call (global-name il-demote) (c0-vec args env)))))
 
 
 ;; (set SYM VALUE [RETVAL])
@@ -95,10 +95,9 @@
 
         (if (not (type? "V F" binding))
             (gen-error symbol "%q is not a global variable" (symbol-name symbol))
-            (append [ "f"
-                      (if (type? "V" binding) "^set" "^fset")
-                      ["Q" (nth 2 binding)] ]
-                    (c0-vec other-args env))))))
+            (Call (if (type? "V" binding) "^set" "^fset")
+                  (cons (String (nth 2 binding))
+                        (c0-vec other-args env)))))))
 
 
 ;; (let-global ((VAR VALUE)...) BODY)
@@ -153,8 +152,8 @@
   (or (check-type "S" func form "FUNC" "(? FUNC ...)")
       (if (not traceable?)
           (gen-error func "FUNC in (? FUNC ...) is not a function variable"))
-      (append [ "f" "^t" ["Q" (nth 2 defn)] ]
-              (c0-vec func-args env))))
+      (Call "^t" (cons (String (nth 2 defn))
+                       (c0-vec func-args env)))))
 
 
 ;; (let& ((VAR VAL)...) BODY)
@@ -338,7 +337,7 @@
 
 (define (ml.macro-cond form)
   (or (cond-expand (nth 3 form) (nth-rest 4 form) form)
-      "Q !."))
+      (String "")))
 
 (define (ml.special-cond form env)
   (c0 (ml.macro-cond form) env))
@@ -349,9 +348,9 @@
 (define (ml.special-local-to-global form env)
   (define `var (nth 3 form))
 
-  (or (check-argc "1" form)
-      ["C" ["Q" (gen-global-name "")]
-           (c0 var env)]))
+  (or (check-argc 1 form)
+      (Concat [ (String (gen-global-name ""))
+                (c0 var env) ])))
 
 
 ;; (global-name SYM)
@@ -360,12 +359,12 @@
   (define `var (nth 3 form))
   (define `binding (resolve var env))
 
-  (or (check-argc "1" form)
+  (or (check-argc 1 form)
       (check-type "S" var form "NAME" "(get-global NAME)")
       (let& ((binding (resolve var env)))
-        (if (type? "V F" binding)
-            ["Q" (nth 2 binding)]
-            (gen-error var "%q is not a global variable" (symbol-name var))))))
+            (if (type? "V F" binding)
+                (String (nth 2 binding))
+                (gen-error var "%q is not a global variable" (symbol-name var))))))
 
 
 (define (ml.special-defmacro form env inblock)
@@ -392,10 +391,194 @@
   (define `module (nth 3 form))
   (define `mod-name (string-value module))
 
-  (or (check-argc "1" form)
+  (or (check-argc 1 form)
       (check-type "Q" module form "NAME" "(use NAME)")
       (let ((imports (use-module mod-name))
             (env env))
         (if imports
             (block-result inblock (append imports env) nil)))
       (gen-error "use: Cannot find module %q" mod-name)))
+
+
+;; (data NAME CTOR...)
+;;    CTOR = (NAME ARG...)
+;;    ARG  = FLAG? NAME
+;;    FLAG  = "&word"  => value contains no whitespace and is not nil
+;;          | "&list"  => value has no leading or trailing whitespace
+
+
+;; Generate a ctor description: ["T" TAG PATTERN ARGNAMES]
+;; On error, return:            ["E.<n>" error...]
+;;
+(define (get-ctor-r args form tag pattern names flag)
+  &private
+  (define `arg (first args))      ; a form
+  (define `arg-name (nth 2 arg))  ; a string
+
+  ;; Note: We can use list *encoding* only when a member is of list *type*
+  ;; AND is the last member.
+  (define `(arg-enc flag has-more-args)
+    (cond ((eq "&word" flag) "W")
+          ((and (eq "&list" flag) (not has-more-args)) "L")
+          (else "S")))
+
+  (or
+   (if (not args)
+       (if flag
+           (gen-error form "no argument following last flag: %s" flag)
+           ;; Done.
+           ["T" tag pattern names]))
+
+   (check-type "S" arg form "ARG" "(CTOR ARG...)")
+
+   (if (not (filter "&%" arg-name))
+       ;; argument name
+       (get-ctor-r (rest args) form tag
+                   (concat pattern " " (arg-enc flag (word 2 args)))
+                   (conj names arg-name)
+                   "" (filter "&list" flag)))
+
+   (if flag
+       (gen-error arg "two type flags supplied for one argument"))
+
+   (if (filter "&list &word" arg-name)
+       (get-ctor-r (rest args) form tag pattern names arg-name))
+
+   (gen-error arg "unknown flag [supported: &list, &word]")))
+
+
+(define (get-ctor form tag data-form)
+  &private
+  (define `sym (nth 2 form))        ;; symbol namin the ctor
+  (define `name (symbol-name sym))
+  (define `tag-str (nth 3 form))    ;; optional explicit tag
+
+  (or (check-type "L" form data-form "(CTOR ...)" "(data NAME (CTOR ...)...)")
+      (check-type "S" sym data-form "CTOR" "(data NAME (CTOR ...)...)")
+      (if (type? "Q%" tag-str)
+          ;; explicit tag
+          (get-ctor-r (nth-rest 4 form) form (string-value tag-str) name [] nil)
+          ;; no explicit tag
+          (get-ctor-r (nth-rest 3 form) form tag name [] nil))))
+
+
+;; Return vector of ctor descriptions (see get-ctor).
+;;
+(define (get-ctors data-form tag-base ctor-forms counter)
+  &private
+  (define `index (words counter))
+  (define `tag (concat tag-base index))
+
+  (if ctor-forms
+      (cons (get-ctor (first ctor-forms) tag data-form)
+            (get-ctors data-form tag-base (rest ctor-forms) (append counter 1)))))
+
+
+(define (ml.special-data form env inblock)
+  (define `name (nth 3 form))
+  (define `ctor-forms (nth-rest 4 form))
+  (define `tag-base (concat "!:" (nth 2 name)))
+
+  (define `(Record encodings priv tag)
+    ["R" encodings priv tag])
+
+  (or
+   (check-type "S" name form "NAME" "(data NAME ...)")
+
+   (let ((ctors (get-ctors form tag-base ctor-forms nil)))
+     (or
+      ;; return all errors (if there were any)
+      (if (filter "E%" ctors)
+          (Block (filter "E%" ctors)))
+
+      (begin
+        ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
+        (define `tag-defs
+          (append-for c ctors (hash-bind (nth 2 c) (nth 3 c))))
+
+        ;; Add record descriptions to the environment
+        (define `bindings
+          (append-for c ctors
+                      (hash-bind (first (nth 3 c))
+                                 (Record (rest (nth 3 c)) nil (nth 2 c)))))
+
+        ;; Add tag/pattern bindings to ^tags
+        (define `node
+          (Call (global-name ^add-tags) [(String tag-defs)]))
+
+        (block-result inblock (append bindings env) node))))))
+
+
+;; (case VALUE (PATTERN BODY)... )
+;;   PATTERN = (NAME VAR...) | NAME
+;;
+;; Match a value against a series of patterns, evaluating the BODY paired
+;; with the first match.
+
+;; Return bindings for arguments in a (CTOR ARG...) pattern.
+(define (arg-bindings args encs value-node)
+  (foreach
+   n (indices encs)
+   (let& ((enc (word n encs))
+          (arg (nth n args))
+          (ndx-node (String (1+ n)))
+          (arg-node
+           (cond
+            ((filter "S" enc) (Call "^n" [ndx-node value-node]))
+            ((filter "W" enc) (Builtin "word" [ndx-node value-node]))
+            (else (Builtin "wordlist" [ ndx-node
+                                        (String 99999999)
+                                        value-node])))))
+         (hash-bind (symbol-name arg)
+                    ["I" arg-node]))))
+
+
+;; Compile a vector of (PATTERN BODY) cases
+;;
+(define (c0-cases cases value-node env)
+  (for case cases
+       ;; case = `(PATTERN BODY)
+       (begin
+         (define `pattern (nth 2 case))
+         (define `body (nth-rest 3 case))
+         (define `ctor-form (nth 2 pattern))
+         (define `ctor-name (symbol-name ctor-form))
+         (define `ctor-args (nth-rest 3 pattern))
+         (define `defn (hash-get ctor-name env))
+         (define `tag (nth 4 defn))
+         (define `encs (nth 2 defn))
+         (define `test-node
+           (Builtin "filter" [ (String tag)
+                               (Builtin "firstword" [value-node]) ]))
+         (define `bindings (arg-bindings ctor-args encs value-node))
+         (define `then-node (c0-block body (append bindings env)))
+
+         (or (check-type "L" case nil "(PATTERN BODY)"
+                         "(case VALUE (PATTERN BODY)...)")
+
+             (check-type "L S" pattern case "(CTOR ARG...)"
+                         "(case VALUE ((CTOR ARG..) BODY)...)")
+
+             (if (symbol? pattern)
+                 (c0-block body (hash-bind (symbol-name pattern)
+                                           ["I" value-node]
+                                           env))
+                 ;; (CTOR NAME)
+                 (or
+                  (check-type "S" ctor-form pattern "CTOR" "(CTOR ARG...)")
+                  (check-argc (words encs) pattern)
+                  (Builtin "if" [ test-node then-node ])))))))
+
+
+(define (nest-nodes nodes)
+  &private
+  (concat (first nodes)
+          (if (word 2 nodes)
+              (concat " " [(nest-nodes (rest nodes))]))))
+
+
+(define (ml.special-case form env)
+  (define `value-node (c0 (nth 3 form) env))
+  (if (not (word 3 form))
+      (gen-error form "missing VALUE in (case VALUE ...)")
+      (nest-nodes (c0-cases (nth-rest 4 form) value-node env))))

@@ -1,11 +1,9 @@
 ;; runtime-q runs in a special environment (same as the environment for
-;; runtime) in which the runtime is not an implicit requirement.
+;; runtime) in which the runtime is not an implicit requirement, so we
+;; have to require it explicitly (unlike in ordinary scam sources).
 (require "runtime")
 
 ;; runtime-test
-;;
-;; Note: we do not `require` runtime.scm because it is already loaded.  It
-;; must be in place before any SCAM module can execute.
 ;;
 ;; Many of the runtime functions are tested by calling the "manifest
 ;; functions" that expose their functionality.  For example, "set-global" makes
@@ -73,49 +71,28 @@
 (expect (esc-LHS "a= c ")
         "$(if ,,a= c )")
 (expect (esc-LHS "a\nb")
-        "$(if ,,a$!b)")
+        "$(if ,,a$'b)")
 (expect (esc-LHS ")$(")
         "$(if ,,$]$$$[)")
 
 
-;; ^ed
+;; ^E
 
-(declare (^ed n w))
-(expect "$" (^ed 1))
-(expect "$$$$" (^ed 4))
+(expect (^E "$,)")
+        "$(if ,,$`,$])")
 
-;; ^e
+(expect (^E "$" "`")
+        "$`(if ,,$``)")
 
-(declare (^es s))
+(define `(TE str)
+  (expect ((^E str))
+          str)
+  ;; escape twice, expand twice
+  (expect (((^E str "`")))
+          str))
 
-(expect (^es "a b c")
-        "a b c")
-
-(expect (^es "a,b")
-        "$(if ,,a,b)")
-
-(expect (^e "abc")
-        "abc")
-
-(expect (^e ",")
-        "$(if ,,,)")
-
-(expect (^e "$")
-        "$$")
-
-(expect (^e "$" 2)
-        "$$$$")
-
-(expect (^e ")")
-           "$]")
-
-(expect (^e ")" 2)
-           "$$]")
-
-(define (TE str)
-  (expect ((^e str))
-             str))
-
+(TE " ")
+(TE "$,)(")
 (TE "a")
 (TE "a b")
 (TE "a$")

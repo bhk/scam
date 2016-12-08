@@ -1,4 +1,17 @@
 ;; scam.scm
+;;
+;; This module implements `main` for the SCAM compiler/interpreter executable.
+;;
+;; Supported command-line options are documented in `usage` function, below.
+;; The following private options are used only when compiling the compiler:
+;;
+;;  --symbols : Retain symbol information when building an executable.  This
+;;              is used when building the interpter/compiler.
+;;  --boot    : Selects "bootstrap" mode, in which the run-time and compile-time
+;;              implied dependencies are read from sources, not bundles.
+;;  --rt FILE : specifies a source file to be used as the runtime for the
+;;              generated exectuable.
+;;  --ct FILE : specifies a source file that defines compile-time macros.
 
 (require "core")
 (require "repl")
@@ -22,18 +35,6 @@ Options:
                smaller executable.
 ")
   (if ... 1))
-
-
-;; Options used only when compiling the compiler:
-;;
-;;  --symbols : Retain symbol information when building an executable.  This
-;;              is used when building the interpter/compiler.
-;;  --boot    : Selects "bootstrap" mode, in which the run-time and compile-time
-;;              implied dependencies are read from sources, not bundles.
-;;
-;;  --rt FILE : specifies a source file to be used as the runtime for the
-;;              generated exectuable.
-;;  --ct FILE : specifies a source file that defines compile-time macros.
 
 
 (define (opt-err opt)

@@ -150,7 +150,7 @@
 ;;
 (define `prologue
 "#!/bin/bash
-:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; SCAM_ARGS=${a[*]} exec make --no-print-directory -f\"$0\"
+:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; SCAM_ARGS=${a[*]} exec make --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\"
 
 ")
 

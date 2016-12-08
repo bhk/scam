@@ -24,8 +24,10 @@
 endef
  [ := (
  ] := )
-& := \\#
-! := $(\\n)
+\" := \\#
+' := $(\\n)
+` := $$
+& := ,
 ")
 
 ;; Most runtime exports are declared as "global" so that the code generation
@@ -60,7 +62,6 @@ endef
 (declare (^Y ...)
          &global)
 (set ^Y "$(call if,,,$(10))")
-
 
 
 ;; ^av: return a vector of all arguments.  The vector length is the index of
@@ -133,8 +134,8 @@ endef
 (define `(esc-RHS str)
   &private
   (subst "$" "$$"
-         "#" "$&"
-         "\n" "$!" str))
+         "#" "$\""
+         "\n" "$'" str))
 
 (define (esc-LHS str)
   ;; $(if ,,...) protects ":", "=", *keywords*, and leading/trailing spaces
@@ -169,40 +170,30 @@ endef
 (^set " " "")  ;; "$ " --> empty string
 
 
-;;--------------------------------------------------------------
-;; lightweight, run-time escape & protect-arg (see escape.scm)
-
-
-;; wrap s if it contains a ","
+;; Escape a value for inclusion in a lambda expression.  Return a value
+;; that, after N expansions (one or more), will yield STR, where N is
+;; described by PRE: "" => one, "`" => two, "``" => three, and so on.
 ;;
-(define (^es s)
-  (if (findstring "," s)
-    (concat "$(if ,," s ")")
-    s))
-
-
-;; Return a string of `count` dollar-signs
+;; Also, the escaped value and all expansions thereof (except for the very
+;; last) must be safe for all argument contexts, so it must not contain
+;; unbalanced parens, newlines, or commas (unless within balanced parens).
 ;;
-(define (^ed n w)
-  (if (filter n (words w))
-      (subst " " "" w)
-    (^ed n (concat w " $"))))
-
-
-;; Escape a value for inclusion in a lambda expression.  `s` is the string
-;; to escape, `n` describes the number of levels of escaping needed (the
-;; number of rounds of evaluation it will undergo).  nil => 1.
+;; Unlike protect-arg, which runs at compile time and is optimized for
+;; small, simple output, ^E also tries to minimize encoding time.
 ;;
-(define (^e s n)
+(define (^E str pre)
   &global
-  (subst "$" (if n (^ed n) "$")
-    (^es (subst "$" "$$"
-                ")" "$]"
-                "(" "$["
-                "\n" "$!" s))))
-
+  (subst "$" (concat "$" pre)
+         (concat
+          "$(if ,,"
+          (subst "$" "$`"
+                 ")" "$]"
+                 "(" "$["
+                 "\n" "$'" str)
+          ")")))
 
 ;;--------------------------------------------------------------
+;; Support for fundamental data types
 
 (define (promote a) (^u a))
 (define (demote a)  (^d a))
@@ -249,6 +240,14 @@ endef
   (define `pat (concat event "=%"))
   (foreach funcname (patsubst pat "%" (filter pat *hooks*))
            (call funcname)))
+
+(define ^tags
+  &global
+  "")
+
+(define (^add-tags str)
+  &global
+  (set ^tags (concat ^tags " " (filter-out ^tags str))))
 
 
 ;;--------------------------------------------------------------

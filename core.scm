@@ -267,26 +267,84 @@
                 (hash-compact (filter-out prefix (rest hash)))))))
 
 
+(declare (format value))
+
+;; Convert h to hash syntax, or return nil if it is not a valid hash.
+;;
+(define (format-hash h)
+  (define `pairs
+    (foreach e h
+             (begin
+               (define `key (hash-key e))
+               (define `value (hash-value e))
+               [(concat (format key) ": " (format value))])))
+  (define `(hash-elem w ndx)
+    (nth ndx (subst "!=" " " w)))
+
+  (if (findstring "!=" h)
+      (if (eq h (foreach w h (hash-bind (hash-elem w 1) (hash-elem w 2))))
+          (concat "{" (concat-vec pairs ", ") "}"))))
+
+
+;; Extract members from a record, applying `func` to them, appending the
+;; result to `accum` (with a single space separator for each).
+;;
+(define (data-foreach func encodings values accum)
+  &private
+  (define `e (word 1 encodings))
+  (define `value
+    (cond ((filter "L" e) values)
+          ((filter "S" e) (nth 1 values))
+          ((filter "W" e) (word 1 values))
+          (else            (error "bad encoding in ctor pattern"))))
+
+  (if encodings
+      (data-foreach func (rest encodings) (rest values)
+                    (concat accum (if accum " ") (func value e)))
+      accum))
+
+
+;; Return description of record as a constructor invocation, or nil if the
+;; value is not a record.
+;;
+;; Example:   `!:T0 !0`  -->  `(Ctor " ")`
+;;
+(define (format-record record)
+  (define `tag (word 1 record))
+
+  (if (filter "!:%" tag)
+      (let ((pattern (hash-get tag ^tags))
+            (values (rest record))
+            (tag tag)
+            (record record))
+        (define `ctor-name (nth 1 pattern))
+        (define `encodings (rest pattern))
+        (define `reconstructed
+          (data-foreach (lambda (v e) (if (eq "S" e) [v] v))
+                        encodings values tag))
+        (define `arg-text
+          (data-foreach (lambda (v e)
+                          (if (and (eq "L" e) (not v))
+                              "[]"
+                              (format v)))
+                        encodings values ""))
+
+        (and pattern
+             (eq record reconstructed)
+             (concat "(" ctor-name " " arg-text ")")))))
+
 
 ;; Return readable and parseable representation of STR.
 ;;
 (define (format str)
-  (define `(format-hash h)
-    (concat
-     "{"
-     (concat-vec (foreach e h
-                          (begin
-                            (define `key (hash-key e))
-                            (define `value (hash-value e))
-                            [(concat (format key) ": " (format value))]))
-                 ", ")
-     "}"))
+  (define `(format-vector str)
+    (if (eq str (foreach w str (demote (promote w))))
+        (concat "[" (foreach w str (format (promote w))) "]")))
 
   (or (if (findstring "!" str)
-          (if (eq str (foreach w str (demote (promote w))))
-              (concat "[" (foreach w str (format (promote w))) "]")
-              (if (findstring "!=" (word 1 str))
-                  (format-hash str))))
+          (or (format-vector str)
+              (format-hash str)
+              (format-record str)))
       (isnumber str)
       (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" "\t" "\\t"
                           str) "\"")))
@@ -462,3 +520,16 @@
 (define `(assoc key vec)
   ;; double-demote requires just one subst more than single demote
   (assoc-initial (subst "!" "!1" [key]) vec))
+
+
+;; Return the index of ITEM in VEC, or 0 if ITEM is not found.
+;;
+(define (index-of vec item)
+  (define `(wrap str) (concat "!_" str "!_"))
+
+  (words
+   (subst "!_" " "
+          (filter "%!|"
+                  (subst (wrap [item])
+                         "!_!| "
+                         (wrap (subst " " "!_" vec)))))))

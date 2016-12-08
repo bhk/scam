@@ -10,6 +10,16 @@
 (declare (c0-block forms env))
 
 
+;; Demote in IL domain
+;;
+;; (exec-il (il-demote (c0 'exp))) == (exec-il (c0 '(demote exp)))
+;;
+(define (il-demote node)
+  (case node
+    ((String. value) (String (word 2 node)))
+    (else (Call "^d" [node]))))
+
+
 ;; Return number of "escapes" in unary form:
 ;;
 ;; $        -> ""
@@ -31,11 +41,12 @@
 ;;        "$" for top-level, "$$" for nested lambda, "$$$$" ...
 ;;
 ;; Returns:
-;;   ["U" n ups]    n = arg number,  ups = 0 for local, 1 for parent, ...
+;;   (Local n ups)  n = arg number,  ups = 0 for local, 1 for parent, ...
 ;;
 (define (c0-local arg level)
   (define `arg-level (subst " " "" (filter "$" (subst "$" "$ " arg))))
-  ["U" (subst "$" "" arg) (words (c0-depth (subst arg-level "$" level))) ])
+  (Local (subst "$" "" arg)
+         (words (c0-depth (subst arg-level "$" level)))))
 
 
 (if (findstring "U" SCAM_DEBUG)
@@ -50,6 +61,17 @@
         (c0-local-unchecked arg level))))
 
 
+;; Return the "value" of a record constructor: an equivalent anonymous
+;; function.
+;;
+(define (c0-S-R form defn env)
+  &private
+  (define `args
+    (for i (indices (nth 2 defn))
+         (gensym (concat "S a" i) env)))
+  (c0 `(lambda (,@args) (,form ,@args)) env))
+
+
 ;; S: symbol
 ;;    defn = definition for symbol (from environment)
 (define (c0-S form env defn)
@@ -59,10 +81,11 @@
    ((type? "A" defn)  (c0-local (word 2 defn) (word 2 (hash-get "$" env)) form))
    ((type? "V" defn)  (wordlist 1 2 defn))
    ((type? "F" defn)  (if (filter "#" (word 2 defn))
-                                    (gen-error form "attempt to obtain value of compound macro")
-                                    ["F" "value" ["Q" (nth 2 defn)]]))
+                          (gen-error form "attempt to obtain value of compound macro")
+                          (Builtin "value" [(String (nth 2 defn))])))
    ((type? "M" defn)  (c0 (nth 2 defn) (env-rewind env (nth 2 form))))
    ((type? "I" defn)  (nth 2 defn))
+   ((type? "R" defn)  (c0-S-R form defn env))
    (else (gen-error form (if (type? "B" defn)
                              "attempt to obtain value of builtin: %q"
                              (if defn
@@ -71,23 +94,18 @@
                     (symbol-name form)))))
 
 
+;; Compile a vector of expressions independently, as in an argument
+;; list.  Declarations and definitions on one expression do not apply to
+;; subsequent ones (inlike c0-block-cc).
+;;
 (define (c0-vec forms env)
   (for f forms (c0 f env)))
 
 
-;; args = extra arguments (in addition to (rrest form)) if any
-(define (il-F form env fn args)
-  &private &inline
-  (append ["F" fn] args (c0-vec (rrest form) env)))
-
 (define (il-builtin form env name)
   &private
-  ;; validate number of arguments
-  (if (filter (builtin-argc name) (filter-out 0 (words (rrest form))))
-      (il-F form env name nil)
-      (gen-error (nth 2 form)
-                "wrong number of arguments: %q accepts %s"
-                name (builtin-argc name))))
+  (or (check-argc (builtin-argc name) form)
+      (Builtin name (c0-vec (rrest form) env))))
 
 
 ;; Expand inlined function
@@ -120,6 +138,32 @@
   (local-to-global (concat "ml.special-" name)))
 
 
+;; form = `(Ctor ARG...)
+;; defn = ["R" encodings priv tag]
+
+(define (c0-record form env defn)
+  (define `tag (nth 4 defn))
+  (define `encodings (nth 2 defn))
+  (define `args (nth-rest 3 form))
+
+  (or
+   (check-argc (words encodings) form)
+
+   (Concat
+    (cons
+     (String tag)
+     (foreach n (indices encodings)
+              (begin
+                (define `enc (word n encodings))
+                (define `arg (nth n args))
+                (define `value (c0 arg env nil))
+                (define `field (if (filter "S" enc)
+                                   (il-demote value)
+                                   value))
+
+                (append [(String " ")] [field])))))))
+
+
 ;; L: compound forms
 ;;    defn = Result of (resolve op), which is either:
 ;;              a) "-" if op is not a symbol
@@ -139,7 +183,7 @@
    ((type? "F" defn)
     (if (filter-out "!." (word 4 defn))
         (c0-inline-fn form env defn)
-        (append "f" (word 2 defn) (c0-vec (rrest form) env))))
+        (Call (nth 2 defn) (c0-vec (rrest form) env))))
 
    ;; builtin
    ((type? "B" defn)  (il-builtin form env (nth 2 defn) nil))
@@ -151,8 +195,10 @@
                           (c0 (call (nth 2 defn) form) env inblock)
                           (gen-error form "cannot use xmacro in its own file")))
 
+   ((type? "R" defn)  (c0-record form env defn))
+
    ;; general case (non-symbol, argument, data var, etc.)
-   (defn (concat "Y " (c0-vec (rest form) env)))
+   (defn (Funcall-2 (c0-vec (rest form) env)))
 
    ;; macro/special form?
    ((bound? (special-form-func opname))
@@ -183,7 +229,6 @@
 ;; Use this macro to generate the return value.
 ;;
 (define `(block-result inblock env node)
-  &private
   (append (if inblock ["env" env]) (or node "Q")))
 
 
@@ -357,7 +402,7 @@
         (if imports
             (block-result inblock
                           (append imports env)
-                          ["f" "^require" ["Q" (notdir mod-name)]])))
+                          (Call "^require" [ (String (notdir mod-name)) ]))))
       (gen-error form "require: Cannot find module %q" mod-name)))
 
 
@@ -391,8 +436,8 @@
                env
                (lambda (results env)
                  (if (word 2 results)
-                     (concat "B " results)
-                     (or (first results) "Q")))))
+                     (Block results)
+                     (or (first results) (String ""))))))
 
 
 ;; Add local variables to environment.
@@ -447,7 +492,7 @@
   (or (lambda-check "L" argform form "(NAME...)")
       (vec-or (for a arglist
                    (lambda-check "S" a form "NAME")))
-      ["X" (c0-block body (lambda-env arglist env)) ] ))
+      (Lambda (c0-block body (lambda-env arglist env)))))
 
 
 (define (ml.special-begin form env)
@@ -460,21 +505,12 @@
 
 (declare (c0-mq))
 
-;; Demote in IL domain
-;;
-;; (exec-il (il-demote (c0 'exp))) == (exec-il (c0 '(demote exp)))
-;;
-(define (il-demote node)
-  (if (string? node)
-      ["Q" (word 2 node)]
-      ["f" "^d" node]))
-
 ;; Fold 'C' with its args, if possible
 ;;
 (define (il-foldcat args)
-  (cond ((word 2 args) (concat "C " args))
+  (cond ((word 2 args) (Concat args))
         ((word 1 args) (first args))
-        (else ["Q" ""])))
+        (else (String ""))))
 
 ;; Merge consecutive Q nodes into one Q node, deleting empty Q nodes.  Leave
 ;; other nodes unchanged.
@@ -496,7 +532,7 @@
 ;;
 (define (c0-mq-vec node args)
   (il-foldcat
-   (il-qmerge (subst " " (concat " " [["Q" " "]] " ") args)
+   (il-qmerge (subst " " (concat " " [(String " ")] " ") args)
               [(concat (word 1 node) " ")])))
 
 ;; Construct an IL node that evaluates to an AST node.

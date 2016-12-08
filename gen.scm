@@ -60,6 +60,7 @@
 ;;    A <arg>  <priv>        ==  function argument
 ;;    I <il>   <priv>        ==  pre-compiled IL node
 ;;    X <name> <priv>        ==  executable macro
+;;    R <encs> <priv> <tag>  ==  data record
 ;;
 ;; The special key "$" is used for "lambda markers" that identify the
 ;; current level of function nesting.  Values for these bindings are also
@@ -129,6 +130,30 @@
 ;; Lambda markers are not written (it is actually impossible for them to
 ;; exist in the final environment; they only appear within nested
 ;; constructs).
+;;
+;; Data Records
+;; ------------
+;;
+;; A TAG is a string stored in the first word of a constructed record,
+;; differentiating it from other records, and from vectors.  Each tag begins
+;; with "!:", which cannot appear in any of SCAM's standard subordinate data
+;; types (vectors, hashes, numbers).  Record types are therefore disjoint
+;; from each other and from subordinate types.  (Althouh vectors and numbers
+;; are not disjoint from each other... 1 == [1] == [[1]].)
+;;
+;; Subsequent words in the record describe the members of the record.  An
+;; ENCODING describes how arguments are encoded in words:
+;;
+;;      "W" => word   => extract using $(word N ...)
+;;      "S" => string => extract using $(nth N ...)
+;;      "L" => list   => extract using $(nth-rest N ...)
+;;
+;; A PATTERN contains the constructor name and the member encodings:
+;;
+;;    [CTORNAME ENCODING...]
+;;
+;; Global variable `^tags` holds a hash that maps TAGs to PATTERNs for all
+;; constructors whose definitions have been executed.
 
 ;;--------------------------------------------------------------
 
@@ -136,6 +161,27 @@
 (require "io")
 (require "parse")
 (require "escape")
+
+
+(data IL
+      (String  "Q" value)
+      (String. "Q%" value)  ;; sometimes parse nodes are re-used for Q
+      (Var     "V" name)    ;; ...and for V
+      (Builtin "F" &word name  &list args)
+      (Call    "f" name        &list args)
+      (Local   "U" &word ndx   &word level)
+      (Funcall "Y" func        &list args)
+      (Concat  "C" &list values)
+      (Block   "B" &list nodes)
+      (Lambda  "X" code)
+      (Error   "E%" text))
+
+(define (Funcall-2 fn-and-args) (concat "Y " fn-and-args))
+
+;; These nodes generate code with balanced parens and without leading or
+;; trailing whitespace.
+(define `(is-balanced? node) (filter "F f Y V" (word 1 node)))
+
 
 
 ;; *compile-subject* contains the penc-encoded SCAM source being compiled

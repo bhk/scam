@@ -1,76 +1,86 @@
 TODO
 
- * Make `require` work with source files in `scam [-x] FILE ...` commands.
+ * --strip-comments
 
- * (data (Symbol pos name)
-         (String pos text)
-         (List pos nodes)
-         ...)
+ * Data records
 
-   Maybe:
-     (data? CTOR value)
+   - eliminate "Q%" tag
+   - Document (data ...) and (case ...)
+   - Make use of patterns in parser (and in data/case)
+   - Use "!:" in IL (for pretty-printing)
+
+ * Better reporting of errors during macro expansion (e.g. undefined symbols)
+
+   Keep line numbers in macro defn, and track host file name as arg to
+   expansion.  (Or: embed reference to file in macro env entry.) (Or: track
+   file name via markers in the environment.)
+
+ * (data NAME CTOR...) reflection
+
+     (data-type VALUE)     -->  (DataType name arity ctor dtor)
+       (DTOR VALUE)        -->  [MEMBER ...]
+       (CTOR MEMBER...)    -->  VALUE
+
+     (is-data? CTOR value)
      (data-tag CTOR)
      (data-tag value)
      (data-constructor tag/value)
      (data-tags)  -->  { tag: [typename args...], ...}  for all tags in scope
 
-    - Use `case` to deconstruct
-    - Display constructors in `format`
-    - Encode using nth-rest rather than (nth N .):  &vector nodes
-    - Encode using word rather than (nth N .):  &word pos
-
  * (case EXPR
-      ((CtorA x y)    EXPR)     ; `a` and `b` bound
-      ((CtorB? node)  EXPR)     ; `node.a` and `node.b` bound
-      (["A" a b]      EXPR)     ; `a` and `b` bound
-      (CONST          EXPR)
-      (`SYNTAX        EXPR)
-      (else           EXPR))
+      (CONST          EXPR)    ;; match constant
+      ((CtorA "str" y) EXPR)   ;; match constant member
+      (["A" a b]      EXPR)    ;; deconstruct vectors & match constants (always succeeds)
+      (`SYNTAX        EXPR)    ;; ?
+      ...)
 
- * Move syntax quoting to scam-ct
+ * new keywords: private, undefine, vpath
 
- * Parse hash syntax (?)
+ * Custom constructors
 
- * builtin enhancements
+   (data (Bind key value)
+     rec (concat [key] "!=" [value])
+     (key (first (subst "!=" " " rec)))
+     (value (nth 2 (subst "!=" "! " rec)))
+     (match (findstring "!=" rec)))
 
-    word                     ... attempt to obtain value of builtin: "word"
-    (call "word" 1)          Stop. (!)
+   (data (Bind key value)
+     (concat [key] "!=" [value])
+     (lambda (rec)
+       [ (first (subst "!=" " " rec)) (nth 2 (subst "!=" "! " rec)) ])
+     (lambda (rec)
+       (findstring "!=" rec)))
+
+ * (? lambda ...)  -->  (call "^tv" "any" (any ...))
+   or:  (call "^yt" "any" (lambda (args) (any args)) ...)
+
+ * Obtain value of builtin.  E.g. word -> "$(word $1,$2)"
+   May fix (? builtin ...).
+
+ * Bugs (see gen-test.scm)
+
+ * Avoid function/builtin conflicts
+
     (define (word a b) 1)    Actually defines variable, but...
     (word 1 2)               Does not call defined function, and ...
     (word 1)                 Stop. (!)
+
+ * check arg counts for all functions (not just inline functions)
+    - export/import arg count
+
+ * Parse hash syntax
 
  * WARN when shadowing variables!
     - most common error case (esp. builtins) (esp. in REPL)
     - allow `(let ((x x)) ...)` or `&shadow` exceptions
 
- * scam -x: build with `scam -o .scam/NAME` & then run
+ * scam -x
 
- * Bugs (see gen-test.scm)
-
- * Deconstruction of vectors in assignments
-
-      (let ([one two] ...) ...)
-      (let ([one rest...] ...) ...)
+   Make `require` work with source files in `scam [-x] FILE ...` commands.
+   Build with `scam -o .scam/NAME` & then run.
 
  * c0 functions:  return [IL ...env] consistently.   When `inblock` is nil,
   `...env` can be nil.
-
- * (expand NAME)  -->   "$(NAME)"
-   (set-expand NAME)  : replaces set-global
-   (set-value NAME)   : replaces set-rglobal
-
- * chose alias for keyword collisions (or namespace everything)
-   (define (info a b) ...)  -->  "~info = ..."
-
- * Display of data
-
-    - @q -->  Undo constructors  "0 1 2 3"       -->  "(Ctor 1 2 3)"
-    - @q -->  Undo hashes   -->  { a: 123,  "str": 234 }
-    - @f -->  Undo parsing?      "(Symbol "a")"  -->  'a  [not true undo, due to loc]
-
- * (? macro ...)
-   (? any ...)  -->  (call "^tv" "any" (any ...))
-                or:  (call "^yt" "any" (lambda (args) (any args)) ...)
 
  * arbitrary precision floating point
     - fp divide w/ specified precision
@@ -103,10 +113,8 @@ TODO
  * Integrate `strlen` with core.scm and use `strlen` to report column
    for errors.
 
- * check arg counts for all functions (not just inline functions)
-    - export/import arg count
+ * looping constructs / named lambda
 
- * looping constructs
    http://www.scheme.com/tspl4/control.html#./control:h4
 
      let:  (let name ((var expr) ...) body...)
@@ -126,20 +134,21 @@ TODO
 
  * .min -> .make
 
- * To make hashes easily sortable by key, something other than
-   "!=" -- maybe "!+" -- would be required.  (This could be subst'ed
-   when sorting, however.)
-
- * Better reporting of errors during macro expansion
-
-   e.g. undefined symbols
-
-   Keep line numbers in macro defn, and track host file name as arg to
-   expansion.  (Or: embed reference to file in macro env entry.)
+ * Move syntax quoting to scam-ct
 
 
 Optimizations
 ----
+
+ * (case NAME    -->  (foreach TMP (or (word 1 VALUE) "!.")
+       (Foo a)    -->    (if (filter "TAG" TMP) ...))
+        a         -->    (word 2 (^u TMP))  or  (word 2 VALUE)
+   (case EXPR    -->  (foreach TMP [VALUE]
+      (Foo a b)  -->    (if (filter "TAG!0%" "%") TMP) ...))  [always args]
+      (Bar)      -->    (if (filter "TAG" "%") TMP) ...))     [no args]
+
+ * Output a very limited environment when a module does not export macros or
+   inline functions. (Any examples?)
 
  * Constant propagation:  (Call PURE CONST...) -->   (Const (PURE CONST...))
 
@@ -187,11 +196,12 @@ Optimizations
      IF-NOT:  (if (if C nil 1) X Y) --> (if C (if nil X Y) (if 1 X Y))  [+const prop]
      IF-YES:  (if (if C TRUE) X Y)  --> (if X (if TRUE X Y) (if nil Y)) [+const prop]
 
- * IF CSE:  (if x (f a) (f b))  -->  (f (if x a b))
+ * IF CSE:  (if COND (f A) (f B))  -->  (f (if COND A B))
 
      Special case:  (if PURE 1 1) -->  (begin PURE 1)  -->  1
 
      This can be applied recursively to break apart complex commonality.
+     Not good when A or B are constants and `f` is evaluatable.
 
  * Misc...
 
@@ -205,14 +215,18 @@ Optimizations
      (subst PURE PURE nil)  -->  nil
      (word PURE nil)        -->  nil
 
-     (eq A WORD) --> (if (filter A WORD) 1)  ... (const? A), no "%" in A
-
-     (findstring WORD (findstring A WORD))  -->  (filter WORD A)
+     (eq A B) ==
+       (findstring A (findstring B A))  -->  (filter A B)
+         When: A and B are words, and A does not contain "%" (e.g. $(words))
 
      (eq CONST (nth N V)) -->  (eq (demote CONST) (word N V))
                           -->  (filter (demote CONST) (word N V))
 
-     (demote (if COND X Y))   -->   (if COND (demote X) (demote Y))   [maybe reduces]
+     (f (if COND X Y))   -->   (if COND (f X) (f Y))
+       ... reduces when X or Y are constants e.g. demote
+       (demote (if COND C1 C2)   -->  (if COND C3 C4)
+       (if (not COND) A B) ==
+          (if (if COND nil 1) EXPR)  -->  (if COND (if nil EXPR) (if 1 EXPR))
 
 
  * Extraction and naming of anonymous functions.  The main motivation is to
@@ -326,3 +340,5 @@ be fiendishly difficult to employ correctly):
 ;                  (subst a "" b)))))
 
 ; (define (findstring a b)  (if (not (eq (subst a "" b) b)) a))
+
+----------------------------------------------------------------

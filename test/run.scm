@@ -110,6 +110,22 @@
 
 (expect TA "012")
 
+;; data
+
+(data TestType
+      (CA &word a b &list c)
+      (CB))
+
+(expect 1 (word 2 (CA 1 2 3)))
+
+(expect "1 3"
+        (case (CA 1 " " 3)
+          ((CA a b c)  (concat a b c))
+          ((CB)        2)))
+(expect "2"
+        (case (CB)
+          ((CA a b c)  (concat a b c))
+          ((CB)        2)))
 
 ;;----------------------------------------------------------------
 ;; Known bugs

@@ -5,15 +5,15 @@
 ;; The problem of "escaping" strings for inclusion in Make source code can
 ;; be broken down into two aspects.
 ;;
-;; First, there is escaping for function/variable expansion.  This involves
-;; replacing each "$" with "$$".
+;; First, there is escaping `$` characters to survive expansion.  This is
+;; handled by the `escape` function.
 ;;
 ;; Second, special characters must be quoted that would otherwise have
 ;; significance in the Make syntax.  This task varies depending on
 ;; where in the Makefile the code will appear:
 ;;
-;;   - the left-hand-side of an assignment line
-;;   - the right-hand-side of an assignment line
+;;   - the left-hand-side of a variable definition (before "=", ":=" or "+=")
+;;   - the right-hand-side of a veriable definition
 ;;   - the contents of a "define VAR ... endef" statement
 ;;   - an expression occuring by itself on a line.
 ;;   - an argument to a function
@@ -38,6 +38,14 @@
 (require "core")
 
 
+;; Convert a literal string to a form that will survive expansion.  We use
+;; $` instead of $$ to avoid exponential growth after repeated escape
+;; operations.
+(define (escape str)
+  &inline
+  (subst "$" "$`" str))
+
+
 ;; Double all backslash characters preceding "!D", and then remove "!D"
 (define (protect-hash2 str)
   &private
@@ -45,7 +53,8 @@
       (protect-hash2 (subst "\\.#" ".#\\\\" str))
     (subst ".#" "" str)))
 
-;; Escape hash ("#") characters with backslash:
+
+;; Quote hash ("#") characters with backslash:
 ;;    #  -->    \#
 ;;   \#  -->  \\\#
 (define (quote-hash str)
@@ -57,20 +66,20 @@
 (define (replace-nl str)
   &private
   &inline
-  (subst "\n" "$!" str))
+  (subst "\n" "$'" str))
 
 (define (replace-hash str)
   &private
   &inline
-  (subst "#" "$&" str))
+  (subst "#" "$\"" str))
 
 
 ;; Prevent leading spaces from being trimmed.
 ;;
-(define (protect-ltrim s)
-  (if (findstring (concat s "x") (wordlist 1 99999999 (concat s "x")))
-      s
-      (concat "$ " s)))
+(define (protect-ltrim str)
+  (define `(begins-white str)
+    (findstring (word 1 (concat 0 str 0)) 0))
+  (concat (if (begins-white str) "$ ") str))
 
 
 ;; Prevent leading and trailing whitespace from being trimmed by enclosing
@@ -81,7 +90,8 @@
            (filter-out "\n%" (word 1 s))
            (filter-out "%\n" (lastword s)))
       s
-      (concat "$(if ,," s ")")))
+      (if s
+          (concat "$(if ,," s ")"))))
 
 
 ;; `balance-match` operates on a demoted string in which "(" and )" have
@@ -223,12 +233,16 @@
 ;;  - encode newlines
 ;;
 (define (protect-lhs str)
+  (define `keywords
+    (concat "ifeq ifneq ifdef ifndef else endif define endef override "
+            "include sinclude -include export unexport private undefine vpath"))
+
   (replace-hash
    (subst "X" (replace-nl (protect-arg str))
           (if (or (findstring ":" str)
                   (findstring "=" str)
-                  (if (findstring str (wordlist 1 99999999 str)) "" 1)
-                  (filter "ifeq ifneq ifdef ifndef else endif define endef override include sinclude -include export unexport" str))
+                  (not (findstring str (wordlist 1 99999999 str)))
+                  (filter keywords str))
               "$(if ,,X)"
               "X"))))
 

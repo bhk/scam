@@ -119,7 +119,24 @@
 (expect "\"!x\"" (format "!x"))
 (expect "[\" \"]" (format "!0"))
 (expect "-12" (format "-12"))
+(expect "{\"a\": \"b\"}" (format (hash-bind "a" "b")))
+(expect "{\" \": \"\"}" (format (hash-bind " " "")))
 
+;; format-record
+
+(let-global
+ ((^tags (append ^tags
+                 (hash-bind "!:A" ["CtorA" "W" "L"])
+                 (hash-bind "!:B" ["CtorB" "W" "S"]))))
+
+ (expect "(CtorA [\" \"] [\" \" 1 2 3])"
+         (format "!:A !0 !0 1 2 3"))
+ (expect "(CtorB [\"!\"] \"!\")"
+         (format "!:B !1 !1"))
+ (expect "(CtorA \"x\" [])"
+         (format "!:A x ")))
+
+;; uniq
 
 (expect "a b c" (uniq "a a b a c a b"))
 
@@ -180,3 +197,10 @@
 
 (expect ["%a !" 2 3]  (assoc-vec ["%a !" 2]
                                [ ["%a" "!" 2] ["%a !" 1 2] ["%a !" 2 3] ]))
+
+;; index-of
+
+(expect 1 (index-of ["!" " " "\t"] "!"))
+(expect 2 (index-of ["!" " " "\t"] " "))
+(expect 3 (index-of ["!" " " "\t"] "\t"))
+(expect 0 (index-of ["!" " " "\t"] "a"))
