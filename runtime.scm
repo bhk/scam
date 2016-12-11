@@ -231,7 +231,14 @@ endef
 
 
 ;; word list of "event=func_name" entries
-(define *hooks* nil)
+
+;; We declare, and don't initialize *hooks* to empty string, because when
+;; building the compiler another copy of the runtime might be loaded into
+;; the compiler itself.  Currently, when stage A builds stage B, they both
+;; use a runtime with NS='~'...  (A's NS is '' but it uses the golden
+;; runtime).
+;;
+(declare *hooks*)
 
 (define (add-hook event funcname)
   (set *hooks* (concat *hooks* " " event "=" funcname)))

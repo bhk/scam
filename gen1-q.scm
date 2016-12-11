@@ -96,14 +96,15 @@
 ;; Funcall: call an anonymous function
 
 (expect "$(call ^Y,,,,,,,,,,$1)"
-        (c1 (Funcall (Local 1 0) [] )))
+        (c1 (Funcall [ (Local 1 0) ] )))
 
 (expect "$(call ^Y,a,,,,,,,,,$1)"
-        (c1 (Funcall (Local 1 0) [ (String "a") ])))
+        (c1 (Funcall [ (Local 1 0) (String "a") ])))
 
 (expect "$(call ^Y,a,b,c,d,e,f,g,h,i j,$1)"
-        (c1 (Funcall (Local 1 0) (for s "a b c d e f g h i j"
-                                      (String s)))))
+        (c1 (Funcall (cons (Local 1 0)
+                           (for s "a b c d e f g h i j"
+                                (String s))))))
 
 ;; Block: a sequence of expressions
 

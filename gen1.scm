@@ -180,7 +180,7 @@
               (call quotefn a)))
 
 
-(define (c1-E node)
+(define (c1-Error node)
   (gen-embed (if (filter "E E.%" node)
                  node
                  ["E" "Internal error; mal-formed IL node: " node])))
@@ -243,11 +243,14 @@
 
 
 ;; Call lambda value
-(define (c1-Funcall func args)
+(define (c1-Funcall nodes)
+  (define `func (first nodes))
+  (define `args (rest nodes))
   (define `fnval (protect-arg (c1 func)))
-  (define `commas (subst " " "" (or (wordlist (words (concat "x" args)) 9
-                                              ", , , , , , , , ,")
-                                    ",")))
+  (define `commas
+    (subst " " "" (or (wordlist (words (concat "x" args)) 9
+                                ", , , , , , , , ,")
+                      ",")))
 
   (concat "$(call ^Y," (c1-args9 args) commas fnval ")"))
 
@@ -266,16 +269,16 @@
 
 (define (c1 node)
   (case node
-    ((String. value) (escape value))
+    ((String value) (escape value))
     ((Local ndx ups) (c1-Local ndx ups))
     ((Call name args) (c1-Call name args))
     ((Var name) (c1-Var name))
     ((Concat nodes) (c1-vec nodes "" (global-name c1)))
     ((Lambda code) (c1-Lambda (c1 code)))
     ((Block nodes) (c1-Block nodes))
-    ((Funcall func args) (c1-Funcall func args))
+    ((Funcall nodes) (c1-Funcall nodes))
     ((Builtin name args) (c1-Builtin name args))
-    (else (c1-E node))))
+    (else (c1-Error node))))
 
 
 ;;--------------------------------------------------------------
@@ -316,31 +319,30 @@
           (concat (protect-lhs lhs) " = " (unescape (protect-rhs rhs)) "\n"))))
 
 
-;; compile a vector of expressions for file context
+;; Compile a vector of expressions to file syntax.
 ;;
 (define (c1-file* nodes)
-  (concat-vec
-   (for node nodes
-        (c1-file node))))
+  (concat-for node nodes ""
+              (c1-file node)))
 
 
-;; compile one expression for file context
+;; Compile a node to file syntax.
 ;;
 (define (c1-file node)
   (or
    (case node
 
+     ;; Normalize (Builtin "call" (String S)) to (Call S ...).
+     ;; Compile (Builtin "eval" (String "...")) as "...\n"
      ((Builtin name args)
       (case (first args)
-        ((String. value)
+        ((String value)
          (if (filter "eval" name)
-             ;; top-level (eval STR) equivalent to STR
              (concat value "\n")
              (if (filter "call" name)
-                 ;; normalize (Builtin "call" ...) to (Call ...)
                  (c1-file (Call value (rest args))))))))
 
-     ;; use makefile syntax for assignments, versus "$(call SET,...)
+     ;; Handle assignments using "a = b" vs. "$(call ^fset,a,b)"
      ((Call name args)
       (if (not (nth 3 args))
           (if (filter "^set" name)
@@ -348,6 +350,7 @@
               (if (filter "^fset" name)
                   (c1-file-fset (c1 (nth 1 args)) (c1 (nth 2 args)))))))
 
+     ;; Compile block members as also in file scope
      ((Block nodes) (c1-file* nodes)))
 
    (concat (protect-expr (c1 (voidify node))) "\n")))

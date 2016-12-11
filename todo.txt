@@ -1,20 +1,16 @@
 TODO
 
- * --strip-comments
+ * Use "!:" tags in IL and environment (check perf.)
 
- * Data records
+ * Exports, Imports, Rewind
 
-   - eliminate "Q%" tag
-   - Document (data ...) and (case ...)
-   - Make use of patterns in parser (and in data/case)
-   - Use "!:" in IL (for pretty-printing)
+   - Make symbols Private by default; explicit &public.
+   - Export ONLY PUBLIC values when no macros or inline funcs are exported.
+   - Embed current file name in env as EMarker (or using dynamic var during
+     expansion). Better reporting of errors during macro expansion
+     (e.g. undefined symbols)
 
- * Better reporting of errors during macro expansion (e.g. undefined symbols)
-
-   Keep line numbers in macro defn, and track host file name as arg to
-   expansion.  (Or: embed reference to file in macro env entry.) (Or: track
-   file name via markers in the environment.)
-
+ * data: distinguish ctors from records
  * (data NAME CTOR...) reflection
 
      (data-type VALUE)     -->  (DataType name arity ctor dtor)
@@ -28,13 +24,13 @@ TODO
      (data-tags)  -->  { tag: [typename args...], ...}  for all tags in scope
 
  * (case EXPR
-      (CONST          EXPR)    ;; match constant
+      (CONST          EXPR)    ;; match constant exactly (nil, for example)
       ((CtorA "str" y) EXPR)   ;; match constant member
       (["A" a b]      EXPR)    ;; deconstruct vectors & match constants (always succeeds)
       (`SYNTAX        EXPR)    ;; ?
       ...)
 
- * new keywords: private, undefine, vpath
+ * use data/case in parser
 
  * Custom constructors
 
@@ -136,9 +132,106 @@ TODO
 
  * Move syntax quoting to scam-ct
 
+ * .out/a/scam ends up using NS='~' runtime, and also building and loading
+   its own runtime for .out/b/scam with NS='~' (!).
+
+   Big complication: Modules may use a runtime in their own namespace, or
+   the compiler's own namespace.  [Inherent in a compiler being able to
+   target another namespace, and to compile sources that don't supply their
+   own namespace.]
+
+   Maybe
+
+   Namespacing the RT would be nice, but that is a feature of SCAM language,
+   so that would imply writing the RT in SCAM, which implies it depends on
+   the previous stage's runtime!  For which COMPLETE namespacing would be
+   nice, but that complicates codegen.
+
+   Multiple execution/compilation models (-x, -e, -o, make-driven
+   vs. synchronous, user-provided vs. compiler-embedded modules) have made
+   this more "interesting" than it otherwise would have to be.
+
+   `base` env should really be "builtin" env, a property of codegen.  gen1
+   does not need an env parameter, but could use a constant global env.
+   Maybe an (RT ...) IL node and (ERT ...) binding would be appropriate.
+
+     (RT "d" ...) for (Call (concat NS "^d") ...)
+
+   Like builtins, they would not use the arg9 convention.
+
+   Those *actually* used in codegen:
+      ^u, ^d, ^n, ^set, ^fset, ^Y, ^E, ^av, ^t, ^require, ^start
+
+
+   -----
+
+   Assume compiler c0, compiled from unknown sources.  Everything about
+   *how* it works is a mystery; the language definition is all that is
+   known.  All it does is compile sources to programs in the default
+   (un-prefixed) namespace.  Our first step:
+
+   $ c0 -o c1 c.scm
+
+   Presumably, this program will include a runtime that was bundled with c0,
+   suitably namespaced to avoid collisions with our program's functions.
+   But we can't even assume that it has a runtime.  Certainly it does not
+   use the runtime in the c1 sources.
+
+   Ideally, c1 would be fully functional, so that we could proceed to:
+
+   $ c1 -o prog prog.scm
+
+   ...but we aren't ready to, because *our* compiler -- the c1 source code
+   -- makes use of a runtime that must be bundled with any program we
+   generated.  That runtime is a separate source file, also written in SCAM.
+   It cannot be compiled with c0, because c0 generates only programs, not
+   discrete modules.  Even if it did, the discrete module would presumably
+   have external dependencies the way *our* generate code will have
+   dependencies on our runtime.  Just as our generated code will drag along
+   our runtime, c0's might drag along a copy of its runtime, and after a few
+   generations things can get quite large and conflicts get harder to avoid.
+
+   So we need c1 to compile its own runtime.  Maybe a special command-line
+   option will suffice for this "mode" of operation:
+
+   $ c1 --boot -o prog prog.scm
+
+   It will have to be careful to avoid having runtime code depending on
+   things not yet defined later in the runtime, but with knowledge of c1
+   codegen and runtime we could achieve this.  Once built, it will bundle
+   the runtime with the program it generates, leaving it with a standalone
+   program.
+
+   We still want to arrive at a standalone *compiler*, and in addition to
+   having its embedded runtime requirements met, it will also want to
+   extract a copy of that runtime from itself for bundling with programs it
+   generates.
+
+   That, in turn, generates namespacing concerns.  We want compiled code to
+   be able to run alongside compiler code in one instance of Make -- the
+   '-e' and interactive modes require this.  That means the generated code
+   uses a different namespace (the default namespace).  That means the
+   compiler must get OUT OF the default namespace.  And then how can it
+   share the runtime (on one namespace) with the generated code?
+
+   Currently in SCAM:
+
+    - c1 (c1a) compiles c1b, and c1b uses a special namespace ("~" prefix).
+
+    - c1b can then generate code in the deafult namespace.
+
+    - However, once we promote c1b to be the new "c0", we will have a c0
+      that internally uses the "~" namespace.  And therefore the next c1a
+      will end up using a "~" runtime, the same as the next c1b that c1a
+      generates.  This can cause problems when c1a executes code it
+      generated for c1b.
+
 
 Optimizations
 ----
+
+ * Tracing `scam` itself is problematic because the processing occurs after
+   `main` exits (in the rule-processing phase).
 
  * (case NAME    -->  (foreach TMP (or (word 1 VALUE) "!.")
        (Foo a)    -->    (if (filter "TAG" TMP) ...))
@@ -340,5 +433,3 @@ be fiendishly difficult to employ correctly):
 ;                  (subst a "" b)))))
 
 ; (define (findstring a b)  (if (not (eq (subst a "" b) b)) a))
-
-----------------------------------------------------------------

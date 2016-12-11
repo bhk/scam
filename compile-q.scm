@@ -15,7 +15,7 @@
 
   (expect "" errors)
   (expect "a := 1\n" exe)
-  (expect "# Exports: a!Va" (wordlist 1 3 exports)))
+  (expect "# Exports: a!Va," (wordlist 1 3 exports)))
 
 
 ;; for eval
@@ -26,7 +26,7 @@
 
   (expect "" errors)
   (expect "$(call ^set,a,1)" exe)
-  (expect (hash-bind "a" "V a") (word 1 exports)))
+  (expect (hash-bind "a" (EVar "a" nil)) (word 1 exports)))
 
 
 (expect "a := 1\nb := 2\n"

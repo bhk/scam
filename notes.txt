@@ -13,14 +13,13 @@ file (module) to executable code, and then packages it as a program.
 For simplicity, let us imagine the compiler itself is implemented in only
 three source files:
 
- - C.scm implements a "core" of functionality.
+ - A "runtime" module called RT.scm.  This defines functions that are not
+   explicitly called by the user, but the compiler will emit code that
+   presumes the runtime functionality is present.
 
- - RT.scm provdes the run-time underpinnings for some of the core
-   functionality, and provides other functions, building on the core
-   functionality alone.
+ - A set of "excutable macros" called CT.scm.  (See `use` in reference.md.)
 
- - CT.scm builds on what C.scm and RT.scm provide, and adds "executable
-   macros" that define more functionality. (See `use` in reference.md.)
+ - The rest of the compler, C.scm.
 
 Together, C + RT + CT provide the base language features of SCAM (all of the
 syntax and functionality available to any module without calling `require`).
@@ -437,7 +436,8 @@ data values at compile-time is also useful.
 
 Where do we draw the line between compile-time and run-time execution?  It's
 clear that `main` can be defined at compile-time and executed only at run
-time.  But what about top-level code (the file body)?
+time.  But what about code that is at the top-level, not a function
+definition, and not within a function?
 
  - Execute it only at run-time.  (Current SCAM; does not allow for
    user-defined macros.)

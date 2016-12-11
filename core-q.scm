@@ -127,14 +127,17 @@
 (let-global
  ((^tags (append ^tags
                  (hash-bind "!:A" ["CtorA" "W" "L"])
-                 (hash-bind "!:B" ["CtorB" "W" "S"]))))
+                 (hash-bind "!:B" ["CtorB" "W" "S"])
+                 (hash-bind "!:V" ["Void"]))))
 
  (expect "(CtorA [\" \"] [\" \" 1 2 3])"
          (format "!:A !0 !0 1 2 3"))
  (expect "(CtorB [\"!\"] \"!\")"
          (format "!:B !1 !1"))
  (expect "(CtorA \"x\" [])"
-         (format "!:A x ")))
+         (format "!:A x "))
+ (expect "(Void)"
+         (format "!:V")))
 
 ;; uniq
 

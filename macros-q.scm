@@ -10,9 +10,27 @@
 (require "escape")
 (require "macros" &private)
 
+;;--------------------------------
+;; utilities
+;;--------------------------------
 
-;; in case something went very wrong...
-(if (eq "a" (first "a b c")) "" (error "something's wrong"))
+;; Trim ".INDEX" suffixes from a vector of forms.
+(define (trim-indices forms)
+  (for form forms
+       (append (word 1 (subst "." " " (word 1 form)))
+               (if (type? "L% `% '% ,% @%" form)
+                   (trim-indices (rest form))
+                   (rest form)))))
+
+;; Parse, trim position data, and return vector of forms.
+(define (pp text)
+  (trim-indices (parse-text text)))
+
+;; Parse and trim position data; return ONE form.
+(define (p1 text)
+  (let ((o (pp text)))
+    (expect "" (word 2 o))
+    (first o)))
 
 (define (DUMP name val)
   (if (findstring "D" SCAM_DEBUG)
@@ -85,14 +103,14 @@
 
 ;; let&
 
-(expect (hash-bind "y" ["M" "Q Y"]
-          (hash-bind "x" ["M" "Q 1"]
-            (hash-bind "a" "Q.1 S")))
+(expect (hash-bind "y" (ESMacro "Q Y" "")
+         (hash-bind "x" (ESMacro "Q 1" "")
+          (hash-bind "a" (EVar "a" "."))))
        (let&-env [ ["L" "S x" "Q 1"] ["L" "S y" "Q Y"] ]
-                 (hash-bind "a" "Q.1 S")))
+          (hash-bind "a" (EVar "a" "."))))
 
 
-(expect (hash-bind "x" ["M" "S a"]
+(expect (hash-bind "x" (ESMacro "S a" nil)
               (lambda-env ["S a"] ""))
         (let&-env [ ["L" "S x" "S a"] ]
                   (lambda-env ["S a"] "")))
@@ -237,7 +255,7 @@
                                 1)))
     (define `env (nth 2 o))
     (expect "env" (first o))
-    (expect (hash-get "foo" env) ["X" "_foo"])
+    (expect (hash-get "foo" env) (EXMacro "_foo" nil))
     (expect (hash-get "a" env) "B c")
     (expect (word 1 (Builtin "X" []))
             (word 1 (nth-rest 3 o)))))
@@ -258,19 +276,20 @@
 
 ;; ml.special-data
 
-(expect ["T" "T1" "Ctor W S L" "a b c"]
-        (get-ctor `(Ctor &word a b &list c) "T1" ["L.1"]))
+(expect (DataType "T1" "Ctor" "W S L" "a b c")
+        (get-type `(Ctor &word a b &list c) "T1" ["L.1"]))
 
-(expect ["T" "X" "Ctor W S L" "a b c"]
-        (get-ctor `(Ctor "X" &word a b &list c) "T1" ["L.1"]))
+(expect (DataType "X" "Ctor" "W S L" "a b c")
+        (get-type `(Ctor "X" &word a b &list c) "T1" ["L.1"]))
 
 ;; list not at end => use S, not L encoding
-(expect ["T" "T1" "Ctor W S S" "a b c"]
-        (get-ctor `(Ctor &word a &list b c) "T1" ["L.1"]))
+(expect (DataType "T1" "Ctor" "W S S" "a b c")
+        (get-type `(Ctor &word a &list b c) "T1" ["L.1"]))
 
-(expect [ ["T" "!:T0" "Ctor W S L" "a b c"]
-          ["T" "!:T1" "CtorB S" "a"] ]
-        (get-ctors `(data) "!:T" [ `(Ctor &word a b &list c) `(CtorB a) ] nil))
+(expect [ (DataType "!:T0" "Ctor" "W S L" "a b c")
+          (DataType "!:T1" "CtorB" "S" "a") ]
+        (get-types `(data) "!:T" [ `(Ctor &word a b &list c)
+                                   `(CtorB a) ] nil))
 
 (let ((o (ml.special-data `(data T
                                  (CA a &word b &list c)
@@ -278,26 +297,25 @@
                           (hash-bind "env" "old")
                           1)))
 
-  (expect ["R" "S W L" "" "!:T0"]
+  (expect (ERecord "S W L" "." "!:T0")
           (hash-get "CA" (nth 2 o))))
 
 
 ;; ml.special-case
 
-(expect (append (hash-bind "a" ["I" (Builtin "word" [ (String 2) (String 123) ])])
-                (hash-bind "b" ["I" (Call "^n" [ (String 3) (String 123) ])]))
+(expect (append
+         (hash-bind "a" (EIL (Builtin "word" [ (String 2) (String 123) ]) "."))
+         (hash-bind "b" (EIL (Call "^n" [ (String 3) (String 123) ]) ".")))
         (arg-bindings [ ["S" "a"] ["S" "b"] ]
                       "W S"
                       "Q 123"))
 
 (expect
  (Builtin "if" [ (Builtin "filter" [ (String "!:T0")
-                                     (Builtin "firstword" [ (String "v") ]) ])
-                 (Builtin "wordlist" [ (String 4) (String 99999999) (String "v") ])
-                 (String "v")])
+                                     (Builtin "firstword" [ (String 1) ]) ])
+                 (Builtin "wordlist" [ (String 4) (String 99999999) (String 1) ])
+                 (String 1)])
 
- (ml.special-case ["L" "S case" "Q v"
-                   ["L" ["L" "S Ctor" "S s" "S w" "S v"]
-                    "S v"]
-                   ["L" "S _" "S _"]]
-                  (hash-bind "Ctor" ["R" "S W L" "" "!:T0"])))
+ (ml.special-case (p1 "(case 1 ((Ctor s w v) v) (a a))")
+                  (hash-bind "Ctor"
+                             (ERecord "S W L" "." "!:T0"))))

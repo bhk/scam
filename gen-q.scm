@@ -20,14 +20,14 @@
 
 (expect (append
          (hash-bind "$" "$$")
-         (hash-bind "f" ["F" "f"])
+         (hash-bind "f" ["F" "f"])  ;; wordlist 1 2
          (hash-bind "a" "asdf"))
         (env-rewind (hash-bind "x" 1
                           (hash-bind "$" "$$"
-                                (hash-bind "f" ["F" "f" "" ""]
+                                (hash-bind "f" (EFunc "f" "." "")
                                       (hash-bind "a" "asdf"))))
                     "f"
-                    ["F" "f" "priv" "defn"]))
+                    (EFunc "f" "priv" "DEFN")))
 
 
 
@@ -35,8 +35,9 @@
 
 (expect "foo&"   (gensym-name "foo"))
 (expect "S foo&" (gensym "S foo"))
-(expect "S foo&1" (gensym "S foo" (hash-bind (symbol-name (gensym "S foo")) "V x")))
-
+(expect "S foo&1" (gensym "S foo"
+                          (hash-bind (symbol-name (gensym "S foo"))
+                                     (EVar "x" "."))))
 
 ;; gen-error
 
@@ -52,6 +53,12 @@
 
 ;; env-export & env-import
 
+(expect "# Exports: vname!Vvarname,. fname|realname,.,DEFN\n"
+        (env-export
+         (append (hash-bind "vname" (EVar "varname" "."))
+                 (hash-bind "fname" (EFunc "realname" "." "DEFN")))))
+
+
 (define (export-round-trip env flag filename)
   (env-import
    (env-parse [ "# comment"
@@ -63,44 +70,44 @@
 
 ;; import only public members
 
-(expect (append (hash-bind "f" "F f i")
-                (hash-bind "v" "V X i")
-                (hash-bind "I" ["F" "I" "iMOD" ["a b" "S a"]])
-                (hash-bind "m" ["M" "Q 1" "iMOD"])
-                (hash-bind "a:n\n,x" "V xyz i"))
+(expect (append (hash-bind "f" (EFunc "f" "i" nil))
+                (hash-bind "x" (EVar "X" "i"))
+                (hash-bind "a" (EFunc "fa" "iMOD" ["a b" "S a"]))
+                (hash-bind "m" (ESMacro "Q 1" "iMOD"))
+                (hash-bind "a:n\n,x" (EVar "xyz" "i")))
 
         (export-round-trip
-         (append (hash-bind "f" "F f")
-                 (hash-bind "v" "V X")
-                 (hash-bind "I" ["F" "I" "" ["a b" "S a"]])
-                 (hash-bind "g" "F g p")  ;; private
-                 (hash-bind "g" "F g i")  ;; imported
-                 (hash-bind "m" ["M" "Q 1" ""])
-                 (hash-bind "a:n\n,x" "V xyz"))
+         (append (hash-bind "f" (EFunc "f" "." nil))
+                 (hash-bind "x" (EVar "X" "."))
+                 (hash-bind "a" (EFunc "fa" "." ["a b" "S a"]))
+                 (hash-bind "g" (EFunc "g" "p" nil))  ;; private
+                 (hash-bind "g" (EFunc "g" "i" nil))  ;; imported
+                 (hash-bind "m" (ESMacro "Q 1" "."))
+                 (hash-bind "a:n\n,x" (EVar "xyz" ".")))
          ""
          "MOD"))
 
 
 ;; import public AND private members
 
-(expect (append (hash-bind "f" "F f")
-                (hash-bind "v" "V X")
-                (hash-bind "I" ["F" "I" "i" ["a b" "S a"]])
-                (hash-bind "g" "F g p")
-                (hash-bind "g" "M g i")  ;; imported
-                (hash-bind "a:n\n,x" "V xyz"))
+(expect (append (hash-bind "f" (EFunc "f" "." nil))
+                (hash-bind "x" (EVar "X" "."))
+                (hash-bind "a" (EFunc "a" "i" ["a b" "S a"]))
+                (hash-bind "g" (EFunc "g" "p" nil))
+                (hash-bind "g" (ESMacro "g" "i"))  ;; imported
+                (hash-bind "a:n\n,x" (EVar "xyz" ".")))
 
         (export-round-trip
-         (append (hash-bind "f" "F f")
-                 (hash-bind "v" "V X")
-                 (hash-bind "I" ["F" "I" "i" ["a b" "S a"]])
-                 (hash-bind "g" "F g p")  ;; private
-                 (hash-bind "g" "M g i")  ;; imported macro
-                 (hash-bind "a:n\n,x" "V xyz"))
+         (append (hash-bind "f" (EFunc "f" "." nil))
+                 (hash-bind "x" (EVar "X" "."))
+                 (hash-bind "a" (EFunc "a" "i" ["a b" "S a"]))
+                 (hash-bind "g" (EFunc "g" "p" nil))  ;; private
+                 (hash-bind "g" (ESMacro "g" "i"))    ;; imported macro
+                 (hash-bind "a:n\n,x" (EVar "xyz" ".")))
          1
          "File Name.min"))
 
 ;; base-env and resolve
 
-(expect ["V" "^av" "b"]
+(expect (EVar "^av" "b")
         (resolve ["S" "*args*"] base-env))

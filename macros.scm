@@ -164,9 +164,7 @@
 ;; the variables occur.  The syntax is like `let*`, but the expressions
 ;; evaluated at each occurrence of the variable (zero or more times).
 ;;
-;; `let&` generates an "M" record in the environment:
-;;
-;;     ["M" <form>]
+;; `let&` generates an ESMacro environment record.
 ;;
 ;; Each *use* of the macro will be compiled in the scope of the definition.
 ;; We know that scope because we know where the definition itself lies in the
@@ -176,7 +174,7 @@
   (append (reverse
            (append-for b nvs
                        (hash-bind (nth 2 (nth 2 b))  ;; symbol name
-                                  ["M" (nth 3 b)]))) ;; expr
+                                  (ESMacro (nth 3 b) nil)))) ;; expr
           env))
 
 (define (let&-check type form parent a)
@@ -357,7 +355,6 @@
 ;;
 (define (ml.special-global-name form env)
   (define `var (nth 3 form))
-  (define `binding (resolve var env))
 
   (or (check-argc 1 form)
       (check-type "S" var form "NAME" "(get-global NAME)")
@@ -376,12 +373,15 @@
       (check-type "S" sym what "NAME" "(defmacro (NAME ARG...) ...)")
 
       ; `(define WHAT BODY)
-      (let ((o (c0 (append ["L" ["S" "define"]] (nth-rest 3 form))
+      (let ((o (c0 (append ["L" ["S" "define"]]
+                           (nth-rest 3 form))
                    env
                    inblock)))
         (define `env (nth 2 o))
         (define `node (nth-rest 3 o))
-        (append ["env" (hash-bind name ["X" (gen-global-name name)] env)]
+        (append ["env" (hash-bind name
+                                  (EXMacro (gen-global-name name) nil)
+                                  env)]
                 node))))
 
 
@@ -406,11 +406,15 @@
 ;;    FLAG  = "&word"  => value contains no whitespace and is not nil
 ;;          | "&list"  => value has no leading or trailing whitespace
 
+(data Data
+      (DataType &word tag
+                &word name
+                encodings
+                &list argnames))
 
-;; Generate a ctor description: ["T" TAG PATTERN ARGNAMES]
-;; On error, return:            ["E.<n>" error...]
+;; Generate a Ctor record, or an Error record (a la parse tree) on failure.
 ;;
-(define (get-ctor-r args form tag pattern names flag)
+(define (get-type-r args form tag pattern names flag)
   &private
   (define `arg (first args))      ; a form
   (define `arg-name (nth 2 arg))  ; a string
@@ -427,13 +431,13 @@
        (if flag
            (gen-error form "no argument following last flag: %s" flag)
            ;; Done.
-           ["T" tag pattern names]))
+           (DataType tag (first pattern) (rest pattern) names)))
 
    (check-type "S" arg form "ARG" "(CTOR ARG...)")
 
    (if (not (filter "&%" arg-name))
        ;; argument name
-       (get-ctor-r (rest args) form tag
+       (get-type-r (rest args) form tag
                    (concat pattern " " (arg-enc flag (word 2 args)))
                    (conj names arg-name)
                    "" (filter "&list" flag)))
@@ -442,12 +446,12 @@
        (gen-error arg "two type flags supplied for one argument"))
 
    (if (filter "&list &word" arg-name)
-       (get-ctor-r (rest args) form tag pattern names arg-name))
+       (get-type-r (rest args) form tag pattern names arg-name))
 
    (gen-error arg "unknown flag [supported: &list, &word]")))
 
 
-(define (get-ctor form tag data-form)
+(define (get-type form tag data-form)
   &private
   (define `sym (nth 2 form))        ;; symbol namin the ctor
   (define `name (symbol-name sym))
@@ -457,21 +461,21 @@
       (check-type "S" sym data-form "CTOR" "(data NAME (CTOR ...)...)")
       (if (type? "Q%" tag-str)
           ;; explicit tag
-          (get-ctor-r (nth-rest 4 form) form (string-value tag-str) name [] nil)
+          (get-type-r (nth-rest 4 form) form (string-value tag-str) name [] nil)
           ;; no explicit tag
-          (get-ctor-r (nth-rest 3 form) form tag name [] nil))))
+          (get-type-r (nth-rest 3 form) form tag name [] nil))))
 
 
-;; Return vector of ctor descriptions (see get-ctor).
+;; Return vector of ctor descriptions (see get-type).
 ;;
-(define (get-ctors data-form tag-base ctor-forms counter)
+(define (get-types data-form tag-base ctor-forms counter)
   &private
   (define `index (words counter))
   (define `tag (concat tag-base index))
 
   (if ctor-forms
-      (cons (get-ctor (first ctor-forms) tag data-form)
-            (get-ctors data-form tag-base (rest ctor-forms) (append counter 1)))))
+      (cons (get-type (first ctor-forms) tag data-form)
+            (get-types data-form tag-base (rest ctor-forms) (append counter 1)))))
 
 
 (define (ml.special-data form env inblock)
@@ -479,28 +483,29 @@
   (define `ctor-forms (nth-rest 4 form))
   (define `tag-base (concat "!:" (nth 2 name)))
 
-  (define `(Record encodings priv tag)
-    ["R" encodings priv tag])
-
   (or
    (check-type "S" name form "NAME" "(data NAME ...)")
 
-   (let ((ctors (get-ctors form tag-base ctor-forms nil)))
+   (let ((types (get-types form tag-base ctor-forms nil)))
      (or
       ;; return all errors (if there were any)
-      (if (filter "E%" ctors)
-          (Block (filter "E%" ctors)))
+      (if (filter "E%" types)
+          (Block (filter "E%" types)))
 
       (begin
         ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
         (define `tag-defs
-          (append-for c ctors (hash-bind (nth 2 c) (nth 3 c))))
+          (append-for ty types
+                      (case ty
+                        ((DataType tag name encodings argnames)
+                         (hash-bind tag (append name encodings))))))
 
         ;; Add record descriptions to the environment
         (define `bindings
-          (append-for c ctors
-                      (hash-bind (first (nth 3 c))
-                                 (Record (rest (nth 3 c)) nil (nth 2 c)))))
+          (append-for ty types
+                      (case ty
+                        ((DataType tag name encodings argnames)
+                         (hash-bind name (ERecord encodings "." tag))))))
 
         ;; Add tag/pattern bindings to ^tags
         (define `node
@@ -530,12 +535,12 @@
                                         (String 99999999)
                                         value-node])))))
          (hash-bind (symbol-name arg)
-                    ["I" arg-node]))))
+                    (EIL arg-node ".")))))
 
 
 ;; Compile a vector of (PATTERN BODY) cases
 ;;
-(define (c0-cases cases value-node env)
+(define (c0-matches cases value-node env)
   (for case cases
        ;; case = `(PATTERN BODY)
        (begin
@@ -581,4 +586,4 @@
   (define `value-node (c0 (nth 3 form) env))
   (if (not (word 3 form))
       (gen-error form "missing VALUE in (case VALUE ...)")
-      (nest-nodes (c0-cases (nth-rest 4 form) value-node env))))
+      (nest-nodes (c0-matches (nth-rest 4 form) value-node env))))

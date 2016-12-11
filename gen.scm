@@ -1,6 +1,11 @@
+;; gen : Environment, IL, and related utilities.
+
+(require "core")
+(require "io")
+(require "parse")
+(require "escape")
+
 ;;--------------------------------------------------------------
-;; gen : code generation utilities
-;;
 ;; Compilation is divided into two stages:
 ;;
 ;;   c0:  form --> IL        [gen0.scm]
@@ -44,7 +49,24 @@
 ;;
 ;;  Errors should always include document positions.  The <decription>
 ;;  field is a demoted string.  E.g. "E.250 undefined!0symbol"
-;;
+
+(data IL
+      (String  "Q" value)
+      (Var     "V" name)
+      (Builtin "F" &word name  &list args)
+      (Call    "f" name        &list args)
+      (Local   "U" &word ndx   &word level)
+      (Funcall "Y" &list nodes)
+      (Concat  "C" &list values)
+      (Block   "B" &list nodes)
+      (Lambda  "X" code))
+
+;; These nodes generate code with balanced parens and without leading or
+;; trailing whitespace.
+(define `(is-balanced? node)
+  (filter "F f Y V" (word 1 node)))
+
+
 ;;--------------------------------------------------------------
 ;; Environment
 ;;
@@ -53,54 +75,57 @@
 ;; hash, it maps a symbol name to its in-scope *definition*.  Each
 ;; definition is a vector in one of the following formats:
 ;;
-;;    F <name> <priv> <dfn>  ==  function variable (recursive) or compound macro
-;;    V <name> <priv>        ==  data variable (simple)
-;;    B <name> <priv>        ==  builtin <name>
-;;    M <form> <priv>        ==  symbol macro
-;;    A <arg>  <priv>        ==  function argument
-;;    I <il>   <priv>        ==  pre-compiled IL node
-;;    X <name> <priv>        ==  executable macro
-;;    R <encs> <priv> <tag>  ==  data record
+
+(data EDefn
+      (EBuiltin "B" name &word priv argc) ; builtin function
+      (EFunc    "F" name &word priv inln) ; function var or compound macro
+      (EVar     "V" name &word priv)      ; data variable
+      (ESMacro  "M" name &word priv)      ; symbol macro
+      (EXMacro  "X" name &word priv)      ; executable macro
+      (ERecord  "R" encs &word priv tag)  ; data record type
+      (EIL      "I" node &word priv)      ; pre-compiled IL node
+      (EArg     "A" &word argref)         ; function argument
+      (EMarker  "$" &word level))         ; lambda marker
+
+(define `(EDefn.priv defn)
+  (word 3 defn))
+
+;; NAME = the actual name of global function/variable or builtin.
+;;        The name "#" indicates that the binding is a symbol macro, and
+;;        not an actual function variable.
 ;;
-;; The special key "$" is used for "lambda markers" that identify the
-;; current level of function nesting.  Values for these bindings are also
-;; tagged with "$":
+;; PRIV describes the scope and origin of top-level bindings.  This scope
+;;      is used to decide which symbols to export from a file.  The origin
+;;      is used to construct environments for the purpose of expanding
+;;      imported macros.
 ;;
-;;    $ <level>       == lambda marker
+;;        "b" => a default (base) environment member
+;;        "p" => declared/defined with "&private"
+;;        "i<FILENAME>" => imported from via "require".  <FILENAME> is
+;;              the file from which it was imported IF this binding
+;;              is a macro or inline function; nil otherwise.
+;;        other => ordinary global declarations/definitions (to be exported),
+;;              or a local definition.  Locals are not exported, but also they
+;;              are not present in the environment at the end of the file.
 ;;
-;; <name> = actual name of global function/variable or builtin
-;;          The name "#" indicates that the binding is a symbol macro, and
-;;          not an actual function variable.
+;; INLN = definition of an '&inline' function or compound macro body.
+;;         (first INLN) = vector of argument names
+;;         (rest INLN) = a vector of forms
 ;;
-;; <priv> describes the scope and origin of top-level bindings.  This scope
-;;        is used to decide which symbols to export from a file.  The origin
-;;        is used to construct environments for the purpose of expanding
-;;        imported macros.
-;;
-;;          nil => ordinary global declarations/definitions (to be exported),
-;;                 or a local definition.  Locals are not exported, but also they
-;;                 are not present in the environment at the end of the file.
-;;          "b" => a default (base) environment member
-;;          "p" => declared/defined with "&private"
-;;          "i<FILENAME>" => imported from via "require".  <FILENAME> is
-;;               the file from which it was imported IF this binding
-;;               is a macro or inline function; nil otherwise.
-;;
-;; <dfn> = definition of an '&inline' function or compound macro body.
-;;         (first <dfn>) = vector of argument names
-;;         (rest dfn) = a vector of forms
-;;
-;; <arg> = argument reference:
+;; ARGREF = argument reference:
 ;;         A $1   --> argument #1 to top-level function
 ;;         A $$1  --> argument #1 to function within a function
 ;;         A $$$$1  --> argument #1 to third-level nested function
 ;;
-;; <form> = an AST node that describes the symbol macro definition.  This
+;; FORM = an AST node that describes the symbol macro definition.  This
 ;;     will be expanded in the scope of the bindings in effect where the
 ;;     macro was defined.
 ;;
-;; <level> = string of "$" characters (one per level of nesting)
-;;
+;; EMarker values identify the current depth of function nesting.  Each one
+;; is bound to the key "$".  Its `level` is a string of `$` characters (one
+;; per level of nesting).
+
+
 ;; Exports and Imports
 ;; -------------------
 ;;
@@ -111,7 +136,7 @@
 ;;
 ;; Exports are consumed  when `(require MOD)` is compiled.  At that time,
 ;; the *public* bindings exported from MOD are imported into the current
-;; environment, and marked as imported: their <priv> fields are set to "i",
+;; environment, and marked as imported: their PRIV fields are set to "i",
 ;; or (for imported inline functions and macros) "iFILE", where FILE is
 ;; the MIN file from which they were imported.
 ;;
@@ -157,32 +182,6 @@
 
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "io")
-(require "parse")
-(require "escape")
-
-
-(data IL
-      (String  "Q" value)
-      (String. "Q%" value)  ;; sometimes parse nodes are re-used for Q
-      (Var     "V" name)    ;; ...and for V
-      (Builtin "F" &word name  &list args)
-      (Call    "f" name        &list args)
-      (Local   "U" &word ndx   &word level)
-      (Funcall "Y" func        &list args)
-      (Concat  "C" &list values)
-      (Block   "B" &list nodes)
-      (Lambda  "X" code)
-      (Error   "E%" text))
-
-(define (Funcall-2 fn-and-args) (concat "Y " fn-and-args))
-
-;; These nodes generate code with balanced parens and without leading or
-;; trailing whitespace.
-(define `(is-balanced? node) (filter "F f Y V" (word 1 node)))
-
-
 
 ;; *compile-subject* contains the penc-encoded SCAM source being compiled
 (declare *compile-subject*)
@@ -210,9 +209,14 @@
 ;; two different compilers to co-exist in one Make instance, and it helps
 ;; avoid conflicts between compiler-internal symbols and user code.
 ;;
-(define (gen-global-name local)
+;; If FLAGS contains a word ending in "&global", the symbol name is returned
+;; unmodified.
+;;
+(define (gen-global-name local flags)
   (declare SCAM_NS &global)
-  (concat SCAM_NS local))
+  (if (filter "%&global" flags)
+      local
+      (concat SCAM_NS local)))
 
 
 (define (filtersub pat repl str)
@@ -241,9 +245,8 @@
 ;; Note: vec must not contain invalid (non-demoted) character sequences.
 ;;
 (define (after item vec)
-  (wordlist
-   1 999999999  ;; strip leading and trailing spaces
-   (subst " " "" "!S" " "
+  (strip-vec
+   (subst "!S" " "
           (rest (subst (concat "!S" item "!S") (concat "!S" item "!S ")
                        (concat "!S" (subst " " "!S" vec) "!S"))))))
 
@@ -270,22 +273,22 @@
                         (pdec *compile-subject*)
                         *compile-file*)))
 
-;; Check that `form` matches form type `type`.  If not, return
+;; Check that FORM matches a form type in TYPES.  If not, return
 ;; an IL error node describing the error.
 ;;
-;; type = a list of acceptable form types, or "" if any non-empty form will do
+;; types = a list of acceptable form types, or "" if any non-empty form will do
 ;; context = synopsis of syntax being parsed
 ;; desc = element within `context` being checked
 ;;
-(define (check-type type form parent desc context)
-  (if (filter (or (patsubst "%" "%%" type) "%") (word 1 form))
+(define (check-type types form parent desc context)
+  (if (filter (or (patsubst "%" "%%" types) "%") (word 1 form))
       nil
       (gen-error (or form parent)
                  (concat
                   (if form "invalid" "missing") " " desc " in " context
-                  (if type (concat "; expected a "
-                                   (concat-vec (map-call (global-name form-typename) type)
-                                               " or ")))))))
+                  (if types (concat "; expected a "
+                                    (concat-for ty types " or "
+                                                (form-typename ty))))))))
 
 
 ;; cnt = number, or string containing more than one number, e.g. "2 or 3"
@@ -321,6 +324,7 @@
     "\n" "!n"
     v))
 
+
 ;; env-expand: undo env-compress
 ;;
 (define `(env-expand v)
@@ -331,15 +335,21 @@
          v))
 
 
-(define (import-binding key defn d-name priv)
+;; True when the EDefn record
+;;
+(define `(is-private? defn)
+  (filter "b p i%" (EDefn.priv defn)))
+
+
+(define (import-binding key defn d-name)
   ;; Return the demoted form of the nth item, but with nil represented as nil, not "!."
   (define `(dnth n vec)
     (subst "!." "" (word n vec)))
 
-  (if (not (dnth 3 defn))
+  (if (not (is-private? defn))
       (hash-bind key (append (wordlist 1 2 defn)
                              (concat "i" (if (or (dnth 4 defn)
-                                                 (type? "M%" defn))
+                                                 (case defn ((ESMacro n p) 1)))
                                              d-name))
                              (nth-rest 4 defn)))))
 
@@ -390,7 +400,8 @@
 
 (define *dummy-env*
   &private
-  (hash-bind "" ["I" "Q" 1]))
+  (hash-bind "" (EIL (String "") "p")))
+
 
 ;; Import symbols from `filename`.  `priv` means return all original
 ;; environment entries, not just public ones.  Return `nil` on error (bad
@@ -454,8 +465,8 @@
         (let-global ((SCAM_MODS *compile-mods*))
           (^require mod)
           (or (strip-vec (foreach e imports
-                                  (if (type? "X" (hash-value e))
-                                      e)))
+                                  (case (hash-value e)
+                                    ((EXMacro n p) e))))
               *dummy-env*)))))
 
 
@@ -466,8 +477,9 @@
         (env env)
         (name name))
     (define `defn (hash-value pair))
-    (define `priv (word 3 defn))
+    (define `priv (is-private? defn))
     (define `mod (filtersub "i%" "%" priv))
+
     (if mod
         (env-rewind-x (require-module (promote mod) 1) name)
         (after pair env))))
@@ -481,7 +493,7 @@
 ;;
 ;;  env  = environment
 ;;  name = name of macro or function
-;;  defn = definition (in env) [when rewinding to an "F" definition]
+;;  defn = definition (in env) [when rewinding to an EFunc]
 ;;
 (define (env-rewind env name defn)
   (append (hash-find "$" env)
@@ -496,49 +508,27 @@
 ;; Default (base) environment
 ;;--------------------------------------------------------------
 
-
-;; those that accept one argument
-(define builtins-1
-  &private
-  (concat "abspath basename dir error eval firstword flavor"
-          " info lastword notdir origin realpath shell sort"
-          " strip suffix value warning wildcard words"))
-
-;; two arguments
-(define builtins-2
-  &private
-  "addprefix addsuffix filter filter-out findstring join word")
-
-;; three arguments
-(define builtins-3
-  &private
-  "foreach patsubst subst wordlist")
-
-;; others: if accepts 2 or 3, and/or accept one or more
-(define builtins-other
-  &private
-  "if and or call")
-
-(define (builtin-argc name)
-  (cond ((filter name "if")          "2 or 3")
-        ((filter name "and or call") "%")
-        ((filter name builtins-3)    3)
-        ((filter name builtins-2)    2)
-        (else                        1)))  ;; (filter name builtins-1)
-
 (define base-env
-  (append
-   ;; `.foreach` names the actual builtin; `foreach` is a special form
-   (foreach b (append builtins-1 builtins-2
-                      builtins-3 builtins-other)
-            (hash-bind (concat (if (filter "subst foreach" b) ".") b)
-                       ["B" b "b"]))
+  (let&
+   ((arg1 (concat
+           "abspath basename dir error eval firstword flavor"
+           " info lastword notdir origin realpath shell sort"
+           " strip suffix value warning wildcard words"))
+    (arg2 "addprefix addsuffix filter filter-out findstring join word")
+    (arg3 ".foreach patsubst .subst wordlist"))
 
-   ;; Make special variables & SCAM-defined variables
-   ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
-   (hash-bind "*args*" ["V" "^av" "b"])
-   (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
-            (hash-bind v ["V" v "b"]))))
+   (append
+    (foreach b arg1 (hash-bind b (EBuiltin b "b" 1)))
+    (foreach b arg2 (hash-bind b (EBuiltin b "b" 2)))
+    (foreach b arg3 (hash-bind b (EBuiltin (patsubst ".%" "%" b) "b" 3)))
+    (foreach b "and or call" (hash-bind b (EBuiltin b "b" "%")))
+    (hash-bind "if" (EBuiltin "if" "b" "2 or 3"))
+
+    ;; Make special variables & SCAM-defined variables
+    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
+    (hash-bind "*args*" (EVar "^av" "b"))
+    (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
+             (hash-bind v (EVar v "b"))))))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.

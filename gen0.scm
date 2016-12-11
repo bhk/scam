@@ -16,37 +16,25 @@
 ;;
 (define (il-demote node)
   (case node
-    ((String. value) (String (word 2 node)))
+    ((String value) (String (word 2 node)))
     (else (Call "^d" [node]))))
 
 
-;; Return number of "escapes" in unary form:
+;; c0-local: Construct a local variable reference.
 ;;
-;; $        -> ""
-;; $$       -> "1"
-;; $$$$     -> "1 1"
-;; $$$$$$$$ -> "1 1 1"
+;; A unary counting system identifies levels of nesting of functions:
 ;;
-(define (c0-depth level)
-  (if (findstring "$$" level)
-      (concat "1 " (c0-depth (subst "$$" "$" level)))))
-
-
-;; c0-local: Construct a local variable reference
+;;    "." = outermost function
+;;    ".." = first nesting level down
+;;    "..." = third down
 ;;
-;;  arg = "$n" for an argument passed to the outermost function,
-;;        "$$n" for an argument passed to the first nested function,
-;;        "$$$$n" for an argument to a doubly-nested function, and so on.
-;;  level = where the local variable is being referenced.
-;;        "$" for top-level, "$$" for nested lambda, "$$$$" ...
-;;
-;; Returns:
-;;   (Local n ups)  n = arg number,  ups = 0 for local, 1 for parent, ...
+;; ARG is an index (decimal) preceded by the where it was bound (e.g. "..3").
+;; LEVEL is the level where the variable is being referenced.
 ;;
 (define (c0-local arg level)
-  (define `arg-level (subst " " "" (filter "$" (subst "$" "$ " arg))))
-  (Local (subst "$" "" arg)
-         (words (c0-depth (subst arg-level "$" level)))))
+  (define `ndx (subst "." "" arg))
+  (Local ndx
+         (words (subst "." ". " (subst arg "" (concat level ndx))))))
 
 
 (if (findstring "U" SCAM_DEBUG)
@@ -57,41 +45,61 @@
       (set c0-local-unchecked c0-local)
       (define (c0-local arg level form)
         (if (not (findstring level arg))
-            (compile-warn form "reference to upvalue '%s'" (symbol-name form)))
+            (compile-warn form "reference to upvalue '%q'" (symbol-name form)))
         (c0-local-unchecked arg level))))
 
 
 ;; Return the "value" of a record constructor: an equivalent anonymous
 ;; function.
 ;;
-(define (c0-S-R form defn env)
+(define (c0-ctor form encs env)
   &private
   (define `args
-    (for i (indices (nth 2 defn))
+    (for i (indices encs)
          (gensym (concat "S a" i) env)))
   (c0 `(lambda (,@args) (,form ,@args)) env))
 
 
-;; S: symbol
+(define (c0-S-macro-error form)
+  (gen-error form "attempt to obtain value of compound macro %q"
+             (symbol-name form)))
+
+(define (c0-S-error form defn)
+  (gen-error form
+             (case defn
+               ((EBuiltin realname p argc)
+                "attempt to obtain value of builtin %q")
+               (else (if defn
+                         (concat "internal error: binding = '" defn "'")
+                         "undefined variable %q")))
+             (symbol-name form)))
+
+;; Symbol
 ;;    defn = definition for symbol (from environment)
 (define (c0-S form env defn)
   &private
-  (cond
-   ;; (nth 2 ...) == (word 2 ...) for "A" cases:
-   ((type? "A" defn)  (c0-local (word 2 defn) (word 2 (hash-get "$" env)) form))
-   ((type? "V" defn)  (wordlist 1 2 defn))
-   ((type? "F" defn)  (if (filter "#" (word 2 defn))
-                          (gen-error form "attempt to obtain value of compound macro")
-                          (Builtin "value" [(String (nth 2 defn))])))
-   ((type? "M" defn)  (c0 (nth 2 defn) (env-rewind env (nth 2 form))))
-   ((type? "I" defn)  (nth 2 defn))
-   ((type? "R" defn)  (c0-S-R form defn env))
-   (else (gen-error form (if (type? "B" defn)
-                             "attempt to obtain value of builtin: %q"
-                             (if defn
-                                 (concat "internal error: bad defn '" [defn]"'")
-                                 "undefined variable: %q"))
-                    (symbol-name form)))))
+  (case defn
+    ((EArg ref)
+     (c0-local ref (word 2 (hash-get "$" env)) form))
+
+    ((EVar name p)
+     (Var name))
+
+    ((EFunc name p inln)
+     (if (filter "#" name)
+         (c0-S-macro-error form)
+         (Builtin "value" [(String name)])))
+
+    ((ESMacro name p)
+     (c0 name (env-rewind env (nth 2 form))))
+
+    ((EIL node priv)
+     node)
+
+    ((ERecord encs p tag)
+     (c0-ctor form encs env))
+
+    (else (c0-S-error form defn))))
 
 
 ;; Compile a vector of expressions independently, as in an argument
@@ -102,12 +110,6 @@
   (for f forms (c0 f env)))
 
 
-(define (il-builtin form env name)
-  &private
-  (or (check-argc (builtin-argc name) form)
-      (Builtin name (c0-vec (rrest form) env))))
-
-
 ;; Expand inlined function
 ;;
 ;; 1. Compile each argument expression to IL.
@@ -115,9 +117,8 @@
 ;;    environment PLUS bindings for the formal arguments (bound to an "I"
 ;;    value).
 ;;
-(define (c0-inline-fn form env defn)
+(define (c0-inline-fn form env defn finl)
   (define `args (rrest form))
-  (define `finl (nth 4 defn))
   (define `formal-args (first finl))
   (define `fbody (rest finl))
   (define `orig-env (hash-bind "#pos" (concat "P " (form-index form))
@@ -126,7 +127,7 @@
     (join (addsuffix "!=" vec1) vec2))
 
   (define `argbindings
-    (zip formal-args (for a args ["I" (c0 a env)])))
+    (zip formal-args (for a args (EIL (c0 a env) "p"))))
 
   (or (check-argc (words formal-args) form)
       (c0-block fbody (append argbindings orig-env))))
@@ -139,11 +140,7 @@
 
 
 ;; form = `(Ctor ARG...)
-;; defn = ["R" encodings priv tag]
-
-(define (c0-record form env defn)
-  (define `tag (nth 4 defn))
-  (define `encodings (nth 2 defn))
+(define (c0-record form env encodings tag)
   (define `args (nth-rest 3 form))
 
   (or
@@ -172,40 +169,46 @@
 ;;    inblock = if true, return: ["env" new-env <node>]
 ;;              if nil, return:  <node>
 ;;
-
 (define (c0-L form env defn inblock)
   &private
   (define `op (nth 2 form))
   (define `opname (symbol-name op))
-  (cond
-   ;; global function variable
-   ;;(il-F form env "call" [["Q" (nth 2 defn)]])
-   ((type? "F" defn)
-    (if (filter-out "!." (word 4 defn))
-        (c0-inline-fn form env defn)
-        (Call (nth 2 defn) (c0-vec (rrest form) env))))
 
-   ;; builtin
-   ((type? "B" defn)  (il-builtin form env (nth 2 defn) nil))
+  (case defn
+    ((EFunc realname p inln)
+     (if inln
+        (c0-inline-fn form env defn inln)
+        (Call realname (c0-vec (rrest form) env))))
 
-   ;; empty parens
-   ((not (word 2 form)) (gen-error form "missing function/macro name"))
+    ((EBuiltin realname p argc)
+     (or (check-argc argc form)
+         (Builtin realname (c0-vec (rrest form) env))))
 
-   ((type? "X" defn)  (if (nth 3 defn)
-                          (c0 (call (nth 2 defn) form) env inblock)
-                          (gen-error form "cannot use xmacro in its own file")))
+    ((EXMacro name priv)
+     (if priv
+         (c0 (call name form) env inblock)
+         (gen-error form "cannot use xmacro in its own file")))
 
-   ((type? "R" defn)  (c0-record form env defn))
+    ((ERecord encodings priv tag)
+     (c0-record form env encodings tag))
 
-   ;; general case (non-symbol, argument, data var, etc.)
-   (defn (Funcall-2 (c0-vec (rest form) env)))
+    (else
+     (cond
+      ;; Empty list
+      ((not (word 2 form))
+       (gen-error form "missing function/macro name"))
 
-   ;; macro/special form?
-   ((bound? (special-form-func opname))
-    (call (special-form-func opname) form env inblock))
+      ;; Defined symbol OR non-symbol => evaluate and call
+      (defn
+        (Funcall (c0-vec (rest form) env)))
 
-   ;; none of the above
-   (else (gen-error op "undefined symbol: %q" opname))))
+      ;; Macro/special form.
+      ((bound? (special-form-func opname))
+       (call (special-form-func opname) form env inblock))
+
+      ;; none of the above
+      (else
+       (gen-error op "undefined symbol: %q" opname))))))
 
 
 ;; Collect "define flags" -- &private or &inline -- in one list.
@@ -245,36 +248,12 @@
    (gen-error form "names may not contain '%s' characters" sym)))
 
 
-;; Construct vector of [a b c], omitting trailing empty items.
-;;
-(define (trimvec a b c)
-  &private
-  (concat [a]
-          (if (or b c)
-              (concat " " [b]
-                      (if c
-                          (concat " " [c]))))))
-
-;; Add a binding for symbol `sym` to `env`.  `type` = "F", "V", ...
-(define (bind-sym env symbol type flags fdef)
-  (define `is-global (find-flag "&global" flags))
-  (define `priv (if (find-flag "&private" flags) "p"))
-  (define `sym-name (symbol-name symbol))
-  (define `name (if is-global
-                    sym-name
-                    (gen-global-name sym-name)))
-
-  (concat (hash-bind sym-name
-                     (concat type " " (trimvec name priv fdef)))
-          (if env (concat " " env))))
-
-
-;; (declare WHAT FLAGS...)
-;; (declare (FNAME FARGS...) FLAGS...)
-;; (define WHAT FLAGS... VALUE)
-;; (define (FNAME FARGS...) FLAGS... BODY...)
-;; (define `(MNAME MARGS...) FLAGS... BODY...)
+;; (declare SYM FLAGS...)
+;; (define  SYM FLAGS... VALUE)
 ;; (define `MSYM FLAGS... EXPR)
+;; (declare (FSYM FARGS...) FLAGS...)
+;; (define  (FSYM FARGS...) FLAGS... BODY...)
+;; (define `(MSYM MARGS...) FLAGS... BODY...)
 
 (define (c0-declare-define form env inblock what is-declare fb)
   (define `flags (first fb))
@@ -285,8 +264,12 @@
   (define `qwhat (nth 2 what))
   (define `xwhat (if is-quoted qwhat what))  ; X in "X" or "`X)
   (define `fargs (rrest what))
-  (define `fname (nth 2 what))
-  (define `mname (nth 2 qwhat))
+  (define `fsym (nth 2 what))
+  (define `fname (symbol-name fsym))
+  (define `gfname (gen-global-name fname flags))
+  (define `wname (symbol-name what))
+  (define `gwname (gen-global-name wname flags))
+  (define `msym (nth 2 qwhat))
   (define `value (nth 2 fb))
   (define `priv (if (find-flag "&private" flags) "p"))
   (define `is-inline (find-flag "&inline" flags))
@@ -318,7 +301,7 @@
                             "too many arguments to (define %sVAR EXPR)"
                             (if is-quoted "`")))))
 
-     ;; ensure FNAME/MNAME & FARGS/MARGS are symbols
+     ;; ensure FSYM/MSYM & FARGS/MARGS are symbols
      (if (list? xwhat)
          (first
           (filter-out
@@ -330,10 +313,10 @@
                                      (if is-quoted "`")))))))
 
      ;; check variable/function/macro name
-     (check-name (cond (is-func fname)
+     (check-name (cond (is-func fsym)
                        (is-var  what)
                        ((symbol? qwhat) qwhat)
-                       (else mname)))
+                       (else msym)))
 
      (and is-inline
           (or is-declare (not is-func))
@@ -341,31 +324,32 @@
                      "'&inline' applies only to function definitions"))))
 
   ;; make function name known *within* the function body
-  (define `env-in (if is-func
-                      (bind-sym env fname "F" flags)
-                      env))
+  (define `env-in
+    (if is-func
+        (hash-bind fname (EFunc gfname (or priv ".") nil) env)
+        env))
 
   ;; make function/variable known *after* the definition (include
   ;; inline-expanded definition, in the case of an inline function)
-  (define `env-out (cond
-                    (is-func (bind-sym env fname "F" flags (if is-inline fdefn)))
-                    (is-var  (bind-sym env what "V" flags))
-                    ((symbol? qwhat) (hash-bind (symbol-name qwhat)
-                                                ["M" (first body) priv]
-                                                env))
-                    (else    (hash-bind (symbol-name mname)
-                                        ["F" "#" priv fdefn]
-                                        env))))
+  (define `env-out
+    (append
+     (cond
+      (is-func (hash-bind fname (EFunc gfname (or priv ".") (if is-inline fdefn))))
+      (is-var  (hash-bind wname (EVar gwname priv)))
+      ((symbol? qwhat) (hash-bind (symbol-name qwhat)
+                                  (ESMacro (first body) priv)))
+      (else (hash-bind (symbol-name msym)
+                       (EFunc "#" (or priv ".") fdefn))))
+     env))
+
   (define `(globalize sym)
-    ["Q" (if (find-flag "&global" flags)
-             (symbol-name sym)
-             (gen-global-name (symbol-name sym)))])
+    ["Q" (gen-global-name (symbol-name sym) flags) ])
 
   ;; setform = expression that assigns the value to the name
   ;;           define var/func = declare + set
   (define `setform (if is-var
                        `(call ,["Q" "^set"] ,(globalize what) ,value)
-                       `(call ,["Q" "^fset"] ,(globalize fname)
+                       `(call ,["Q" "^fset"] ,(globalize fsym)
                               (lambda (,@fargs) ,@body))))
 
   (define `node (or error
@@ -453,25 +437,24 @@
         (append
          (foreach n (indices xargs)
                   (hash-bind (symbol-name (nth n xargs))
-                             ["M" ["L" "S call" ["Q" "^n"]
-                                   (concat "Q " n)
-                                   (concat "S " arg9)]]))
-         (hash-bind arg9 ["A" (concat level 9)])))))
+                             (ESMacro ["L" "S call" ["Q" "^n"]
+                                       (concat "Q " n)
+                                       (concat "S " arg9)] ".")))
+         (hash-bind arg9 (EArg (concat level 9)))))))
 
 (define (lambda-env2 args env level)
   &private
-  (hash-bind "$" ["$" level]
-             (append
-              ;; first 8 args = $1 ... $8
-              (foreach n (indices (wordlist 1 8 args))
-                       (hash-bind (symbol-name (nth n args))
-                                  ["A" (concat (concat level n))]))
-              ;; args 9 and up = (nth 1 $9), (nth 2 $9), ...
-              (lambda-arg9 (nth-rest 9 args) level env)
-              env)))
+  (append (hash-bind "$" (EMarker level))
+          ;; first 8 args = $1 ... $8
+          (foreach n (indices (wordlist 1 8 args))
+                   (hash-bind (symbol-name (nth n args))
+                              (EArg (concat level n))))
+          ;; args 9 and up = (nth 1 $9), (nth 2 $9), ...
+          (lambda-arg9 (nth-rest 9 args) level env)
+          env))
 
 (define (lambda-env args env)
-  (lambda-env2 args env (or (subst "$" "$$" (word 2 (hash-get "$" env))) "$")))
+  (lambda-env2 args env (concat "." (word 2 (hash-get "$" env)))))
 
 
 ;;---------------------------------------------------------------
@@ -577,7 +560,7 @@
    ((qquoted? node) (c0-mq-node node (c0-mq arg env (append nest 1))))
    ((list? node) (c0-mq-list node env nest))
    ((error? node) node)
-   (else ["Q" node])))
+   (else (String node))))
 
 
 (define (c0-error form)
@@ -589,10 +572,10 @@
 (define (c0 form env inblock)
   (cond
    ((symbol? form)  (c0-S form env (resolve form env)))
-   ((string? form)  form)
+   ((string? form)  (String (nth 2 form)))
    ((list? form)    (c0-L form env (resolve (nth 2 form) env) inblock))
    ((error? form)   form)
-   ((quoted? form)  ["Q" (nth 2 form)])
+   ((quoted? form)  (String (nth 2 form)))
    ((qquoted? form) (c0-mq (nth 2 form) env))
    (else            (c0-error form))))
 

@@ -4,26 +4,25 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
 
  * A Lisp/Scheme dialect. Some notable characteristics are:
 
-    - SCAM is a string-oriented Lisp variant. Having only one data type
-      presents interesting challenges to adapting the traditional lisp
-      read/evaluate/print model and supporting first-class functions.
-      It also means that SCAM provides automatic memory management without
-      garbage collection (since values cannot reference other values).
+    - All values are immutable character strings.  A rich set of subordinate
+      data types are projected onto this set: numbers, vectors, hash maps,
+      algebraic types, and first class (anonymous) functions.
 
-    - SCAM combines lexical scoping and modularity. Included modules
+    - SCAM combines lexical scoping and modularity.  Included modules
       inject symbols into the lexical scope of the including module.
 
  * An implementation of the SCAM language that targets GNU Make.
 
    The SCAM compiler coverts SCAM source files to makefiles that use the
-   text manipulation language facilities of GNU Make: `$(subst ...)`,
+   text manipulation language facilities of GNU Make 3.81: `$(subst ...)`,
    `$(filter ...)`, `$(if ...)`, and so on. The SCAM compiler itself is
    written in SCAM, and executes in Make.
 
    GNU Make presents an odd set of building blocks.  While it does provide a
    number of string manipulation functions, it does not provide primitives
    for addressing characters by index, or taking the length of a string.  It
-   lacks arithmetic operators and even a basic comparison operators.
+   lacks arithmetic operators and even basic comparison operators, although
+   those can be constructed.
 
  * An easier way to develop complex makefiles.
 
@@ -35,6 +34,10 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
 
      - Local variables with lexical scoping.
 
+     - Rich data structuring and pattern matching.
+
+     - An interactive command-line interpreter.
+
      - First-class functions.
 
      - Hygienic macros.
@@ -43,8 +46,6 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
        undefined variables or functions.
 
      - Tracing facilities. (See [trace.scm](trace.scm).)
-
-     - An interactive mode (REPL).
 
  * An esoteric programming language.
 
@@ -59,23 +60,16 @@ SCAM sources, [scam.scm](scam.scm) is a good top-down starting point, and
 [core.scm](core.scm) is a good bottom-up starting point.
 
 
-
 ## Project Structure
 
 SCAM is a self-hosting compiler.
 
 The SCAM project consists of the SCAM compiler sources and a "golden"
-executable version of the compiler, which is used to compiler newer
-versions.
+compiler executable that is used to compile them.
 
 The executable version of `scam` is a makefile which is also a valid bash
 script.  When invoked as a bash script it invokes `make` to execute itself
 as a makefile, packaging all command line arguments in a Make variable.
 
 At the top level of the project tree, you can type `make` to compile the
-SCAM compiler source. This invokes `bin/scam` to generate `.v1/scam`. Typing
-`make v2` will invoke `.v1/scam` to build `.v2/scam`, typing `make v3` will
-use `.v2/scam` to build `.v3/scam`.
-
-`make promote` will replace the golden compiler, `bin/scam`, with `.v2/scam`
-after verifying that `.v3/scam` and `.v2/scam` are identical.
+SCAM compiler source.  See the makefile for more details.

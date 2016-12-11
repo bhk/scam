@@ -105,7 +105,7 @@
       (skip-comments (rest lines))
       lines))
 
-;; remove initial comment lines from a .min file
+;; Remove initial comment lines from a .min file.
 ;;
 (define (strip-comments src)
   (concat-vec (skip-comments (split "\n" src)) "\n"))
@@ -580,4 +580,5 @@
                        (hash-get "boot" opts)
                        (hash-get "symbols" opts))))
 
+  ;; Set SCAM_DEBUG=B to see rules.
   (eval (dbg-print "B" "Eval: %s" rules)))

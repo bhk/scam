@@ -16,7 +16,7 @@
 ## Overview
 
 A SCAM program consists of *expressions*. Some examples of expressions are
-constants, function invocations, and variable declarations.
+constants, and variable definitions, and function calls.
 
 Expressions are *evaluated* when the program is executed. Evaluation
 computes a data value that is said to be "returned" from the expression.
@@ -33,7 +33,7 @@ follow (up to the end of the block).
 
 A SCAM module is a source file that contains a sequence of expressions that
 are treated as members of a block. When a module is executed, the return
-values (including that of the last expression) are discarded.
+values of these top-level expressions are discarded.
 
 ## Syntax
 
@@ -134,14 +134,46 @@ unless you are actually interested in manipulating source code.
 
 ## Data Types
 
-Strictly speaking, SCAM has one data type. All values are character
-strings. Strings are immutable. Variable assignments and parameter passing
-are by value, not by reference.
+The notion of "data type" in computer science is both ubiquitous and
+elusive.
 
-Even though the language does not provide static typing (wherein variables
-are restricted to holding certain values) or dynamic typing (wherein each
-value is definitively associated with a specific type), it does support
-conventions for representing many familiar data types as strings.
+All values in SCAM are character strings.  These strings are immutable, so
+one should think of variable assignments and parameter passing as "by
+value", not "by reference".
+
+One might argue that SCAM is a safe, strongly typed, statically typed
+language, since every variable contains a value of a known type (string).
+The compiler does not allow anything other than a string to be assigned to a
+parameter or variable.  There is no "casting" or conversion of strings to
+types incompatible with strings (because there are only strings).  Memory
+safety is guaranteed, there are no run-time type violations, and control
+flow integrity is always preserved.
+
+That said, we can also think of SCAM as hosting a rich set of *subordinate*
+data types.  These are ranges or set of values (types in the strict sense)
+that serve a certain purpose and are used in a certain way.  For example,
+*some* strings can represent (or "be") numbers.  Not all strings are
+numbers, but all numbers are strings.  Similarly, some strings can represent
+vectors of strings.  Not all strings are vectors, but all vectors are
+strings, so we can think of vectors as a subset of the set of strings.  At
+the same time, a vector can contain any number of any string values, so we
+can also think of is as a Cartesian product of the set of strings.
+
+In terms of these subordinate types, SCAM is not statically typed at all.
+SCAM is mostly oblivious.  It does provide syntax for constructing some of
+these types and functions for manipulating them, but if you were to pass,
+say, a non-vector to the `append` function, it will perform a deterministic
+string manipulation and happily succeed, even though the result may not be
+of any use to you.
+
+Some of these subordinate types are overlapping sets.  For example, `1` is
+equivalent to `[1]` (and `[[1]]` and so on).  But mostly they are disjoint.
+For example, each data record can be distinguished from any other data
+record, and from a hash map, and from a vector.  Non-empty hash maps and
+vectors are also disjoint.  (The empty string, also called `nil`, also
+represents an empty hash, an empty vector, and false.)  This allows SCAM to
+display values in a more meaningful way.
+
 
 ### Numbers
 
@@ -224,9 +256,11 @@ prompt:
 
 #### Word-Encoding Details
 
-The following details are implementation-specific.  This knowledge is not
-necessary to know them in order to write correct SCAM programs.  It may be
-helpful, however, when examining values while debugging.
+The following details are implementation-specific.  This is not to say that
+these details are anything to be afraid of -- after all, there is only one
+implementation of SCAM -- but just that this knowledge is not necessary for
+writing SCAM programs.  It may be helpful, however, when deciphering values
+while debugging.
 
 SCAM's current implementation of word-encoding might be called bang-encoding:
 
@@ -246,6 +280,100 @@ in a vector or word-encoded value are used elsewhere in SCAM:
 
     `!=` delimits a key from a value in a hash binding.  Keys and values are
     word-encoded.
+
+
+### Algebraic Data Types (Records)
+
+The `data` special form introduces a new "data type" (see the above
+discussion) that takes the form of a discriminated union of record types.
+Each record can contain zero or more values.
+
+    > (data Shape
+    +    (Square a)
+    +    (Rect a b)
+    +    (Triangle b h))
+
+This defines a number of constructors that can be called like functions to
+construct a value of that type, and can be used in a `case` statement to
+deconstruct such a value.
+
+    > (define `s (Rect 3 5))
+    > s
+    (Rect 3 5)
+
+The interactive REPL displays values using `format`, which recognizes record
+types and displays them readably.  We can use `print` to show the "raw"
+string value, but we would normally never have to see this.
+
+    > (print s)
+    !:Shape1 3 5
+
+The `case` statement performs pattern matching.  It allows us to use
+constructors on the receiving end of an assignment, and it combines this
+with type detection.  The first parameter is the value to be matched, and
+the remainder of the forms `(PATTERN BODY)` pairs.  It test these in order,
+and hen the first pattern matches the value it evaluates and returns BODY.
+If no patterns match, `nil` is returned.
+
+A patterns can be a constructor expression with symbols listed as
+parameters.  When the match is made, these symbols are bound to the
+corresponding members of the record when the BODY is evaluated.
+
+Another valid pattern is any symbol.  This kind of pattern always succeds,
+and the symbol will be bound the record value while BODY is evaluated.
+
+    > (define (area shape)
+    +   (case shape
+    +     ((Square a) (* a a))
+    +     ((Rect a b) (* a b))
+    +     ((Triangle b h) (/ (* b h) 2))
+    +     (else 0)))
+    > (area s)
+    15
+    > (area "purple")
+    0
+    > (area (Triangle 3 4))
+    6
+
+Constructors can be treated as first class functions:
+
+    > (for ctor [Rect Triangle]
+    +   (let ((s (ctor 3 4)))
+    +     (printf "%q -> %s" s (area s))
+    +     (area s)))
+    (Rect 3 4) -> 12
+    (Triangle 3 4) -> 6
+    "12 6"
+
+A slightly more interesting example:
+
+    > (data NumOps (Add a b) (Sub a b) (Mul a b) (Div a b) (Exp a b))
+    > (define (calc e)
+    +   (case e
+    +    ((Add a b) (+ (calc a) (calc b)))
+    +    ((Sub a b) (- (calc a) (calc b)))
+    +    ((Mul a b) (* (calc a) (calc b)))
+    +    ((Div a b) (/ (calc a) (calc b)))
+    +    ((Exp a b) (^ (calc a) (calc b)))
+    +    (n n)))
+    > (calc (Exp (Add 3 4) (Mul 5 6)))
+    22539340290692258087863249
+
+Here, we could have used a `(Num n)` constructor to distinguish numbers from
+operations, but ordinary numbers are already distinguished from all
+user-defined record types.  They are also distinct from vectors, hash maps,
+and all other `data`-defined types.  In fact, we could add a case for
+`Triangle`:
+
+    ...
+    ((Triangle b h) (/ (* (calc b) (calc h)) 2))
+    ...
+
+and then ask it to calculate `(calc (Add (Triangle 2 3) 4))`.
+
+The type name that follows `data` is in fact not used for much, at present,
+other than to derive the tags for each of the data records.
+
 
 ### Function Values
 
@@ -1069,15 +1197,15 @@ the variable and then referencing its name:
 
 ### Make Builtin Functions
 
-The following Make builtin functions are available to SCAM programs:
+Make builtin functions are directly usable by SCAM programs:
 
-    abspath basename dir error eval firstword flavor info lastword notdir
-    origin realpath shell sort strip suffix value warning wildcard words
-    addprefix addsuffix filter filter-out findstring join word patsubst
-    subst wordlist if and or call
+    abspath basename dir error eval firstword flavor foreach info lastword
+    notdir origin realpath shell sort strip suffix value warning wildcard
+    words addprefix addsuffix filter filter-out findstring join word
+    patsubst subst wordlist if and or call
 
-Also, the `foreach` builtin is available under the name `.foreach`.  See
-[`foreach`] (#foreach), above, for more details.
+In the case of [`foreach`] (#foreach) and [`subst`] (#subst), those
+names are bound to equivalent, but more friendly wrappers.
 
 ### Rule Processing
 
@@ -1090,10 +1218,11 @@ processing.  During execution of `main`, the program can create rules using
 If the program defines rules, then Make will proceed to process them as
 usual, treating the first-defined rule as the default goal.
 
-If the program defines no rules, then the runtime creates a rule to serve as
-the default goal which is used to cause the program to return the exit code
-that `main` returned.
-
+After the program-defined rules complete successfully (or if no rules were
+specified by the program) a SCAM-defined "exit" rule will execute.  This
+runs any "exit" hooks that have been registered by the program, and exits
+the process with the exit code that the program's `main` function has
+returned.  One such hook displays tracing results (see `trace.scm`).
 
 ## Debugging
 
@@ -1123,7 +1252,7 @@ The `SCAM_DEBUG` variable causes certain debug information to be written to
 stdout based on the presence or absence of certain substrings:
 
   * "O" ==> "OK: ..." when an `expect` macro succeeds. (See [the core library](core.scm).)
-  * "U" ==> display compile-time "warnings" for each upvalue reference
+  * "U" ==> display compile-time "warnings" for lambda captures
   * "R" ==> "require: <filename>" when a file is included by `require`.
   * "Rx" ==> "R" + "exited: <filename>" after a required file exits.
   * "S" ==> "shell: <command>" when io.scm executes a shell command.

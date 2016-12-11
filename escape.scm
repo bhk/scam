@@ -276,7 +276,6 @@
                   (if (filter "%\\" [line])
                       "$ ")))
 
-        (concat-vec (for w (split "\n" str)
-                         (protect-line w))
-                    "\n"))
+        (concat-for w (split "\n" str) "\n"
+                    (protect-line w)))
       str))

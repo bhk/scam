@@ -215,7 +215,7 @@
 ;; encoded and delimited with "!=".
 ;;
 ;; (hash-bind KEY VALUE [HASH])
-;;     Bind KEY to VALUE, perpending it to HASH (if given).
+;;     Bind KEY to VALUE, prepending it to HASH (if given).
 ;;
 ;; (hash-get KEY HASH DEFAULT)
 ;;     Return the value bound to KEY.  If more than one entry matches KEY,
@@ -331,7 +331,7 @@
 
         (and pattern
              (eq record reconstructed)
-             (concat "(" ctor-name " " arg-text ")")))))
+             (concat "(" ctor-name (if encodings " ") arg-text ")")))))
 
 
 ;; Return readable and parseable representation of STR.
@@ -357,8 +357,7 @@
 ;;
 ;; Format expressions:
 ;;   %s  ->  argument as-is
-;;   %q  ->  describe argument with SCAM literal or vector syntax
-;;           (number, string, or vector)
+;;   %q  ->  describe argument with `format`
 
 (define (vsprintf args)
   (define `(printf-warn args)
@@ -533,3 +532,8 @@
                   (subst (wrap [item])
                          "!_!| "
                          (wrap (subst " " "!_" vec)))))))
+
+(define (foldl f z v)
+  (if (firstword v)
+      (foldl f (f z (first v)) (rest v))
+      z))
