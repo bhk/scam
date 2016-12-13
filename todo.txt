@@ -10,24 +10,18 @@ TODO
      expansion). Better reporting of errors during macro expansion
      (e.g. undefined symbols)
 
- * data: distinguish ctors from records
- * (data NAME CTOR...) reflection
+ * data: distinguish constructors (and code in general) from records
+
+ * (data NAME CTOR...) reflection.  (Whatever format-data needs...)
 
      (data-type VALUE)     -->  (DataType name arity ctor dtor)
-       (DTOR VALUE)        -->  [MEMBER ...]
-       (CTOR MEMBER...)    -->  VALUE
-
-     (is-data? CTOR value)
-     (data-tag CTOR)
-     (data-tag value)
-     (data-constructor tag/value)
-     (data-tags)  -->  { tag: [typename args...], ...}  for all tags in scope
+     or: (data-record-tag value), (data-record-name value), ...
 
  * (case EXPR
-      (CONST          EXPR)    ;; match constant exactly (nil, for example)
-      ((CtorA "str" y) EXPR)   ;; match constant member
-      (["A" a b]      EXPR)    ;; deconstruct vectors & match constants (always succeeds)
-      (`SYNTAX        EXPR)    ;; ?
+      ([a b]        EXPR)   ;; deconstruct vectors [succeeds if words are populated; "..."?]
+      (CONST        EXPR)   ;; match constant value (nil, for example)
+      ((Ctor "K" y) EXPR)   ;; match constant member
+      (["A" a b]    EXPR)   ;; match constant element (always succeeds)
       ...)
 
  * use data/case in parser
@@ -377,6 +371,8 @@ Optimizations
 
 
 * Misc
+    * num: treat nil as identity value for each operator: (+ 1) == (+ 1 nil...) == 1
+    * num: multi-arg + and *
     * Interleave compile with parsing of top-level expressions.
     * Improve void-node?  (void? (if c a b)) --> (and (void? a) (void? b))
     * Identify arguments using special IL record (vs. R)

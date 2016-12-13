@@ -342,9 +342,11 @@
         (concat "[" (foreach w str (format (promote w))) "]")))
 
   (or (if (findstring "!" str)
-          (or (format-vector str)
-              (format-hash str)
+          (or (format-hash str)
               (format-record str)))
+      (if (or (findstring "!" str)
+              (findstring " " str))
+          (format-vector str))
       (isnumber str)
       (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" "\t" "\\t"
                           str) "\"")))
@@ -533,7 +535,20 @@
                          "!_!| "
                          (wrap (subst " " "!_" vec)))))))
 
+
+;; Apply two-arg function F to all elements of V, starting at the left with
+;; (F Z <first>).  If there is only one element, return it.  If V is empty,
+;; return nil.
+;;
 (define (foldl f z v)
   (if (firstword v)
       (foldl f (f z (first v)) (rest v))
+      z))
+
+
+;; Like foldl, but starting from the right with (F <last> Z).
+;;
+(define (foldr f z v)
+  (if (firstword v)
+      (f (first v) (foldr f z (rest v)))
       z))

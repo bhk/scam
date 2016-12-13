@@ -5,6 +5,11 @@
  * [Overview] (#overview)
  * [Syntax] (#syntax)
  * [Data Types] (#data-types)
+   * [Numbers] (#numbers)
+   * [Booleans] (#booleans)
+   * [Vectors] (#vectors)
+   * [Records] (#records)
+   * [Functions] (#functions)
  * [Variables] (#variables)
  * [Macros] (#macros)
  * [Special Forms] (#special-forms)
@@ -75,11 +80,15 @@ Symbols are sequences of characters delimited by whitespace, `(`, `)`, `[`,
 When symbols are used to name variables, they may not contain `:`, `%`, or
 `$` characters.
 
-A symbol can identify:
+Symbols can identify:
 
-- A [variable](#variables)
-- A [macro](#macros)
-- A [special form](#special-forms)
+- [variables](#variables) (including functions)
+- [macros](#macros)
+- [special forms](#special-forms)
+- [record constructors](#records)
+- [GNU Make builtins](#builtins)
+
+In a few cases they designate keywords, like `define` or `let`.
 
 ### Compound Expressions
 
@@ -150,7 +159,7 @@ safety is guaranteed, there are no run-time type violations, and control
 flow integrity is always preserved.
 
 That said, we can also think of SCAM as hosting a rich set of *subordinate*
-data types.  These are ranges or set of values (types in the strict sense)
+data types.  These are ranges or sets of values (types in the strict sense)
 that serve a certain purpose and are used in a certain way.  For example,
 *some* strings can represent (or "be") numbers.  Not all strings are
 numbers, but all numbers are strings.  Similarly, some strings can represent
@@ -168,7 +177,7 @@ of any use to you.
 
 Some of these subordinate types are overlapping sets.  For example, `1` is
 equivalent to `[1]` (and `[[1]]` and so on).  But mostly they are disjoint.
-For example, each data record can be distinguished from any other data
+`For example, each data record can be distinguished from any other data
 record, and from a hash map, and from a vector.  Non-empty hash maps and
 vectors are also disjoint.  (The empty string, also called `nil`, also
 represents an empty hash, an empty vector, and false.)  This allows SCAM to
@@ -282,11 +291,12 @@ in a vector or word-encoded value are used elsewhere in SCAM:
     word-encoded.
 
 
-### Algebraic Data Types (Records)
+### Records
 
-The `data` special form introduces a new "data type" (see the above
-discussion) that takes the form of a discriminated union of record types.
-Each record can contain zero or more values.
+The `data` special form introduces a new "data type" (see the [above
+discussion] (#data-types)) that takes the form of a union of record types.
+This is similar to the "algebraic data types" in some other languages.  Each
+record can contain zero or more values.
 
     > (data Shape
     +    (Square a)
@@ -297,7 +307,7 @@ This defines a number of constructors that can be called like functions to
 construct a value of that type, and can be used in a `case` statement to
 deconstruct such a value.
 
-    > (define `s (Rect 3 5))
+    > (define s (Rect 3 5))
     > s
     (Rect 3 5)
 
@@ -315,9 +325,9 @@ the remainder of the forms `(PATTERN BODY)` pairs.  It test these in order,
 and hen the first pattern matches the value it evaluates and returns BODY.
 If no patterns match, `nil` is returned.
 
-A patterns can be a constructor expression with symbols listed as
-parameters.  When the match is made, these symbols are bound to the
-corresponding members of the record when the BODY is evaluated.
+A pattern can be a (CONSTRUCTOR-NAME ARG...) where each ARG is a symbol.
+When the match is made, these symbols are bound to the corresponding members
+of the record when the BODY is evaluated.
 
 Another valid pattern is any symbol.  This kind of pattern always succeds,
 and the symbol will be bound the record value while BODY is evaluated.
@@ -369,15 +379,34 @@ and all other `data`-defined types.  In fact, we could add a case for
     ((Triangle b h) (/ (* (calc b) (calc h)) 2))
     ...
 
-and then ask it to calculate `(calc (Add (Triangle 2 3) 4))`.
+... and then ask it to calculate `(calc (Add (Triangle 2 3) 4))`.
 
-The type name that follows `data` is in fact not used for much, at present,
-other than to derive the tags for each of the data records.
+The type name that follows `data` will not appear elsewhere in your SCAM
+program.  It is used to distinguish its constructor from others of the same
+name.  For example, `(data A (Ctor a))` and `(data B (Ctor a))` define two
+different constructors that produce different types of records.  Expressions
+like `(Ctor 1)` or `(case x ((Ctor a) ..))` refer to the `Ctor` that is
+visible in the lexical scope where the expression is found.
+
+    > (data Fruit (Apple) (Orange))
+    > (define (is-fruit fr)
+    +   (case fr
+    +     ((Orange) "yes")
+    +     ((Apple) "yes"))
+    +     (_ "no"))
+    > (define o1 (Orange))
+    > (is-fruit o1)
+    "yes"
+    > (data Color (Orange))  ; shadows the previous "Orange"
+    > (is-fruit (Orange))
+    "no"
+    > (is-fruit o1)
+    "yes"
 
 
-### Function Values
+### Functions
 
-A *function value* is a string that contains executable code. Functions are
+A *function* is a string that contains executable code. Functions are
 invoked when a compound form is evaluated and the first item in the compound
 form is function value.
 
@@ -386,24 +415,26 @@ form is function value.
     > (f "a" "b")
     "ab"
 
-Typically, function values are stored in global variables, as in the example
-above, but functions are first class values in SCAM, so any expression can
-be used as a function value.
+Typically, functions are stored in global variables, as in the example
+above, but functions are first class values in SCAM, so they can be passed
+to functions and returned from them.
 
-    > ((if 1 f) "a" "b")
-    "ab"
+You may wonder how functions are encoded as strings, given that all SCAM
+values are strings.  The encoding is designed to mesh nicely with Make.
+The above definition of `f` compiles to a line in a makefile:
 
-You may wonder how functions are encoded as strings.  Officially, this is
-implementation-dependent.  SCAM does not guarantee any particular
-representation, so it is best not to make any assumptions about how function
-values are executed.  There is however, only one implementation at present,
-and it uses Make syntax to encode functions, so you will see the following
-behavior in the REPL:
+    f = $1$2
 
-    > (lambda (a b) (concat a b))
+SCAM will report the value of `f` as such:
+
+    > f
     "$1$2"
+
+An implication of this is the following behavior:
+
     > ("$1$2" "a" "b")
     "ab"
+
 
 ### Syntax Trees
 

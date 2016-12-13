@@ -63,7 +63,7 @@
 (expect "" (isnumber "1e7.1"))
 (expect "" (isnumber " 2 "))
 
-(expect "[1 \"a b\"] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
+(expect "[1 [\"a\" \"b\"]] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
 (expect "nada" (sprintf "nada" "ignored"))
 (expect "!P!. a !\t !0 x" (sprintf "!P!.%s!0%sx" " a !\t " " " "ignored"))
 (expect "a%b%c" (sprintf "a%%b%s" "%c"))
@@ -207,3 +207,9 @@
 (expect 2 (index-of ["!" " " "\t"] " "))
 (expect 3 (index-of ["!" " " "\t"] "\t"))
 (expect 0 (index-of ["!" " " "\t"] "a"))
+
+;; foldl
+(expect "((0!)2)" (foldl (lambda (a b) (concat "(" a b ")")) 0 ["!" 2]))
+
+;; foldr
+(expect "(!(20))" (foldr (lambda (a b) (concat "(" a b ")")) 0 ["!" 2]))
