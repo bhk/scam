@@ -1,8 +1,60 @@
 TODO
 
- * Use "!:" tags in IL and environment (check perf.)
+ * circular dependency for gen-testutils
+ * sprintf when format begins with %s
+ * call/origin/flavor/value -> .call/.origin/.flavor/.value ?
+ * PList/PSymbol/etc. -> List/Symbol...  ;  String/Var -> IString/IVar
+ * gen0.scm:474: "PQQuoted" accepts 0 arguments, not 2.
+   (case VALUE (NotAConstructor ...) -- should say: not a valid constructor.
+ * fix macro-expansion error reporting (right source pos, wrong file)
+   Use file marker?
+ * Warn of macro referenced within macro. (EInvalid ...) env entry?'
+ * Modules seem to be re-exporting imports...  Is that necessary for rewind?
+   Does it remain necessary when no macros are exported? (Even with &private
+   imports?)
+ * nth vs. ^n ...
+ * isnumber? --> number? ; eq --> eq?
+ * revisit `is-balanced?`... aren't more things balanced?
+ * (VALUE ...)  -->  (call VALUE ...)
+ * (do (a b <- f1 x)
+       (c <- fn2 a b)
+       (return c))
 
- * Exports, Imports, Rewind
+ * Deal with `use` executing target code while the compiler is running.
+   This can clobber compiler sources when the target code uses the same
+   namespace as the compiler.  Assuming namespacing is used by only the
+   compiler, this is only a problem for compiler builds, and is MOSTLY
+   handled by the current NS usage -- c0 = "~", c1b = "", c1b = "~", c1c =
+   "~" but is identical to c1b -- BUT c1a's runtime is c0's, so c1b's
+   runtime clobbers c1a.
+
+   1. Expose "Form" data type to target code as part of the base env.
+   2. Write P-from-Form converter (`P` is compilers internal name for Form).
+   4. Make this a no-op when we observe that Form == P (could be a
+      compiler-specific mechanism for deeper type reflection).
+   5. Compiler sources can use: (c0 (form-to-p SYNTAX)).
+   6. Why does scam-ct require "runtime"?  `require` needs runtime already...
+   7. Write PEG using macros.
+
+
+ * build, bundling, namespaces, scam-ct:
+
+   scam-ct should not "require" runtime.
+
+   Include namespace in MIN file names and variable names?
+    + User modules need not conflict with compiler modules.
+    - When `require` is compiled, module name is resolved to a variable or
+      file, using "file map" and "bundle map".  Bundle map is built into the
+      compiler (mod -> varname).  File map is passed to compile-file.
+
+   compile-file: is-boot -> boot-mode
+        r = runtime (no implicit deps for this module; no bundles)
+        c = ct macros (runtime is implicit; no bundles)
+        1 = in boot phase (no bundles)
+        nil => "normal" mode
+     is-boot & mod-files -> opts
+
+* Exports, Imports, Rewind
 
    - Make symbols Private by default; explicit &public.
    - Export ONLY PUBLIC values when no macros or inline funcs are exported.
@@ -24,8 +76,6 @@ TODO
       (["A" a b]    EXPR)   ;; match constant element (always succeeds)
       ...)
 
- * use data/case in parser
-
  * Custom constructors
 
    (data (Bind key value)
@@ -44,8 +94,8 @@ TODO
  * (? lambda ...)  -->  (call "^tv" "any" (any ...))
    or:  (call "^yt" "any" (lambda (args) (any args)) ...)
 
- * Obtain value of builtin.  E.g. word -> "$(word $1,$2)"
-   May fix (? builtin ...).
+ * ^yt: fix (? builtin ...) and (? macro ...).
+   &inline functions then only good for (global-name ...) or Make interop.
 
  * Bugs (see gen-test.scm)
 
@@ -125,6 +175,15 @@ TODO
  * .min -> .make
 
  * Move syntax quoting to scam-ct
+
+ * XMacros and circular dependencies:
+
+   Syntax quoting is an incomplete feature because the resulting values are
+   undefined.  If the language were to provide destructors (or pattern
+   matching) then programs could reasonably make use of it.  So far, scam-ct
+   is limited to trivial manipulations.
+
+   Macros would need `form` for generating error messages and `env` for gensym.
 
  * .out/a/scam ends up using NS='~' runtime, and also building and loading
    its own runtime for .out/b/scam with NS='~' (!).
@@ -223,6 +282,32 @@ TODO
 
 Optimizations
 ----
+
+ * gen0 optimizations:
+    * perf measurement section in gen0-q.scm
+    * c0 inblock mode: can ILEnv return just the new env items?
+    * optimize c0-block-cc
+    * functions vs. macros for begin-block
+
+ * parse.scm optimizations/rework
+    * perf measurement
+    * parse: replace (parse-seq ...) with (parse-formsXX ...)
+    * parse: (POut nextpos form), not (POut lastpos form)
+    * parse: errors are not nested in forms... Keep parsing after errors?
+        (POut (1+ pos) (PError pos ...))
+        (POut (1+ (words subj)) (PError pos ...))
+    * Add SCAM_TAGS option to optimize "Form" tags; remove string
+      tag-specifiers from `data` when done.
+
+ * Recover crafted optimizations:
+     (demote (promote x))  -->  x
+     (nth N (rest x))  -->  (nth N+1 x)
+     (rest (rest x))   -->  (nth-rest ...)
+     (demote NUMBER)   -->  number
+     (if (filter "!:x" (word 1 (first vec))) ...)
+       -->  (if (filter "!1:x!0% !1:x" (word 1 vec)) ...)
+
+     Number-ness validated by ... `cond` test,  `foreach` variable, ...
 
  * Tracing `scam` itself is problematic because the processing occurs after
    `main` exits (in the rule-processing phase).
@@ -429,3 +514,19 @@ be fiendishly difficult to employ correctly):
 ;                  (subst a "" b)))))
 
 ; (define (findstring a b)  (if (not (eq (subst a "" b) b)) a))
+
+
+--------------------------------
+
+Assignment and control flow: matching, parsing
+
+Monads <-> exceptions
+do         try
+
+  ;; (PSymbol n name) <- func else (warn func "FUNC" "(? FUNC ...)")
+  ;; (case func ((PSymbol n name) ...) (else (warn func "FUNC" "(? FUNC ...")))
+  ;; (match func (PSymbol n name) else (warn ...)) ...
+
+  (match (PSymbol n name) func
+         else (warn ...))
+  ...

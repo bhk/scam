@@ -2,409 +2,508 @@
 ;; macros.scm : standard macro definitions
 ;;--------------------------------------------------------------
 
-;; Functions named "ml.special-NAME" implement special forms as well as
-;; macros.  They are executed at compile-time when a list form starting with
-;; the correponding NAME is encountered.  These functions are passed a list
-;; of arguments (each an AST) and an environment.  They return an IL tree.
-;;
-;; The term "macro" would properly be applied to a function that transforms
-;; an AST to another AST. "Special forms" implement custom code generation.
-;; Both are lumped into the same mechanism here -- AST in, IL out.
-;;
-;; Some specials here are described as "inlined".  This means that actual
-;; functions by the same name are available, although when called directlly
-;; by name the code will be expanded inline for performance reasons.
-
 (require "core")
 (require "parse")
 (require "gen")
 (require "gen0")
 
-;; If exprs has exactly one item, return first item.  Otherwise place
-;; them in a list form with 'sym' as the first element.
-;; e.g. (group-with 'begin exprs)
-(define (begin-block exprs)
-  (if (filter 1 (words exprs))
-      (first exprs)
-      `(begin ,@exprs)))
+;; Functions named "ml.special-NAME" implement special forms.  They are
+;; executed at compile-time when a list form starting with the correponding
+;; NAME is encountered.  These functions are passed a list of arguments
+;; (each an AST) and an environment.  They return an IL tree.
+;;
+;; (ml.special-SPECIALNAME env sym args)
+;;    ENV = environment
+;;    SYM = the symbol naming the special form (e.g. `print)
+;;    ARGS = forms passed to the special form
 
 
+;;--------------------------------
+;; (print args...)
+;;--------------------------------
+
+(define (ml.special-print env sym args)
+  (Builtin "info" [ (Concat (c0-vec args env)) ]))
+
+
+;;--------------------------------
 ;; (current-env)
+;;--------------------------------
 
-(define (ml.special-current-env _ env)
+(define (ml.special-current-env env sym args)
   (String env))
 
 
+;;--------------------------------
 ;; (current-file-line)
+;;--------------------------------
 
-(define (ml.special-current-file-line form env)
-  ;; '#pos' marks the position of a macro invocation
-  (define `pos (or (word 2 (hash-get "#pos" env))
-                   (form-index form)))
-  (define `lnum (describe-lnum pos *compile-subject*))
+(define (ml.special-current-file-line env sym args)
+  (define `pos
+    (let ((m (hash-get MacroMarkerKey env)))
+      (case m
+        ((EMarker pos) pos)
+        (else (form-index sym)))))
+  (define `lnum
+    (describe-lnum pos *compile-subject*))
 
   (String (concat *compile-file* ":" lnum)))
 
 
+;;--------------------------------
 ;; (concat FORM...)
+;;--------------------------------
 
-(define (ml.special-concat form env)
-  (Concat (c0-vec (rrest form) env)))
+(define (ml.special-concat env sym args)
+  (il-concat (c0-vec args env)))
 
 
+;;--------------------------------
+;; (vector FORM...)
+;;--------------------------------
+
+(define (ml.special-vector env sym args)
+  (il-concat
+   (intersperse (String " ")
+                (for f args
+                     (il-demote (c0 f env))))))
+
+
+;;--------------------------------
 ;; (subst FROM TO {FROM TO}... STR)
+;;--------------------------------
 
 (define (subst-x strs value)
-  &private
   (if strs
-      (subst-x (rrest strs)
-               (Builtin "subst" (conj (wordlist 1 2 strs) value)))
+      (subst-x (rrest strs) (Builtin "subst" (conj (wordlist 1 2 strs) value)))
       value))
 
-(define (ml.special-subst form env)
-  (let ((args (rrest form))
-        (keyword (nth 2 form))
+(define (ml.special-subst env sym args)
+  (if (filter "%2 %4 %6 %8 %0 1" (words args))
+      (gen-error sym
+                 "(subst {FROM TO}+ STR) accepts 2n+1 arguments, not %s"
+                 (words args))
+      (subst-x (c0-vec (butlast args) env) (c0 (last args) env))))
+
+
+;;--------------------------------
+;; (set SYM VALUE [RETVAL])
+;;--------------------------------
+
+(define (c0-set env sym value-node retval-node what where)
+  (let ((binding (resolve sym env))
+        (sym sym)
+        (value-node value-node)
+        (retval-node retval-node)
         (env env))
 
-    (or (if (filter "%2 %4 %6 %8 %0 1" (words args))
-            (gen-error keyword
-                       "wrong number of arguments to (subst {FROM TO}+ STR); must be multiple of 2 + 1"))
-        (subst-x (c0-vec (butlast args) env) (c0 (last args) env)))))
+    (define `(il-set setter varname)
+      (Call setter (append [ (String varname) value-node ]
+                           (if retval-node
+                               [retval-node]))))
+    (case sym
+      ((PSymbol pos var-name)
+       (case binding
+         ((EVar name priv) (il-set "^set" name))
+         ((EFunc name priv inln) (il-set "^fset" name))
+         (else
+          (gen-error sym "%q is not a global variable" (symbol-name sym)))))
+      (else
+       (err-expected "S" sym nil what where)))))
 
 
-;; (vector FORM...)
+(define (ml.special-set env sym args)
+  (define `var-sym (first args))
+  (define `value-form (nth 2 args))
+  (define `retval (nth 3 args))
 
-(define (ml.special-vector form env)
-  (define `args (rrest form))
-  (Concat (subst " " " Q!0!10 " (map-call (global-name il-demote) (c0-vec args env)))))
-
-
-;; (set SYM VALUE [RETVAL])
-
-(define (ml.special-set form env)
-  (define `symbol (nth 3 form))
-
-  (or (check-argc "2 or 3" form)
-
-      (check-type "S" symbol form "NAME" "(set NAME VALUE [RETVAL])")
-
-      (let ((binding (resolve symbol env))
-            (other-args (nth-rest 4 form))
-            (env env)
-            (symbol symbol))
-
-        (if (not (type? "V F" binding))
-            (gen-error symbol "%q is not a global variable" (symbol-name symbol))
-            (Call (if (type? "V" binding) "^set" "^fset")
-                  (cons (String (nth 2 binding))
-                        (c0-vec other-args env)))))))
+  (or (check-argc "2 or 3" args sym)
+      (c0-set env
+              var-sym
+              (c0 value-form env)
+              (if retval (c0 retval env))
+              "NAME"
+              "(set NAME VALUE [RETVAL])")))
 
 
-;; (let-global ((VAR VALUE)...) BODY)
-;;   ==>  (^set 'VAR (^set 'VAR VALUE VAR) (begin BODY))
-
-(define (letg-error type form parent desc)
-  &private
-  (check-type type form parent desc "(let-global ((VAR VALUE)...) BODY)"))
-
-
-(define (letg-expand blist body form)
-  &private
-  (define `b (first blist))
-  (define `sym (nth 2 b))                ;; symbol for var being set
-  (define `val (nth 3 b))                ;; value being assigned to var
-
-  (if (not blist)
-      ;; no more vars to bind
-      (begin-block body)
-      (or (letg-error "L" b form "(VAR VALUE)")
-          (letg-error "S" sym b "VAR")
-          (letg-error "" val  b "VALUE")
-
-          `(set ,sym
-                (set ,sym ,val ,sym)
-                ,(letg-expand (rest blist) body form)))))
-
-
-(define (ml.macro-let-global form)
-  (define `bform (nth 3 form))   ;; form that contains bindings
-  (define `body  (nth-rest 4 form))
-
-  (or (letg-error "L" bform form "((VAR VALUE)...)")
-      (letg-expand (rest bform) body form)))
-
-
-(define (ml.special-let-global form env)
-  (c0 (ml.macro-let-global form) env))
-
-
+;;--------------------------------
 ;; (? <fn> ...args...)
+;;--------------------------------
 
-(define (ml.special-? form env)
-  (define `func (nth 3 form))
-  (define `func-args (nth-rest 4 form))
+(define (ml.special-? env sym args)
+  (define `func (first args))
+  (define `func-args (rest args))
   (define `defn (resolve func env))
 
-  (define `traceable?
-    ;; (B)uiltin or (F)unction, but not a macro
-    (filter-out "F#" (filter "B% F%" (subst " " "" (wordlist 1 2 defn)))))
+  (let ((defn (resolve func env))
+        (env env)
+        (sym sym)
+        (args args))
+    (or
+     (if (eq "-" defn)
+         (err-expected "S" func sym "FUNC" "(? FUNC ARGS...)")
+         (begin
+           (define `(trace ctor name)
+             (ctor "^t" (cons (String name) (c0-vec func-args env))))
+           (case defn
+             ((EFunc name p _) (if (not (eq name MacroName))
+                                   (trace Call name)))
+             ((EBuiltin name p _) (trace Builtin name)))))
 
-  (or (check-type "S" func form "FUNC" "(? FUNC ...)")
-      (if (not traceable?)
-          (gen-error func "FUNC in (? FUNC ...) is not a function variable"))
-      (Call "^t" (cons (String (nth 2 defn))
-                       (c0-vec func-args env)))))
+     (if defn
+         (gen-error func "FUNC in (? FUNC ...) is not traceable")
+         (gen-error func "undefined variable: %q" (symbol-name sym))))))
 
 
-;; (let& ((VAR VAL)...) BODY)
+;;--------------------------------
+;; (let ((VAR VAL)...) BODY)
+;;--------------------------------
 
-;; Similar to 'symbol-macrolet' in Common Lisp.
+(define (read-pairs-r forms where out)
+  (define `form (first forms))
+  (if (not forms)
+      out
+      (case form
+        ((PList n pair)
+         (define `var (first pair))
+         (define `value (nth 2 pair))
+         (define `extra (nth 3 pair))
+         (case var
+           ((PSymbol n name)
+            (if value
+                (if (not extra)
+                    (read-pairs-r (rest forms) where (conj out pair))
+                    (gen-error extra "extra form after value in %q" where))
+                (err-expected "" value form "VALUE" where)))
+           (else (err-expected "S" var form "VAR" where))))
+        (else (err-expected "L" form nil "(VAR VALUE)" where)))))
+
+;; Parse and validate a form describing (SYM VALUE) pairs as in `(let ...)
+;; expressions.  Return a vector of [SYM VALUE] pairs, or a PError on
+;; failure.
 ;;
-;; `let&` associates variables with expressions that will be evaluated where
-;; the variables occur.  The syntax is like `let*`, but the expressions
-;; evaluated at each occurrence of the variable (zero or more times).
+;;  LIST = `( (NAME VALUE)... )
+;;
+(define (read-pairs list sym where)
+  (case list
+    ((PList n forms)
+     (read-pairs-r forms where nil))
+    (else
+     (err-expected "L" list sym "((VAR VALUE)...)" where))))
+
+
+(define let-where
+  "(let ((VAR VALUE)...) BODY)")
+
+;; (let ((VAR VAL)...) BODY)
+;;   ==>  ( (lambda (VAR ...) BODY ) (VAL ...) )
+(define (ml.special-let env sym args)
+  (define `form
+    (let ((body (rest args))
+          (pairs (read-pairs (first args) sym let-where)))
+      (define `vars (for p pairs (nth 1 p)))
+      (define `values (for p pairs (nth 2 p)))
+      (or (case pairs ((PError _ _) pairs))
+          (PList 0 (cons (PList 0 (append [(PSymbol 0 "lambda")]
+                                          [(PList 0 vars)]
+                                          body))
+                         values)))))
+  (c0 form env))
+
+
+;;--------------------------------
+;; (let-global ((VAR VALUE)...) BODY)
+;;--------------------------------
+
+(define letg-where
+  "(let-global ((VAR VALUE)...) BODY)")
+
+;; (let-global ((VAR VALUE) OTHERS...) BODY)
+;;    -->  (^set 'VAR (^set 'VAR VALUE VAR) (let-global (OTHERS...) BODY))
+;;
+;;   BINDING = (PList n [ SYM VALUE ])
+;;   OTHERS = [BINDING...]
+;;
+(define (letg-expand env sym body pairs)
+  (or
+   ;; read-pairs may have returned an error...
+   (case pairs
+     ((PError _ _) pairs))
+
+   (if (not pairs)
+      ;; no more bindings
+      (c0-block body env))
+
+   (begin
+     (define `p (first pairs))
+     (define `sym (first p))
+     (define `value (nth 2 p))
+     (define `others (letg-expand env sym body (rest pairs)))
+     (define `inner (c0-set env sym (c0 value env) (c0 sym env)))
+     (c0-set env sym inner others))))
+
+
+(define (ml.special-let-global env sym args)
+  (letg-expand env sym (rest args)
+               (read-pairs (first args) sym letg-where)))
+
+
+;;--------------------------------
+;; (let& ((VAR VAL)...) BODY)
+;;--------------------------------
+
+;; Similar to 'symbol-macrolet' in Common Lisp, `let&` associates variables
+;; with expressions that will be evaluated where the variables occur.
+;; Scoping works like `let*`, but the expressions evaluated at each
+;; occurrence of the variable (zero or more times).
 ;;
 ;; `let&` generates an ESMacro environment record.
 ;;
 ;; Each *use* of the macro will be compiled in the scope of the definition.
-;; We know that scope because we know where the definition itself lies in the
-;; of bindings in the `env` structure.
+;; We know that scope because we know where the definition itself lies in
+;; the environment.
 
-(define (let&-env nvs env)
-  (append (reverse
-           (append-for b nvs
-                       (hash-bind (nth 2 (nth 2 b))  ;; symbol name
-                                  (ESMacro (nth 3 b) nil)))) ;; expr
-          env))
+(define let&-where
+  "(let& ((VAR VALUE)...) BODY)")
 
-(define (let&-check type form parent a)
-  (check-type type form parent a "(let ((VAR VALUE)...) BODY)"))
+(define (let&-env pairs)
+  (reverse
+   (append-for p pairs
+               (case (first p)
+                 ((PSymbol _ name)
+                  (hash-bind name (ESMacro (nth 2 p) nil)))))))
 
-(define (let&-check-bindings nvs form)
-  (vec-or (for b nvs
-               (or (let&-check "L" b form "(NAME EXPR)"))
-                   (let&-check "S" (nth 2 b) form "NAME"))))
-
-
-(define (ml.special-let& form env)
-  (define `nv-list (nth 3 form))
-  (define `nvs (rest nv-list))
-  (define `body (nth-rest 4 form))
-  (or (let&-check "L" nv-list form "((NAME EXPR)...)")
-      (let&-check-bindings nvs form)
-      (c0-block body (let&-env nvs env))))
+(define (ml.special-let& env sym args)
+  (let ((body (rest args))
+        (pairs (read-pairs (first args) sym let&-where))
+        (env env))
+    (case pairs
+      ((PError _ _) pairs)
+      (else (c0-block body (append (let&-env pairs) env))))))
 
 
-;; ( let ((VAR VAL)...) BODY )
-;;   ==>  ( (lambda (VAR ...) BODY ) (VAL ...) )
+;;--------------------------------
+;; (foreach VAR LIST BODY)
+;;--------------------------------
 
-(define (let-error type form parent a)
-  (check-type type form parent a "(let ((VAR VALUE)...) BODY)"))
+;; c0-for
+;;   ARGS = VAR LIST BODY   in   `(for VAR LIST BODY)
+;;   WHERE = syntax synopsis of the containing form, including "VAR"
+;;           "BODY" (and optionally "DELIM")
+;;   VAR-XFORM = transformation to apply to VAR's IL node
+;;               where it is mentioned in BODY
+;;   BODY-XFORM = transformation to apply to BODY after it is evaluated
+;;
+(define (c0-for env sym args where var-xform body-xform)
+  (define `var (first args))
+  (define `list (nth 2 args))
+  (define `body-index (words (rest where)))  ;; 3- or 4-arg form
+  (define `body (nth-rest body-index args))
+
+  (case var
+    ((PSymbol _ name)
+     (define `var-defn
+       (EIL (var-xform (Var name)) nil))
+     (define `body-node
+       (body-xform (c0-block body (hash-bind name var-defn env))))
+     (if body
+         ;; list, delim, and body ok
+         (Builtin "foreach" [ (String name) (c0 list env) body-node ])
+         ;; body (and maybe list and delim) missing
+         (err-expected "" nil sym
+                       (word (words (concat ". . " args)) (subst ")" "" where))
+                       where)))
+    (else
+     (err-expected "S" var sym "VAR" where))))
+
+;; (foreach VAR LIST BODY) : Unlike in the Make builtin "foreach", VAR is a
+;; symbol, not a quoted string.
+;;
+(define (ml.special-foreach env sym args)
+  (c0-for env sym args "(foreach VAR LIST BODY)" identity identity))
 
 
-(define (ml.macro-let form)
-  (define `bform (nth 3 form))   ;; form that contains bindings
-  (define `blist (rest bform))   ;; list of bindings: (VAR VALUE) ...
-  (define `body  (nth-rest 4 form))
-  (define `vars  (append "L" (for b blist (nth 2 b))))
-  (define `vals  (for b blist (nth 3 b)))
-
-  (or (let-error "L" bform form "((VAR VALUE)...)")
-      (vec-or (for b blist (or (let-error "L" b form "(VAR VALUE)")
-                               (let-error "S" (nth 2 b) b "VAR")
-                               (let-error "" (nth 3 b) b "VALUE"))))
-      (append ["L" (append ["L" "S lambda" vars] body)] vals)))
-
-
-(define (ml.special-let form env)
-  (c0 (ml.macro-let form) env))
-
-
-;; (foreach VAR WORDS EXP)
-(define (ml.special-foreach form env)
-  (define `var (nth 3 form))
-  (define `word-list (nth 4 form))
-  (define `exp (nth 5 form))
-
-  (or (check-argc 3 form)
-      (check-type "S" var form "VAR" "(foreach VAR LIST EXPR)")
-      (let ((var var)
-            (word-list word-list)
-            (exp exp)
-            (env env))
-        (c0 `(.foreach ,(symbol-to-string var) ,word-list ,exp)
-            (hash-bind (nth 2 var) (concat "V " (word 2 var)) env)))))
-
-
+;;--------------------------------
 ;; (for VAR VEC BODY)
-;; ==> (foreach "&f" VEC (^d (let& ((VAR (^u &f))) BODY)))
+;;--------------------------------
+
+;; --> (foreach "&f" VEC (^d (let& ((VAR (^u &f))) BODY)))
 ;;
-;; Unlike Make builtin `foreach`, `for` operates on lists, promoting input
-;; values and demoting results.  Also, VAR is a symbol, not a quoted string.
-
-(define (ml.special-for form env)
-  (define `var (nth 3 form))
-  (define `vec (nth 4 form))
-  (define `body (nth-rest 5 form))
-
-  (c0 `(foreach ,(gensym var) ,vec
-                (call ,["Q" "^d"] (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
-                          ,@body)))
-      env))
+(define (ml.special-for env sym args)
+  (c0-for env sym args "(for VAR VEC BODY)" il-promote il-demote))
 
 
+;;--------------------------------
 ;; (append-for VAR VEC BODY)
-;; ==> (filter "%" (foreach "&f" VEC (let& ((VAR (^u &f))) BODY)))
+;;--------------------------------
+
+;; Append all body values (a.k.a. "concat-map").
 ;;
-;; Similar to `(for ...)` but evaluates to the result of appending all BODY
-;; values (vectors).
+;; --> (filter "%" (foreach "&f" VEC (let& ((VAR (^u &f))) BODY)))
+;;
+(define (ml.special-append-for env sym args)
+  (define `for-value
+    (c0-for env sym args "(append-for VAR VEC BODY)" il-promote identity))
 
-(define (ml.special-append-for form env)
-  (define `var (nth 3 form))
-  (define `vec (nth 4 form))
-  (define `body (nth-rest 5 form))
-
-  (c0 `(filter "%"
-               (foreach ,(gensym var) ,vec
-                        (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
-                              ,@body)))
-      env))
+  (Builtin "filter" [ (String "%") for-value ]))
 
 
+;;--------------------------------
 ;; (concat-for VAR VEC DELIM BODY)
-;;
+;;--------------------------------
+
+(define concat-for-where
+  "(concat-for VAR VEC DELIM BODY)")
+
 ;; Similar to `(for ...)` but evaluates to the string concatenation of all
 ;; BODY values.
+;;
+(define (il-subst a b node)
+  (case node
+    ((String value) (String (subst a b value)))
+    (else (Builtin "subst" [ (String a) (String b) node ]))))
 
-(define (ml.special-concat-for form env)
-  (define `var (nth 3 form))
-  (define `vec (nth 4 form))
-  (define `delim (nth 5 form))
-  (define `body (nth-rest 6 form))
+(define (il-spc-encode node)
+  (il-subst " " "|0" (il-subst "|" "|1" node)))
 
-  (define `expansion
-    (if (and (type? "Q%" delim)
-             (eq (nth 2 delim) " "))
-        ;; Simple case (spaces are the default separator)
-        `(foreach ,(gensym var) ,vec
-                  (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
-                        ,@body))
+(define (il-spc-decode node)
+  (il-subst "|1" "|" (il-subst "|0" " " node)))
 
-        ;; Replace space separators with DELIM.
-        `(subst "|. " (subst "|" "|1" ,delim)
-                "|." ""
-                "|1" "|"
-                (foreach ,(gensym var) ,vec
-                         (let& ((,var (call ,["Q" "^u"] ,(gensym var))))
-                               (concat (subst "|" "|1" ,@body)
-                                       "|."))))))
-  (c0 expansion env))
+(define (ml.special-concat-for env sym args)
+  (define `delim (nth 3 args))
+  (define `for-value
+    (c0-for env sym args concat-for-where il-promote identity))
 
+  (define `(for-result value-xform)
+    (c0-for env sym args concat-for-where
+            il-promote value-xform))
 
+  (or (case delim
+        ((PString n value)
+         (if (eq value " ")
+             ;; Simple case: single space is what `foreach` adds
+             (for-result identity))))
 
-;; (print args...)
-
-(define (ml.special-print form env)
-  (define `args (rrest form))
-  (c0 `(info (concat ,@args)) env))
+      ;; General case
+      (il-spc-decode
+       (Builtin "subst" [ (String " ")
+                          (il-subst "|" "|1" (c0 delim env))
+                          (for-result il-spc-encode) ]))))
 
 
+;;--------------------------------
 ;; (cond (TEST BODY)...)
-;;   ==>  (if TEST1 (begin BODY1...)
-;;            (if TEST2 (begin BODY2...)
-;;                ... ) )
+;;--------------------------------
 
-(define cond-cxt "(cond (TEST BODY)...)")
+;; -->  (if TEST1 (begin BODY1...)
+;;        (if TEST2 (begin BODY2...)
+;;          ... ) )
 
-(define (cond-expand clause more form)
-  (define `test (nth 2 clause))
-  (define `body (rrest clause))
+(define cond-where
+  "(cond (TEST BODY)...)")
 
-  (if clause
-      (or (check-type "L" clause form "(TEST BODY)" cond-cxt)
-          (check-type "" test clause "TEST" cond-cxt)
-          (check-type "" body clause "BODY" cond-cxt)
-          (if (and (symbol? test)
-                   (eq "else" (word 2 test)))
-              (begin-block body)
-              `(if ,test
-                   ,(begin-block body)
-                   ,@(if more
-                         [(cond-expand (first more) (rest more) form)]))))))
-
-
-(define (ml.macro-cond form)
-  (or (cond-expand (nth 3 form) (nth-rest 4 form) form)
-      (String "")))
-
-(define (ml.special-cond form env)
-  (c0 (ml.macro-cond form) env))
-
-
-;; (local-to-global EXPR)
-;;
-(define (ml.special-local-to-global form env)
-  (define `var (nth 3 form))
-
-  (or (check-argc 1 form)
-      (Concat [ (String (gen-global-name ""))
-                (c0 var env) ])))
+;; Combine a cond clause with its "else" value.
+;;   CLAUSE = `(TEST BDOY)
+;;   ELSE-FORM = value of remaining clauses
+(define (cond-wrap clause else-form)
+  (case clause
+    ((PList _ forms)
+     (define `test (first forms))
+     (define `body (rest forms))
+     (define `is-else (case test ((PSymbol _ name) (eq name "else"))))
+     (if body
+         (if is-else
+             ;; evaluate to BODY
+             (if (not else-form)
+                 (begin-block body)
+                 (gen-error test "(else ...) is followed by additional clauses"))
+             ;; evaluate to (if TEST BODY NODE)
+             (PList 0 (append [ (PSymbol 0 "if") test (begin-block body) ]
+                              (if else-form [else-form]))))
+         ;; no BODY
+         (if test
+             (err-expected "" body forms "BODY" cond-where)
+             (err-expected "" body forms "TEST" cond-where))))
+    (else
+     (err-expected "L" clause nil "(TEST BODY)" cond-where))))
 
 
+(define (ml.special-cond env sym args)
+  (c0 (foldr cond-wrap nil args) env))
+
+
+;;--------------------------------
 ;; (global-name SYM)
-;;
-(define (ml.special-global-name form env)
-  (define `var (nth 3 form))
+;;--------------------------------
 
-  (or (check-argc 1 form)
-      (check-type "S" var form "NAME" "(get-global NAME)")
-      (let& ((binding (resolve var env)))
-            (if (type? "V F" binding)
-                (String (nth 2 binding))
-                (gen-error var "%q is not a global variable" (symbol-name var))))))
+(define (defn-global-name defn)
+  (case defn
+    ((EFunc name _ _) name)
+    ((EVar name _) name)))
+
+(define (ml.special-global-name env sym args)
+  (define `var (first args))
+  (or (check-argc 1 args sym)
+      (case var
+        ((PSymbol _ name)
+         (let ((global-name (defn-global-name (resolve var env)))
+               (name name))
+           (if global-name
+               (String global-name)
+               (gen-error var "%q is not a global variable" name))))
+        (else (err-expected "S" var sym "NAME" "(global-name NAME)")))))
 
 
-(define (ml.special-defmacro form env inblock)
-  (define `what (nth 3 form))
-  (define `sym (nth 2 what))
-  (define `name (symbol-name sym))
+;;--------------------------------
+;; (defmacro (NAME ARG...) BODY)
+;;--------------------------------
 
-  (or (check-type "L" what form "(NAME ARG...)" "(defmacro (NAME ARG...) BODY...)")
-      (check-type "S" sym what "NAME" "(defmacro (NAME ARG...) ...)")
+(define defmacro-where
+  "(defmacro (NAME ARG...) BODY)")
 
-      ; `(define WHAT BODY)
-      (let ((o (c0 (append ["L" ["S" "define"]]
-                           (nth-rest 3 form))
-                   env
-                   inblock)))
-        (define `env (nth 2 o))
-        (define `node (nth-rest 3 o))
-        (append ["env" (hash-bind name
+(define (ml.special-defmacro env sym args inblock)
+  (define `what (first args))
+  (define `body (rest args))
+  (case what
+    ((PList _ decl-forms)
+     (define `m-name (first decl-forms))
+     (define `m-args (rest decl-forms))
+
+     (case m-name
+       ((PSymbol _ name)
+        ;; compile as a function
+        (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
+                        env))
+              (new-env (hash-bind name
                                   (EXMacro (gen-global-name name) nil)
-                                  env)]
-                node))))
+                                  env)))
+          (ILEnv new-env node)))
+       (else (err-expected "S" m-name sym "NAME" defmacro-where))))
+    (else (err-expected "L" what sym "(NAME ARG...)" defmacro-where))))
 
 
-;; (use STRING)
-;;
-(define (ml.special-use form env inblock)
-  (define `module (nth 3 form))
-  (define `mod-name (string-value module))
+;;--------------------------------
+;; (use MODULE)
+;;--------------------------------
 
-  (or (check-argc 1 form)
-      (check-type "Q" module form "NAME" "(use NAME)")
-      (let ((imports (use-module mod-name))
-            (env env))
-        (if imports
-            (block-result inblock (append imports env) nil)))
-      (gen-error "use: Cannot find module %q" mod-name)))
+(define (ml.special-use env sym args inblock)
+  (define `module (first args))
+
+  (or (check-argc 1 args sym)
+      (case module
+        ((PString _ mod-name)
+         (let ((imports (use-module mod-name))
+               (mod-name mod-name)
+               (env env))
+           (if imports
+               (block-result inblock (append imports env) NoOp)
+               (gen-error "use: Cannot find module %q" mod-name))))
+        (else (err-expected "Q" module sym "MODULE" "(use MODULE)")))))
 
 
+;;--------------------------------
 ;; (data NAME CTOR...)
-;;    CTOR = (NAME ARG...)
-;;    ARG  = FLAG? NAME
-;;    FLAG  = "&word"  => value contains no whitespace and is not nil
-;;          | "&list"  => value has no leading or trailing whitespace
+;;--------------------------------
 
 (data Data
       (DataType &word tag
@@ -412,12 +511,20 @@
                 encodings
                 &list argnames))
 
+(define data-where
+  "(data NAME (CTOR ARG...)...)")
+
 ;; Generate a Ctor record, or an Error record (a la parse tree) on failure.
 ;;
-(define (get-type-r args form tag pattern names flag)
+;;   ARGS = [ `(CTOR ARG...) ... ]
+;;   FORM = parent form (for error messages)
+;;   ARG  = FLAG? NAME
+;;   FLAG = "&word"  => value contains no whitespace and is not nil
+;;        | "&list"  => value has no leading or trailing whitespace
+;;
+(define (read-type-r args form tag pattern names flag)
   &private
   (define `arg (first args))      ; a form
-  (define `arg-name (nth 2 arg))  ; a string
 
   ;; Note: We can use list *encoding* only when a member is of list *type*
   ;; AND is the last member.
@@ -433,92 +540,114 @@
            ;; Done.
            (DataType tag (first pattern) (rest pattern) names)))
 
-   (check-type "S" arg form "ARG" "(CTOR ARG...)")
+   (case arg
+     ((PSymbol _ arg-name)
+      (or
+       (if (not (filter "&%" arg-name))
+           ;; argument name
+           (read-type-r (rest args) form tag
+                       (concat pattern " " (arg-enc flag (word 2 args)))
+                       (conj names arg-name)
+                       "" (filter "&list" flag)))
 
-   (if (not (filter "&%" arg-name))
-       ;; argument name
-       (get-type-r (rest args) form tag
-                   (concat pattern " " (arg-enc flag (word 2 args)))
-                   (conj names arg-name)
-                   "" (filter "&list" flag)))
+       (if flag
+           (gen-error arg "two type flags supplied for one argument"))
 
-   (if flag
-       (gen-error arg "two type flags supplied for one argument"))
+       (if (filter "&list &word" arg-name)
+           (read-type-r (rest args) form tag pattern names arg-name))
 
-   (if (filter "&list &word" arg-name)
-       (get-type-r (rest args) form tag pattern names arg-name))
+       (gen-error arg "unknown flag [supported: &list, &word]")))
 
-   (gen-error arg "unknown flag [supported: &list, &word]")))
-
-
-(define (get-type form tag data-form)
-  &private
-  (define `sym (nth 2 form))        ;; symbol namin the ctor
-  (define `name (symbol-name sym))
-  (define `tag-str (nth 3 form))    ;; optional explicit tag
-
-  (or (check-type "L" form data-form "(CTOR ...)" "(data NAME (CTOR ...)...)")
-      (check-type "S" sym data-form "CTOR" "(data NAME (CTOR ...)...)")
-      (if (type? "Q%" tag-str)
-          ;; explicit tag
-          (get-type-r (nth-rest 4 form) form (string-value tag-str) name [] nil)
-          ;; no explicit tag
-          (get-type-r (nth-rest 3 form) form tag name [] nil))))
+     (else
+      ;; not a symbol
+      (err-expected "S" arg form "ARG" data-where)))))
 
 
-;; Return vector of ctor descriptions (see get-type).
+;; Return a `Data` record for a constructor.
 ;;
-(define (get-types data-form tag-base ctor-forms counter)
+;;  FORM = `(CtorName ARG...)
+;;
+(define (read-type form tag parent)
+  (case form
+    ((PList _ args)
+     (define `sym (first args))        ;; symbol naming the ctor
+     (define `tag-form (nth 2 args))   ;; optional explicit tag
+
+     (case sym
+       ((PSymbol _ name)
+        (case tag-form
+          ;; explicit tag provided:
+          ((PString _ value)
+           (read-type-r (rrest args) form value name [] nil))
+          (else
+           (read-type-r (rest args) form tag name [] nil))))
+       (else (err-expected "S" sym parent "CTOR" data-where))))
+    (else (err-expected "L" form parent "(CTOR ...)" data-where))))
+
+
+;; Return vector of ctor descriptions (see read-type), or a PError record.
+;;
+(define (read-types parent tag-base ctor-forms counter prev-ctor others)
   &private
   (define `index (words counter))
   (define `tag (concat tag-base index))
+  (define `all-ctors (append others
+                             (if prev-ctor
+                                 [prev-ctor])))
 
-  (if ctor-forms
-      (cons (get-type (first ctor-forms) tag data-form)
-            (get-types data-form tag-base (rest ctor-forms) (append counter 1)))))
+  (case prev-ctor
+    ((PError _ _) prev-ctor)
+    (else
+     (if (not ctor-forms)
+         all-ctors
+         (read-types parent tag-base (rest ctor-forms) (append counter 1)
+                    (read-type (first ctor-forms) tag parent)
+                     all-ctors)))))
 
 
-(define (ml.special-data form env inblock)
-  (define `name (nth 3 form))
-  (define `ctor-forms (nth-rest 4 form))
-  (define `tag-base (concat "!:" (nth 2 name)))
+(define (ml.special-data env sym args inblock)
+  (define `type (first args))
+  (define `ctor-forms (rest args))
 
-  (or
-   (check-type "S" name form "NAME" "(data NAME ...)")
-
-   (let ((types (get-types form tag-base ctor-forms nil)))
-     (or
-      ;; return all errors (if there were any)
-      (if (filter "E%" types)
-          (Block (filter "E%" types)))
-
-      (begin
+  (env-strip
+   inblock
+   (let ((types
+          (case type
+            ((PSymbol _ name)
+             (read-types sym (concat "!:" name) ctor-forms nil))
+            (else
+             (err-expected "S" type sym "NAME" data-where))))
+         (env env))
+     (begin
         ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
-        (define `tag-defs
-          (append-for ty types
-                      (case ty
-                        ((DataType tag name encodings argnames)
-                         (hash-bind tag (append name encodings))))))
+       (define `tag-defs
+         (append-for ty types
+                     (case ty
+                       ((DataType tag name encodings argnames)
+                        (hash-bind tag (append name encodings))))))
 
-        ;; Add record descriptions to the environment
-        (define `bindings
-          (append-for ty types
-                      (case ty
-                        ((DataType tag name encodings argnames)
-                         (hash-bind name (ERecord encodings "." tag))))))
+       ;; Add record descriptions to the environment
+       (define `bindings
+         (append-for ty types
+                     (case ty
+                       ((DataType tag name encodings argnames)
+                        (hash-bind name (ERecord encodings "." tag))))))
 
-        ;; Add tag/pattern bindings to ^tags
-        (define `node
-          (Call (global-name ^add-tags) [(String tag-defs)]))
+       ;; Add tag/pattern bindings to ^tags
+       (define `node
+         (Call (global-name ^add-tags) [(String tag-defs)]))
 
-        (block-result inblock (append bindings env) node))))))
+       (or (case types ((PError _ _) types))
+           (ILEnv (append bindings env) node))))))
 
 
+;;--------------------------------
 ;; (case VALUE (PATTERN BODY)... )
-;;   PATTERN = (NAME VAR...) | NAME
-;;
-;; Match a value against a series of patterns, evaluating the BODY paired
-;; with the first match.
+;;--------------------------------
+
+;; PATTERN = (NAME VAR...) | NAME
+(define case-where
+  "(case VALUE (PATTERN BODY)...)")
 
 ;; Return bindings for arguments in a (CTOR ARG...) pattern.
 (define (arg-bindings args encs value-node)
@@ -529,8 +658,8 @@
           (ndx-node (String (1+ n)))
           (arg-node
            (cond
-            ((filter "S" enc) (Call "^n" [ndx-node value-node]))
-            ((filter "W" enc) (Builtin "word" [ndx-node value-node]))
+            ((eq "S" enc) (Call "^n" [ndx-node value-node]))
+            ((eq "W" enc) (Builtin "word" [ndx-node value-node]))
             (else (Builtin "wordlist" [ ndx-node
                                         (String 99999999)
                                         value-node])))))
@@ -541,49 +670,66 @@
 ;; Compile a vector of (PATTERN BODY) cases
 ;;
 (define (c0-matches cases value-node env)
-  (for case cases
-       ;; case = `(PATTERN BODY)
-       (begin
-         (define `pattern (nth 2 case))
-         (define `body (nth-rest 3 case))
-         (define `ctor-form (nth 2 pattern))
-         (define `ctor-name (symbol-name ctor-form))
-         (define `ctor-args (nth-rest 3 pattern))
-         (define `defn (hash-get ctor-name env))
-         (define `tag (nth 4 defn))
-         (define `encs (nth 2 defn))
-         (define `test-node
-           (Builtin "filter" [ (String tag)
-                               (Builtin "firstword" [value-node]) ]))
-         (define `bindings (arg-bindings ctor-args encs value-node))
-         (define `then-node (c0-block body (append bindings env)))
+  (for
+   c cases    ; c = `(PATTERN BODY)
+   (case c
+     ((PList pos forms)
+      (begin
+        (define `pattern (first forms))
+        (define `body (rest forms))
 
-         (or (check-type "L" case nil "(PATTERN BODY)"
-                         "(case VALUE (PATTERN BODY)...)")
+        (case pattern
+          ;; (SYM BODY)
+          ((PSymbol n var-name)
+           (c0-block body (hash-bind var-name
+                                     (EIL value-node "")
+                                     env)))
 
-             (check-type "L S" pattern case "(CTOR ARG...)"
-                         "(case VALUE ((CTOR ARG..) BODY)...)")
+          ;; ((CTOR ARG...) BODY)
+          ((PList n syms)
+           (define `ctor-form (first syms))
+           (define `ctor-args (rest syms))
+           (or
+            (let ((defn (resolve ctor-form env))
+                  (value-node value-node)
+                  (ctor-args ctor-args))
+              (case defn
+                ((ERecord encs priv tag)
 
-             (if (symbol? pattern)
-                 (c0-block body (hash-bind (symbol-name pattern)
-                                           ["I" value-node]
-                                           env))
-                 ;; (CTOR NAME)
-                 (or
-                  (check-type "S" ctor-form pattern "CTOR" "(CTOR ARG...)")
-                  (check-argc (words encs) pattern)
-                  (Builtin "if" [ test-node then-node ])))))))
+                 (define `test-node
+                   (Builtin "filter" [ (String tag)
+                                       (Builtin "firstword" [value-node]) ]))
+                 (define `bindings
+                   (arg-bindings ctor-args encs value-node))
 
+                 (define `then-node
+                   (c0-block body (append bindings env)))
 
-(define (nest-nodes nodes)
-  &private
-  (concat (first nodes)
-          (if (word 2 nodes)
-              (concat " " [(nest-nodes (rest nodes))]))))
+                 ;; Success
+                 (Builtin "if" [ test-node then-node ]))))
 
+            (case ctor-form
+              ((PSymbol _ name)
+               (gen-error "symbol %q does not identify a record type" name))
+              (else
+               (err-expected "S" ctor-form pattern "CTOR" case-where)))))
 
-(define (ml.special-case form env)
-  (define `value-node (c0 (nth 3 form) env))
-  (if (not (word 3 form))
-      (gen-error form "missing VALUE in (case VALUE ...)")
-      (nest-nodes (c0-matches (nth-rest 4 form) value-node env))))
+          (else (err-expected "L S" pattern c "PATTERN" case-where)))))
+     (else (err-expected "L" c nil "(PATTERN BODY)" case-where)))))
+
+(define (case-append-arg node value)
+  (case node
+    ((Builtin name args) (Builtin name (conj args value)))
+    ((PError _ _) node)
+    (else (PError 0 (sprintf "internal:append-arg:%q" node)))))
+
+(define (case-fold args)
+  (if (word 2 args)
+      (foldr case-append-arg (last args) (butlast args))
+      (first args)))
+
+(define (ml.special-case env sym args)
+  (define `value-form (first args))
+  (if value-form
+      (case-fold (c0-matches (rest args) (c0 value-form env) env))
+      (err-expected "" value-form sym "VALUE" case-where)))

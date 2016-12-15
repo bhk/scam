@@ -63,10 +63,14 @@
 (expect "" (isnumber "1e7.1"))
 (expect "" (isnumber " 2 "))
 
-(expect "[1 [\"a\" \"b\"]] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
+(expect "[1 \"a b\"] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
 (expect "nada" (sprintf "nada" "ignored"))
 (expect "!P!. a !\t !0 x" (sprintf "!P!.%s!0%sx" " a !\t " " " "ignored"))
 (expect "a%b%c" (sprintf "a%%b%s" "%c"))
+
+;; TODO: FIX
+;; (expect "\"\"A" (sprintf "%qA" ""))
+
 
 (expect "" (reverse ""))
 (expect [3 2 1] (reverse [1 2 3]))
@@ -121,6 +125,14 @@
 (expect "-12" (format "-12"))
 (expect "{\"a\": \"b\"}" (format (hash-bind "a" "b")))
 (expect "{\" \": \"\"}" (format (hash-bind " " "")))
+
+;; format-custom
+
+(format-add (lambda (str)
+              (if (filter "!-!-%" (word 1 str))
+                  (concat "[" str "]"))))
+
+(expect "[!-!-abc]" (format "!-!-abc"))
 
 ;; format-record
 
@@ -213,3 +225,7 @@
 
 ;; foldr
 (expect "(!(20))" (foldr (lambda (a b) (concat "(" a b ")")) 0 ["!" 2]))
+
+;; intersperse
+(expect [1 9 "cat dog" 9 3] (intersperse 9 [1 "cat dog" 3]))
+(expect ["a b c"] (intersperse 9 ["a b c"]))

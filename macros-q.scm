@@ -2,320 +2,338 @@
 ;; Tests for compile.scm
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "parse")
-(require "gen")
-(require "gen0")
-(require "gen1")
-(require "escape")
+(require "gen-testutils")
 (require "macros" &private)
 
-;;--------------------------------
-;; utilities
-;;--------------------------------
-
-;; Trim ".INDEX" suffixes from a vector of forms.
-(define (trim-indices forms)
-  (for form forms
-       (append (word 1 (subst "." " " (word 1 form)))
-               (if (type? "L% `% '% ,% @%" form)
-                   (trim-indices (rest form))
-                   (rest form)))))
-
-;; Parse, trim position data, and return vector of forms.
-(define (pp text)
-  (trim-indices (parse-text text)))
-
-;; Parse and trim position data; return ONE form.
-(define (p1 text)
-  (let ((o (pp text)))
-    (expect "" (word 2 o))
-    (first o)))
-
-(define (DUMP name val)
-  (if (findstring "D" SCAM_DEBUG)
-      (print name ": " (format val)))
-  val)
-
-;; compile first expression in text to IL
-(define (C0X text env)
-  (DUMP "gen0" (gen0 (parse-text text) env)))
-
-;; compile first expression in text
-(define (CX text env is-file)
-  (define `forms (parse-text text))
-  (define `il (gen0 forms (or env base-env)))
-  (define `errors-exe (gen1 il is-file))
-
-  (nth 2 errors-exe))
-;  (nth 2 (DUMP "gen1" (? gen1 (DUMP "gen0" (gen0 (parse-text text) env)) is-file))))
-
-;; TEMP: data
-
-;(printf "data = %q" (CX "(data Type (Ctor a))"))
-(expect
- (concat "$(call " (global-name ^add-tags) ",!1:Type0!=Ct!0S)")
- (CX "(data Type (Ct a))"))
-
-;; compile and execute form
-;;
-(define (XT text)
-  ((CX text)))
-
-(define (strip-indices il)
-  (if (word 1 il)
-      (append (word 1 (subst "." " " (word 1 il)))
-              (for w (rest il) (strip-indices w)))))
+;; symbol to use for the `sym` argument for macros (or `parent` node)
+(define `macro-sym (PSymbol 0 "MACRO"))
 
 
 ;;--------------------------------------------------------------
-;; macro tests
+;; tests
 ;;--------------------------------------------------------------
 
-;; print
+;; read-pairs
 
-(expect "$(info )" (CX "(print)"))
-(expect "$(info 1)" (CX "(print 1)"))
-(expect "$(info 123)" (CX "(print 1 2 3)"))
+(define `(test-read-pairs text-pairs)
+  (read-pairs (form-set-indices 0 (p1 text-pairs)) macro-sym "WHERE"))
 
-;; concat
+(expect [ [ (PSymbol 0 "x") (PString 0 1) ]
+          [ (PSymbol 0 "y") (PString 0 2) ] ]
+        (test-read-pairs "((x 1) (y 2))"))
+(expect (PError 0 "invalid VAR in WHERE; expected a symbol")
+        (test-read-pairs "((1 1) (y 2))"))
+(expect (PError 0 "missing VALUE in WHERE")
+        (test-read-pairs "((x) (y 2))"))
+(expect (PError 0 "invalid (VAR VALUE) in WHERE; expected a list")
+        (test-read-pairs "(sym (x 1))"))
 
-(expect "ab$(or 1)" (CX "(concat \"a\" \"b\" (or 1))"))
+;;--------------------------------
+;; (print args...)
+;;--------------------------------
 
-(expect (escape "$1$(call ^n,1,$9)")
-        (CX "(lambda (a b c d e f g h i) (concat a i))"))
+(expect "(.info )" (c0-ser "(print)"))
+(expect "(.info 1)" (c0-ser "(print 1)"))
+(expect "(.info 123)" (c0-ser "(print 1 2 3)"))
 
-;; vector
+;;--------------------------------
+;; (current-env)
+;;--------------------------------
 
-(expect "1 2" (CX "(vector 1 2)"))
-(expect ["a" "b c" "d"] (CX "(vector \"a\" \"b c\" \"d\")"))
-(expect "$(call ^d,$(or 1))" (CX "(vector (or 1))"))
+(expect default-env
+        (c0-ser "(current-env)"))
 
-;; set
+;;--------------------------------
+;; (concat FORM...)
+;;--------------------------------
 
-(expect "$(call ^set,var,1)" (CX "(declare var &global) (set var 1)"))
-(expect "$(call ^fset,fn,1)" (CX "(declare (fn) &global) (set fn 1)"))
-(expect "$(call ^fset,fn,1,2)" (CX "(declare (fn) &global) (set fn 1 2)"))
+(expect "ab(.or 1)" (c0-ser "(concat \"a\" \"b\" (or 1))"))
 
-;; ?
+(expect "`{1}(.call ^n,1,{9})"
+        (c0-ser "(lambda (a b c d e f g h i) (concat a i))"))
 
-(expect "$(call ^t,f,1)" (CX "(? f 1)" (hash-bind "f" "F f")))
+;;--------------------------------
+;; (vector FORM...)
+;;--------------------------------
 
-;; let&
+(expect "1 2" (c0-ser "(vector 1 2)"))
+(expect ["a" "b c" "d"] (c0-ser "(vector \"a\" \"b c\" \"d\")"))
+(expect "(^d (.or 1))" (c0-ser "(vector (or 1))"))
 
-(expect (hash-bind "y" (ESMacro "Q Y" "")
-         (hash-bind "x" (ESMacro "Q 1" "")
-          (hash-bind "a" (EVar "a" "."))))
-       (let&-env [ ["L" "S x" "Q 1"] ["L" "S y" "Q Y"] ]
-          (hash-bind "a" (EVar "a" "."))))
+;;--------------------------------
+;; (subst FROM TO {FROM TO}... STR)
+;;--------------------------------
+
+(expect (c0-ser "(subst 1 2 v)")
+        "(.subst 1,2,{V})")
+(expect (c0-ser "(subst 1 2 3 4 v)")
+        "(.subst 3,4,(.subst 1,2,{V}))")
+(expect (c0-ser "(subst 1 2 3 a)")
+        "!(PError 2 '(subst {FROM TO}+ STR) accepts 2n+1 arguments, not 4')")
+
+;;--------------------------------
+;; (set SYM VALUE [RETVAL])
+;;--------------------------------
+
+(expect (c0-ser "(set v 1)")
+        "(^set V,1)")
+(expect (c0-ser "(set f 1)")
+        "(^fset F,1)")
+(expect (c0-ser "(set f 1 2)")
+        "(^fset F,1,2)")
+(expect (c0-ser "(set f 1 2 2)")
+        "!(PError 2 '\\'set\\' accepts 2 or 3 arguments, not 4')")
+(expect (c0-ser "(set 1 2 2)")
+        "!(PError 4 'invalid NAME in (set NAME VALUE [RETVAL]); expected a symbol')")
+
+;;--------------------------------
+;; (? <fn> ...args...)
+;;--------------------------------
+
+(expect (c0-ser "(? f 1)")
+        "(^t F,1)")
+(expect (c0-ser "(? m a)" (hash-bind "m" (EFunc MacroName "." NoOp)))
+        "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
+
+;;--------------------------------
+;; (let ((VAR VAL)...) BODY)
+;;--------------------------------
+
+(expect (c0-ser "(let ((a 1) (b \"q\")) (f a b))")
+        (c0-ser "((lambda (a b) (f a b)) 1 \"q\")"))
+(expect (c0-ser "(let a a)")
+        (concat
+         "!(PError 4 'invalid ((VAR VALUE)...) in (let ((VAR VALUE)...) BODY)"
+         "; expected a list')"))
+(expect (c0-ser "(let (a) a)")
+        (concat
+         "!(PError 5 'invalid (VAR VALUE) in (let ((VAR VALUE)...) BODY)"
+         "; expected a list')"))
+(expect (c0-ser "(let ((\"a\")) a)")
+        (concat
+         "!(PError 6 'invalid VAR in (let ((VAR VALUE)...) BODY)"
+         "; expected a symbol')"))
+(expect (c0-ser "(let ((a)) a)")
+        "!(PError 5 'missing VALUE in (let ((VAR VALUE)...) BODY)')")
+
+;;--------------------------------
+;; (let-global ((VAR VALUE)...) BODY)
+;;--------------------------------
+
+(expect (c0-ser "(let-global ((v 1)) f)")
+        "(^set V,(^set V,1,{V}),(.value F))")
+(expect (c0-ser "(let-global ((v 1) (f 2)) 9)")
+        "(^set V,(^set V,1,{V}),(^fset F,(^fset F,2,(.value F)),9))")
+
+;;--------------------------------
+;; (let& ((VAR VAL)...) BODY)
+;;--------------------------------
+
+(expect (append (hash-bind "y" (ESMacro (PString 0 "Y") ""))
+                (hash-bind "x" (ESMacro (PString 0 1) "")))
+        (let&-env [ [ (PSymbol 0 "x") (PString 0 1) ]
+                    [ (PSymbol 0 "y") (PString 0 "Y") ] ]))
+
+(expect "1" (c0-ser "(let& ((a 1)) a)"))
+(expect "2" (c0-ser "(let& ((a 1) (b 2)) b)"))
+(expect "3" (c0-ser "(let& ((a 1) (b 2) (a 3)) a)"))
+
+;;--------------------------------
+;; (foreach VAR LIST BODY)
+;;--------------------------------
+
+(expect (c0-ser "(foreach v \"1 2 3\" v)")
+        "(.foreach v,1 2 3,{v})")
+(expect (c0-ser "(foreach a b)")
+        "!(PError 2 'missing BODY in (foreach VAR LIST BODY)')")
+(expect (c0-ser "(foreach a)")
+        "!(PError 2 'missing LIST in (foreach VAR LIST BODY)')")
+(expect (c0-ser "(foreach)")
+        (concat
+         "!(PError 2 'missing VAR in (foreach VAR LIST BODY)"
+         "; expected a symbol')"))
+
+;;--------------------------------
+;; (for VAR VEC BODY)
+;;--------------------------------
+
+(expect (c0-ser "(for x \"1 2 3\" (and x))")
+        "(.foreach x,1 2 3,(^d (.and (^u {x}))))")
+
+;;--------------------------------
+;; (append-for VAR VEC BODY)
+;;--------------------------------
+
+(expect (c0-ser "(append-for x \"1 2 3\" x)")
+        "(.filter %,(.foreach x,1 2 3,(^u {x})))")
+
+;;--------------------------------
+;; (concat-for VAR VEC DELIM BODY)
+;;--------------------------------
+
+(expect "aBc"
+        (il-ser (il-subst "b" "B" (String "abc"))))
+(expect "(.subst b,B,{V})"
+        (il-ser (il-subst "b" "B" (Var "V"))))
+
+;; delim == " "
+(expect "(.foreach x,a b,(^u {x}))"
+        (c0-ser "(concat-for x \"a b\" \" \" x)"))
+
+;; delim == String
+(expect "(.subst |1,|,(.subst |0, ,(.subst  ,|1,(.foreach x,a b,(.subst  ,|0,(.subst |,|1,(^u {x})))))))"
+        (c0-ser "(concat-for x \"a b\" \"|\" x)"))
+
+;; general case
+(expect "(.subst |1,|,(.subst |0, ,(.subst  ,(.subst |,|1,{D}),(.foreach x,a b,(.subst  ,|0,(.subst |,|1,(^u {x})))))))"
+        (c0-ser "(concat-for x \"a b\" d x)"
+            (hash-bind "d" (EVar "D" nil))))
+
+;;--------------------------------
+;; (cond (TEST BODY)...)
+;;--------------------------------
+
+(expect (c0-ser "(cond (a 1) (2 f))")
+        (c0-ser "(if a 1 (if 2 f))"))
+(expect (c0-ser "(cond (a v 1) (else f))")
+        (c0-ser "(if a (begin v 1) f)"))
+
+;;--------------------------------
+;; (global-name SYM)
+;;--------------------------------
+
+(expect "V"
+        (c0-ser "(global-name v)"))
+(expect "!(PError 4 '\\'a\\' is not a global variable')"
+        (c0-ser "(global-name a)"))
+(expect "!(PError 4 'invalid NAME in (global-name NAME); expected a symbol')"
+        (c0-ser "(global-name 1)"))
+(expect "!(PError 2 '\\'global-name\\' accepts 1 argument, not 2')"
+        (c0-ser "(global-name v v)"))
+
+;;--------------------------------
+;; (defmacro (NAME ARG...) BODY)
+;;--------------------------------
+
+(let ((out (c0 (p1 "(defmacro (foo a) a)") nil 1)))
+  (case out
+    ((ILEnv env il)
+     (fexpect env
+              (xns (hash-bind "foo" (EXMacro "~foo" nil))))
+     (expect (il-ser il)
+             (xns "(^fset ~foo,`{1})")))
+    (else
+     ;; not an ILEnv
+     (expect 1 0))))
+
+(p1-block-cc
+ "(defmacro (foo a) a)"
+ (lambda (env sil)
+   (expect sil (xns "(^fset ~foo,`{1})"))
+   (expect env (xns (hash-bind "foo" (EXMacro "~foo" nil))))))
 
 
-(expect (hash-bind "x" (ESMacro "S a" nil)
-              (lambda-env ["S a"] ""))
-        (let&-env [ ["L" "S x" "S a"] ]
-                  (lambda-env ["S a"] "")))
-
-(expect "1" (CX "(let& ((a 1)) a)"))
-(expect "2" (CX "(let& ((a 1) (b 2)) b)"))
-(foreach SCAM_DEBUG "-"
-    (expect "$(call f,1)" (CX "(begin (declare (f) &global) (let& ((x (f 1))) x))")))
-
-
-(let-global ((SCAM_DEBUG ""))
-    (expect "$`(call ^Y,x,,,,,,,,,$``1$`(call ^E,$`1))"
-            (CX "(lambda (a) (let& ((x a)) (let ((b \"x\")) (concat b x))))")))
-
-;; let
-
-(define (macrotest in out)
-  (let&
-      ((name (local-to-global (concat "ml.macro-" (symbol-name (nth 2 in))))))
-    (let ((result (strip-indices (call name in)))
-          (expected (strip-indices out)))
-      (if (eq result expected)
-          1
-          (begin
-            (print "Result: " (subst "\n" "\n        " (format-form result)))
-            (print "   Not: " (subst "\n" "\n        " (format-form expected))))))))
-
-(expect 1 (macrotest
-           '(let ((a 1) (b "q")) (+ a b))
-           '((lambda (a b) (+ a b)) 1 "q")))
-
-(expect 1 (macrotest
-           '(let (a) a)
-           ["E" "invalid (VAR VALUE) in (let ((VAR VALUE)...) BODY); expected a list"]))
-
-(expect 1 (macrotest
-           '(let a a)
-           ["E" "invalid ((VAR VALUE)...) in (let ((VAR VALUE)...) BODY); expected a list"]))
-
-(expect 1 (macrotest
-           '(let (("a")) a)
-           ["E" "invalid VAR in (let ((VAR VALUE)...) BODY); expected a symbol"]))
-
-(expect 1 (macrotest
-           '(let ((a)) a)
-           ["E" "missing VALUE in (let ((VAR VALUE)...) BODY)"]))
-
-(expect (strip-indices (c0 '((lambda (a b) (a b)) "$1" 2)))
-        (strip-indices (c0 '(let ((a "$1")(b 2)) (a b)))))
-
-
-;; let-global
-
-(expect 1 (macrotest
-           '(let-global ((V 1)) (print 1) V)
-           '(set V (set V 1 V) (begin (print 1) V))))
-
-(expect 1 (macrotest
-           '(let-global ((X 1)
-                         (Y 2))
-                        3)
-           '(set X (set X 1 X)
-                 (set Y (set Y 2 Y)
-                      3))))
-
-;; foreach
-
-(expect "$(foreach v,1 2 3,$v)"
-        (CX "(foreach v \"1 2 3\" v)"))
-
-(expect 22
-        (XT "(foreach x \"2\" (concat x (value \"x\")))"))
-
-(expect [["E.2" "\"foreach\" accepts 3 arguments, not 2"]]
-        (C0X "(foreach a b)"))
-
-;; for
-
-(expect (strip-indices (c0 '(foreach a& [1 2]
-                                     (call "^d" (let& ((a (call "^u" a&)))
-                                                  (or a))))))
-        (strip-indices (c0 '(for a [1 2] (or a)))))
-
-(expect "$(foreach x&,1 2 3,$(call ^d,$(and $(call ^u,$(x&)))))"
-     (CX "(for x \"1 2 3\" (and x))"))
-
-
-;; append-for
-
-(expect "$(filter %,$(foreach x&,1 2 3,$(call ^u,$(x&))))"
-        (CX "(append-for x \"1 2 3\" x)"))
-
-;; concat-for
-
-(expect "$(subst |1,|,$(subst |.,,$(subst |. ,$(subst |,|1,D),$(foreach x&,a b,$(subst |,|1,$(call ^u,$(x&)))|.))))"
-        (CX "(concat-for x \"a b\" \"D\" x)"))
-
-(expect "$(foreach x&,a b,$(call ^u,$(x&)))"
-        (CX "(concat-for x \"a b\" \" \" x)"))
-
-;; cond
-
-(expect 1 (macrotest
-           '(cond (a b) (c d))
-           '(if a b (if c d))))
-
-(expect 1 (macrotest
-           '(cond (a b) (c d e) (else f g))
-           '(if a b (if c (begin d e) (begin f g)))))
-
-(print "compile ok")
-
-
-;; global-name
-
-
-(let ((form1 ["L" ["S" "local-to-global"] ["Q" "X"]])
-      (form2 ["L" ["S" "global-name"] ["S" "A"]])
-      (form3 ["L" ["S" "global-name"] ["S" "UNDEF"]])
-      (form4 ["L" ["S" "global-name"] ["L"]])
-      (env (hash-bind "A" ["V" "ns~A" "" ""])))
-
-  (expect (Concat [ (String (gen-global-name "")) (String "X") ])
-          (ml.special-local-to-global form1 env))
-
-  (expect (String "ns~A")
-          (ml.special-global-name form2 env))
-
-  (expect ["E." "\"UNDEF\" is not a global variable"]
-          (ml.special-global-name form3 env))
-
-  (expect 1 (see "invalid"
-               (ml.special-global-name form4 env))))
-
-;; defmacro
-
-(declare SCAM_NS &global)
-
-(let-global ((SCAM_NS "_"))
-  (let ((o (ml.special-defmacro `(defmacro (foo form env) "Q hello")
-                                (hash-bind "a" "B c")
-                                1)))
-    (define `env (nth 2 o))
-    (expect "env" (first o))
-    (expect (hash-get "foo" env) (EXMacro "_foo" nil))
-    (expect (hash-get "a" env) "B c")
-    (expect (word 1 (Builtin "X" []))
-            (word 1 (nth-rest 3 o)))))
-
-;; (use STRING)
+;;--------------------------------
+;; (use MODULE)
+;;--------------------------------
 
 (define *use-test* nil)
-(let-global ((^require (lambda (s) (set *use-test* s)))
-             (require-module (lambda (name priv)
-                                   (hash-bind "name" ["X" "name" "i"]))))
-  (define `env (hash-bind "x" "M abc"))
-  (expect "Q" (ml.special-use `(use "foo")))
-  (expect ["env" (hash-bind "name" ["X" "name" "i"] env) "Q"]
-          (ml.special-use `(use "foo") env 1))
-  (expect "foo" *use-test*)
-  (print "ok"))
+(let-global
+ ;; harness
+ ((use-module
+   (lambda (mod-name)
+     (set *use-test* mod-name)
+     (hash-bind "name" (EXMacro "name" "i")))))
 
+ (expect (c0-ser "(use \"x\" \"y\")")
+         "!(PError 2 '\\'use\\' accepts 1 argument, not 2')")
+ (expect (c0-ser "(use a)")
+         "!(PError 4 'invalid MODULE in (use MODULE); expected a literal string')")
+
+ (p1-block-cc
+  "(use \"MOD\")"
+  (lambda (env sil)
+    (expect env (hash-bind "name" (EXMacro "name" "i")))
+    (expect sil "")
+    (expect *use-test* "MOD"))))
+
+
+;;--------------------------------
+;; (data NAME CTOR...)
+;;--------------------------------
+
+;; read-type
+(expect (read-type (p1 "(Ctor &word a b &list c)") "T1" macro-sym)
+        (DataType "T1" "Ctor" "W S L" "a b c"))
+(expect (DataType "X" "Ctor" "W S L" "a b c")
+        (read-type (p1 "(Ctor \"X\" &word a b &list c)") "T1" macro-sym))
+;; ... &list not at end => use S, not L encoding
+(expect (read-type (p1 "(Ctor &word a &list b c)") "T1" macro-sym)
+        (DataType "T1" "Ctor" "W S S" "a b c"))
+(expect (read-type (p1 "(Ctor &word)") "T1" macro-sym)
+        (PError 1 "no argument following last flag: &word"))
+(expect (read-type (p1 "(Ctor &word &list a)") "T1" macro-sym)
+        (PError 6 "two type flags supplied for one argument"))
+(expect (read-type (p1 "(Ctor &blarg a)") "T1" macro-sym)
+        (PError 4 "unknown flag [supported: &list, &word]"))
+(expect (read-type (p1 "(Ctor &word 1)") "T1" macro-sym)
+        (PError 6 "invalid ARG in (data NAME (CTOR ARG...)...); expected a symbol"))
+(expect (read-type (p1 "(1 &word 1)") "T1" macro-sym)
+        (PError 2 "invalid CTOR in (data NAME (CTOR ARG...)...); expected a symbol"))
+
+;; read-types
+;; ... two success cases
+(expect (read-types macro-sym "!:T"
+                    (pN "(Ctor &word a b &list c) (CtorB a)")
+                    nil nil nil)
+        [ (DataType "!:T0" "Ctor" "W S L" "a b c")
+          (DataType "!:T1" "CtorB" "S" "a") ])
+;; ... error handled in read-types
+(expect (read-types macro-sym "!:T"
+                    (pN "(\"Ctor\" a)")
+                    nil nil nil)
+        (PError 0 "invalid CTOR in (data NAME (CTOR ARG...)...); expected a symbol"))
+;; ... error returned from read-type
+(expect (read-types macro-sym "!:T"
+                    (pN "(1 2)")
+                    nil nil nil)
+        (PError 0 "invalid CTOR in (data NAME (CTOR ARG...)...); expected a symbol"))
 
 ;; ml.special-data
-
-(expect (DataType "T1" "Ctor" "W S L" "a b c")
-        (get-type `(Ctor &word a b &list c) "T1" ["L.1"]))
-
-(expect (DataType "X" "Ctor" "W S L" "a b c")
-        (get-type `(Ctor "X" &word a b &list c) "T1" ["L.1"]))
-
-;; list not at end => use S, not L encoding
-(expect (DataType "T1" "Ctor" "W S S" "a b c")
-        (get-type `(Ctor &word a &list b c) "T1" ["L.1"]))
-
-(expect [ (DataType "!:T0" "Ctor" "W S L" "a b c")
-          (DataType "!:T1" "CtorB" "S" "a") ]
-        (get-types `(data) "!:T" [ `(Ctor &word a b &list c)
-                                   `(CtorB a) ] nil))
-
-(let ((o (ml.special-data `(data T
-                                 (CA a &word b &list c)
-                                 (CB))
-                          (hash-bind "env" "old")
-                          1)))
-
-  (expect (ERecord "S W L" "." "!:T0")
-          (hash-get "CA" (nth 2 o))))
+(expect (c0-ser "(data 1 (X))")
+        "!(PError 4 'invalid NAME in (data NAME (CTOR ARG...)...); expected a symbol')")
+;; ... cascaded error
+(expect (c0-ser "(data Foo (1))")
+        "!(PError 7 'invalid CTOR in (data NAME (CTOR ARG...)...); expected a symbol')")
+;; ... success
+(p1-block-cc
+ "(data T (CA a &word b &list c) (CB))"
+ (lambda (env sil)
+   (expect (ERecord "S W L" "." "!:T0")
+           (hash-get "CA" env))
+   ;; ^add-tags is &global
+   (expect "(^add-tags !1:T0!=CA!0S!0W!0L !1:T1!=CB)"
+           sil)))
 
 
-;; ml.special-case
+;;--------------------------------
+;; (case VALUE (PATTERN BODY)... )
+;;--------------------------------
 
 (expect (append
          (hash-bind "a" (EIL (Builtin "word" [ (String 2) (String 123) ]) "."))
          (hash-bind "b" (EIL (Call "^n" [ (String 3) (String 123) ]) ".")))
-        (arg-bindings [ ["S" "a"] ["S" "b"] ]
+        (arg-bindings [ (PSymbol 0 "a") (PSymbol 0 "b") ]
                       "W S"
-                      "Q 123"))
+                      (String 123)))
 
-(expect
- (Builtin "if" [ (Builtin "filter" [ (String "!:T0")
-                                     (Builtin "firstword" [ (String 1) ]) ])
-                 (Builtin "wordlist" [ (String 4) (String 99999999) (String 1) ])
-                 (String 1)])
-
- (ml.special-case (p1 "(case 1 ((Ctor s w v) v) (a a))")
-                  (hash-bind "Ctor"
-                             (ERecord "S W L" "." "!:T0"))))
+;; single case
+(expect "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}))"
+        (c0-ser "(case v ((Ctor s w v) v))"
+               (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
+                          default-env)))
+;; multiple cases
+(expect "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}),{V})"
+        (c0-ser "(case v ((Ctor s w l) l) (a a))"
+               (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
+                          default-env)))

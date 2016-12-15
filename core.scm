@@ -39,7 +39,8 @@
 ;; this instead of `strip` when operating on vectors.  Word demotion does
 ;; not encode newline characters.
 ;;
-(define `(strip-vec vec)
+(define (strip-vec vec)
+  &inline
   (filter "%" vec))
 
 ;; `butlast` is like `rest`, but from the end of the vector
@@ -330,9 +331,18 @@
                         encodings values ""))
 
         (and pattern
-             (eq record reconstructed)
+             (eq (strip-vec record) (strip-vec reconstructed))
              (concat "(" ctor-name (if encodings " ") arg-text ")")))))
 
+(define *format-funcs* nil)
+
+(define (format-add func)
+  (set *format-funcs* (cons func *format-funcs*)))
+
+(define (format-custom str funcs)
+  (if funcs
+      (or ((first funcs) str)
+          (format-custom str (rest funcs)))))
 
 ;; Return readable and parseable representation of STR.
 ;;
@@ -341,11 +351,13 @@
     (if (eq str (foreach w str (demote (promote w))))
         (concat "[" (foreach w str (format (promote w))) "]")))
 
-  (or (if (findstring "!" str)
+  (or (format-custom str *format-funcs*)
+      (if (findstring "!" str)
           (or (format-hash str)
               (format-record str)))
       (if (or (findstring "!" str)
-              (findstring " " str))
+              (and (findstring " " str)
+                   (isnumber (subst " " "" str))))
           (format-vector str))
       (isnumber str)
       (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" "\t" "\\t"
@@ -388,19 +400,31 @@
   (info (vsprintf *args*)))
 
 
-(define (expect-x o i file-line)
-  (if (eq o i)
+(define (expect-x a b file-line)
+  (if (eq a b)
       (if (findstring "O" SCAM_DEBUG)
-          (print "OK: " (format o)))
-    (begin
-      (print file-line ": error: assertion failed"
-             "\nA: " (format o)
-             "\nB: " (format i) "\n")
-      (error ""))))
+          (print file-line ": OK: " a))
+      (begin
+        (print file-line ": error: assertion failed\n"
+               "A: " (format a) "\n"
+               "B: " (format b) "\n\n"
+               "Raw:\n"
+               "A: " a "\n"
+               "B: " b "\n")
+        (if (not (findstring "K" SCAM_DEBUG))
+            (error "")))))
 
-(define `(expect o i)
-  (expect-x o i (current-file-line)))
+(define `(expect a b)
+  (expect-x a b (current-file-line)))
 
+;; Compare only the formatted results.  This accommodates only minor
+;; differences in the concerete layout that do not affect the meaning.  For
+;; example, a record ending in a &list member (that is empty) will have a
+;; trailing space when constructed, but not after being retrieve from
+;; another record (when stored as a trailing &list parameter).
+;;
+(define `(fexpect a b)
+  (expect-x (format a) (format b) (current-file-line)))
 
 ;; Return 1 if substr appears within str.  Print diagnostic otherwise.
 (define (see substr str)
@@ -552,3 +576,9 @@
   (if (firstword v)
       (f (first v) (foldr f z (rest v)))
       z))
+
+;; Insert VALUE between items of VEC.
+;;
+(define (intersperse value vec)
+  (subst " " (concat " " [value] " ")
+         vec))

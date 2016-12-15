@@ -1,40 +1,31 @@
+;;--------------------------------------------------------------
 ;; gen : Environment, IL, and related utilities.
+;;--------------------------------------------------------------
 
 (require "core")
 (require "io")
 (require "parse")
 (require "escape")
 
-;;--------------------------------------------------------------
-;; Compilation is divided into two stages:
-;;
-;;   c0:  form --> IL        [gen0.scm]
-;;   c1:  IL --> object      [gem1.scm]
-;;
-;; A "form" is an AST node, as described in parse.scm, or an additional
-;; node type that is used for code generation purposes:
-;;
-;;   I <IL>   -->  IL pass-through
-;;
-;; "Object" is GNU Make syntax, e.g. `$(subst $1,$2,$3)`.
+;; IL Records
+;; ----------
 ;;
 ;; "IL" is an intermediate language, structured as a tree of vectors.  The
 ;; first word of each vector describes its type.  IL constructs map closely
 ;; to GNU Make constructs.
-;;
-;;   Q.<n> str             literal            str
-;;   V str                 var reference      $(str)
-;;   F str <a> <b> ...     call builtin       $(str <a>,<b>,...)
-;;   f str <a> <b> ...     call user func     $(call str,<a>,<b>,...)
-;;   U <n> <ups>           local var ref      $n  or  $(call ^e,$n,UPS)
-;;   Y <f> <a> <b> ...     lambda call        $(call ^Y,<a>,...,<f>)
-;;   C <a> <b> <c> ...     concatenation      <a><b><c>
-;;   B <a> <b> <c> ...     sequence (block)
-;;   X <a>                 nested function    quote (c1 <a>)
-;;   E.<n> <description>   error
-;;
-;; NOTE: "Q" and "E" nodes may have ".LOC" appended to their first word.
-;;
+
+(data IL
+      (String  value)                      ; "value"
+      (Var     name)                       ; "$(name)"
+      (Builtin &word name  &list args)     ; "$(name ARGS...)"
+      (Call    name        &list args)     ; "$(call name,ARGS...)"
+      (Local   &word ndx   &word level)    ; "$(ndx)"
+      (Funcall &list nodes)                ; "$(call ^Y,NODES...)"
+      (Concat  &list values)               ; "VALUES..."
+      (Block   &list nodes)                ; "$(if NODES,,)"
+      (Lambda  node)                       ; (lamda-quote (c1 node))
+      (ILEnv   env &list node))            ; used during phase 0
+
 ;; Blocks
 ;;
 ;;   Blocks are sequences of expressions, as in a `begin` expression or a
@@ -45,30 +36,19 @@
 ;;   expressions.  Block-level expressions are special in that they can
 ;;   modify the environment for expressions that follow them in the block.
 ;;
+;; ILEnv
+;;
+;;    When inside of a "block" environment -- e.g. (begin ...) -- some
+;;    expressions generate an environment along with code.  In that context,
+;;    they will return an ILEnv record, which is then unwrapped by c0-block.
+;;    ILEnv should never be presented to phase 1.
+;;
 ;; Errors
 ;;
-;;  Errors should always include document positions.  The <decription>
-;;  field is a demoted string.  E.g. "E.250 undefined!0symbol"
-
-(data IL
-      (String  "Q" value)
-      (Var     "V" name)
-      (Builtin "F" &word name  &list args)
-      (Call    "f" name        &list args)
-      (Local   "U" &word ndx   &word level)
-      (Funcall "Y" &list nodes)
-      (Concat  "C" &list values)
-      (Block   "B" &list nodes)
-      (Lambda  "X" code))
-
-;; These nodes generate code with balanced parens and without leading or
-;; trailing whitespace.
-(define `(is-balanced? node)
-  (filter "F f Y V" (word 1 node)))
-
-
-;;--------------------------------------------------------------
-;; Environment
+;;   PError records may occur where IL records may appear.  See parse.scm.
+;;
+;; Environment Records
+;; -------------------
 ;;
 ;; The environment is a stack of bindings: a vector of hash entries with
 ;; newer (lexically closer) bindings toward the beginning.  When used as a
@@ -77,22 +57,24 @@
 ;;
 
 (data EDefn
-      (EBuiltin "B" name &word priv argc) ; builtin function
-      (EFunc    "F" name &word priv inln) ; function var or compound macro
-      (EVar     "V" name &word priv)      ; data variable
-      (ESMacro  "M" name &word priv)      ; symbol macro
-      (EXMacro  "X" name &word priv)      ; executable macro
-      (ERecord  "R" encs &word priv tag)  ; data record type
-      (EIL      "I" node &word priv)      ; pre-compiled IL node
-      (EArg     "A" &word argref)         ; function argument
-      (EMarker  "$" &word level))         ; lambda marker
+      (EBuiltin name &word priv argc) ; builtin function
+      (EFunc    name &word priv inln) ; function var or compound macro
+      (EVar     name &word priv)      ; data variable
+      (ESMacro  form &word priv)      ; symbol macro
+      (EXMacro  name &word priv)      ; executable macro
+      (ERecord  encs &word priv tag)  ; data record type
+      (EIL      node &word priv)      ; pre-compiled IL node
+      (EArg     &word argref)         ; function argument
+      (EMarker  &word data))          ; marker
 
 (define `(EDefn.priv defn)
   (word 3 defn))
 
-;; NAME = the actual name of global function/variable or builtin.
-;;        The name "#" indicates that the binding is a symbol macro, and
-;;        not an actual function variable.
+(define `MacroName "#")
+
+;; NAME = the actual name of global function/variable or builtin.  The name
+;;        MacroName indicates that the binding is a symbol macro, and not an
+;;        actual function variable.
 ;;
 ;; PRIV describes the scope and origin of top-level bindings.  This scope
 ;;      is used to decide which symbols to export from a file.  The origin
@@ -109,22 +91,26 @@
 ;;              are not present in the environment at the end of the file.
 ;;
 ;; INLN = definition of an '&inline' function or compound macro body.
-;;         (first INLN) = vector of argument names
-;;         (rest INLN) = a vector of forms
+;;         [ [ARGNAME...] BODY...]
+;;    where each ARGNAME is a string and BODY... is a vector of forms.
 ;;
 ;; ARGREF = argument reference:
-;;         A $1   --> argument #1 to top-level function
-;;         A $$1  --> argument #1 to function within a function
-;;         A $$$$1  --> argument #1 to third-level nested function
+;;      .1   --> argument #1 of a top-level function
+;;      ..1  --> argument #1 of a function within a function
+;;      ...1 --> argument #1 of a  third-level nested function
 ;;
 ;; FORM = an AST node that describes the symbol macro definition.  This
 ;;     will be expanded in the scope of the bindings in effect where the
 ;;     macro was defined.
 ;;
-;; EMarker values identify the current depth of function nesting.  Each one
-;; is bound to the key "$".  Its `level` is a string of `$` characters (one
-;; per level of nesting).
+;; EMarker values embed contextual data other than variable bindings.  They
+;; use keys that begin with ":" to distinguish them from variable names.
 
+;; The current function nesting level: ".", "..", "...", and so on.
+(define `LambdaMarkerKey ":")
+
+;; The source position of the macro invocation.
+(define `MacroMarkerKey ":m")
 
 ;; Exports and Imports
 ;; -------------------
@@ -179,7 +165,7 @@
 ;;
 ;; Global variable `^tags` holds a hash that maps TAGs to PATTERNs for all
 ;; constructors whose definitions have been executed.
-
+;;
 ;;--------------------------------------------------------------
 
 
@@ -199,15 +185,94 @@
 (declare *compile-mods*)
 
 
+(define `NoOp
+  (String ""))
+
+;; Merge consecutive (String ...) nodes into one node.  Retain all other
+;; nodes.
+;;
+(define (il-merge-strings nodes accum)
+  (case (first nodes)
+    ((String value)
+     (il-merge-strings (rest nodes) (concat accum value)))
+    (else
+     (append (if accum
+                 [(String accum)])
+             (word 1 nodes)
+             (if (word 2 nodes)
+                 (il-merge-strings (rest nodes) ""))))))
+
+
+(define (il-flatten nodes)
+  (append-for node nodes
+              (case node
+                ((Concat children)
+                 (il-flatten children))
+                (else [node]))))
+
+
+;; Concatenate nodes in IL domain.
+;;
+(define (il-concat nodes)
+  (let ((nodes-out (il-merge-strings (il-flatten nodes) "")))
+    (if (word 2 nodes-out)
+        (Concat nodes-out)
+        (or (first nodes-out)
+            NoOp))))
+
+
+;; Demote in IL domain
+(define (il-demote node)
+  (or (case node
+        ((String value) (String (word 2 node)))
+        ((Call name args) (if (eq name "^u")
+                              (first args))))
+      (Call "^d" [node])))
+
+
+;; Promote in IL domain
+(define (il-promote node)
+  (Call "^u" [ node ]))
+
+
 ;;--------------------------------------------------------------
 ;; Environment functions
 ;;--------------------------------------------------------------
 
-;; Return the global name that should be assigned, given a local name.
+;; Namespacing
+;; -----------
 ;;
-;; We use `SCAM_NS` when compiling the compiler.  This allows code built by
-;; two different compilers to co-exist in one Make instance, and it helps
-;; avoid conflicts between compiler-internal symbols and user code.
+;; Namespaces help avoid conflicts bewteen compiler sources and "target"
+;; code, which must coexist in the same Make instance in the following
+;; scenarios:
+;;
+;;  - In interactive mode, expressions are compiled and then executed.
+;;
+;;  - An executable may be composed of modules compiled from source and
+;;    other modules that had been bundled with the compiler.
+;;
+;;  - "use" statements specify modules to be executed by the compiler,
+;;    perhaps after being compiled by the same compiler.
+;;
+;; See reference.md for more on namepaces.
+;;
+;; The global variable SCAM_NS provides the namespace prefix during
+;; compilation.
+;;
+;; (gen-global-name SCAM-NAME FLAGS)
+;;
+;;     This function generates a global name using the run-time value of
+;;     SCAM_NS.  It is employed by the compiler itself.
+;;
+;; (global-name SYMBOL)
+;;
+;;    This special form retrieves the global name associated with the SYMBOL
+;;    in the current environment.  This can be used to convert a target
+;;    function/variable name to a string suitable for passing to `call`,
+;;    `value`, `origin`, etc..  Note: this reflects the value of SCAM_NS
+;;    when the module defining SYMBOL was compiled, which may or may not
+;;    match the NS used by the module invoking global-name -- for example,
+;;    the symbol might be from target code, or from a bundled module.
 ;;
 ;; If FLAGS contains a word ending in "&global", the symbol name is returned
 ;; unmodified.
@@ -238,7 +303,7 @@
 ;; with any other symbol generated with the same `env` and a different `base`.
 ;;
 (define (gensym base env)
-  (concat "S " (gensym-name (symbol-name base) env)))
+  (PSymbol 0 (gensym-name (symbol-name base) env)))
 
 
 ;; Return all words after first occurrence of `item` in `vec`.
@@ -255,7 +320,7 @@
 ;; any lambda markers that are currently in effect.
 ;;
 (define (env-rewind-M env name)
-  (append (hash-find "$" env)
+  (append (hash-find LambdaMarkerKey env)
           (after (hash-find name env) env)))
 
 
@@ -263,7 +328,7 @@
 ;; index from `form`.
 ;;
 (define (gen-error form fmt ...)
-  [(concat "E." (form-index form)) (vsprintf (rest *args*))])
+  (PError (form-index form) (vsprintf (rest *args*))))
 
 
 ;; Display a warning during compilation.
@@ -273,34 +338,50 @@
                         (pdec *compile-subject*)
                         *compile-file*)))
 
+(define (form-description code)
+  (cond
+   ((eq code "%") "form")
+   ((eq code "L") "list")
+   ((eq code "S") "symbol")
+   ((eq code "Q") "literal string")
+   (else (form-typename code))))
+
+
+(define (err-expected types form parent what where arg1 arg2)
+  (gen-error (or form parent)
+             (concat
+              (if form "invalid" "missing") " " what " in " where
+              (if types (concat "; expected a "
+                                (concat-for ty types " or "
+                                            (form-description ty)))))
+             arg1 arg2))
+
+
 ;; Check that FORM matches a form type in TYPES.  If not, return
 ;; an IL error node describing the error.
 ;;
-;; types = a list of acceptable form types, or "" if any non-empty form will do
-;; context = synopsis of syntax being parsed
-;; desc = element within `context` being checked
+;; TYPES = a list of acceptable form types, or "" if any non-empty form will do
+;; WHERE = synopsis of syntax being parsed
+;; WHAT = element within `where` being checked
 ;;
-(define (check-type types form parent desc context)
-  (if (filter (or (patsubst "%" "%%" types) "%") (word 1 form))
-      nil
-      (gen-error (or form parent)
-                 (concat
-                  (if form "invalid" "missing") " " desc " in " context
-                  (if types (concat "; expected a "
-                                    (concat-for ty types " or "
-                                                (form-typename ty))))))))
+;;(define (check-type types form parent what where)
+;;  (if (not (filter (or (patsubst "%" "%%" types) "%") (word 1 form)))
+;;      (err-expected types form parent what where nil)))
+
+;;(define `(check-form ctor form parent what where)
+;;  (check-type (word 1 ctor) form parent what where))
 
 
-;; cnt = number, or string containing more than one number, e.g. "2 or 3"
-
-(define (check-argc cnt form)
-  (define `args (rrest form))
-  (if (filter-out cnt (words args))
-      (gen-error (nth 2 form)
-                "%q accepts %s arguments, not %s"
-                (symbol-name (nth 2 form))
-                cnt
-                (words args))))
+;; EXPECTED = filter pattern to match number of arguments, e.g. "2 or 3"
+;; ARGS = array of arguments
+;; SYM = symbol for function/form that is being invoked
+;;
+(define (check-argc expected args sym)
+  (if (filter-out expected (words args))
+      (gen-error sym
+                 (subst "%S" (if (eq expected 1) "" "s")
+                        "%q accepts %s argument%S, not %s")
+                 (symbol-name sym) expected (words args))))
 
 
 ;; env-compress: compress a vector of nested vectors for inclusion in a line
@@ -344,7 +425,7 @@
 (define (import-binding key defn d-name)
   ;; Return the demoted form of the nth item, but with nil represented as nil, not "!."
   (define `(dnth n vec)
-    (subst "!." "" (word n vec)))
+    (subst [""] "" (word n vec)))
 
   (if (not (is-private? defn))
       (hash-bind key (append (wordlist 1 2 defn)
@@ -363,9 +444,9 @@
 ;;        macros/inline functions will be tagged with `filename`.
 ;; d-name = name of the module containing the exports (demoted)
 ;;
-(define (env-import exports priv d-name)
+(define (env-import exports read-priv d-name)
   &private
-  (if priv
+  (if read-priv
       exports
       (strip-vec
        (foreach b exports
@@ -407,21 +488,17 @@
 ;; environment entries, not just public ones.  Return `nil` on error (bad
 ;; filename).
 ;;
-(define (env-from-file filename priv)
+(define (env-from-file filename read-priv)
   &private
   ;; This is used to ensure a harmless non-nil result.
   (define `modname (notdir (basename filename)))
 
   (if filename
-      (or (env-import (env-load filename) priv [modname])
+      (or (env-import (env-load filename) read-priv [modname])
           *dummy-env*)))
 
 
 (memoize (global-name env-from-file))
-
-
-;;----------------------------------------------------------------
-;; Load imports from an object file
 
 
 ;; Return the location of the object file, given the module name.
@@ -449,8 +526,8 @@
 ;; Return: ENV     on success
 ;;         nil     on failure  (module not found)
 ;;
-(define (require-module mod priv)
-  (env-from-file (mod-find mod) priv))
+(define (require-module mod read-priv)
+  (env-from-file (mod-find mod) read-priv))
 
 
 ;; Perform a compile-time import of "mod", returning env entries to be added
@@ -495,18 +572,10 @@
 ;;  name = name of macro or function
 ;;  defn = definition (in env) [when rewinding to an EFunc]
 ;;
-(define (env-rewind env name defn)
-  (append (hash-find "$" env)
-          ;; non-inline binding
-          (and defn
-               (not (filter "#" (word 2 defn)))
-               (hash-bind name (wordlist 1 2 defn)))
+(define (env-rewind env name)
+  (append (hash-find LambdaMarkerKey env)
           (env-rewind-x env name)))
 
-
-;;--------------------------------------------------------------
-;; Default (base) environment
-;;--------------------------------------------------------------
 
 (define base-env
   (let&
@@ -535,11 +604,23 @@
 ;; For non-symbols, return "-" (meaning, essentially, "not applicable").
 ;;
 (define (resolve form env)
-  (define `(find-name form hash)
+  (define `(find-name name hash)
     ;; equivalent to `(hash-find (symbol-name form) hash)` but quicker
-    (filter (concat (word 2 form) "!=%") hash))
+    (filter (concat (subst "!" "!1" name) "!=%") hash))
 
-  (if (symbol? form)
-      (hash-value (or (find-name form env)
-                      (find-name form base-env)))
-      "-"))
+  (case form
+    ((PSymbol n name) (hash-value (or (find-name name env)
+                                      (find-name name base-env))))
+    (else "-")))
+
+
+;;
+;; AST utilities
+;;
+
+;; Make a valid expression from a vector of forms.
+;;
+(define (begin-block forms)
+  (if (and forms (not (word 2 forms)))
+      (first forms)
+      (PList 0 (cons (PSymbol 0 "begin") forms))))

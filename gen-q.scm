@@ -4,6 +4,33 @@
 (require "parse")
 (require "gen" &private)
 
+;;
+;; IL-related definitions
+;;
+
+(expect (String "")
+        (il-concat))
+(expect (String "abc")
+        (il-concat [ (String "abc") ]))
+(expect (String "ab")
+        (il-concat [ (String "a") (String "b") ]))
+(expect (Concat [ (String "ab") (Var "V") (String "cd") ])
+        (il-concat [ (String "a")
+                     (Concat [ (String "b") (Var "V") (String "c") ])
+                     (String "d") ]))
+
+
+(expect (Call "^d" [ (Var "V") ])
+        (il-demote (Var "V")))
+(expect (String ["a b"])
+        (il-demote (String "a b")))
+(expect (Var "V")
+        (il-demote (Call "^u" [ (Var "V") ])))
+
+
+;;
+;; Environment definitions
+;;
 
 ;; after, env-rewind
 
@@ -19,30 +46,27 @@
                       "m"))
 
 (expect (append
-         (hash-bind "$" "$$")
-         (hash-bind "f" ["F" "f"])  ;; wordlist 1 2
+         (hash-bind LambdaMarkerKey "..")
          (hash-bind "a" "asdf"))
         (env-rewind (hash-bind "x" 1
-                          (hash-bind "$" "$$"
+                          (hash-bind LambdaMarkerKey ".."
                                 (hash-bind "f" (EFunc "f" "." "")
                                       (hash-bind "a" "asdf"))))
-                    "f"
-                    (EFunc "f" "priv" "DEFN")))
-
+                    "f"))
 
 
 ;; gensym
 
 (expect "foo&"   (gensym-name "foo"))
-(expect "S foo&" (gensym "S foo"))
-(expect "S foo&1" (gensym "S foo"
-                          (hash-bind (symbol-name (gensym "S foo"))
+(expect (PSymbol 0 "foo&") (gensym (PSymbol 0 "foo")))
+(expect (PSymbol 0 "foo&1") (gensym (PSymbol 0 "foo")
+                          (hash-bind (symbol-name (gensym (PSymbol 0 "foo")))
                                      (EVar "x" "."))))
 
 ;; gen-error
 
-(expect ["E.12" "Msg: hello error"]
-        (gen-error "Q.12 x" "Msg: %s %s" "hello" "error"))
+(expect (PError 12 "Msg: hello error")
+        (gen-error (PString 12 "x") "Msg: %s %s" "hello" "error"))
 
 
 ;; env-compress
@@ -53,10 +77,10 @@
 
 ;; env-export & env-import
 
-(expect "# Exports: vname!Vvarname,. fname|realname,.,DEFN\n"
-        (env-export
-         (append (hash-bind "vname" (EVar "varname" "."))
-                 (hash-bind "fname" (EFunc "realname" "." "DEFN")))))
+;(expect "# Exports: vname!Vvarname,. fname|realname,.,DEFN\n"
+;        (env-export
+;         (append (hash-bind "vname" (EVar "varname" "."))
+;                 (hash-bind "fname" (EFunc "realname" "." "DEFN")))))
 
 
 (define (export-round-trip env flag filename)
@@ -72,14 +96,14 @@
 
 (expect (append (hash-bind "f" (EFunc "f" "i" nil))
                 (hash-bind "x" (EVar "X" "i"))
-                (hash-bind "a" (EFunc "fa" "iMOD" ["a b" "S a"]))
+                (hash-bind "a" (EFunc "fa" "iMOD" ["a b" (PSymbol 0 "a")]))
                 (hash-bind "m" (ESMacro "Q 1" "iMOD"))
                 (hash-bind "a:n\n,x" (EVar "xyz" "i")))
 
         (export-round-trip
          (append (hash-bind "f" (EFunc "f" "." nil))
                  (hash-bind "x" (EVar "X" "."))
-                 (hash-bind "a" (EFunc "fa" "." ["a b" "S a"]))
+                 (hash-bind "a" (EFunc "fa" "." ["a b" (PSymbol 0 "a")]))
                  (hash-bind "g" (EFunc "g" "p" nil))  ;; private
                  (hash-bind "g" (EFunc "g" "i" nil))  ;; imported
                  (hash-bind "m" (ESMacro "Q 1" "."))
@@ -92,7 +116,7 @@
 
 (expect (append (hash-bind "f" (EFunc "f" "." nil))
                 (hash-bind "x" (EVar "X" "."))
-                (hash-bind "a" (EFunc "a" "i" ["a b" "S a"]))
+                (hash-bind "a" (EFunc "a" "i" ["a b" (PSymbol 0 "a")]))
                 (hash-bind "g" (EFunc "g" "p" nil))
                 (hash-bind "g" (ESMacro "g" "i"))  ;; imported
                 (hash-bind "a:n\n,x" (EVar "xyz" ".")))
@@ -100,7 +124,7 @@
         (export-round-trip
          (append (hash-bind "f" (EFunc "f" "." nil))
                  (hash-bind "x" (EVar "X" "."))
-                 (hash-bind "a" (EFunc "a" "i" ["a b" "S a"]))
+                 (hash-bind "a" (EFunc "a" "i" ["a b" (PSymbol 0 "a")]))
                  (hash-bind "g" (EFunc "g" "p" nil))  ;; private
                  (hash-bind "g" (ESMacro "g" "i"))    ;; imported macro
                  (hash-bind "a:n\n,x" (EVar "xyz" ".")))
@@ -110,4 +134,7 @@
 ;; base-env and resolve
 
 (expect (EVar "^av" "b")
-        (resolve ["S" "*args*"] base-env))
+        (resolve (PSymbol 0 "*args*") base-env))
+
+(expect (EVar "D!0!" nil)
+        (resolve (PSymbol 0 "d!0!") (hash-bind "d!0!" (EVar "D!0!" nil))))

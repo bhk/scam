@@ -527,21 +527,18 @@ variables, and other values will be stored in simple variables.
 ### Namespaces
 
 Since Make supports only one variable namespace, combining different
-programs can result in errors when they contain variable names that
-conflict.
+programs or libraries can result in errors when they contain variable names
+that conflict.  In order to avoid naming conflicts between SCAM itself and
+the code it is compiling, the SCAM compiler is built with a different
+namespace: a prefix is added to each global variable and function.  A
+namespace-prefixed name is called a "global" name.  The global names for
+functions obtained from a bundled library may differ from the name seen in
+SCAM source.  The following language features expose namespace
+functionality:
 
-SCAM supports namespaces in order to help avoid this problem.  When a
-namespace is in effect, SCAM will prepend it to the Make variable names that
-are used for global variables declared in SCAM.  This namespace-prefixed
-name is called the "global name" of the variable, whereas the name used in
-SCAM sources is called the "local name".
-
-The following language features expose namespace functionality:
-
- - `(global-name SYMBOL)` evaluates to the global name for SYMBOL.
-
- - `(local-to-global EXPR)` evaluates to the global name corresponding to
-   the local name given by EXPR.
+ - `(global-name SYMBOL)` evaluates to the global name for SYMBOL.  You can
+   use this to obtain the string value of a name, suitable for passing to
+   (call NAME,...), (origin NAME,...), etc.
 
  - The `&global` flag can be used with a `declare` or `define` expression to
    avoid namespace prefixing.  In this case, the global name of the symbol
@@ -961,14 +958,13 @@ it accepts multiple pairs of replacement strings.  For example:
 
 [Special form]
 
-    (foreach VAR LIST EXPR)
+    (foreach VAR LIST BODY)
 
-The `foreach` special form iterates over a list, evaluates an expression
-once for each word, and constructs a new word list from the results of
-each evaluation.
+The `foreach` special form iterates over a list, evaluates BODY (a sequence
+of expressions) once for each word, and constructs a new word list from the
+results of each evaluation.
 
-Each word is bound to the name `VAR` and `EXPR` is evaluated to obtain
-the corresponding word in the new list.
+Each word is bound to the name `VAR` while `BODY` is evaluated.
 
 SCAM provides a macro named `foreach` that is more intuitive:
 
@@ -979,10 +975,10 @@ SCAM provides a macro named `foreach` that is more intuitive:
 
 [Special form]
 
-    (for VAR VECTOR EXPR)
+    (for VAR VECTOR BODY)
 
-`for` iterates over items in a vector, evaluating EXPR for with VAR bound to
-an item, constructing a new vector with the results of EXPR. Example:
+`for` iterates over items in a vector, evaluating BODY for with VAR bound to
+an item, constructing a new vector with the results of BODY. Example:
 
     > (for x [[1 2] [3 4]]
     +     (reverse x))
@@ -993,10 +989,10 @@ an item, constructing a new vector with the results of EXPR. Example:
 
 [Special form]
 
-    (append-for VAR VECTOR EXPR)
+    (append-for VAR VECTOR BODY)
 
 `append-for` is similar to `for` but it appends together all of the (vector)
-values of EXPR.  This is functionally similar to what is called `concat-map`
+values of BODY.  This is functionally similar to what is called `concat-map`
 in some other languages.
 
     > (append-for x [[1 2] [3 4]]
@@ -1011,9 +1007,9 @@ in some other languages.
 
 [Special form]
 
-    (concat-for VAR VECTOR DELIM EXPR)
+    (concat-for VAR VECTOR DELIM BODY)
 
-`concat-for` is similar to `for` but it concatenates the values of EXPR.
+`concat-for` is similar to `for` but it concatenates the values of BODY.
 
     > (concat-for x [1 2 3] ";" (wordlist 1 x "a b c"))
     "a;a b;a b c"

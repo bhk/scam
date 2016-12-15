@@ -2,24 +2,42 @@
 ;; parse-q : parsing tests
 ;;--------------------------------
 
-(require "core")
 (require "parse" &private)
 
 ;;--------------------------------
+;; utilities
+;;--------------------------------
+
+(format-add POut-format)
 
 (define (check-eq expected actual)
     (if (eq expected actual)
         1
-        (print "Expected: \"" expected "\"\n"
-               "  Actual: \"" actual "\"")))
+        (print "Expected: " (format expected) "\n"
+               "  Actual: " (format actual) )))
+
+;; parse test
+(define (pt pos o i)
+  (check-eq (append pos o) (parse-exp (penc i) 1)))
+
+(define (p1 text)
+  (parse-exp (penc text) 1))
+
 
 ;;--------------------------------
+;; tests
+;;--------------------------------
+
+(expect 3 (form-index (PString 3 0)))
+(expect 2 (form-index 2))
 
 ;; penc isolates tokens as words
 
+(expect "0 ( "                  (penc "0("))
+(expect "a : b"                 (penc "a:b"))
 (expect "a !0!0 b !0!0 ( "      (penc "a  b  ("))
 (expect "a !0!0 b !0!0 ( !0 !1" (penc "a  b  ( !"))
-(expect "!b \" "                (penc "\\\\\""))
+;(expect "!b \" "                (penc "\\\\\""))
 (expect "!b!Q"                  (penc "\\\\\\\""))
 (expect " , , ,@ , "            (penc ",,,@,"))
 
@@ -48,87 +66,87 @@
                 "a\\\"b"))
 
 
-;;--------------------------------
+(expect "a b c" (string-value (PString 0 "a b c")))
+(expect "a b c" (symbol-name (PSymbol 0 "a b c")))
+(fexpect (PString 1 "x") (symbol-to-string (PSymbol 1 "x")))
 
-
-(define (pexpect pat value)
-  (if (not (filter pat value))
-      (expect pat value)))
-
-
-;; form value accessors
-(pexpect "S%" (symbol? `x))
-(expect ""  (symbol? `"x"))
-(pexpect "Q%" (string? "Q x"))
-(expect ""  (string? "S x"))
-(pexpect "L%" (list? "L"))
-(expect "a b c" (string-value ["Q" "a b c"]))
-(expect "a b c" (symbol-name ["S" "a b c"]))
-(expect "Q x" (symbol-to-string "S x"))
-
-;(expect "S z" (list-nth 3 ["L" "S x" "S y" "S z"]))
+;; form-set-indices
+(fexpect (PList 0 [ (PString 0 1) (PSymbol 0 2) ])
+         (form-set-indices 0 (PList 9 [ (PString 8 1) (PSymbol 7 2) ])))
 
 ;; format-form
-(expect "(foo (x \"y\"))"  (format-form
-                            ["L" "S foo" ["L" "S x" "Q y"]]))
-(expect "(foo ,\"x\")" (format-form ["L" "S foo" "x"]))
-(expect "`(foo)" (format-form ["`" ["L" "S foo"]]))
+(fexpect "(foo (x \"y\"))"  (format-form
+                            (PList 0 [ (PSymbol 0 "foo")
+                                       (PList 0 [ (PSymbol 0 "x") (PString 1 "y") ])])))
+(fexpect "(foo ,\"x\")" (format-form (PList 0 [ (PSymbol 0 "foo") "x" ])))
+(fexpect "`(foo)" (format-form (PQQuote 0 (PList 0 [ (PSymbol 0 "foo") ]))))
 
 ;; find-word
-(expect 3 (find-word "b a b c" 2 "b"))
+(fexpect 3 (find-word "b a b c" 2 "b"))
 
-;; Q ...
-(expect "5 Q.1 abc!0def" (parse-exp (penc "\"abc def\"") 1))
+;; parse-exp: unterminated error
+(fexpect (POut 2 (PError 2 ")"))
+        (parse-exp "!0 )" 1))
 
-;; parse test
-(define (pt pos o i)
-  (check-eq (append pos o) (parse-exp (penc i) 1)))
+;; parse-exp: string
+(fexpect (cons 5 (PString 1 "abc def"))
+         (parse-exp (penc "\"abc def\"") 1))
 
 ;; simple errors
-(expect 1 (pt 2 "E.2 ." " "))
-(expect 1 (pt 1 "E.1 )" ")"))
-(expect 1 (pt 1 "E.1 ]" "]"))
-(expect 1 (pt 2 "E.2 '" " ' a)"))
+(fexpect (POut 2 (PError 2 "."))  (p1 " "))
+(fexpect (POut 2 (PError 2 "."))  (p1 " "))
+(fexpect (POut 1 (PError 1 ")"))  (p1 ")"))
+(fexpect (POut 1 (PError 1 "]"))  (p1 "]"))
+(fexpect (POut 2 (PError 2 "'"))  (p1 " ' a)"))
+
+;; invalid characters
+(fexpect (POut 1 (PError 1 "$")) (p1 "$b"))
+(fexpect (POut 1 (PError 1 ":")) (p1 ":b"))
+(fexpect (POut 1 (PError 1 "%")) (p1 "%b"))
 
 ;; symbols
-(expect 1 (pt 1 "S.1 abc"       "abc def"))
+(fexpect (POut 1 (PSymbol 1 "abc"))  (p1 "abc def"))
 
 ;; numbers
-(expect 1 (pt 1 "Q.1 123"       "123 def"))
+(fexpect (POut 1 (PString 1 123))  (p1 "123 def"))
 
 ;; literal strings
-(expect 1 (pt 5 ["Q.1" "a b\nc"]   "\"a b\\nc\""))
-(expect 1 (pt 5 ["Q.1" "x bc"]     "\"x bc\" def"))
-(expect 1 (pt 2 ["Q.1" ""]         "\"\" abc"))
-(expect 1 (pt 4 ["Q.1" "y\"b;c"]   "\"y\\\"b;c\" def"))
-(expect 1 (pt 4 ["Q.1" "y\"b;c"]   "\"y\\\"b;c\" def"))
-(expect 1 (pt 2 ["E.1" "\""]       "\""))
+(fexpect (POut 5 (PString 1 "a b\nc"))  (p1 "\"a b\\nc\""))
+(fexpect (POut 5 (PString 1 "x bc"))    (p1 "\"x bc\" def"))
+(fexpect (POut 2 (PString 1 ""))        (p1 "\"\" abc"))
+(fexpect (POut 4 (PString 1 "y\"b;c"))  (p1 "\"y\\\"b;c\" def"))
+(fexpect (POut 4 (PString 1 "y\"b;c"))  (p1 "\"y\\\"b;c\" def"))
+(fexpect (POut 2 (PError 1 "\""))       (p1 "\""))
 
 ;; comments
-(expect 1 (pt 3 "S.3 abc"       ";comment\nabc def"))
+;; (expect (POut 3 (PSymbol 3 "abc"))    (p1 ";comment\nabc def"))
 
 ;; lists
-(expect 1 (pt 3 ["L.1" "S.2 pyt"]    "(pyt)"))
-(expect 1 (pt 5 ["L.1" "S.3 xyz"]    "( xyz )"))
-(expect 1 (pt 7 ["L.1" "S.2 a" "L.4"]  "(a () )"))
-(expect 1 (pt 1 ["E.1" ")"] ")"))
-(expect 1 (pt 1 ["E.1" "("] "( a"))
-(expect 1 (pt 5 ["E.5" "]" ")"] "( a ]"))
+(fexpect (POut 3 (PList 1 [ (PSymbol 2 "pyt") ]))             (p1 "(pyt)"))
+(fexpect (POut 5 (PList 1 [ (PSymbol 3 "xyz") ]))             (p1 "( xyz )"))
+(fexpect (POut 7 (PList 1 [ (PSymbol 2 "a") (PList 4 []) ]))  (p1 "(a () )"))
+(fexpect (POut 1 (PError 1 ")"))                              (p1 ")"))
+(fexpect (POut 1 (PError 1 "("))                              (p1 "( a"))
+(fexpect (POut 5 (PError 5 "] )"))                            (p1 "( a ]"))
 
 ;; vectors
-(expect 1 (pt 5 ["L.1" "S vector" "Q.2 1" "Q.4 293"]  "[1 293] 3"))
-(expect 1 (pt 1 "E.1 ["  "["))
-(expect 1 (pt 3 "E.3 ) ]"  "[ ) ]"))
-(expect 1 (pt 5 "E.5 ] ) ]"  "[ ( ]"))
+(fexpect (POut 5 (PList 1 [ (PSymbol 0 "vector")
+                           (PString 2 1) (PString 4 293) ]))
+        (p1 "[1 293] 3"))
+(fexpect (POut 1 (PError 1 "[") ) (p1 "["))
+(fexpect (POut 3 (PError 3 ") ]")) (p1 "[ ) ]"))
+(fexpect (POut 5 (PError 5 "] ) ]")) (p1  "[ ( ]"))
 
 ;; quote with "'"
-(expect 1 (pt 7 ["'.2" ["L.3" "S.4 qwe" "Q.6 1"]] " '(qwe 1)"))
-(expect 1 (pt 2 ["'.1" "S.2 jkl"] "'jkl"))
+(fexpect (POut 7 (PQuote 2 (PList 3 [ (PSymbol 4 "qwe") (PString 6 1) ])))
+         (p1 " '(qwe 1)"))
+(fexpect (POut 2 (PQuote 1 (PSymbol 2 "jkl")))
+         (p1 "'jkl"))
 
 ;; backquote & unquote
-(expect 1 (pt 9 ["`.1" ["L.2" "S.3 a" "Q.5 1" [",.7""S.8 b"]]]
-    "`(a 1 ,b)"))
-(expect 1 (pt 1 "E.1 `" "`"))
+(fexpect (POut 7 (PQQuote 1 (PList 2 [ (PString 3 1) (PUnquote 5 (PSymbol 6 "b")) ])))
+         (p1 "`(1 ,b)"))
+(fexpect (POut 1 (PError 1 "`")) (p1 "`"))
 
 
 ;; get-line-info
@@ -172,26 +190,27 @@
   (describe-error form "\"abc)\n(def)\n" "TFILE"))
 
 (expect 1 (see "TFILE:1: unterminated string\nat: *\"*abc"
-               (tde "E.1 \"")))
+               (tde (PError 1 "\""))))
 
 (expect 1 (see "TFILE:2: unmatched \"(\"\nat: *(*def)\n"
-               (tde "E.5 ( blahblah")))
+               (tde (PError 5 "( blahblah"))))
 
 (expect 1 (see "TFILE:1: unmatched \")\"\n"
-               (tde "E.1 )")))
+               (tde (PError 1 ")"))))
 
 (expect 1 (see "prefix \"'\" must immediately precede"
-               (tde "E.1 '")))
+               (tde (PError 1 "'"))))
 
 (expect 1 (see "prefix \"`\" must"
-               (tde "E.1 `")))
+               (tde (PError 1 "`"))))
 
 (expect 1 (see "TFILE:2: invalid frob\nat: *(*def)\n"
-               (tde ["E.5" "invalid frob"])))
+               (tde (PError 5 "invalid frob"))))
 
 ;; parse-text
 
-(expect [ ["L.1" "S.2 or" "Q.4 1"] "S.7 a" ]
+(fexpect [ (PList 1 [ (PSymbol 2 "or") (PString 4 1) ])
+          (PSymbol 7 "a") ]
         (parse-text "(or 1) a"))
 
 (print "parse ok")

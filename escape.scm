@@ -1,7 +1,9 @@
 ;;--------------------------------------------------------------
 ;; escape : escaping
 ;;--------------------------------------------------------------
-;;
+
+(require "core")
+
 ;; The problem of "escaping" strings for inclusion in Make source code can
 ;; be broken down into two aspects.
 ;;
@@ -34,8 +36,6 @@
 ;;   - may "define" or "endef" occur as the first word of a line?
 ;;
 ;; Functions that perform the second step are called "protect-XXX".
-
-(require "core")
 
 
 ;; Convert a literal string to a form that will survive expansion.  We use
@@ -100,21 +100,6 @@
 ;; "!C" enclosed by "(" and ")" are eliminated.  The caller may handle any
 ;; remaining "!L", "!R", or "!C" as necessary.
 
-;; (define (balance-matchR str pre)
-;;   &private
-;;   (if (filter "!R" (word 1 str))
-;;       (concat "(" (subst "!C" "" pre) ") " (rest str))
-;;     (if str
-;;         (balance-matchR (rest str) (concat pre " " (word 1 str)))
-;;       (concat "!L" pre))))
-;;
-;; (define (balance-match str)
-;;   &private
-;;   (and str
-;;       (if (filter "!L" (word 1 str))
-;;           (balance-matchR (balance-match (rest str)))   ;; !L ...
-;;         (concat (word 1 str) " " (balance-match (rest str))))))
-;;
 (define (balance2 e)
   &private
   (promote (if (findstring "!C" e)

@@ -4,6 +4,7 @@
 (require "io")
 (require "parse")
 (require "compile")
+(require "gen")
 (require "num") ;; treat as a dependency (for build system purposes)
 
 
@@ -23,7 +24,8 @@
          "  ?        : this message\n\n"
          "Global variables in REPL:\n"
          "  *1 = most recent value printed\n"
-         "  *2 = second most recent value\n\n"))
+         "  *2 = second most recent value\n")
+  (printf "LIBS = %s\n" LIBS))
 
 
 ;;
@@ -40,7 +42,7 @@
   (define `name (nth 2 b))
   (define `defn (nth 4 b))
   (define `desc (or (and (filter "F" type)
-                         (filter "#" name)
+                         (filter MacroName name)
                          "compound macro")
                     (hash-get type envtypes)
                     "<unknown>"))
@@ -131,16 +133,6 @@
 ;; main
 ;;
 
-
-;(define `initial-env
-;  (foreach v "*1 *2"
-;           (hash-bind v ["V" v "i"])))
-;
-;(define `initial-state
-;  (eval-and-print
-;   (concat (foreach lib LIBS (concat "(require \"" lib "\")")) "\n")
-;   initial-env))
-
 (define `initial-state
   (eval-and-print
    (concat "(declare *1 &global)\n"
@@ -151,7 +143,6 @@
 
 (define (repl)
   (print "SCAM interactive mode. Type '?' for help.")
-  ;; (print "Preloads = " LIBS)
 
   (while identity read-eval-print initial-state)
   (print))

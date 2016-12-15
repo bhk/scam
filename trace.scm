@@ -1,3 +1,7 @@
+;;----------------------------------------------------------------
+;; trace.scm: tracing and debugging facilities
+;;----------------------------------------------------------------
+
 ;; Usage:
 ;;
 ;; This module instruments functions at run time to log and report

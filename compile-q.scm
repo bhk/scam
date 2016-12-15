@@ -11,11 +11,12 @@
 (let ((o (compile-text "(define a &global 1)" "" "(test)" "test.tmp")))
   (define `errors (nth 1 o))
   (define `exe (nth 2 o))
-  (define `exports (nth 3 o))
+  (define `env-out (nth 3 o))
 
   (expect "" errors)
   (expect "a := 1\n" exe)
-  (expect "# Exports: a!Va," (wordlist 1 3 exports)))
+  (expect (EVar "a" ".")
+          (hash-get "a" env-out)))
 
 
 ;; for eval
@@ -26,7 +27,7 @@
 
   (expect "" errors)
   (expect "$(call ^set,a,1)" exe)
-  (expect (hash-bind "a" (EVar "a" nil)) (word 1 exports)))
+  (expect (hash-bind "a" (EVar "a" ".")) (word 1 exports)))
 
 
 (expect "a := 1\nb := 2\n"

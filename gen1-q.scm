@@ -1,11 +1,7 @@
 ;; tests for gen1
 
-(require "core")
-(require "parse")
-(require "escape")
-(require "gen")
-(require "gen0")
-(require "gen1")
+(require "parse")  ;; for PError
+(require "gen1" &private)
 
 ;; make-list
 
@@ -50,10 +46,10 @@
 ;; V: variable reference
 
 (expect "$a"
-        (c1 "V a"))
+        (c1 (Var "a")))
 
 (expect "$(foo)"
-        (c1 "V foo"))
+        (c1 (Var "foo")))
 
 ;; Builtin: call Make builtin function
 
@@ -124,8 +120,9 @@
 
 ;; c1-E
 
-(expect ["E.1 undef"]
-        (gen-extract (c1 (Builtin "wildcard" [ "E.1 undef" ]))))
+(expect [(PError 0 "message")]
+        (gen-extract (c1 (Builtin "wildcard"
+                                  [(PError 0 "message")]))))
 
 ;; c1-file-set and c1-file-fset
 
@@ -196,3 +193,6 @@
 (expect ["" "$(call ^fset,f,$`.{ERR)\n"]
         (gen1 [ (Call "^fset" [ (String "f") (String "$.{ERR") ]) ]
               1))
+
+(expect [(PError 1 "MSG")]
+        (nth 1 (gen1 [(PError 1 "MSG")] 1)))

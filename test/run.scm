@@ -133,13 +133,28 @@
 
 ;; BUG: lambda inside macro inside function
 ;;
-;; (define (fx x)
+;; (define (fun-in-macro x)
 ;;   (define `m1 (lambda () x))
 ;;   (define `(m2 a) a)
 ;;   (define `(m3 a) (lambda () a))  ;; BUG
 ;;   [ (lambda () x)  m1  (m2 x)  (m2 m1)  (m3 x) ])
 ;;
-;; (expect [9 9 9 9] (fx 9))
+;; (expect [9 9 9 9] (fun-in-macro 9))
+
+
+;; BUG: lambda inside data/case (another EIL/Lambda example)
+;;
+;; (data A (C a b c))
+;;
+;; (define (fun-in-case x)
+;;   (case x
+;;     ((C a b c)
+;;      (let ((B b))
+;;        (concat a "," B "," c)))))
+;;
+;; (print "fun-in-case = " fun-in-case)
+;; ;; gets "3,2 3," instead
+;; (expect "1,2 3,4" (fun-in-case (C 1 "2 3" 4))))
 
 
 ;; BUG: never occurs in expression syntax, but CAN occur in file syntax:

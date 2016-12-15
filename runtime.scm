@@ -1,9 +1,11 @@
+;;----------------------------------------------------------------
 ;; runtime: runtime functions
-;;
+;;----------------------------------------------------------------
+
 ;; When a SCAM source file is compiled, the generated code will contain
 ;; embedded references to the runtime.  The runtime must therefore be loaded
-;; before any compile SCAM module can execute.  It is the runtime itself that
-;; intiates execution of the program (see Program Execution, below).
+;; before any SCAM module can execute; in fact, the runtime itself intiates
+;; execution of the program (see Program Execution, below).
 ;;
 ;; *This* file is itself compiled from SCAM source, so we have to take care
 ;; not to use SCAM constructs that depend upon runtime functions before

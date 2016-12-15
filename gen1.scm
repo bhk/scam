@@ -3,10 +3,9 @@
 ;;--------------------------------------------------------------
 
 (require "core")
-(require "parse")
 (require "escape")
+(require "parse") ;; for PError
 (require "gen")
-(require "gen0")
 
 ;; File vs. Function Syntax
 ;; ----------------
@@ -159,6 +158,17 @@
 (declare (c1))
 
 
+;; These nodes generate code with balanced parens and without leading or
+;; trailing whitespace.
+;;
+(define `(is-balanced? node)
+  (case node
+    ((Call _ _)    1)
+    ((Var _)       1)
+    ((Builtin _ _) 1)
+    ((Funcall _)   1)))
+
+
 (define (c1-arg node)
   (if (is-balanced? node)
       (c1 node)
@@ -181,17 +191,18 @@
 
 
 (define (c1-Error node)
-  (gen-embed (if (filter "E E.%" node)
-                 node
-                 ["E" "Internal error; mal-formed IL node: " node])))
+  (gen-embed
+   (case node
+     ((PError pos msg) node)
+     (else (PError 0 (concat "internal:bad IL: " node))))))
 
 
 ;; Construct an IL node that evaluates to a vector.  `nodes` is a vector of
 ;; IL nodes containing the item values.
 ;;
 (define (il-vector nodes)
-  (il-foldcat (il-qmerge (subst " " (concat " " [(String " ")] " ")
-                                (for n nodes (il-demote n))))))
+  (il-concat (subst " " (concat " " [(String " ")] " ")
+                    (for n nodes (il-demote n)))))
 
 
 ;; Call built-in function

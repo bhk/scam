@@ -1,7 +1,13 @@
-;; scam.scm
-;;
-;; This module implements `main` for the SCAM compiler/interpreter executable.
-;;
+;;----------------------------------------------------------------
+;; scam.scm: implements `main` for the SCAM compiler/interpreter.
+;;----------------------------------------------------------------
+
+(require "core")
+(require "repl")
+(require "build")
+(require "getopts")
+(require "gen")
+
 ;; Supported command-line options are documented in `usage` function, below.
 ;; The following private options are used only when compiling the compiler:
 ;;
@@ -12,12 +18,6 @@
 ;;  --rt FILE : specifies a source file to be used as the runtime for the
 ;;              generated exectuable.
 ;;  --ct FILE : specifies a source file that defines compile-time macros.
-
-(require "core")
-(require "repl")
-(require "build")
-(require "getopts")
-(require "gen")
 
 (define (usage ...)
   (if *args*

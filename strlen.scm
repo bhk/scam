@@ -1,3 +1,7 @@
+;;----------------------------------------------------------------
+;; strlen.scm
+;;----------------------------------------------------------------
+
 (require "core")
 
 ;; May be LF or CRLF, depending on platform
@@ -50,4 +54,3 @@
 (expect 1 (count-chars "b" "b"))
 (expect 3 (count-chars "a b c b d e b" "b"))
 (expect 4 (count-chars "abc\n\n\ndef\n" "\n"))
-

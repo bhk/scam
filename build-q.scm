@@ -1,4 +1,3 @@
-(require "core")
 (require "build" &private)
 
 ;; traverse-graph
@@ -102,10 +101,3 @@
             ["c"    nil       "c.min"      nil  "runtime"     "scam-ct" nil]]
            mm0)
    (scan ["a.scm"] 1 nil mm0)))
-
-
-;(print (exe-rules "out/x" "core.scm"
-;                  1 ;; no-trace
-;                  1 ;; boot
-;                  nil ;; symbols
-;                  ))
