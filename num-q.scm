@@ -79,7 +79,7 @@
 
 
 (define (simple-range min max)
-  (if (eq min max)
+  (if (eq? min max)
       min
       (concat min " " (simple-range (1+ min) max))))
 

@@ -14,7 +14,7 @@
     (lambda (c)
       (concat a b c))))
 
-(eq " $ $ " (( (make-lambda " $ ") "$ ") " $ "))
+(eq? " $ $ " (( (make-lambda " $ ") "$ ") " $ "))
 
 
 ;; compile-time escaping of assignment values
@@ -159,9 +159,8 @@
 
 ;; BUG: never occurs in expression syntax, but CAN occur in file syntax:
 ;;
-;; (declare (f))
-;; (set f " ($.@ERROR@) ")
+(declare (f))
+(set f " ($.@ERROR@) ")
 
-;; BUG:  (printf "%q\n" "")
 
 (print "test-gen ok")

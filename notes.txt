@@ -494,7 +494,7 @@ functions!
    differ.  What if the compile-time path runs through one 'defmacro' but
    the run-time path runs through another?
 
-     (if (eq (DEBUG 1))
+     (if (eq? (DEBUG 1))
          (defmacro print (a) )
        (defmacro print (a) (info a)))
 

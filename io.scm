@@ -27,8 +27,8 @@
 ;; Write to console without a trailing newline.  We redirect to stderr
 ;; because `shell` captures stdout, and writing to stdin fails on Cygwin.
 ;;
-(define (printn ...)
-  (xshell (concat (echo-command (concat-vec *args*)) " >&2")))
+(define (printn ...strings)
+  (xshell (concat (echo-command (concat-vec strings)) " >&2")))
 
 
 ;; Execute command, returning data written to stdout.  (Unlike `shell`,

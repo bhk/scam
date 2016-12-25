@@ -194,9 +194,9 @@
       ""
       "@"))
 
-(define (echo-cmd ...)
+(define (echo-cmd ...strs)
   (subst "$" "$$"
-         (concat "@ echo " (quote-sh-arg (concat-vec *args*)))))
+         (concat "@ echo " (quote-sh-arg (concat-vec strs)))))
 
 
 ;; Scan a source file for `require` and `use` dependencies.
@@ -547,8 +547,8 @@
   ;; with the same namespace.  Only .out/a/scam should be incompatible with
   ;; its runtime.
   (define `rebundle
-    (if (eq (subst "apply" "" (global-name apply))
-            (subst "compile-file" "" (global-name compile-file)))
+    (if (eq? (subst "apply" "" (global-name apply))
+             (subst "compile-file" "" (global-name compile-file)))
         1
         (if boot
             nil

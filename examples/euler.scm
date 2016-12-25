@@ -23,9 +23,9 @@
 ;;--------------------------------
 
 (define (isX3or5 n)
-  (or (eq 0 (mod n 3))
-      (eq 0 (mod n 5))))
-          
+  (or (eq? 0 (mod n 3))
+      (eq? 0 (mod n 5))))
+
 (define (ep1a min max)
   (sum (select-words isX3or5 (range min max))))
 

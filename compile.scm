@@ -133,7 +133,7 @@
             (begin
               (for e errors
                    (info (describe-error e text infile)))
-              (error (subst "%S" (if (eq 1 (words (first o))) "" "s")
+              (error (subst "%S" (if (eq? 1 (words (first o))) "" "s")
                             "compilation error%S")))
 
             ;; Success

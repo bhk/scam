@@ -11,7 +11,7 @@
 (format-add POut-format)
 
 (define (check-eq expected actual)
-    (if (eq expected actual)
+    (if (eq? expected actual)
         1
         (print "Expected: " (format expected) "\n"
                "  Actual: " (format actual) )))

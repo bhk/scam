@@ -4,7 +4,7 @@
 
 (declare SCAM_DEBUG &global)
 
-(define (eq a b)
+(define (eq? a b)
   (define `aa (concat 1 a))
   (define `bb (concat 1 b))
   (if (findstring aa (findstring bb aa))
@@ -186,7 +186,7 @@
         initial)))
 
 
-(define (isnumber s)
+(define (numeric? s)
   ;; reduce all digits to '0' and (E|e)[-]<digit> to 'e'
   (define `a (subst 1 0 2 0 3 0 4 0 5 0 6 0 7 0 8 0 9 0
                     "e" "E" "E-" "E" "E0" "e" " " "_" s))
@@ -202,12 +202,9 @@
 ;; concatenate one or more (potentially empty) vectors, word lists, or
 ;; hashes.
 ;;
-(define (append a b c d e f g h)
-  ;; "$9" is a vector of arguments beyond the eighth
-  (define `... (value 9))
-
+(define (append a b c d e f g h ...others)
   (strip-vec (concat a " " b " " c " " d " " e " " f " " g " " h " "
-                     (if ... (promote ...)))))
+                     (if others (promote others)))))
 
 
 ;;---- Hash operations ----
@@ -283,7 +280,7 @@
     (nth ndx (subst "!=" " " w)))
 
   (if (findstring "!=" h)
-      (if (eq h (foreach w h (hash-bind (hash-elem w 1) (hash-elem w 2))))
+      (if (eq? h (foreach w h (hash-bind (hash-elem w 1) (hash-elem w 2))))
           (concat "{" (concat-vec pairs ", ") "}"))))
 
 
@@ -321,17 +318,17 @@
         (define `ctor-name (nth 1 pattern))
         (define `encodings (rest pattern))
         (define `reconstructed
-          (data-foreach (lambda (v e) (if (eq "S" e) [v] v))
+          (data-foreach (lambda (v e) (if (eq? "S" e) [v] v))
                         encodings values tag))
         (define `arg-text
           (data-foreach (lambda (v e)
-                          (if (and (eq "L" e) (not v))
+                          (if (and (eq? "L" e) (not v))
                               "[]"
                               (format v)))
                         encodings values ""))
 
         (and pattern
-             (eq (strip-vec record) (strip-vec reconstructed))
+             (eq? (strip-vec record) (strip-vec reconstructed))
              (concat "(" ctor-name (if encodings " ") arg-text ")")))))
 
 (define *format-funcs* nil)
@@ -348,7 +345,7 @@
 ;;
 (define (format str)
   (define `(format-vector str)
-    (if (eq str (foreach w str (demote (promote w))))
+    (if (eq? str (foreach w str (demote (promote w))))
         (concat "[" (foreach w str (format (promote w))) "]")))
 
   (or (format-custom str *format-funcs*)
@@ -357,9 +354,9 @@
               (format-record str)))
       (if (or (findstring "!" str)
               (and (findstring " " str)
-                   (isnumber (subst " " "" str))))
+                   (numeric? (subst " " "" str))))
           (format-vector str))
-      (isnumber str)
+      (numeric? str)
       (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" "\t" "\\t"
                           str) "\"")))
 
@@ -373,35 +370,31 @@
 ;;   %s  ->  argument as-is
 ;;   %q  ->  describe argument with `format`
 
-(define (vsprintf args)
-  (define `(printf-warn args)
-    (print "** Warning: bad format string: '" (nth 1 args) "'"))
-
+(define (vsprintf fmt values)
   (define `fields
-    (subst "%" " !%" " !% !%" "%" (concat "%s" (word 1 args))))
+    (subst "%" " !%" " !% !%" "%" (concat "%s" [fmt])))
 
   (concat-vec
-   (foreach w (join (concat "!. " (rest args)) fields)
-            (if (findstring "!%s" w)
-                (subst "!%s" "" w)
-                (if (findstring "!%q" w)
-                    (concat (demote (format (first (subst "!%q" " " w))))
-                            (word 2 (subst "!%q" "!. " w)))
-                    (if (findstring "!%" w)
-                        ;; "!%x" => bad format string
-                        ;; otherwise, it's an arg without a format field
-                        (begin (printf-warn args)
-                               (word 2 (subst "!%" "! %" w)))))))))
+   (foreach w (join (concat "!. " values) fields)
+            (cond
+             ((findstring "!%s" w)
+              (subst "!%s" "" w))
+             ((findstring "!%q" w)
+              (cons (format (first (subst "!%q" "!. " w)))
+                    (word 2 (subst "!%q" "!. " w))))
+             ((findstring "!%" w)
+              ;; "!%x" => bad format string
+              (subst "!%" "[unkonwn % escape]%" w))))))
 
-(define (sprintf format ...)
-  (vsprintf *args*))
+(define (sprintf format ...values)
+  (vsprintf format values))
 
-(define (printf format ...)
-  (info (vsprintf *args*)))
+(define (printf format ...values)
+  (info (vsprintf format values)))
 
 
 (define (expect-x a b file-line)
-  (if (eq a b)
+  (if (eq? a b)
       (if (findstring "O" SCAM_DEBUG)
           (print file-line ": OK: " a))
       (begin

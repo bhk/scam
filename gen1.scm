@@ -27,7 +27,7 @@
 ;;
 ;; Function syntax consists of text that, when expanded in Make, will expand
 ;; to the *value* described by the corresponding IL node.  For example, the
-;; IL node (String "$") compiles to "$`", which, when evaluated by Make --
+;; IL node (IString "$") compiles to "$`", which, when evaluated by Make --
 ;; as in, say "$(info $`)" -- will yield "$".  So in a sense there is an
 ;; "extra" level of escaping in all function syntax, and no literal "$"
 ;; will appear un-escaped.  When "$" is escaped, we use "$`", ensuring that
@@ -47,7 +47,7 @@
 ;; Code that lies within an anonymous function will be "lambda-escaped" for
 ;; inclusion in the body of a parent function.  Consider this example:
 ;;
-;;   (define f (lambda () (lambda () (lambda (a) (Concat "$" a)))))
+;;   (define f (lambda () (lambda () (lambda (a) (IConcat "$" a)))))
 ;;   f  -->  "$```$``1"
 ;;   (((f)) "A")   -->  "$A"
 ;;
@@ -62,9 +62,9 @@
 ;;
 ;; The innermost lambda's IL node looks like this:
 ;;
-;;   (Lambda (Concat (String "$") (Local 1 0) (Local 1 1) (Local 1 2)))
+;;   (ILambda (IConcat (IString "$") (ILocal 1 0) (ILocal 1 1) (ILocal 1 2)))
 ;;
-;; The `Concat` node compiles to:
+;; The `IConcat` node compiles to:
 ;;
 ;;   "$`$1$-(call ^E,$-1)$--(call ^E,$--1,`)"
 ;;
@@ -81,12 +81,12 @@
 ;; the parent function executes its "$1" argument will be embedded in the
 ;; lambda expression.  `^E` escapes the value at run-time, since it must
 ;; survive a round of expansion (when the lambda expression is evaluated).
-;; For 'c' -- (Local 1 2) -- an extra "`" argument is passed to `^E` to
+;; For 'c' -- (ILocal 1 2) -- an extra "`" argument is passed to `^E` to
 ;; indicate that the run-time expansion must survive an additional round of
 ;; expansion, since the value will be captured in a lambda expression that
 ;; is two levels down.
 ;;
-;; The `Concat` code is then expanded to produce the value of the innermost
+;; The `IConcat` code is then expanded to produce the value of the innermost
 ;; Lambda -- which constitutes the the *body* of the middle Lambda:
 ;;
 ;;   "$``$`1$(call ^E,$1)$-(call ^E,$-1,`))"
@@ -144,10 +144,10 @@
 ;;
 (define `(voidify node)
   (if (case node
-        ((Builtin name args) (filter "error eval info" name))
-        ((Call name args) (filter "^require" name)))
+        ((IBuiltin name args) (filter "error eval info" name))
+        ((ICall name args) (filter "^require" name)))
       node
-      (Builtin "if" [node (String "")])))
+      (IBuiltin "if" [node (IString "")])))
 
 
 (define `one-char-names
@@ -163,10 +163,10 @@
 ;;
 (define `(is-balanced? node)
   (case node
-    ((Call _ _)    1)
-    ((Var _)       1)
-    ((Builtin _ _) 1)
-    ((Funcall _)   1)))
+    ((ICall _ _)    1)
+    ((IVar _)       1)
+    ((IBuiltin _ _) 1)
+    ((IFuncall _)   1)))
 
 
 (define (c1-arg node)
@@ -201,7 +201,7 @@
 ;; IL nodes containing the item values.
 ;;
 (define (il-vector nodes)
-  (il-concat (subst " " (concat " " [(String " ")] " ")
+  (il-concat (subst " " (concat " " [(IString " ")] " ")
                     (for n nodes (il-demote n)))))
 
 
@@ -280,15 +280,15 @@
 
 (define (c1 node)
   (case node
-    ((String value) (escape value))
-    ((Local ndx ups) (c1-Local ndx ups))
-    ((Call name args) (c1-Call name args))
-    ((Var name) (c1-Var name))
-    ((Concat nodes) (c1-vec nodes "" (global-name c1)))
-    ((Lambda code) (c1-Lambda (c1 code)))
-    ((Block nodes) (c1-Block nodes))
-    ((Funcall nodes) (c1-Funcall nodes))
-    ((Builtin name args) (c1-Builtin name args))
+    ((IString value) (escape value))
+    ((ILocal ndx ups) (c1-Local ndx ups))
+    ((ICall name args) (c1-Call name args))
+    ((IVar name) (c1-Var name))
+    ((IConcat nodes) (c1-vec nodes "" (global-name c1)))
+    ((ILambda code) (c1-Lambda (c1 code)))
+    ((IBlock nodes) (c1-Block nodes))
+    ((IFuncall nodes) (c1-Funcall nodes))
+    ((IBuiltin name args) (c1-Builtin name args))
     (else (c1-Error node))))
 
 
@@ -343,18 +343,18 @@
   (or
    (case node
 
-     ;; Normalize (Builtin "call" (String S)) to (Call S ...).
-     ;; Compile (Builtin "eval" (String "...")) as "...\n"
-     ((Builtin name args)
+     ;; Normalize (IBuiltin "call" (IString S)) to (ICall S ...).
+     ;; Compile (IBuiltin "eval" (IString "...")) as "...\n"
+     ((IBuiltin name args)
       (case (first args)
-        ((String value)
+        ((IString value)
          (if (filter "eval" name)
              (concat value "\n")
              (if (filter "call" name)
-                 (c1-file (Call value (rest args))))))))
+                 (c1-file (ICall value (rest args))))))))
 
      ;; Handle assignments using "a = b" vs. "$(call ^fset,a,b)"
-     ((Call name args)
+     ((ICall name args)
       (if (not (nth 3 args))
           (if (filter "^set" name)
               (c1-file-set (c1 (nth 1 args)) (c1 (nth 2 args)))
@@ -362,7 +362,7 @@
                   (c1-file-fset (c1 (nth 1 args)) (c1 (nth 2 args)))))))
 
      ;; Compile block members as also in file scope
-     ((Block nodes) (c1-file* nodes)))
+     ((IBlock nodes) (c1-file* nodes)))
 
    (concat (protect-expr (c1 (voidify node))) "\n")))
 
@@ -373,5 +373,5 @@
 (define (gen1 node-vec is-file)
   (let ( (c1o (if is-file
                   (c1-file* node-vec)
-                  (c1 (Block node-vec)))) )
+                  (c1 (IBlock node-vec)))) )
     [ (gen-extract c1o) c1o ]))

@@ -1,24 +1,36 @@
 TODO
 
- * circular dependency for gen-testutils
- * sprintf when format begins with %s
- * call/origin/flavor/value -> .call/.origin/.flavor/.value ?
- * PList/PSymbol/etc. -> List/Symbol...  ;  String/Var -> IString/IVar
- * gen0.scm:474: "PQQuoted" accepts 0 arguments, not 2.
-   (case VALUE (NotAConstructor ...) -- should say: not a valid constructor.
- * fix macro-expansion error reporting (right source pos, wrong file)
-   Use file marker?
- * Warn of macro referenced within macro. (EInvalid ...) env entry?'
- * Modules seem to be re-exporting imports...  Is that necessary for rewind?
-   Does it remain necessary when no macros are exported? (Even with &private
-   imports?)
- * nth vs. ^n ...
- * isnumber? --> number? ; eq --> eq?
- * revisit `is-balanced?`... aren't more things balanced?
- * (VALUE ...)  -->  (call VALUE ...)
- * (do (a b <- f1 x)
-       (c <- fn2 a b)
-       (return c))
+ * check arity of all functions (not just inline functions)
+    - export/import arg count
+    - Arguments starting at NDX -> $(foreach N,NDX,$(^v))
+    - args count = "2", "3", "3+"
+
+ * Make symbols Private by default; explicit &public.
+
+ * Exports, Imports, Rewind
+
+   1. require adds only public members (unless &private is requested)
+   2. "file marker" is placed at top of env.
+   3. When expanding a macro:
+       - Local definitions "rewind" to that spot in the file
+       - Imported definitions rewind to that spot in original file's
+         private imports.  env is also marked with the file name.
+   4. Add file name field to PError.  Can pull from env in gen0, or
+      *compile-file* in parse.
+
+
+   - Export ONLY PUBLIC values when no macros or inline funcs are exported.
+   - Embed current file name in env as EMarker (or using dynamic var during
+     expansion). Better reporting of errors during macro expansion
+     (e.g. undefined symbols)
+
+   - fix macro-expansion error reporting (right source pos, wrong file)
+     Use file marker?
+   - Modules seem to be re-exporting imports...  Is that necessary for rewind?
+     Does it remain necessary when no macros are exported? (Even with &private
+     imports?)
+
+   - And: nth vs. ^n ... runtime export, overridable, vs. other mechanism?
 
  * Deal with `use` executing target code while the compiler is running.
    This can clobber compiler sources when the target code uses the same
@@ -54,15 +66,14 @@ TODO
         nil => "normal" mode
      is-boot & mod-files -> opts
 
-* Exports, Imports, Rewind
+ * (VALUE ...)  -->  (call VALUE ...)
+   call/origin/flavor/value -> .call/.origin/.flavor/.value ?
 
-   - Make symbols Private by default; explicit &public.
-   - Export ONLY PUBLIC values when no macros or inline funcs are exported.
-   - Embed current file name in env as EMarker (or using dynamic var during
-     expansion). Better reporting of errors during macro expansion
-     (e.g. undefined symbols)
+ * fix circular dependency for gen-testutils
 
- * data: distinguish constructors (and code in general) from records
+ * (do (a b <- f1 x)
+       (c <- fn2 a b)
+       (return c))
 
  * (data NAME CTOR...) reflection.  (Whatever format-data needs...)
 
@@ -91,27 +102,23 @@ TODO
      (lambda (rec)
        (findstring "!=" rec)))
 
- * (? lambda ...)  -->  (call "^tv" "any" (any ...))
-   or:  (call "^yt" "any" (lambda (args) (any args)) ...)
+ * Call-site tracing of lambda values
 
- * ^yt: fix (? builtin ...) and (? macro ...).
+   (? lambda ...)  -->  (call "^tv" "any" (any ...))
+   or:  (call "^yt" "any" (lambda (args) (any args)) ...)
+   fix (? builtin ...) and (? macro ...).
    &inline functions then only good for (global-name ...) or Make interop.
 
- * Bugs (see gen-test.scm)
+ * Lambda bugs
 
- * Avoid function/builtin conflicts
-
-    (define (word a b) 1)    Actually defines variable, but...
-    (word 1 2)               Does not call defined function, and ...
-    (word 1)                 Stop. (!)
-
- * check arg counts for all functions (not just inline functions)
-    - export/import arg count
+   Some bindings created outside of a lambda do not work inside it.  This
+   happens when ESMacro or EIL bindings refer to local variables.  This can
+   happen with symbol macros, parameters to compound macros, and names bound
+   by case patterns.
 
  * Parse hash syntax
 
  * WARN when shadowing variables!
-    - most common error case (esp. builtins) (esp. in REPL)
     - allow `(let ((x x)) ...)` or `&shadow` exceptions
 
  * scam -x
@@ -125,27 +132,6 @@ TODO
  * arbitrary precision floating point
     - fp divide w/ specified precision
     - bug: (^ 2 100)  [in fp]
-
- * "rest" and "spread" with "..." syntax
-
-   More efficient append, vararg, apply, etc..
-
-       [a b args... c]  ==>  (append [a b] args [c])
-       (f a b args...)  ==>  (apply f [a b args...])
-                        ==>  (apply f (append [a b] args))
-
-   (define (f a v...)
-      (g b a v...))
-
-     (c1 "VA $ 7") ->  $(call ^d,$7) $(call ^d,^8) $9
-     (c1 "VA $ 6") ->  $(foreach n,6 7 8,$(call ^d,$($n)))
-
-     spread 7..9:  $(call ^n,1,REST),$(call ^n,2,REST),$(wordlist 3,9999,REST)
-     $(call ^n,2,$(call ^d,$7) ... )       --> $7
-     $(call ^n,2,<WORD> $(call ^d,$8) ...) --> $8
-     ["f" "^n" "Q 1" ["VA" "$" 6]]         --> ["R" "$8"]
-     $(wordlist 3,9999,<WORD> <WORD> $(wordlist A,B,R)) --> $(wordlist A,B,R))
-     ["F" "wordlist" "Q 3" "Q 9999" ["VA" "$" 6]]       --> ["R" "$9"]
 
  * aliases: (define `X Y) should bind Y's defn (minus 'priv' bit) to X
    ... but this would break rewind.
@@ -174,7 +160,7 @@ TODO
 
  * .min -> .make
 
- * Move syntax quoting to scam-ct
+ * "spread" with "..." syntax.
 
  * XMacros and circular dependencies:
 
@@ -208,7 +194,7 @@ TODO
    does not need an env parameter, but could use a constant global env.
    Maybe an (RT ...) IL node and (ERT ...) binding would be appropriate.
 
-     (RT "d" ...) for (Call (concat NS "^d") ...)
+     (RT "d" ...) for (ICall (concat NS "^d") ...)
 
    Like builtins, they would not use the arg9 convention.
 
@@ -283,11 +269,12 @@ TODO
 Optimizations
 ----
 
- * gen0 optimizations:
+ * gen0/gen1 optimizations:
     * perf measurement section in gen0-q.scm
     * c0 inblock mode: can ILEnv return just the new env items?
     * optimize c0-block-cc
     * functions vs. macros for begin-block
+    * revisit `is-balanced?`... aren't more things balanced?
 
  * parse.scm optimizations/rework
     * perf measurement
@@ -322,7 +309,7 @@ Optimizations
  * Output a very limited environment when a module does not export macros or
    inline functions. (Any examples?)
 
- * Constant propagation:  (Call PURE CONST...) -->   (Const (PURE CONST...))
+ * Constant propagation:  (ICall PURE CONST...) -->   (Const (PURE CONST...))
 
    Functions are PURE if they have no side-effects and produce a value that
    is purely a function of their inputs.  (No references to globals or I/O,
@@ -346,8 +333,8 @@ Optimizations
 
  * IF constant propagation:
 
-    (if TRUE a b) -->  (Block TRUE a)
-    (if VOID a b) -->  (Block VOID b)
+    (if TRUE a b) -->  (IBlock TRUE a)
+    (if VOID a b) -->  (IBlock VOID b)
 
  * IF strength reduction:
 
@@ -356,10 +343,10 @@ Optimizations
 
  * Block reduction:
 
-     (Block PRE... POST)  -->  (Discard PRE)... POST
+     (IBlock PRE... POST)  -->  (Discard PRE)... POST
 
      (Discard NOUT)  --> ""  [all consts are NOUT]
-     (Discard (Concat A B C)) -->  (Discard A) (Discard B) (Discard C)
+     (Discard (IConcat A B C)) -->  (Discard A) (Discard B) (Discard C)
 
  * IF-NOT reduction:  (if (not x) a b) -->  (if x b a)
  * IF-YES reduction:  (if (if C 1) a b) -->  (if C a b)
@@ -387,11 +374,11 @@ Optimizations
      (subst PURE PURE nil)  -->  nil
      (word PURE nil)        -->  nil
 
-     (eq A B) ==
+     (eq? A B) ==
        (findstring A (findstring B A))  -->  (filter A B)
          When: A and B are words, and A does not contain "%" (e.g. $(words))
 
-     (eq CONST (nth N V)) -->  (eq (demote CONST) (word N V))
+     (eq? CONST (nth N V)) -->  (eq? (demote CONST) (word N V))
                           -->  (filter (demote CONST) (word N V))
 
      (f (if COND X Y))   -->   (if COND (f X) (f Y))
@@ -508,12 +495,12 @@ be fiendishly difficult to employ correctly):
 
 ; (define (concat a b)  (u (subst "!*" (d b) (subst 1 (d a) "1!*")))
 
-; (define (eq a b)
+; (define (eq? a b)
 ;    (not (and (or a b)
 ;              (or (subst b "" a)
 ;                  (subst a "" b)))))
 
-; (define (findstring a b)  (if (not (eq (subst a "" b) b)) a))
+; (define (findstring a b)  (if (not (eq? (subst a "" b) b)) a))
 
 
 --------------------------------

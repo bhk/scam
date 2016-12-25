@@ -435,6 +435,24 @@ An implication of this is the following behavior:
     > ("$1$2" "a" "b")
     "ab"
 
+#### Variable Numbers of Arguments
+
+In order to capture an arbitrary number of arguments in one variable, prefix
+the name of the last variable with `...`.  The variable will evalute to a
+vector containing the remainder of the values passed to the function.  For
+example:
+
+    > (define (f a b ...others)
+    +   others)
+    > (f 1 2 3 4 5 6)
+    [3 4 5 6]
+
+The size of the resulting vector is determined by the last non-nil argument
+value.
+
+    > (f 1 2 3 4 nil nil)
+    [3 4]
+
 
 ### Syntax Trees
 
@@ -1116,19 +1134,6 @@ Example:
     (apply nth [3 "a b c d"])    ;; --> c
 
 
-### `*args*`
-
-[Manifest macro]
-
-This symbol evaluates to a vector of all arguments passed to the function.
-This is evaluated at run-time, and reflects all arguments passed, not just
-the list of declared arguments.  This is for use by functions that take
-variable numbers of arguments.
-
-Note: `*args*` returns unpredictable results when it is used within a `let`
-or `let*` block.
-
-
 ### `*file*`
 
 [Manifest global]
@@ -1219,7 +1224,7 @@ The following Make-defined variables are pre-declared for SCAM programs:
 Other variables can be accessed using the `value` function, or by declaring
 the variable and then referencing its name:
 
-    (declare MAKELEVEL)
+    (declare MAKELEVEL &global)
     (print MAKELEVEL)
 
 ### Make Builtin Functions

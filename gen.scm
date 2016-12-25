@@ -15,16 +15,16 @@
 ;; to GNU Make constructs.
 
 (data IL
-      (String  value)                      ; "value"
-      (Var     name)                       ; "$(name)"
-      (Builtin &word name  &list args)     ; "$(name ARGS...)"
-      (Call    name        &list args)     ; "$(call name,ARGS...)"
-      (Local   &word ndx   &word level)    ; "$(ndx)"
-      (Funcall &list nodes)                ; "$(call ^Y,NODES...)"
-      (Concat  &list values)               ; "VALUES..."
-      (Block   &list nodes)                ; "$(if NODES,,)"
-      (Lambda  node)                       ; (lamda-quote (c1 node))
-      (ILEnv   env &list node))            ; used during phase 0
+      (IString  value)                      ; "value"
+      (IVar     name)                       ; "$(name)"
+      (IBuiltin &word name  &list args)     ; "$(name ARGS...)"
+      (ICall    name        &list args)     ; "$(call name,ARGS...)"
+      (ILocal   &word ndx   &word level)    ; "$(ndx)"
+      (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
+      (IConcat  &list values)               ; "VALUES..."
+      (IBlock   &list nodes)                ; "$(if NODES,,)"
+      (ILambda  node)                       ; (lamda-quote (c1 node))
+      (IEnv     env &list node))            ; used during phase 0
 
 ;; Blocks
 ;;
@@ -70,12 +70,8 @@
 (define `(EDefn.priv defn)
   (word 3 defn))
 
-(define `MacroName "#")
+(define `NoGlobalName ":")
 
-;; NAME = the actual name of global function/variable or builtin.  The name
-;;        MacroName indicates that the binding is a symbol macro, and not an
-;;        actual function variable.
-;;
 ;; PRIV describes the scope and origin of top-level bindings.  This scope
 ;;      is used to decide which symbols to export from a file.  The origin
 ;;      is used to construct environments for the purpose of expanding
@@ -90,9 +86,13 @@
 ;;              or a local definition.  Locals are not exported, but also they
 ;;              are not present in the environment at the end of the file.
 ;;
+;; NAME = the actual (global) name of the function/variable or builtin.
+;;         For EFunc records, the value NoGlobalName indicates that the
+;;         binding is a compound macro, and not a function variable.
+;;
 ;; INLN = definition of an '&inline' function or compound macro body.
-;;         [ [ARGNAME...] BODY...]
-;;    where each ARGNAME is a string and BODY... is a vector of forms.
+;;          [ [ARGNAME...] BODY...]
+;;        where each ARGNAME is a string and BODY... is a vector of forms.
 ;;
 ;; ARGREF = argument reference:
 ;;      .1   --> argument #1 of a top-level function
@@ -186,18 +186,18 @@
 
 
 (define `NoOp
-  (String ""))
+  (IString ""))
 
-;; Merge consecutive (String ...) nodes into one node.  Retain all other
+;; Merge consecutive (IString ...) nodes into one node.  Retain all other
 ;; nodes.
 ;;
 (define (il-merge-strings nodes accum)
   (case (first nodes)
-    ((String value)
+    ((IString value)
      (il-merge-strings (rest nodes) (concat accum value)))
     (else
      (append (if accum
-                 [(String accum)])
+                 [(IString accum)])
              (word 1 nodes)
              (if (word 2 nodes)
                  (il-merge-strings (rest nodes) ""))))))
@@ -206,17 +206,17 @@
 (define (il-flatten nodes)
   (append-for node nodes
               (case node
-                ((Concat children)
+                ((IConcat children)
                  (il-flatten children))
                 (else [node]))))
 
 
-;; Concatenate nodes in IL domain.
+;; IConcatenate nodes in IL domain.
 ;;
 (define (il-concat nodes)
   (let ((nodes-out (il-merge-strings (il-flatten nodes) "")))
     (if (word 2 nodes-out)
-        (Concat nodes-out)
+        (IConcat nodes-out)
         (or (first nodes-out)
             NoOp))))
 
@@ -224,15 +224,15 @@
 ;; Demote in IL domain
 (define (il-demote node)
   (or (case node
-        ((String value) (String (word 2 node)))
-        ((Call name args) (if (eq name "^u")
+        ((IString value) (IString (word 2 node)))
+        ((ICall name args) (if (eq? name "^u")
                               (first args))))
-      (Call "^d" [node])))
+      (ICall "^d" [node])))
 
 
 ;; Promote in IL domain
 (define (il-promote node)
-  (Call "^u" [ node ]))
+  (ICall "^u" [ node ]))
 
 
 ;;--------------------------------------------------------------
@@ -327,8 +327,8 @@
 ;; Construct an error node.  The resulting error node inherits the document
 ;; index from `form`.
 ;;
-(define (gen-error form fmt ...)
-  (PError (form-index form) (vsprintf (rest *args*))))
+(define (gen-error form fmt ...values)
+  (PError (form-index form) (vsprintf fmt values)))
 
 
 ;; Display a warning during compilation.
@@ -340,10 +340,10 @@
 
 (define (form-description code)
   (cond
-   ((eq code "%") "form")
-   ((eq code "L") "list")
-   ((eq code "S") "symbol")
-   ((eq code "Q") "literal string")
+   ((eq? code "%") "form")
+   ((eq? code "L") "list")
+   ((eq? code "S") "symbol")
+   ((eq? code "Q") "literal string")
    (else (form-typename code))))
 
 
@@ -379,7 +379,7 @@
 (define (check-argc expected args sym)
   (if (filter-out expected (words args))
       (gen-error sym
-                 (subst "%S" (if (eq expected 1) "" "s")
+                 (subst "%S" (if (eq? expected 1) "" "s")
                         "%q accepts %s argument%S, not %s")
                  (symbol-name sym) expected (words args))))
 
@@ -481,7 +481,7 @@
 
 (define *dummy-env*
   &private
-  (hash-bind "" (EIL (String "") "p")))
+  (hash-bind "" (EIL (IString "") "p")))
 
 
 ;; Import symbols from `filename`.  `priv` means return all original
@@ -577,27 +577,34 @@
           (env-rewind-x env name)))
 
 
+(define `builtins-1
+  (concat "abspath basename dir error eval firstword flavor"
+          " info lastword notdir origin realpath shell sort"
+          " strip suffix value warning wildcard words"))
+
+(define `builtins-2
+  "addprefix addsuffix filter filter-out findstring join word")
+
+(define `builtins-3
+  ".foreach patsubst .subst wordlist")
+
+(define builtin-names
+  (patsubst ".%" "%" (concat builtins-1 " "
+                             builtins-2 " "
+                             builtins-3)))
+
 (define base-env
-  (let&
-   ((arg1 (concat
-           "abspath basename dir error eval firstword flavor"
-           " info lastword notdir origin realpath shell sort"
-           " strip suffix value warning wildcard words"))
-    (arg2 "addprefix addsuffix filter filter-out findstring join word")
-    (arg3 ".foreach patsubst .subst wordlist"))
+  (append
+   (foreach b builtins-1 (hash-bind b (EBuiltin b "b" 1)))
+   (foreach b builtins-2 (hash-bind b (EBuiltin b "b" 2)))
+   (foreach b builtins-3 (hash-bind b (EBuiltin (patsubst ".%" "%" b) "b" 3)))
+   (foreach b "and or call" (hash-bind b (EBuiltin b "b" "%")))
+   (hash-bind "if" (EBuiltin "if" "b" "2 or 3"))
 
-   (append
-    (foreach b arg1 (hash-bind b (EBuiltin b "b" 1)))
-    (foreach b arg2 (hash-bind b (EBuiltin b "b" 2)))
-    (foreach b arg3 (hash-bind b (EBuiltin (patsubst ".%" "%" b) "b" 3)))
-    (foreach b "and or call" (hash-bind b (EBuiltin b "b" "%")))
-    (hash-bind "if" (EBuiltin "if" "b" "2 or 3"))
-
-    ;; Make special variables & SCAM-defined variables
-    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
-    (hash-bind "*args*" (EVar "^av" "b"))
-    (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
-             (hash-bind v (EVar v "b"))))))
+   ;; Make special variables & SCAM-defined variables
+   ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
+   (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
+            (hash-bind v (EVar v "b")))))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.

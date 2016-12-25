@@ -61,28 +61,35 @@ endef
 ;;  $(call ^Y,a,b,c,d,e,f,g,h,i,lambda) invokes `lambda`. `a` through `h`
 ;;  hold the first 8 arguments; `i` is a vector of remaining args.
 ;;
-(declare (^Y ...)
+(declare (^Y ...args)
          &global)
 (set ^Y "$(call if,,,$(10))")
 
 
-;; ^av: return a vector of all arguments.  The vector length is the index of
-;; the last non-nil argument
+;; ^v: return a vector of all arguments starting at argument N, where N is
+;; 1..8.  The last element in the vector is the last non-nil argument.
 ;;
-;; We declare *args* as a SCAM variable (not function), but we assign it as a
-;; recursive variable (not simply-expanded).  References to it will
-;; therefore compile to $(*args*), so it will be expanded (executed) without
-;; overriding $1, $2, etc.
+;; ^av: return a vector of all arguments.
 ;;
+;; These are declared as functions, but referenced elsewhere as variables so
+;; that the reference will compile to "$(VAR)" instead of "$(call VAR)", in
+;; order to retain $1, $2, etc..
+
+(declare (^v)
+         &global)
+
+(set ^v (concat "$(subst !.,!. ,$(filter-out %!,$(subst !. ,!.,"
+                "$(foreach n,$(wordlist $N,9,1 2 3 4 5 6 7 8),"
+                "$(call ^d,$($n)))$(if $9, $9) !)))"))
+
 (declare (^av)
          &global)
 
-(set ^av (concat "$(subst !.,!. ,$(filter-out %!,$(subst !. ,!.,"
-                 "$(foreach n,1 2 3 4 5 6 7 8,$(call ^d,$($n)))$(if $9, $9) !)))"))
+(set ^av "$(foreach N,1,$(^v))")
 
 ;; ^apply
 
-(declare (^apply fn ...))
+(declare (^apply fn ...args))
 
 (set ^apply (concat "$(call ^Y,$(call ^n,1,$2),$(call ^n,2,$2),$(call ^n,3,$2),"
                     "$(call ^n,4,$2),$(call ^n,5,$2),$(call ^n,6,$2),"
@@ -111,13 +118,13 @@ endef
 
 ;; ^tc : call function named by $1, and shift all other args left
 ;;
-(declare (^tc fn ...))
+(declare (^tc fn ...args))
 (set ^tc (concat "$(call $1,$2,$3,$4,$5,$6,$7,$8,$(call ^n,1,$9),$(wordlist 2,9999,$9))"))
 
 
 ;; ^ta : format arguments for display  [also used by trace.scm]
 ;;
-(declare (^ta ...) &global)
+(declare (^ta ...args) &global)
 
 (define `TC (global-name ^tc))
 (define `F (global-name ^f))

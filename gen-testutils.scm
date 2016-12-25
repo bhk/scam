@@ -17,17 +17,17 @@
     (concat "(" pre " " (concat-for a args "," (il-ser a)) ")"))
 
   (case node
-    ((String value) value)
-    ((Var name) (concat "{" name "}"))
-    ((Builtin name args) (call-ser (concat "." name) args))
-    ((Call name args) (call-ser name args))
-    ((Local ndx level) (concat "{" ndx (filter-out "^0" (concat "^" level)) "}"))
-    ((Funcall nodes) (call-ser "^Y" nodes))
-    ((Concat values) (concat-for v values "" (il-ser v)))
-    ((Block nodes) (if (word 2 nodes)
-                       (call-ser "Block" nodes)
+    ((IString value) value)
+    ((IVar name) (concat "{" name "}"))
+    ((IBuiltin name args) (call-ser (concat "." name) args))
+    ((ICall name args) (call-ser name args))
+    ((ILocal ndx level) (concat "{" ndx (filter-out "^0" (concat "^" level)) "}"))
+    ((IFuncall nodes) (call-ser "^Y" nodes))
+    ((IConcat values) (concat-for v values "" (il-ser v)))
+    ((IBlock nodes) (if (word 2 nodes)
+                       (call-ser "IBlock" nodes)
                        (il-ser (first nodes))))
-    ((Lambda code) (concat "`" (il-ser code)))
+    ((ILambda code) (concat "`" (il-ser code)))
     (else (if node
               ;; convert (") to (') to simplify assertions
               (subst "\"" "'" (sprintf "!%q" node))))))
@@ -72,7 +72,7 @@
 (define (p1-block-cc text k)
   (c0-block-cc nil (pN text)
                (lambda (env nodes)
-                 (k env (il-ser (Block nodes))))))
+                 (k env (il-ser (IBlock nodes))))))
 
 ;; Display and return value.
 ;;

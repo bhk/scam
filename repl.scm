@@ -32,37 +32,37 @@
 ;; Display environment entries
 ;;
 
-(define envtypes
-  (append (hash-bind "F" "function")
-          (hash-bind "V" "variable")
-          (hash-bind "B" "builtin")))
-
-(define (describe-binding b)
-  (define `type (word 1 b))
-  (define `name (nth 2 b))
-  (define `defn (nth 4 b))
-  (define `desc (or (and (filter "F" type)
-                         (filter MacroName name)
-                         "compound macro")
-                    (hash-get type envtypes)
-                    "<unknown>"))
-
-  (if (filter "M" type)
-      (concat "symbol macro: " (format-form (nth 2 b)))
-      (concat desc
-              (if defn
-                  (sprintf ": (%s) -> %s"
-                           (first defn)
-                           (concat-for f (rest defn) " "
-                                    (format-form f)))))))
+(define (describe-binding bound-name defn all)
+  (if (or all (not (filter "b p i%" (EDefn.priv defn))))
+      (case defn
+        ((EBuiltin name p args)
+         "built-in function")
+        ((EFunc name p inln)
+         (concat (if (eq? name NoGlobalName)
+                     "compound macro"
+                     "function")
+                 (sprintf "\n    (%s %s)" bound-name (first inln))
+                 (if (rest inln)
+                     (sprintf " -> %s"
+                              (concat-for f (rest inln) " "
+                                          (format-form f))))))
+        ((EVar name p)
+         "variable")
+        ((ESMacro form p)
+         (concat "symbol macro: " (format-form form)))
+        ((EXMacro name p)
+         (concat "executable macro"))
+        ((ERecord encs p tag)
+         "constructor")
+        (else ""))))
 
 
 (define (describe-env env all)
   (foreach w (reverse (hash-compact env))
-           (if (or all (not (nth 3 (hash-value w))))
-               (printf "  %s : %s" (hash-key w)
-                       (describe-binding (hash-value w))))))
-
+           (let ((name (hash-key w))
+                 (desc (describe-binding (hash-key w) (hash-value w) all)))
+             (if desc
+                 (printf "  %s : %s" name desc)))))
 
 ;;
 ;; Read, eval, print
@@ -118,12 +118,12 @@
         (state state))
 
     (define `(typed str)
-      (eq line (concat str "\n")))
+      (eq? line (concat str "\n")))
 
     (cond ((typed "?")    (begin (help) state))
           ((typed ":")    ["" env]) ; reset input state
           ((typed ":q")   nil)      ; exit
-          ((eq line "")   nil)      ; exit (Ctrl-D)
+          ((eq? line "")   nil)      ; exit (Ctrl-D)
           ((typed ":e")   (begin (describe-env env) state))
           ((typed ":E")   (begin (describe-env env 1) state))
           (else           (eval-and-print (concat text line) env)))))

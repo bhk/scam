@@ -23,7 +23,7 @@
 ;;--------------------------------
 
 (define (ml.special-print env sym args)
-  (Builtin "info" [ (Concat (c0-vec args env)) ]))
+  (IBuiltin "info" [ (IConcat (c0-vec args env)) ]))
 
 
 ;;--------------------------------
@@ -31,7 +31,7 @@
 ;;--------------------------------
 
 (define (ml.special-current-env env sym args)
-  (String env))
+  (IString env))
 
 
 ;;--------------------------------
@@ -47,7 +47,7 @@
   (define `lnum
     (describe-lnum pos *compile-subject*))
 
-  (String (concat *compile-file* ":" lnum)))
+  (IString (concat *compile-file* ":" lnum)))
 
 
 ;;--------------------------------
@@ -64,7 +64,7 @@
 
 (define (ml.special-vector env sym args)
   (il-concat
-   (intersperse (String " ")
+   (intersperse (IString " ")
                 (for f args
                      (il-demote (c0 f env))))))
 
@@ -75,7 +75,7 @@
 
 (define (subst-x strs value)
   (if strs
-      (subst-x (rrest strs) (Builtin "subst" (conj (wordlist 1 2 strs) value)))
+      (subst-x (rrest strs) (IBuiltin "subst" (conj (wordlist 1 2 strs) value)))
       value))
 
 (define (ml.special-subst env sym args)
@@ -98,7 +98,7 @@
         (env env))
 
     (define `(il-set setter varname)
-      (Call setter (append [ (String varname) value-node ]
+      (ICall setter (append [ (IString varname) value-node ]
                            (if retval-node
                                [retval-node]))))
     (case sym
@@ -140,15 +140,15 @@
         (sym sym)
         (args args))
     (or
-     (if (eq "-" defn)
+     (if (eq? "-" defn)
          (err-expected "S" func sym "FUNC" "(? FUNC ARGS...)")
          (begin
            (define `(trace ctor name)
-             (ctor "^t" (cons (String name) (c0-vec func-args env))))
+             (ctor "^t" (cons (IString name) (c0-vec func-args env))))
            (case defn
-             ((EFunc name p _) (if (not (eq name MacroName))
-                                   (trace Call name)))
-             ((EBuiltin name p _) (trace Builtin name)))))
+             ((EFunc name p _) (if (not (eq? name NoGlobalName))
+                                   (trace ICall name)))
+             ((EBuiltin name p _) (trace IBuiltin name)))))
 
      (if defn
          (gen-error func "FUNC in (? FUNC ...) is not traceable")
@@ -303,12 +303,12 @@
   (case var
     ((PSymbol _ name)
      (define `var-defn
-       (EIL (var-xform (Var name)) nil))
+       (EIL (var-xform (IVar name)) nil))
      (define `body-node
        (body-xform (c0-block body (hash-bind name var-defn env))))
      (if body
          ;; list, delim, and body ok
-         (Builtin "foreach" [ (String name) (c0 list env) body-node ])
+         (IBuiltin "foreach" [ (IString name) (c0 list env) body-node ])
          ;; body (and maybe list and delim) missing
          (err-expected "" nil sym
                        (word (words (concat ". . " args)) (subst ")" "" where))
@@ -345,7 +345,7 @@
   (define `for-value
     (c0-for env sym args "(append-for VAR VEC BODY)" il-promote identity))
 
-  (Builtin "filter" [ (String "%") for-value ]))
+  (IBuiltin "filter" [ (IString "%") for-value ]))
 
 
 ;;--------------------------------
@@ -360,8 +360,8 @@
 ;;
 (define (il-subst a b node)
   (case node
-    ((String value) (String (subst a b value)))
-    (else (Builtin "subst" [ (String a) (String b) node ]))))
+    ((IString value) (IString (subst a b value)))
+    (else (IBuiltin "subst" [ (IString a) (IString b) node ]))))
 
 (define (il-spc-encode node)
   (il-subst " " "|0" (il-subst "|" "|1" node)))
@@ -380,13 +380,13 @@
 
   (or (case delim
         ((PString n value)
-         (if (eq value " ")
+         (if (eq? value " ")
              ;; Simple case: single space is what `foreach` adds
              (for-result identity))))
 
       ;; General case
       (il-spc-decode
-       (Builtin "subst" [ (String " ")
+       (IBuiltin "subst" [ (IString " ")
                           (il-subst "|" "|1" (c0 delim env))
                           (for-result il-spc-encode) ]))))
 
@@ -410,7 +410,7 @@
     ((PList _ forms)
      (define `test (first forms))
      (define `body (rest forms))
-     (define `is-else (case test ((PSymbol _ name) (eq name "else"))))
+     (define `is-else (case test ((PSymbol _ name) (eq? name "else"))))
      (if body
          (if is-else
              ;; evaluate to BODY
@@ -449,7 +449,7 @@
          (let ((global-name (defn-global-name (resolve var env)))
                (name name))
            (if global-name
-               (String global-name)
+               (IString global-name)
                (gen-error var "%q is not a global variable" name))))
         (else (err-expected "S" var sym "NAME" "(global-name NAME)")))))
 
@@ -477,7 +477,7 @@
               (new-env (hash-bind name
                                   (EXMacro (gen-global-name name) nil)
                                   env)))
-          (ILEnv new-env node)))
+          (IEnv new-env node)))
        (else (err-expected "S" m-name sym "NAME" defmacro-where))))
     (else (err-expected "L" what sym "(NAME ARG...)" defmacro-where))))
 
@@ -529,8 +529,8 @@
   ;; Note: We can use list *encoding* only when a member is of list *type*
   ;; AND is the last member.
   (define `(arg-enc flag has-more-args)
-    (cond ((eq "&word" flag) "W")
-          ((and (eq "&list" flag) (not has-more-args)) "L")
+    (cond ((eq? "&word" flag) "W")
+          ((and (eq? "&list" flag) (not has-more-args)) "L")
           (else "S")))
 
   (or
@@ -635,10 +635,10 @@
 
        ;; Add tag/pattern bindings to ^tags
        (define `node
-         (Call (global-name ^add-tags) [(String tag-defs)]))
+         (ICall (global-name ^add-tags) [(IString tag-defs)]))
 
        (or (case types ((PError _ _) types))
-           (ILEnv (append bindings env) node))))))
+           (IEnv (append bindings env) node))))))
 
 
 ;;--------------------------------
@@ -655,13 +655,13 @@
    n (indices encs)
    (let& ((enc (word n encs))
           (arg (nth n args))
-          (ndx-node (String (1+ n)))
+          (ndx-node (IString (1+ n)))
           (arg-node
            (cond
-            ((eq "S" enc) (Call "^n" [ndx-node value-node]))
-            ((eq "W" enc) (Builtin "word" [ndx-node value-node]))
-            (else (Builtin "wordlist" [ ndx-node
-                                        (String 99999999)
+            ((eq? "S" enc) (ICall "^n" [ndx-node value-node]))
+            ((eq? "W" enc) (IBuiltin "word" [ndx-node value-node]))
+            (else (IBuiltin "wordlist" [ ndx-node
+                                        (IString 99999999)
                                         value-node])))))
          (hash-bind (symbol-name arg)
                     (EIL arg-node ".")))))
@@ -692,13 +692,14 @@
            (or
             (let ((defn (resolve ctor-form env))
                   (value-node value-node)
-                  (ctor-args ctor-args))
+                  (ctor-args ctor-args)
+                  (body body))
               (case defn
                 ((ERecord encs priv tag)
 
                  (define `test-node
-                   (Builtin "filter" [ (String tag)
-                                       (Builtin "firstword" [value-node]) ]))
+                   (IBuiltin "filter" [ (IString tag)
+                                       (IBuiltin "firstword" [value-node]) ]))
                  (define `bindings
                    (arg-bindings ctor-args encs value-node))
 
@@ -706,11 +707,12 @@
                    (c0-block body (append bindings env)))
 
                  ;; Success
-                 (Builtin "if" [ test-node then-node ]))))
+                 (IBuiltin "if" [ test-node then-node ]))))
 
             (case ctor-form
               ((PSymbol _ name)
-               (gen-error "symbol %q does not identify a record type" name))
+               (gen-error ctor-form "symbol %q does not identify a record type"
+                          name))
               (else
                (err-expected "S" ctor-form pattern "CTOR" case-where)))))
 
@@ -719,7 +721,7 @@
 
 (define (case-append-arg node value)
   (case node
-    ((Builtin name args) (Builtin name (conj args value)))
+    ((IBuiltin name args) (IBuiltin name (conj args value)))
     ((PError _ _) node)
     (else (PError 0 (sprintf "internal:append-arg:%q" node)))))
 
@@ -730,6 +732,13 @@
 
 (define (ml.special-case env sym args)
   (define `value-form (first args))
-  (if value-form
-      (case-fold (c0-matches (rest args) (c0 value-form env) env))
-      (err-expected "" value-form sym "VALUE" case-where)))
+  (let ((value (c0 value-form env))
+        (env env)
+        (args args)
+        (sym sym))
+    (case value
+      ((PError _ _) value)
+      (else
+       (if value-form
+           (case-fold (c0-matches (rest args) value env))
+           (err-expected "" value-form sym "VALUE" case-where))))))

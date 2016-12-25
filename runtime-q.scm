@@ -43,13 +43,14 @@
 (expect (value ".f") "$$")
 (expect (call ".f") "$")
 
-;; *args*
+;; ...
 
-(expect ( (lambda () *args*) 1 2 "" "3 4" "\n")
+(expect ( (lambda (...x) x) 1 2 "" "3 4" "\n" "")
         [1 2 "" "3 4" "\n"] )
-
-(expect ( (lambda () *args*) "" "")
-        [] )
+(expect ( (lambda (...x) x) 1 2 3 4 5 6 7 8 9 10 11 "")
+        [1 2 3 4 5 6 7 8 9 10 11])
+(expect (.foreach "N" 2 (call "^v" 1 2 3))
+        [2 3])
 
 ;; apply
 
@@ -59,10 +60,10 @@
 (expect "321" (apply rev [1 2 3]))
 (expect "11 10 321" (apply rev [ 1 2 3 "" "" "" "" "" "" "10 " "11 "]))
 
-(define (indexarg n)
-  (nth n *args*))
+(define (indexarg n ...args)
+  (nth n args))
 
-(expect "w" (apply indexarg
+(expect "x" (apply indexarg
                    "24 a b c d e f g h i j k l m n o p q r s t u v w x y z"))
 
 ;; esc-LHS

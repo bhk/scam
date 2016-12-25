@@ -55,7 +55,7 @@
 (define (form-index form)
   (if (filter "!:%" (word 1 form))
       (word 2 form)
-      (if (isnumber form)
+      (if (numeric? form)
           form
           0)))
 
@@ -213,7 +213,7 @@
   (rest st))
 
 (define (POut-format value)
-  (if (and (isnumber (word 1 value))
+  (if (and (numeric? (word 1 value))
            (filter "!:%" (word 2 value)))
       (concat "(POut " (word 1 value) " " (format (rest value)) ")")))
 
@@ -260,7 +260,7 @@
      ;; A ")" or "]" error closes this sequence UNLESS it is nested, as in:
      ;;     ( ... [ ... *)*
      ;; In such a case, desc will be ") [" and not ")".
-     (if (eq term desc)
+     (if (eq? term desc)
          ;; Done (matching terminator)
          (POut (POut-pos out) (PList start-pos lst))
          ;; Error (mis-matched terminator)
@@ -328,7 +328,7 @@
           ((filter ";%" w)       (parse-exp subj (1+ (find-word subj pos "\n%"))))
           ((filter "[" w)        (parse-array subj pos))
           ((filter "' ` , ,@" w) (parse-x w subj pos))
-          ((isnumber w)          (POut pos (PString pos w)))
+          ((numeric? w)          (POut pos (PString pos w)))
           ((filter "$ : !p" w)   (POut pos (PError pos (pdec w))))
           (else                  (POut pos (PSymbol pos (promote w))))))
    (POut pos (PError pos "."))))
@@ -384,7 +384,7 @@
 ;;
 (define (natural? n)
   &private
-  (isnumber (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
+  (numeric? (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
 
 
 ;; Construct error message, given error form and source text
@@ -416,7 +416,7 @@
 
   (case form
     ((PError n desc)
-     (k form-list (if (eq desc ".") nil form)))
+     (k form-list (if (eq? desc ".") nil form)))
 
     (else (parse-forms-r subj k
                          (parse-exp subj (1+ pos))

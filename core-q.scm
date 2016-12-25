@@ -4,10 +4,10 @@
 
 (require "core" &private)
 
-(if (eq 1 2)
+(if (eq? 1 2)
     (error "eq not working"))
 
-(if (eq "1 2" (nth 1 ["1 2"]))
+(if (eq? "1 2" (nth 1 ["1 2"]))
     nil
     (error "promote/demote not working"))
 
@@ -19,11 +19,11 @@
 (expect "recursive" (flavor "FF"))
 (expect "$" (value "FF"))
 
-(expect "" (eq "" "a"))
-(expect "" (eq "a" ""))
-(expect "" (eq "a" "aa"))
-(expect "1" (eq "a" "a"))
-(expect "1" (eq "" ""))
+(expect "" (eq? "" "a"))
+(expect "" (eq? "a" ""))
+(expect "" (eq? "a" "aa"))
+(expect "1" (eq? "a" "a"))
+(expect "1" (eq? "" ""))
 
 (expect 5678 (identity 5678))
 
@@ -47,29 +47,28 @@
 (expect "1 2 3 " (indices "a b c"))
 
 
-(expect "2" (isnumber "2"))
-(expect "-1" (isnumber "-1"))
-(expect "0.1" (isnumber "0.1"))
-(expect "21." (isnumber "21."))
-(expect "" (isnumber ".1"))
-(expect "" (isnumber "+1"))
-(expect "" (isnumber "-"))
-(expect "" (isnumber "x"))
-(expect "" (isnumber "1+"))
-(expect "" (isnumber "1.1."))
-(expect "" (isnumber "1x0"))
-(expect "1.2e-7" (isnumber "1.2e-7"))
-(expect "-1e7" (isnumber "-1e7"))
-(expect "" (isnumber "1e7.1"))
-(expect "" (isnumber " 2 "))
+(expect "2" (numeric? "2"))
+(expect "-1" (numeric? "-1"))
+(expect "0.1" (numeric? "0.1"))
+(expect "21." (numeric? "21."))
+(expect "" (numeric? ".1"))
+(expect "" (numeric? "+1"))
+(expect "" (numeric? "-"))
+(expect "" (numeric? "x"))
+(expect "" (numeric? "1+"))
+(expect "" (numeric? "1.1."))
+(expect "" (numeric? "1x0"))
+(expect "1.2e-7" (numeric? "1.2e-7"))
+(expect "-1e7" (numeric? "-1e7"))
+(expect "" (numeric? "1e7.1"))
+(expect "" (numeric? " 2 "))
 
 (expect "[1 \"a b\"] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
 (expect "nada" (sprintf "nada" "ignored"))
 (expect "!P!. a !\t !0 x" (sprintf "!P!.%s!0%sx" " a !\t " " " "ignored"))
 (expect "a%b%c" (sprintf "a%%b%s" "%c"))
-
-;; TODO: FIX
-;; (expect "\"\"A" (sprintf "%qA" ""))
+(expect "\"\"A" (sprintf "%qA" ""))
+(expect "abc" (sprintf "%s" "abc" "def"))
 
 
 (expect "" (reverse ""))

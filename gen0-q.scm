@@ -16,7 +16,7 @@
                (lambda (env nodes)
                  (if (and nodes
                           (not allow-nodes)
-                          (not (eq [(String "")] nodes)))
+                          (not (eq? [(IString "")] nodes)))
                      (sprintf "UNEXPECTED NODES: '%q'" nodes)
                      env))))
 
@@ -43,10 +43,10 @@
 (expect [(PSymbol 2 "bar") ]    (skip-flags flag-args 2))
 
 
-(expect (Local 3 0) (c0-local ".3"  (EMarker ".") nil))
-(expect (Local 3 1) (c0-local ".3"  (EMarker "..") nil))
-(expect (Local 3 1) (c0-local "..3" (EMarker "...") nil))
-(expect (Local 3 2) (c0-local ".3"  (EMarker "...") nil))
+(expect (ILocal 3 0) (c0-local ".3"  (EMarker ".") nil))
+(expect (ILocal 3 1) (c0-local ".3"  (EMarker "..") nil))
+(expect (ILocal 3 1) (c0-local "..3" (EMarker "...") nil))
+(expect (ILocal 3 2) (c0-local ".3"  (EMarker "...") nil))
 
 
 ;;--------------------------------
@@ -75,7 +75,7 @@
 ;; c0-block
 
 (expect (c0-ser "\"x\" v")
-        "(Block x,{V})")
+        "(IBlock x,{V})")
 
 
 ;; PList: (functionvar ...)
@@ -87,7 +87,7 @@
 
 (expect (c0-ser "(f 1)" (append
                          (hash-bind "g" (EVar "newG" "."))
-                         (hash-bind "f" (EFunc MacroName "."
+                         (hash-bind "f" (EFunc NoGlobalName "."
                                                ["a" (p1 "(filter a g)")]))
                          (hash-bind "g" (EVar "oldG" "."))))
         "(.filter 1,{oldG})")
@@ -163,9 +163,20 @@
   (expect (hash-get "i" env)
           (EArg ".8"))
   (expect (hash-get "j" env)
-          (ESMacro (p1-0 "(call \"^n\" 1 arg9&)") "."))
+          (EIL (IBuiltin "call" [(IString "^n") (IString 1) (IVar 9)]) "."))
   (expect (hash-get "k" env)
-          (ESMacro (p1-0 "(call \"^n\" 2 arg9&)") ".")))
+          (EIL (IBuiltin "call" [(IString "^n") (IString 2) (IVar 9)]) ".")))
+
+(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]) ".")
+        (hash-get "..." (lambda-env (pN "a b ...") nil)))
+(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]) ".")
+        (hash-get "r" (lambda-env (pN "a b ...r") nil)))
+(expect (EIL (IBuiltin "wordlist" [(IString 2) (IString 999999) (IVar "9")]) ".")
+        (hash-get "..." (lambda-env (pN "a b c d e f g h i ...") nil)))
+(expect (EIL (IVar 9) ".")
+        (hash-get "..." (lambda-env (pN "a b c d e f g h ...") nil)))
+(expect (EIL (IVar 9) ".")
+        (hash-get "r" (lambda-env (pN "a b c d e f g h ...r") nil)))
 
 ;; local variable referencing arg 9
 (expect (c0-ser "X" (lambda-env (pN "a a a a a a a a X Y")
@@ -176,18 +187,18 @@
         "`{V}")
 
 (expect (c0-ser "(lambda (a b) a b)")
-        "`(Block {1},{2})")
+        "`(IBlock {1},{2})")
 
 (foreach SCAM_DEBUG "-" ;; avoid upvalue warning
          (expect (c0-ser "(lambda (a) (lambda (b) a b))")
-                 "``(Block {1^1},{1})"))
+                 "``(IBlock {1^1},{1})"))
 
 ;; PSymbol: macro  (uses c0-lambda)
 (begin
   (define `macro-inln
     [ [ "a" "b" ] (p1-0 "(word a b)") ])
   (define `macro-env
-    (hash-bind "M" (EFunc MacroName "." macro-inln)))
+    (hash-bind "M" (EFunc NoGlobalName "." macro-inln)))
 
   (expect (il-ser (c0-macro macro-env (PSymbol 0 "M") macro-inln))
           "`(.word {1},{2})"))
@@ -212,15 +223,15 @@
 ;;    ((c1 (c0 ["`" AST]))) -> AST
 
 (define (cqq text)
-  (c0-ser text (append (hash-bind "sym" (EIL (String "SYM") "."))
+  (c0-ser text (append (hash-bind "sym" (EIL (IString "SYM") "."))
                        (hash-bind "var" (EVar "VAR" "."))
                        ;; args = [`a `b]
-                       (hash-bind "args" (EIL (String [(PSymbol 1 "a")
+                       (hash-bind "args" (EIL (IString [(PSymbol 1 "a")
                                                        (PSymbol 2 "b")])
                                               ".")))))
 
 (expect (c0 (p1-0 "`x"))
-        (String (p1-0 "x")))
+        (IString (p1-0 "x")))
 
 (expect (cqq "`,sym")
         "SYM")
@@ -237,7 +248,7 @@
 ;; nested quote/unquote
 (begin
   (define `(dd node) (concat "(^d " node ")"))
-  (define (cc ...) (Concat *args*))
+  (define (cc ...nodes) (IConcat nodes))
 
   ;; Some demote operations are deferred until run-time, some are already
   ;; applied to literal values.
@@ -299,7 +310,7 @@
  "(define x 1) (info x)"
  (lambda (env sil)
    (expect env (hash-bind "x" (EVar (xns "~x") ".")))
-   (expect sil (xns "(Block (^set ~x,1),(.info {~x}))"))))
+   (expect sil (xns "(IBlock (^set ~x,1),(.info {~x}))"))))
 
 
 ;; define FUNC
@@ -309,12 +320,15 @@
 (expect (text-to-env "(define (f a) a)" nil 1)
         (xns (hash-bind "f" (EFunc "~f" "." nil))))
 
+(expect (c0-ser "(define (word a) a)")
+        "!(PError 4 'cannot redefine built-in function \\'word\\'')")
+
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (concat a a))")
-        (hash-bind "M" (EFunc MacroName "." ["a" (p1-0 "(concat a a)")])))
+        (hash-bind "M" (EFunc NoGlobalName "." ["a" (p1-0 "(concat a a)")])))
 
 (expect (text-to-env "(define `(M a) &private (concat a a))")
-        (hash-bind "M" (EFunc MacroName "p"  ["a" (p1-0 "(concat a a)")])))
+        (hash-bind "M" (EFunc NoGlobalName "p"  ["a" (p1-0 "(concat a a)")])))
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)" env0)
@@ -331,6 +345,9 @@
         "!(PError 5 ''&inline' does not apply to symbol definitions')")
 (expect (c0-ser "(define X &inline 1)")
         "!(PError 4 ''&inline' does not apply to symbol definitions')")
+(expect (c0-ser "(define `(m ...x) x)")
+        "!(PError 8 'macros do not support varargs')")
+
 
 ;; define and use symbol macro
 
@@ -340,7 +357,7 @@
 ;; define and use compound macro
 
 (expect (c0-ser "(define `(M a) (info a) 3) (M 2)")
-        "(Block (.info 2),3)")
+        "(IBlock (.info 2),3)")
 
 (expect (c0-ser "(define `(M a) (info a)) M")
         "`(.info {1})")
@@ -362,7 +379,7 @@
 
 ;; define and use inline FUNC
 (expect (c0-ser "(define (f a b) &inline (join a b))  (f 1 2)")
-        (xns "(Block (^fset ~f,`(.join {1},{2})),(.join 1,2))"))
+        (xns "(IBlock (^fset ~f,`(.join {1},{2})),(.join 1,2))"))
 
 
 ;;
@@ -371,11 +388,11 @@
 
 (define (canned-MIN name)
   (cond
-   ((eq "D/M" name) "(declare X &private) (declare x)")
-   ((eq "M" name) "(declare X &private) (declare x)")
-   ((eq "F" name) "(define X &private 1) (define (f) &inline X)")
-   ((eq "CM" name) "(define `(F) &private 3) (define `(G) (F))")
-   ((eq "SM" name) "(define `A &private 7) (define `B A)")
+   ((eq? "D/M" name) "(declare X &private) (declare x)")
+   ((eq? "M" name) "(declare X &private) (declare x)")
+   ((eq? "F" name) "(define X &private 1) (define (f) &inline X)")
+   ((eq? "CM" name) "(define `(F) &private 3) (define `(G) (F))")
+   ((eq? "SM" name) "(define `A &private 7) (define `B A)")
    (else (expect (concat "Bad module: " name) nil))))
 
 (define (canned-read-file name)
@@ -412,19 +429,19 @@
 
  ;; IMPORTED inline function
  (expect (c0-ser "(require \"F\") (f)")
-         (xns "(Block (^require F),{~X})"))
+         (xns "(IBlock (^require F),{~X})"))
 
  ;; IMPORTED compound macro
  (expect (c0-ser "(require \"CM\") (G)")
-         "(Block (^require CM),3)")
+         "(IBlock (^require CM),3)")
 
  ;; IMPORTED symbol macro
  (expect (c0-ser "(require \"SM\") B")
-         "(Block (^require SM),7)"))
+         "(IBlock (^require SM),7)"))
 
 ;; RECURSIVE INLINE FUNCTION: we should see one level of expansion where it
 ;; is used.
 
 (expect
  (c0-ser "(define (f a b) &inline (if a b (f b \"\"))) (f 1 2)")
- (xns "(Block (^fset ~f,`(.if {1},{2},(~f {2},))),(.if 1,2,(~f 2,)))"))
+ (xns "(IBlock (^fset ~f,`(.if {1},{2},(~f {2},))),(.if 1,2,(~f 2,)))"))

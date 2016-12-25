@@ -92,7 +92,7 @@
 
 (expect (c0-ser "(? f 1)")
         "(^t F,1)")
-(expect (c0-ser "(? m a)" (hash-bind "m" (EFunc MacroName "." NoOp)))
+(expect (c0-ser "(? m a)" (hash-bind "m" (EFunc NoGlobalName "." NoOp)))
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
@@ -172,15 +172,15 @@
 ;;--------------------------------
 
 (expect "aBc"
-        (il-ser (il-subst "b" "B" (String "abc"))))
+        (il-ser (il-subst "b" "B" (IString "abc"))))
 (expect "(.subst b,B,{V})"
-        (il-ser (il-subst "b" "B" (Var "V"))))
+        (il-ser (il-subst "b" "B" (IVar "V"))))
 
 ;; delim == " "
 (expect "(.foreach x,a b,(^u {x}))"
         (c0-ser "(concat-for x \"a b\" \" \" x)"))
 
-;; delim == String
+;; delim == IString
 (expect "(.subst |1,|,(.subst |0, ,(.subst  ,|1,(.foreach x,a b,(.subst  ,|0,(.subst |,|1,(^u {x})))))))"
         (c0-ser "(concat-for x \"a b\" \"|\" x)"))
 
@@ -217,7 +217,7 @@
 
 (let ((out (c0 (p1 "(defmacro (foo a) a)") nil 1)))
   (case out
-    ((ILEnv env il)
+    ((IEnv env il)
      (fexpect env
               (xns (hash-bind "foo" (EXMacro "~foo" nil))))
      (expect (il-ser il)
@@ -309,31 +309,41 @@
 (p1-block-cc
  "(data T (CA a &word b &list c) (CB))"
  (lambda (env sil)
-   (expect (ERecord "S W L" "." "!:T0")
-           (hash-get "CA" env))
+   (expect (hash-get "CA" env)
+           (ERecord "S W L" "." "!:T0"))
    ;; ^add-tags is &global
-   (expect "(^add-tags !1:T0!=CA!0S!0W!0L !1:T1!=CB)"
-           sil)))
+   (expect sil
+           "(^add-tags !1:T0!=CA!0S!0W!0L !1:T1!=CB)")))
 
 
 ;;--------------------------------
 ;; (case VALUE (PATTERN BODY)... )
 ;;--------------------------------
 
-(expect (append
-         (hash-bind "a" (EIL (Builtin "word" [ (String 2) (String 123) ]) "."))
-         (hash-bind "b" (EIL (Call "^n" [ (String 3) (String 123) ]) ".")))
-        (arg-bindings [ (PSymbol 0 "a") (PSymbol 0 "b") ]
-                      "W S"
-                      (String 123)))
+(expect
+ (arg-bindings [ (PSymbol 0 "a") (PSymbol 0 "b") ]
+               "W S"
+               (IString 123))
+ (append
+  (hash-bind "a" (EIL (IBuiltin "word" [ (IString 2) (IString 123) ]) "."))
+  (hash-bind "b" (EIL (ICall "^n" [ (IString 3) (IString 123) ]) "."))))
 
 ;; single case
-(expect "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}))"
-        (c0-ser "(case v ((Ctor s w v) v))"
+(expect (c0-ser "(case v ((Ctor s w v) v))"
                (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
-                          default-env)))
+                          default-env))
+        "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}))")
+
 ;; multiple cases
-(expect "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}),{V})"
-        (c0-ser "(case v ((Ctor s w l) l) (a a))"
-               (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
-                          default-env)))
+(expect (c0-ser "(case v ((Ctor s w l) l) (a a))"
+                (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
+                          default-env))
+        "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}),{V})")
+
+;; non-ctor in pattern
+(expect (c0-ser "(case v ((Foo a) 1))")
+        "!(PError 8 'symbol \\'Foo\\' does not identify a record type')")
+
+;; bad value expr
+(expect (c0-ser "(case bogus)")
+        "!(PError 4 'undefined variable \\'bogus\\'')")

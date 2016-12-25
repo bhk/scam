@@ -8,24 +8,24 @@
 ;; IL-related definitions
 ;;
 
-(expect (String "")
+(expect (IString "")
         (il-concat))
-(expect (String "abc")
-        (il-concat [ (String "abc") ]))
-(expect (String "ab")
-        (il-concat [ (String "a") (String "b") ]))
-(expect (Concat [ (String "ab") (Var "V") (String "cd") ])
-        (il-concat [ (String "a")
-                     (Concat [ (String "b") (Var "V") (String "c") ])
-                     (String "d") ]))
+(expect (IString "abc")
+        (il-concat [ (IString "abc") ]))
+(expect (IString "ab")
+        (il-concat [ (IString "a") (IString "b") ]))
+(expect (IConcat [ (IString "ab") (IVar "V") (IString "cd") ])
+        (il-concat [ (IString "a")
+                     (IConcat [ (IString "b") (IVar "V") (IString "c") ])
+                     (IString "d") ]))
 
 
-(expect (Call "^d" [ (Var "V") ])
-        (il-demote (Var "V")))
-(expect (String ["a b"])
-        (il-demote (String "a b")))
-(expect (Var "V")
-        (il-demote (Call "^u" [ (Var "V") ])))
+(expect (ICall "^d" [ (IVar "V") ])
+        (il-demote (IVar "V")))
+(expect (IString ["a b"])
+        (il-demote (IString "a b")))
+(expect (IVar "V")
+        (il-demote (ICall "^u" [ (IVar "V") ])))
 
 
 ;;
@@ -132,9 +132,6 @@
          "File Name.min"))
 
 ;; base-env and resolve
-
-(expect (EVar "^av" "b")
-        (resolve (PSymbol 0 "*args*") base-env))
 
 (expect (EVar "D!0!" nil)
         (resolve (PSymbol 0 "d!0!") (hash-bind "d!0!" (EVar "D!0!" nil))))

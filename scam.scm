@@ -19,9 +19,9 @@
 ;;              generated exectuable.
 ;;  --ct FILE : specifies a source file that defines compile-time macros.
 
-(define (usage ...)
-  (if *args*
-      (print "scam: " (vsprintf *args*)))
+(define (usage fmt ...values)
+  (if fmt
+      (print "scam: " (vsprintf fmt values)))
   (print "Usage:\n
     scam [-i]              : enter interactive mode
     scam -o EXE FILE...    : build an executable from SRC
@@ -34,7 +34,7 @@ Options:
   --no-trace : Omit tracing functionality.  This will produce a slightly
                smaller executable.
 ")
-  (if ... 1))
+  (if fmt 1))
 
 
 (define (opt-err opt)
@@ -52,7 +52,7 @@ Options:
 
     (define `(exec argv)
       (define `user-main (gen-global-name "main"))
-      (if (eq user-main (global-name main))
+      (if (eq? user-main (global-name main))
           (begin
             (print "scam: -x not supported; namespace collision")
             1)
