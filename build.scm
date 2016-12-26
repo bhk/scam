@@ -180,7 +180,7 @@
               (concat prologue
                       (concat-for obj objects " "
                                (bundle obj))
-                      (epilogue main (gen-global-name "main") runtime)))
+                      (epilogue main (gen-global-name "main" nil) runtime)))
 
   (shell (concat "chmod +x " (quote-sh-arg outfile))))
 
@@ -310,7 +310,7 @@
 ;; `env.boot` is true when the compiled files do NOT have implicit dependencies
 ;;      on boot files (runtime and scam-ct)
 ;;
-(define (scan-modules env sources mmap)
+(define (scan-modules env sources ?mmap)
   (define `file (first sources))
   (define `others (rest sources))
   (define `env.odir (hash-get "odir" env))
@@ -586,8 +586,8 @@
 ;;
 (define (build exe files opts)
   (define `rules
-    (concat (rule ".PHONY" nil ["/exe" "/dir"])
-            (rule "/exe" nil ["/dir" exe])
+    (concat (rule ".PHONY" nil ["/exe" "/dir"] nil)
+            (rule "/exe" nil ["/dir" exe] nil)
             (rule "/dir" nil [] [(lambda () (concat "mkdir -p " (dir exe)))])
             (exe-rules exe files
                        (hash-get "no-trace" opts)

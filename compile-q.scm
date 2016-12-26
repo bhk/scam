@@ -43,7 +43,8 @@
 (let-global ((write-file (lambda (name data) (set *written* [name data])))
              (read-file (lambda (name) "(define x 1)")))
 
-            (compile-file "foo.scm" "xx/foo.min" "rt")
+            (compile-file "foo.scm" "xx/foo.min" "rt"
+                          nil nil nil)
             (expect "xx/foo.min" wname)
             (expect 1 (see "# Exports: x" wtext))
             (expect 1 (see "x := 1" wtext)))

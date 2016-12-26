@@ -1,5 +1,9 @@
+;;--------------------------------
 ;; getopts.scm: parse command-line options
-;;
+;;--------------------------------
+
+(require "core")
+
 ;; Synopsis:
 ;;
 ;;   (getopts "a b -f --arg x" "-f --arg=")  -->  [["a" "b"] {"f": 1; "arg": "x"}]
@@ -19,8 +23,6 @@
 ;; contain '%' or '!' characters or whitespace.  File names may contain any
 ;; characters.
 ;;
-
-(require "core")
 
 ;; opts0 = options with no arguments (flags)
 ;; opts1 = options with one argument

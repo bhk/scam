@@ -133,7 +133,7 @@
                            (words (subst "o" " o" "i" "" d))))))))
 
 
-(define (list-of n lst)
+(define (list-of n ?lst)
   (if (word n lst)
       lst
       (list-of n (concat lst " x"))))
@@ -157,7 +157,7 @@
                     "$(NAME)$(if $(foreach ^xx,N-1,$(NAME)),)"))))
 
 
-(define (trace-info str a b c d)
+(define (trace-info str ?a ?b ?c ?d)
   (print "TRACE: " str a b c d))
 
 ;; Return functions identified by `pat`.  `pat` matches non-ignored

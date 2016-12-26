@@ -412,8 +412,8 @@ form is function value.
 
     > (define (f x y)
     +   (concat x y))
-    > (f "a" "b")
-    "ab"
+    > (f 1 2)
+    12
 
 Typically, functions are stored in global variables, as in the example
 above, but functions are first class values in SCAM, so they can be passed
@@ -435,11 +435,36 @@ An implication of this is the following behavior:
     > ("$1$2" "a" "b")
     "ab"
 
-#### Variable Numbers of Arguments
+#### Arity Checking
+
+When a function is called by its name, as in the `(f 1 2)` example above,
+SCAM performs compile-time checking of the number of arguments being passed.
+
+    > (f 1)
+    line 1: "f" accepts 2 arguments, not 1
+    at: (*f* 1)
+
+This checking does not apply when the function value is obtained some other
+way, as in `((or f) 1 2)`.  The computed result remains the same.  Any
+arguments not supplied will take the value `nil`.
+
+#### Optional Parameters
+
+In order to declare an optional parameter, prefix its name with `?` in the
+function definition or declaration:
+
+    > (define (g a ?b) (or b a))
+    > (g 1)
+    1
+    > (g 1 2)
+    2
+    > (g 1 2 3)
+    line 1: "g" accepts 1 or 2 arguments, not 3
+    at: (*g* 1 2 3)
 
 In order to capture an arbitrary number of arguments in one variable, prefix
-the name of the last variable with `...`.  The variable will evalute to a
-vector containing the remainder of the values passed to the function.  For
+the name of the last parameter with `...`.  The variable will evalute to a
+vector containing the rest of the arguments passed to the function.  For
 example:
 
     > (define (f a b ...others)
@@ -453,6 +478,21 @@ value.
     > (f 1 2 3 4 nil nil)
     [3 4]
 
+Optional parameters may not be followed by non-optional parameters.  "Rest"
+parameters (`...NAME`) are considered optional, and may appear only as the
+last of the formal parameter.
+
+Optional parameters may not be used with macros or inline functions.
+
+#### Function Variables
+
+When a function value is defined
+
+Since functions are values, `(f a b)` is equivalent to `(let ((g f)) (g a
+b))`.
+
+
+#### Variable Numbers of Arguments
 
 ### Syntax Trees
 
@@ -564,9 +604,7 @@ functionality:
 
 ## Macros
 
-Macros are user-defined syntax extensions. Macros are not values and cannot be
-passed to other functions; they can only be used in a compound expression
-similar to function invocation.
+Macros are user-defined syntax extensions.
 
 There are two forms of macros: symbol macros and compound macros.
 
@@ -594,17 +632,19 @@ Macros are invoked just like functions:
 
 Each invocation of the macro will be replaced by a `begin` block containing
 the macro body.  Within the macro body, the macro argument names are bound
-to the argument expressions.  Compound macros behave much like functions, but
-(1) they do not bind global variables to a function value, as function
+to the argument expressions.  Compound macros behave much like functions,
+but (1) they do not bind global variables to a function value, as function
 definitions do, and (2) when invoked, their argument expressions may be
-evaluated zero or more times.  Here is an example in the REPL:
+evaluated zero or more times.  When the value of a compound macro is
+requested, an equivalent function definition results.  Here is an example in
+the REPL:
 
     > (define `(m a)
-    +     (subst " " "" a))
-    > (m [1 2 3])
-    123
+    +     (subst 2 9 a))
+    > (m 123)
+    193
     > m
-    Error: attempt to evaluate a compound macro name
+    "$(subst 2,9,$1)"
 
 SCAM macros are hygienic -- they adhere to lexical scoping rules, just like
 SCAM functions.  Symbols named in the body of a macro are matched with the
@@ -811,15 +851,16 @@ previous definitions associated with the same name.
     can be used only with `define` (not with `declare`) and only for
     function definitions.
 
-    An inline function definition defines both a function and a macro
-    associated with the same symbol.  When the name is used in a function
-    call expression, the macro will be expanded in place.  In all other
-    ways, it is the same as a function definition, so it can be passed to
-    functions that require a function argument, and it can be used by Make
-    code.
+    An inline function definition defines both a function variable and a
+    macro associated with the same symbol.  When the name is used in a
+    function call expression, the macro will be expanded in place.  Unlike a
+    compound macro, however, an inline function can be recursive (the first
+    invocation will be as a macro, recursive invocations will be via the
+    function).
 
-    Beware that macro invocations can differ semantically from function
-    invocations in that arguments may be evaluated more than once.
+    Beware that macro invocations (and inline function invocations) can
+    differ semantically from ordinary function invocations in that arguments
+    may be evaluated more than once or not at all.
 
 Some examples:
 
@@ -887,17 +928,16 @@ a different form.
 
 [Special form]
 
-    (set NAME VALUE RETVAL?)
+    (set NAME VALUE RETVAL)
 
 The `set` special form assigns a value to a previously declared global
 variable.
 
 NAME is given as a symbol, not a string. For example:
 
-    (set var 12)
+    (set var 12 nil)
 
-`RETVAL` is an optional parameter.  The `set` expression returns `RETVAL`
-(or "" if `RETVAL` is not provided).
+The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
 
 
 ### `let-global`
@@ -1153,14 +1193,13 @@ from SCAM as a special form. For example:
     > (addsuffix ".c" "x")
     "x.c"
 
-Since builtins are special forms, they are not variables bound to function
-values.
+When the balue of a builtin is requested, an equivalent function value is
+provided:
 
     > shell
-    Line 1: Attempt to obtain value of builtin: "shell"
-    at: *shell*
+    "$(shell $1)"
 
-Builtins may also differ from ordinary functions in the way arguments are
+Builtins may differ from ordinary functions in the way arguments are
 evaluated. Ordinarily, all arguments are evaluated in order *before* a
 function is called. In the case of `if`, `and`, `or`, and `foreach`,
 however, arguments may not be evaluated at all, and in the case of

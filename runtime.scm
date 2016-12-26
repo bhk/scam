@@ -156,7 +156,7 @@ endef
 
 ;; Assign a new value to a simple variable, and return `retval`.
 ;;
-(define (^set name value retval)
+(define (^set name value ?retval)
   &global
   (concat (eval (concat (esc-LHS name)
                         " :=$ "
@@ -190,7 +190,7 @@ endef
 ;; Unlike protect-arg, which runs at compile time and is optimized for
 ;; small, simple output, ^E also tries to minimize encoding time.
 ;;
-(define (^E str pre)
+(define (^E str ?pre)
   &global
   (subst "$" (concat "$" pre)
          (concat
@@ -207,8 +207,8 @@ endef
 (define (promote a) (^u a))
 (define (demote a)  (^d a))
 (define (nth a b)   (^n a b))
-(define (set-global a b c) (^set a b c))
-(define (set-rglobal a b c) (^fset a b c))
+(define (set-global a b ?c) (^set a b c))
+(define (set-rglobal a b ?c) (^fset a b c))
 (define (apply a b) (^apply a b))
 
 (define `nil "")

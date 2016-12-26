@@ -218,7 +218,7 @@
       (concat "(POut " (word 1 value) " " (format (rest value)) ")")))
 
 
-(declare (parse-exp))
+(declare (parse-exp subj pos))
 
 
 ;; Extract literal string value, or generate "unterminated quote" error.
@@ -273,7 +273,7 @@
 
 
 (define `(parse-list subj pos)
-  (parse-seq subj ")" pos (parse-exp subj (1+ pos))))
+  (parse-seq subj ")" pos (parse-exp subj (1+ pos)) nil))
 
 (define (parse-array subj pos)
   &private

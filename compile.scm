@@ -87,8 +87,8 @@
 ;;
 (define (compile-prelude is-boot)
   (if (not is-boot)
-        (append (require-module rt-mod nil)
-                (use-module ct-mod))))
+      (append (require-module rt-mod nil)
+              (use-module ct-mod))))
 
 
 (define `(construct-file infile env exe reqs uses)

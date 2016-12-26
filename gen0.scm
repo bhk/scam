@@ -57,7 +57,7 @@
 ;; c0 compilation
 ;;================================
 
-(declare (c0 form env))
+(declare (c0 form env ?inblock))
 (declare (c0-block forms env))
 (declare (c0-lambda env args body))
 
@@ -164,37 +164,54 @@
   (for f forms (c0 f env)))
 
 
-;; Expand inlined function
+;; Construct a string describing the number of parameters:
+;;  "a b c"      ==>   "3"
+;;  "a ?b ?c"    ==>   "1 or 2 or 3"
+;;  "a ?b ?c ..." ==>  "1 or more"
 ;;
-;; 1. Compile each argument expression to IL.
-;; 2. Expand function definition in environment that matches its original
-;;    environment PLUS bindings for the formal arguments (bound to an "I"
-;;    value).
+(define (get-argc args)
+  (if (filter "...% ?%" (lastword args))
+      (if (filter "...%" (lastword args))
+          (concat (words (filter-out "...% ?%" args)) " or more")
+          (concat (get-argc (butlast args)) " or " (words args)))
+      (words args)))
+
+
+;; Function call by name.
 ;;
-(define (c0-call-inline env sym args realname inln)
-  (define `name (symbol-name sym))
-  (define `formal-args (first inln))
-  (define `body (rest inln))
+;;   - Ordinary function:  body is nil
+;;   - Inline function:    body non-nil
+;;   - Compound macro:     body non-nil, REALNAME = NoGlobalName
+;;
+(define (c0-call env sym args realname formal-args body)
+  (define `name
+    (symbol-name sym))
 
   (define `(zip vec1 vec2)
     (join (addsuffix "!=" vec1) vec2))
 
+  ;; Compile each argument to IL and bind the value to the corresponding
+  ;; formal argument name.
   (define `body-env
     (append (zip formal-args
                  (for a args
-                      (EIL (c0 a env) "p")))
+                      (EIL (c0 a env nil) "p")))
             ;; Track the source position where the macro was invoked
             (hash-bind MacroMarkerKey
                        (EMarker (form-index sym)))
-            ;; re-bind symbol to non-inline function bindingto avoid
+            ;; re-bind symbol to non-inline function binding to avoid
             ;; endless cycle of expansion
             (if (not (filter NoGlobalName realname))
-                (hash-bind name (EFunc realname "." nil)))
+                (hash-bind name (EFunc realname "." [formal-args])))
             ;; rewind env to allow proper resolution of symbols in body
             (env-rewind env name)))
 
-  (or (check-argc (words formal-args) args sym)
-      (c0-block body body-env)))
+  (or (check-argc (get-argc formal-args) args sym)
+      (if body
+          ;; macro/inline
+          (c0-block body body-env)
+          ;; non-inline
+          (ICall realname (c0-vec args env)))))
 
 
 ;; Special forms are implemented in functions that begin with "ml.special-".
@@ -216,7 +233,7 @@
               (begin
                 (define `enc (word n encodings))
                 (define `arg (nth n args))
-                (define `value (c0 arg env nil))
+                (define `value (c0 arg env))
                 (define `field (if (filter "S" enc)
                                    (il-demote value)
                                    value))
@@ -239,9 +256,7 @@
 
   (case defn
     ((EFunc realname p inln)
-     (if inln
-         (c0-call-inline env sym args realname inln)
-         (ICall realname (c0-vec args env))))
+     (c0-call env sym args realname (first inln) (rest inln)))
 
     ((EBuiltin realname p argc)
      (or (check-argc argc args sym)
@@ -285,7 +300,7 @@
            (if (filter "...%" name)
                ;; "...X" => bind "X";  "..." => bind "..."
                (hash-bind (or (patsubst "...%" "%" name) name) rest-value)
-               (hash-bind name single-value))))
+               (hash-bind (patsubst "?%" "%" name) single-value))))
 
 
 ;; Add local variables to environment.
@@ -400,6 +415,19 @@
                  set-il))))
 
 
+;; Generate an error if a non-optional parameter follows an optional one.
+;;
+(define (check-optional-args args ?seen-optional)
+  (define `a
+    (first args))
+  (if args
+      (if (filter "...% ?%" (symbol-name a))
+          (check-optional-args (rest args) 1)
+          (if seen-optional
+              (gen-error a "non-optional parameter after optional one")
+              (check-optional-args (rest args) nil)))))
+
+
 ;; (define `(NAME ARGS...) FLAGS BODY)
 ;; (declare (NAME ARGS...) FLAGS)
 ;; (define  (NAME ARGS...) FLAGS BODY)
@@ -409,39 +437,41 @@
   (define `is-inline (and (not is-macro) (filter "&inline" flags)))
   (define `is-global (filter "&global" flags))
   (define `gname (gen-global-name name flags))
-
-  ;; inline function definition (to be embedded in env entry)
-  (define `fdefn (cons (for sym args (symbol-name sym))
-                       body))
+  (define `formal-args (for a args (symbol-name a)))
 
   ;; make function name known *within* the function body (without inline)
   (define `env-in
     (if is-macro
         env
-        (hash-bind name (EFunc gname priv nil) env)))
+        (hash-bind name (EFunc gname priv [formal-args]) env)))
 
   ;; make function known *after* the definition (including inline expansion)
   (define `env-out
     (hash-bind name (EFunc (if is-macro NoGlobalName gname)
                            priv
-                           (if (or is-inline is-macro)
-                               fdefn))
+                           (cons formal-args
+                                 (if (or is-inline is-macro)
+                                     body)))
                env))
 
   (define `set-il
     (ICall "^fset" [ (IString gname) (c0-lambda env-in args body) ]))
 
   (or (c0-check-body n (first body) is-define)
-      (if is-macro
+      (if (or is-macro is-inline)
           (vec-or
            (for a args
-                (if (filter "...%" (symbol-name a))
-                    (gen-error a "macros do not support varargs"))))
-          (if (filter name builtin-names)
-              (gen-error n "cannot redefine built-in function %q" name)))
+                (if (filter "...% ?%" (symbol-name a))
+                    (gen-error a "%s cannot have optional parameters"
+                               (if is-macro "macros" "inline functions")))))
+          ;; ordinary function
+          (check-optional-args args))
+      (if (and (not is-macro)
+               (filter name builtin-names))
+          (gen-error n "cannot redefine built-in function %q" name))
       (IEnv env-out
-             (if (and is-define (not is-macro))
-                 set-il))))
+            (if (and is-define (not is-macro))
+                set-il))))
 
 
 ;; Dispatch to c0-def-symbol or c0-def-compound
@@ -540,7 +570,7 @@
 ;;       this function is called, when it is nil.
 ;;       This may be a regular IL node *or* (IEnv env node)
 ;;
-(define (c0-block-cc env forms k results o)
+(define (c0-block-cc env forms k ?results ?o)
   (define `new-results
     (append results (if o [o])))
 
@@ -613,7 +643,7 @@
 
 ;; Expand a single form within a quasiquoted expression.
 ;;
-(define (c0-qq env form nest)
+(define (c0-qq env form ?nest)
   (case form
     ((PUnquote n child)
      (if nest
@@ -653,7 +683,7 @@
 
 
 ;; c0: compile an inline expression.  Return IL.  (see c0-block)
-(define (c0 form env inblock)
+(define (c0 form env ?inblock)
   ;;(if (findstring "c0" SCAM_DEBUG)
   ;;    (printf "form: %q" form))
   (case form

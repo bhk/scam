@@ -155,7 +155,7 @@
           "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"))
 
 
-(declare (c1))
+(declare (c1 node))
 
 
 ;; These nodes generate code with balanced parens and without leading or
@@ -295,7 +295,7 @@
 ;;--------------------------------------------------------------
 ;; File Syntax
 
-(declare (c1-file))
+(declare (c1-file node))
 
 ;; construct code for simple assignment
 ;;
@@ -355,7 +355,7 @@
 
      ;; Handle assignments using "a = b" vs. "$(call ^fset,a,b)"
      ((ICall name args)
-      (if (not (nth 3 args))
+      (if (not (filter-out [NoOp] (word 3 args)))
           (if (filter "^set" name)
               (c1-file-set (c1 (nth 1 args)) (c1 (nth 2 args)))
               (if (filter "^fset" name)

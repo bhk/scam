@@ -9,7 +9,7 @@
 ;;
 
 (expect (IString "")
-        (il-concat))
+        (il-concat nil))
 (expect (IString "abc")
         (il-concat [ (IString "abc") ]))
 (expect (IString "ab")
@@ -57,11 +57,15 @@
 
 ;; gensym
 
-(expect "foo&"   (gensym-name "foo"))
-(expect (PSymbol 0 "foo&") (gensym (PSymbol 0 "foo")))
-(expect (PSymbol 0 "foo&1") (gensym (PSymbol 0 "foo")
-                          (hash-bind (symbol-name (gensym (PSymbol 0 "foo")))
-                                     (EVar "x" "."))))
+(expect (gensym-name "foo" nil nil)
+        "foo&")
+(expect (gensym (PSymbol 0 "foo") nil)
+        (PSymbol 0 "foo&"))
+(expect (gensym (PSymbol 0 "foo")
+                (hash-bind (symbol-name (gensym (PSymbol 0 "foo") nil))
+                           (EVar "x" ".")))
+        (PSymbol 0 "foo&1"))
+
 
 ;; gen-error
 

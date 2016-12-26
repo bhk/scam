@@ -3,7 +3,8 @@
 
 
 (let ((o (getopts ["--arg" "x y z" "a b" "-f" "c"]
-                  "--arg= -f")))
+                  "--arg= -f"
+                  nil)))
   (define `files (nth 1 o))
   (define `omap (nth 2 o))
 
@@ -19,7 +20,8 @@
 
 
 (let ((o (getopts ["-b" "B" "-x" "a b" "-a" "c"]
-                  "-a= -b= -x=...")))
+                  "-a= -b= -x=..."
+                  nil)))
   (define `files (nth 1 o))
   (define `omap (nth 2 o))
 

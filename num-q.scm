@@ -2,7 +2,7 @@
 (require "num")
 
 (define (E n) (uencode n))
-(define (D n) (udecode n))
+(define (D n) (udecode n nil))  ;; only positive values
 
 (expect ".i . .ii" (E 201))
 (expect ".i . .ii" (E -201))

@@ -19,7 +19,7 @@
 ;;              generated exectuable.
 ;;  --ct FILE : specifies a source file that defines compile-time macros.
 
-(define (usage fmt ...values)
+(define (usage ?fmt ...values)
   (if fmt
       (print "scam: " (vsprintf fmt values)))
   (print "Usage:\n
@@ -51,7 +51,7 @@ Options:
     (define `(opt name) (hash-get name opts))
 
     (define `(exec argv)
-      (define `user-main (gen-global-name "main"))
+      (define `user-main (gen-global-name "main" nil))
       (if (eq? user-main (global-name main))
           (begin
             (print "scam: -x not supported; namespace collision")
@@ -69,7 +69,7 @@ Options:
       (usage))
 
      ((opt "e")
-      (repl-rep (opt "e")))
+      (repl-rep (opt "e") nil))
 
      ((opt "r")
       (eval (concat "include " (opt "r"))))

@@ -68,7 +68,7 @@
 
 ;; esc-LHS
 
-(declare (esc-LHS))
+(declare (esc-LHS str))
 (expect (esc-LHS "a= c ")
         "$(if ,,a= c )")
 (expect (esc-LHS "a\nb")

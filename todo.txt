@@ -1,106 +1,16 @@
 TODO
 
- * check arity of all functions (not just inline functions)
-    - export/import arg count
-    - Arguments starting at NDX -> $(foreach N,NDX,$(^v))
-    - args count = "2", "3", "3+"
-
- * Make symbols Private by default; explicit &public.
+ * &private by default; explicit &public.
 
  * Exports, Imports, Rewind
 
-   1. require adds only public members (unless &private is requested)
-   2. "file marker" is placed at top of env.
-   3. When expanding a macro:
-       - Local definitions "rewind" to that spot in the file
-       - Imported definitions rewind to that spot in original file's
-         private imports.  env is also marked with the file name.
-   4. Add file name field to PError.  Can pull from env in gen0, or
-      *compile-file* in parse.
-
-
-   - Export ONLY PUBLIC values when no macros or inline funcs are exported.
-   - Embed current file name in env as EMarker (or using dynamic var during
-     expansion). Better reporting of errors during macro expansion
-     (e.g. undefined symbols)
-
-   - fix macro-expansion error reporting (right source pos, wrong file)
-     Use file marker?
-   - Modules seem to be re-exporting imports...  Is that necessary for rewind?
-     Does it remain necessary when no macros are exported? (Even with &private
-     imports?)
-
-   - And: nth vs. ^n ... runtime export, overridable, vs. other mechanism?
-
- * Deal with `use` executing target code while the compiler is running.
-   This can clobber compiler sources when the target code uses the same
-   namespace as the compiler.  Assuming namespacing is used by only the
-   compiler, this is only a problem for compiler builds, and is MOSTLY
-   handled by the current NS usage -- c0 = "~", c1b = "", c1b = "~", c1c =
-   "~" but is identical to c1b -- BUT c1a's runtime is c0's, so c1b's
-   runtime clobbers c1a.
-
-   1. Expose "Form" data type to target code as part of the base env.
-   2. Write P-from-Form converter (`P` is compilers internal name for Form).
-   4. Make this a no-op when we observe that Form == P (could be a
-      compiler-specific mechanism for deeper type reflection).
-   5. Compiler sources can use: (c0 (form-to-p SYNTAX)).
-   6. Why does scam-ct require "runtime"?  `require` needs runtime already...
-   7. Write PEG using macros.
-
-
- * build, bundling, namespaces, scam-ct:
-
-   scam-ct should not "require" runtime.
-
-   Include namespace in MIN file names and variable names?
-    + User modules need not conflict with compiler modules.
-    - When `require` is compiled, module name is resolved to a variable or
-      file, using "file map" and "bundle map".  Bundle map is built into the
-      compiler (mod -> varname).  File map is passed to compile-file.
-
-   compile-file: is-boot -> boot-mode
-        r = runtime (no implicit deps for this module; no bundles)
-        c = ct macros (runtime is implicit; no bundles)
-        1 = in boot phase (no bundles)
-        nil => "normal" mode
-     is-boot & mod-files -> opts
-
- * (VALUE ...)  -->  (call VALUE ...)
-   call/origin/flavor/value -> .call/.origin/.flavor/.value ?
-
- * fix circular dependency for gen-testutils
-
- * (do (a b <- f1 x)
-       (c <- fn2 a b)
-       (return c))
-
- * (data NAME CTOR...) reflection.  (Whatever format-data needs...)
-
-     (data-type VALUE)     -->  (DataType name arity ctor dtor)
-     or: (data-record-tag value), (data-record-name value), ...
-
- * (case EXPR
-      ([a b]        EXPR)   ;; deconstruct vectors [succeeds if words are populated; "..."?]
-      (CONST        EXPR)   ;; match constant value (nil, for example)
-      ((Ctor "K" y) EXPR)   ;; match constant member
-      (["A" a b]    EXPR)   ;; match constant element (always succeeds)
-      ...)
-
- * Custom constructors
-
-   (data (Bind key value)
-     rec (concat [key] "!=" [value])
-     (key (first (subst "!=" " " rec)))
-     (value (nth 2 (subst "!=" "! " rec)))
-     (match (findstring "!=" rec)))
-
-   (data (Bind key value)
-     (concat [key] "!=" [value])
-     (lambda (rec)
-       [ (first (subst "!=" " " rec)) (nth 2 (subst "!=" "! " rec)) ])
-     (lambda (rec)
-       (findstring "!=" rec)))
+   - Revisit export compression since conversion to data records.
+   - Currently, the entire env is exported, including symbols imported from
+     other files.  This simplifies macro rewinding.  Instead, we could
+     include the imported files by reference.
+   - Fix macro-expansion error reporting: Add file name field to PError.
+     Populate it with *compile-file* in parse phase, and current file (based
+     on rewind state, maybe saved in env) in gen0.
 
  * Call-site tracing of lambda values
 
@@ -109,6 +19,8 @@ TODO
    fix (? builtin ...) and (? macro ...).
    &inline functions then only good for (global-name ...) or Make interop.
 
+ * (let (([a b c] vec)) ...)  [always succeeds; no "else" condition]
+
  * Lambda bugs
 
    Some bindings created outside of a lambda do not work inside it.  This
@@ -116,28 +28,26 @@ TODO
    happen with symbol macros, parameters to compound macros, and names bound
    by case patterns.
 
+   arg9 convention is spread between gen0 & gen1.  Would be better to
+   confine it to gen1.  This means using IArg with indices > 8, and some new
+   IL node (IArgRest) for varargs.
+
  * Parse hash syntax
 
- * WARN when shadowing variables!
+ * Record reflection.  What format-record needs:
+
+    (data? value)
+    (data-type value)    -> [ctor-name arity ctor dtor]
+
+ * (case EXPR
+      ([a b]        EXPR)   ;; deconstruct vectors [succeeds when?]
+      (CONST        EXPR)   ;; match constant value (nil, for example)
+      ((Ctor "K" y) EXPR)   ;; match constant member
+      (["A" a b]    EXPR)   ;; match constant element (always succeeds)
+      ...)
+
+ * WARN when shadowing variables
     - allow `(let ((x x)) ...)` or `&shadow` exceptions
-
- * scam -x
-
-   Make `require` work with source files in `scam [-x] FILE ...` commands.
-   Build with `scam -o .scam/NAME` & then run.
-
- * c0 functions:  return [IL ...env] consistently.   When `inblock` is nil,
-  `...env` can be nil.
-
- * arbitrary precision floating point
-    - fp divide w/ specified precision
-    - bug: (^ 2 100)  [in fp]
-
- * aliases: (define `X Y) should bind Y's defn (minus 'priv' bit) to X
-   ... but this would break rewind.
-
- * Integrate `strlen` with core.scm and use `strlen` to report column
-   for errors.
 
  * looping constructs / named lambda
 
@@ -158,112 +68,86 @@ TODO
                  [a 1 (* a i)])
                 ((zero? i) a))))
 
- * .min -> .make
-
  * "spread" with "..." syntax.
 
- * XMacros and circular dependencies:
+ * build / bundling / namespaces
 
-   Syntax quoting is an incomplete feature because the resulting values are
-   undefined.  If the language were to provide destructors (or pattern
-   matching) then programs could reasonably make use of it.  So far, scam-ct
-   is limited to trivial manipulations.
+   Fix circular dependency for gen-testutils.
 
-   Macros would need `form` for generating error messages and `env` for gensym.
+   scam-ct should not "require" runtime.
 
- * .out/a/scam ends up using NS='~' runtime, and also building and loading
-   its own runtime for .out/b/scam with NS='~' (!).
+   Include namespace in MIN file names and variable names?
+    + User modules need not conflict with compiler modules.
+    - When `require` is compiled, module name is resolved to a variable or
+      file, using "file map" and "bundle map".  Bundle map is built into the
+      compiler (mod -> varname).  File map is passed to compile-file.
 
-   Big complication: Modules may use a runtime in their own namespace, or
-   the compiler's own namespace.  [Inherent in a compiler being able to
-   target another namespace, and to compile sources that don't supply their
-   own namespace.]
+   compile-file: is-boot -> boot-mode
+        r = runtime (no implicit deps for this module; no bundles)
+        c = ct macros (runtime is implicit; no bundles)
+        1 = in boot phase (no bundles)
+        nil => "normal" mode
+     is-boot & mod-files -> opts
 
-   Maybe
+   Compile via command to enable more parallelism.
 
-   Namespacing the RT would be nice, but that is a feature of SCAM language,
-   so that would imply writing the RT in SCAM, which implies it depends on
-   the previous stage's runtime!  For which COMPLETE namespacing would be
-   nice, but that complicates codegen.
+ * use & executable macros
 
-   Multiple execution/compilation models (-x, -e, -o, make-driven
-   vs. synchronous, user-provided vs. compiler-embedded modules) have made
-   this more "interesting" than it otherwise would have to be.
+    - .out/a/scam ends up using NS='~' runtime, and also building and
+      loading its own runtime for .out/b/xxx with NS='~'.  Assuming
+      namespacing is used by only the compiler, this is only a problem for
+      compiler builds, and is MOSTLY handled by the current NS usage -- c0 =
+      "~", c1b = "", c1b = "~", c1c = "~" but is identical to c1b -- but the
+      .out/a/scam / .out/b/runtime clash remains.
 
-   `base` env should really be "builtin" env, a property of codegen.  gen1
-   does not need an env parameter, but could use a constant global env.
-   Maybe an (RT ...) IL node and (ERT ...) binding would be appropriate.
+    - Syntax quoting is an incomplete feature because the resulting values
+      are undefined.
 
-     (RT "d" ...) for (ICall (concat NS "^d") ...)
+       1. Expose "Form" data type to target code as part of the base env.
+       2. Write converter from "Form" to internal type (namespacing must
+          distinguish c0's from c1's "Form").
+       3. Make this a no-op when we observe that Form == internal (could be
+          a compiler-specific mechanism for deeper type reflection).
 
-   Like builtins, they would not use the arg9 convention.
+    - Macros don't have a good way to generate error messages or gensym
+      (needs env).
 
-   Those *actually* used in codegen:
-      ^u, ^d, ^n, ^set, ^fset, ^Y, ^E, ^av, ^t, ^require, ^start
+    - Even with namespacing, "global" symbols remain.  More complete
+      namespacing would help, but would complicate RT.  Maybe a new IL node
+      would help here (IRT, akin to IBuiltin). Those *actually* used in
+      codegen:
 
+        ^u, ^d, ^n, ^set, ^fset, ^Y, ^E, ^av, ^t, ^require, ^start
 
-   -----
+ * aliases: (define `g f) assigns g the correct value, but arity information
+   is lost, and it compiles to a lambda-call, not a call-by-name.  Getting this
+   to properly rewind is the challenge.
 
-   Assume compiler c0, compiled from unknown sources.  Everything about
-   *how* it works is a mystery; the language definition is all that is
-   known.  All it does is compile sources to programs in the default
-   (un-prefixed) namespace.  Our first step:
+ * Custom constructors
 
-   $ c0 -o c1 c.scm
+   (data (Bind key value)
+     (rec (concat [key] "!=" [value]))
+     (key (first (subst "!=" " " rec)))
+     (value (nth 2 (subst "!=" "! " rec)))a
+     (match (findstring "!=" rec)))
 
-   Presumably, this program will include a runtime that was bundled with c0,
-   suitably namespaced to avoid collisions with our program's functions.
-   But we can't even assume that it has a runtime.  Certainly it does not
-   use the runtime in the c1 sources.
+ * scam -x
 
-   Ideally, c1 would be fully functional, so that we could proceed to:
+   Make `require` work with source files in `scam [-x] FILE ...` commands.
+   Build with `scam -o .scam/NAME` & then run.
 
-   $ c1 -o prog prog.scm
+ * arbitrary precision floating point
+    - fp divide w/ specified precision
+    - bug: (^ 2 100)  [in fp]
 
-   ...but we aren't ready to, because *our* compiler -- the c1 source code
-   -- makes use of a runtime that must be bundled with any program we
-   generated.  That runtime is a separate source file, also written in SCAM.
-   It cannot be compiled with c0, because c0 generates only programs, not
-   discrete modules.  Even if it did, the discrete module would presumably
-   have external dependencies the way *our* generate code will have
-   dependencies on our runtime.  Just as our generated code will drag along
-   our runtime, c0's might drag along a copy of its runtime, and after a few
-   generations things can get quite large and conflicts get harder to avoid.
+ * Integrate `strlen` with core.scm and use `strlen` to report column
+   for errors.
 
-   So we need c1 to compile its own runtime.  Maybe a special command-line
-   option will suffice for this "mode" of operation:
+ * do / bind / return
 
-   $ c1 --boot -o prog prog.scm
-
-   It will have to be careful to avoid having runtime code depending on
-   things not yet defined later in the runtime, but with knowledge of c1
-   codegen and runtime we could achieve this.  Once built, it will bundle
-   the runtime with the program it generates, leaving it with a standalone
-   program.
-
-   We still want to arrive at a standalone *compiler*, and in addition to
-   having its embedded runtime requirements met, it will also want to
-   extract a copy of that runtime from itself for bundling with programs it
-   generates.
-
-   That, in turn, generates namespacing concerns.  We want compiled code to
-   be able to run alongside compiler code in one instance of Make -- the
-   '-e' and interactive modes require this.  That means the generated code
-   uses a different namespace (the default namespace).  That means the
-   compiler must get OUT OF the default namespace.  And then how can it
-   share the runtime (on one namespace) with the generated code?
-
-   Currently in SCAM:
-
-    - c1 (c1a) compiles c1b, and c1b uses a special namespace ("~" prefix).
-
-    - c1b can then generate code in the deafult namespace.
-
-    - However, once we promote c1b to be the new "c0", we will have a c0
-      that internally uses the "~" namespace.  And therefore the next c1a
-      will end up using a "~" runtime, the same as the next c1b that c1a
-      generates.  This can cause problems when c1a executes code it
-      generated for c1b.
+   (do (a b <- f1 x)
+       (c <- fn2 a b)
+       (return c))
 
 
 Optimizations
@@ -517,3 +401,69 @@ do         try
   (match (PSymbol n name) func
          else (warn ...))
   ...
+
+--------------------------------
+
+Namespace/boot discusssion
+----
+
+Assume compiler c0, compiled from unknown sources.  Everything about *how*
+it works is a mystery; the language definition is all that is known.  All it
+does is compile sources to programs in the default (un-prefixed) namespace.
+Our first step:
+
+$ c0 -o c1 c.scm
+
+Presumably, this program will include a runtime that was bundled with c0,
+suitably namespaced to avoid collisions with our program's functions.
+But we can't even assume that it has a runtime.  Certainly it does not
+use the runtime in the c1 sources.
+
+Ideally, c1 would be fully functional, so that we could proceed to:
+
+$ c1 -o prog prog.scm
+
+...but we aren't ready to, because *our* compiler -- the c1 source code
+-- makes use of a runtime that must be bundled with any program we
+generated.  That runtime is a separate source file, also written in SCAM.
+It cannot be compiled with c0, because c0 generates only programs, not
+discrete modules.  Even if it did, the discrete module would presumably
+have external dependencies the way *our* generate code will have
+dependencies on our runtime.  Just as our generated code will drag along
+our runtime, c0's might drag along a copy of its runtime, and after a few
+generations things can get quite large and conflicts get harder to avoid.
+
+So we need c1 to compile its own runtime.  Maybe a special command-line
+option will suffice for this "mode" of operation:
+
+$ c1 --boot -o prog prog.scm
+
+It will have to be careful to avoid having runtime code depending on
+things not yet defined later in the runtime, but with knowledge of c1
+codegen and runtime we could achieve this.  Once built, it will bundle
+the runtime with the program it generates, leaving it with a standalone
+program.
+
+We still want to arrive at a standalone *compiler*, and in addition to
+having its embedded runtime requirements met, it will also want to
+extract a copy of that runtime from itself for bundling with programs it
+generates.
+
+That, in turn, generates namespacing concerns.  We want compiled code to
+be able to run alongside compiler code in one instance of Make -- the
+'-e' and interactive modes require this.  That means the generated code
+uses a different namespace (the default namespace).  That means the
+compiler must get OUT OF the default namespace.  And then how can it
+share the runtime (on one namespace) with the generated code?
+
+Currently in SCAM:
+
+ - c1 (c1a) compiles c1b, and c1b uses a special namespace ("~" prefix).
+
+ - c1b can then generate code in the deafult namespace.
+
+ - However, once we promote c1b to be the new "c0", we will have a c0
+   that internally uses the "~" namespace.  And therefore the next c1a
+   will end up using a "~" runtime, the same as the next c1b that c1a
+   generates.  This can cause problems when c1a executes code it
+   generated for c1b.

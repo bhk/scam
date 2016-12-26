@@ -38,16 +38,16 @@
 ;;
 (define default-env
   (append (hash-bind "a" (EArg "1"))
-          (hash-bind "v" (EVar "V" nil))
-          (hash-bind "f" (EFunc "F" nil nil))
+          (hash-bind "v" (EVar "V" "."))
+          (hash-bind "f" (EFunc "F" "." [["a" "b"]]))
           ;; names that an extra promote/demote will corrupt...
-          (hash-bind "f!0!" (EFunc "F!0!" "." nil))
-          (hash-bind "d!0!" (EVar "D!0!" nil))))
+          (hash-bind "f!0!" (EFunc "F!0!" "." [["a" "b"]]))
+          (hash-bind "d!0!" (EVar "D!0!" "."))))
 
 
 
 ;; Compile one or more forms to serialized IL.
-(define (c0-ser text env)
+(define (c0-ser text ?env)
   (il-ser (c0-block (parse-text text) (or env default-env))))
 
 
@@ -83,4 +83,4 @@
 
 ;; Translate "~" to local namespace prefix in str.
 (define (xns str)
-  (subst "~" (gen-global-name "") str))
+  (subst "~" (gen-global-name "" nil) str))

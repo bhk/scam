@@ -239,8 +239,10 @@
      (define `sym (first p))
      (define `value (nth 2 p))
      (define `others (letg-expand env sym body (rest pairs)))
-     (define `inner (c0-set env sym (c0 value env) (c0 sym env)))
-     (c0-set env sym inner others))))
+     ;; don't need WHAT and WHERE; the other call to c0-set will get those
+     (define `inner (c0-set env sym (c0 value env) (c0 sym env) nil nil))
+
+     (c0-set env sym inner others nil nil))))
 
 
 (define (ml.special-let-global env sym args)
@@ -475,7 +477,7 @@
         (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
                         env))
               (new-env (hash-bind name
-                                  (EXMacro (gen-global-name name) nil)
+                                  (EXMacro (gen-global-name name env) nil)
                                   env)))
           (IEnv new-env node)))
        (else (err-expected "S" m-name sym "NAME" defmacro-where))))
@@ -546,9 +548,9 @@
        (if (not (filter "&%" arg-name))
            ;; argument name
            (read-type-r (rest args) form tag
-                       (concat pattern " " (arg-enc flag (word 2 args)))
-                       (conj names arg-name)
-                       "" (filter "&list" flag)))
+                        (concat pattern " " (arg-enc flag (word 2 args)))
+                        (conj names arg-name)
+                        nil))
 
        (if flag
            (gen-error arg "two type flags supplied for one argument"))
@@ -587,7 +589,7 @@
 
 ;; Return vector of ctor descriptions (see read-type), or a PError record.
 ;;
-(define (read-types parent tag-base ctor-forms counter prev-ctor others)
+(define (read-types parent tag-base ctor-forms ?counter ?prev-ctor ?others)
   &private
   (define `index (words counter))
   (define `tag (concat tag-base index))
@@ -614,7 +616,7 @@
    (let ((types
           (case type
             ((PSymbol _ name)
-             (read-types sym (concat "!:" name) ctor-forms nil))
+             (read-types sym (concat "!:" name) ctor-forms))
             (else
              (err-expected "S" type sym "NAME" data-where))))
          (env env))

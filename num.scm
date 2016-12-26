@@ -230,7 +230,7 @@
           (concat "." dmin " ." dmax))))
 
 
-(declare (longdiv))
+(declare (longdiv a more-a b))
 
 
 (define (longdiv-next digit remainder more-a b)
@@ -303,7 +303,7 @@
 
 ;; work on LenB digits at a time
 ;;   d c b a, z y ==>    b a,  z y,  d c
-(define (u/ a b more-a)
+(define (u/ a b ?more-a)
   (if (word (words (concat ". " b)) a)
       ;; a is longer than b
       (u/ (rest a) b (append more-a (first a)))

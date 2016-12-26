@@ -11,7 +11,7 @@
 
 ;; Compile text, returning final env (or error).
 ;;
-(define (text-to-env text env allow-nodes)
+(define (text-to-env text ?env ?allow-nodes)
   (c0-block-cc env (pN text)
                (lambda (env nodes)
                  (if (and nodes
@@ -80,8 +80,19 @@
 
 ;; PList: (functionvar ...)
 
-(expect (c0-ser "(f!0! 7)")
-        "(F!0! 7)")
+(expect (c0-ser "(f!0! 1 2)")
+        "(F!0! 1,2)")
+(expect (c0-ser "(f 1)")
+        "!(PError 2 '\\'f\\' accepts 2 arguments, not 1')")
+(expect (c0-ser "(f)" (text-to-env "(declare (f a ?b))"))
+        "!(PError 2 '\\'f\\' accepts 1 or 2 arguments, not 0')")
+(expect (c0-ser "(f)" (text-to-env "(declare (f a ?b ...))"))
+        "!(PError 2 '\\'f\\' accepts 1 or more arguments, not 0')")
+(expect (c0-ser "(f)" (text-to-env "(declare (f a b ...))"))
+        "!(PError 2 '\\'f\\' accepts 2 or more arguments, not 0')")
+(expect (c0-ser "(f)" (text-to-env "(declare (f a ?b ?c))"))
+        "!(PError 2 '\\'f\\' accepts 1 or 2 or 3 arguments, not 0')")
+
 
 ;; PList: (inlinefunc ...) and env-rewinding
 
@@ -230,7 +241,7 @@
                                                        (PSymbol 2 "b")])
                                               ".")))))
 
-(expect (c0 (p1-0 "`x"))
+(expect (c0 (p1-0 "`x") nil)
         (IString (p1-0 "x")))
 
 (expect (cqq "`,sym")
@@ -286,15 +297,15 @@
 (define env0 (hash-bind "x" "V x"))
 
 (expect (text-to-env "(declare var)")
-        (hash-bind "var" (EVar (gen-global-name "var") ".")))
+        (hash-bind "var" (EVar (gen-global-name "var" nil) ".")))
 (expect (text-to-env "(declare var &private)")
-        (hash-bind "var" (EVar (gen-global-name "var") "p")))
+        (hash-bind "var" (EVar (gen-global-name "var" nil) "p")))
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        (hash-bind "fn" (EFunc (gen-global-name "fn") "." nil)))
+        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "." [["a" "b"]])))
 (expect (text-to-env "(declare (fn a b) &private)")
-        (hash-bind "fn" (EFunc (gen-global-name "fn") "p" nil)))
+        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "p" [["a" "b"]])))
 
 ;; declare errors
 (expect (c0-ser "(declare)")
@@ -314,11 +325,11 @@
 
 
 ;; define FUNC
-(expect (c0-ser "(define (f a b) (join a b))")
+(expect (c0-ser "(define (f a ?b) (join a b))")
         (xns "(^fset ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
-        (xns (hash-bind "f" (EFunc "~f" "." nil))))
+        (xns (hash-bind "f" (EFunc "~f" "." [["a"]]))))
 
 (expect (c0-ser "(define (word a) a)")
         "!(PError 4 'cannot redefine built-in function \\'word\\'')")
@@ -336,7 +347,14 @@
 (expect (text-to-env "(define `I &private 7)" env0)
         (hash-bind "I" (ESMacro (PString 0 7) "p") env0))
 
-;; define errors
+;; (define ...) errors
+
+(expect nil (check-optional-args [(PSymbol 0 "a") (PSymbol 0 "b")]))
+(expect nil (check-optional-args [(PSymbol 0 "?a") (PSymbol 0 "?b")]))
+(expect nil (not (check-optional-args [(PSymbol 0 "?a") (PSymbol 0 "b")])))
+(expect nil (not (check-optional-args [(PSymbol 0 "...a") (PSymbol 0 "b")])))
+
+
 (expect (c0-ser "(define)")
         "!(PError 2 'missing FORM in (define FORM ...); expected a list or symbol')")
 (expect (c0-ser "(define `1)")
@@ -346,7 +364,13 @@
 (expect (c0-ser "(define X &inline 1)")
         "!(PError 4 ''&inline' does not apply to symbol definitions')")
 (expect (c0-ser "(define `(m ...x) x)")
-        "!(PError 8 'macros do not support varargs')")
+        "!(PError 8 'macros cannot have optional parameters')")
+(expect (c0-ser "(define (m ...x) &inline x)")
+        "!(PError 7 'inline functions cannot have optional parameters')")
+(expect (c0-ser "(define (f ...x z) x)")
+        "!(PError 9 'non-optional parameter after optional one')")
+(expect (c0-ser "(define (f ?a x) x)")
+        "!(PError 9 'non-optional parameter after optional one')")
 
 
 ;; define and use symbol macro
@@ -368,11 +392,11 @@
                                 "(define (g x) &inline (info x))")
                         nil 1)))
   (expect (hash-get "g" env)
-          (EFunc (gen-global-name "g")
+          (EFunc (gen-global-name "g" nil)
                  "."
                  ["x" (p1-0 "(info x)")]))
   (expect (hash-get "f" env)
-          (EFunc (gen-global-name "f")
+          (EFunc (gen-global-name "f" nil)
                  "."
                  ["a b" (p1-0 "(join a b)")])))
 
@@ -412,7 +436,7 @@
          "(^require M)")
 
  (expect (text-to-env "(require \"M\")" nil 1)
-         (hash-bind "x" (EVar (gen-global-name "x") "i")))
+         (hash-bind "x" (EVar (gen-global-name "x" nil) "i")))
 
  (expect (c0-ser "(require \"D/M\" \"xyz\")")
          "!(PError 0 'too many arguments to require')")
@@ -420,8 +444,8 @@
  ;; (require MOD &private)
 
  (expect (text-to-env "(require \"M\" &private)" nil 1)
-         (append (hash-bind "x" (EVar (gen-global-name "x") "."))
-                 (hash-bind "X" (EVar (gen-global-name "X") "p"))))
+         (append (hash-bind "x" (EVar (gen-global-name "x" nil) "."))
+                 (hash-bind "X" (EVar (gen-global-name "X" nil) "p"))))
 
  ;; Verify that IMPORTED inline functions & macros are expanded in their
  ;; original environment (read from their MIN files' exports) so they can

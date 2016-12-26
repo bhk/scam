@@ -6,10 +6,14 @@
 (declare SCAM_DEBUG &global)
 
 
-(define (xshell str)
+(define `(logshell cmd)
   (if (filter "S" SCAM_DEBUG)
-      (print "shell: " str))
-  (shell str))
+      (print "shell: " cmd))
+  (shell cmd))
+
+
+(define (shellc ...all)
+  (logshell (concat-vec all)))
 
 
 ;; quote argument for POSIX shells
@@ -28,7 +32,7 @@
 ;; because `shell` captures stdout, and writing to stdin fails on Cygwin.
 ;;
 (define (printn ...strings)
-  (xshell (concat (echo-command (concat-vec strings)) " >&2")))
+  (shellc (echo-command (concat-vec strings)) " >&2"))
 
 
 ;; Execute command, returning data written to stdout.  (Unlike `shell`,
@@ -36,7 +40,7 @@
 ;;
 (define (shell! cmd)
    (subst " " "" "!n" "\n" "!0" " " "!1" "!"
-          (xshell (concat cmd " | sed -e 's/!/!1/g;s/ /!0/g;s/$/!n/g'"))))
+          (logshell (concat cmd " | sed -e 's/!/!1/g;s/ /!0/g;s/$/!n/g'"))))
 
 
 ;; Read one line from stdin.
@@ -50,9 +54,22 @@
   (shell! "head -1"))
 
 
+;; write-file creates a temporary file and, on success, copies it to the
+;; destination.  If interrupted in the middle of processing, the temporary
+;; file might be partially constructed.
+;;
 (define (write-file filename data)
+  (define `prefile (concat filename ".pre"))
+
   (if filename
-      (xshell (concat (echo-command data) " > " filename))
+      ;; write line-by-line to avoid command line length limit
+      (if (not (shellc (echo-command "") " > " prefile " || echo ERROR"))
+          ;; initial write succeeded
+          (begin
+            (for line (subst " " "\n " (split "\n" data))
+                 (if line
+                     (shellc (echo-command line) " >> " prefile)))
+            (shellc "mv " prefile " " filename)))
       (print "error: write-file: nil filename")))
 
 
@@ -62,7 +79,7 @@
       (print "error: read-file: nil filename")))
 
 
-(define (read-lines fname start end)
+(define (read-lines fname ?start ?end)
   (define `command
     (concat "sed -E '"
             (if start
@@ -70,7 +87,7 @@
             "s/!/!1/g;s/\t/!+/g;s/ /!0/g;s/$/!n/g' "
             fname))
   (if fname
-      (subst " !n" " !." "!n" "" (xshell command))
+      (subst " !n" " !." "!n" "" (logshell command))
       (print "error: read-lines: nil filename")))
 
 
@@ -78,5 +95,5 @@
   ;; `wildcard` is cached by Make and will not reflect files created/deleted
   ;; when the program is running.
   (if
-   (shell (concat "ls " (quote-sh-arg fname) " 2> /dev/null"))
+   (shellc "ls " (quote-sh-arg fname) " 2> /dev/null")
    1))

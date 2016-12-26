@@ -90,9 +90,11 @@
 ;;         For EFunc records, the value NoGlobalName indicates that the
 ;;         binding is a compound macro, and not a function variable.
 ;;
-;; INLN = definition of an '&inline' function or compound macro body.
+;; INLN = definition of a function or compound macro body:
 ;;          [ [ARGNAME...] BODY...]
 ;;        where each ARGNAME is a string and BODY... is a vector of forms.
+;;        For inline functions and compoune macros, BODY is non-empty.
+;;        For non-inline functions, BODY is empty.
 ;;
 ;; ARGREF = argument reference:
 ;;      .1   --> argument #1 of a top-level function
@@ -303,7 +305,7 @@
 ;; with any other symbol generated with the same `env` and a different `base`.
 ;;
 (define (gensym base env)
-  (PSymbol 0 (gensym-name (symbol-name base) env)))
+  (PSymbol 0 (gensym-name (symbol-name base) env nil)))
 
 
 ;; Return all words after first occurrence of `item` in `vec`.
@@ -333,7 +335,7 @@
 
 ;; Display a warning during compilation.
 ;;
-(define (compile-warn form fmt a b c)
+(define (compile-warn form fmt ?a ?b ?c)
   (info (describe-error (gen-error form fmt a b c)
                         (pdec *compile-subject*)
                         *compile-file*)))
@@ -347,7 +349,7 @@
    (else (form-typename code))))
 
 
-(define (err-expected types form parent what where arg1 arg2)
+(define (err-expected types form parent what where ?arg1 ?arg2)
   (gen-error (or form parent)
              (concat
               (if form "invalid" "missing") " " what " in " where
@@ -377,7 +379,13 @@
 ;; SYM = symbol for function/form that is being invoked
 ;;
 (define (check-argc expected args sym)
-  (if (filter-out expected (words args))
+  (define `ok
+    (or (filter expected (words args))
+        (and (filter "more" expected)
+             (or (eq? 0 (word 1 expected))
+                 (word (word 1 expected) args)))))
+
+  (if (not ok)
       (gen-error sym
                  (subst "%S" (if (eq? expected 1) "" "s")
                         "%q accepts %s argument%S, not %s")

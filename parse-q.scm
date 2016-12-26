@@ -56,7 +56,7 @@
 ;; pdec-str un-does penc but also decodes backslash sequences
 ;; and returns a demoted string.
 
-(define (tdse o i)
+(define (tdse o ?i)
   (check-eq (demote o) (pdec-str (penc (or o i)))))
 
 (expect 1 (tdse ""))

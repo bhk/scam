@@ -19,7 +19,7 @@
   (if a (if b nil a) b))
 
 ;; concatenate strings in VEC, separating them with DELIM
-(define (concat-vec vec delim)
+(define (concat-vec vec ?delim)
   (promote (subst " " (demote delim) vec)))
 
 ;; add an item to the front of a vector
@@ -70,12 +70,12 @@
 
 (define (indicesX in out)
   (if (word (words out) in)
-      (concat (words out) " " (indicesX in (concat ". " out)))))
+      (concat (words out) " " (indicesX in (concat "1 " out)))))
 
 ;; return list of indices, one for each word in list
 (define (indices list)
   &inline
-  (indicesX list "." 1))
+  (indicesX list 1))
 
 
 ;; Reverse a list in groups sized by powers of ten.
@@ -117,7 +117,7 @@
   (nth-rest 1 (rev-by-10s list (rev-zeroes list nil))))
 
 
-;; Keep applying `fn` to `value` while `(pref value)` is true.
+;; Keep applying `fn` to `value` while `(pred value)` is true.
 ;;
 ;; while: This implementation limits recursion depth to log(N).  A very
 ;;   simple implementation yields O(N) recursion depth, which can degrade
@@ -174,15 +174,15 @@
             ;; recurse and repeat
             (while-N pred do
                      (if level
-                         (while-N pred do o (rest level))
-                         (while-0 pred do val))
+                         (while-N pred do o (rest level) nil)
+                         (while-0 pred do val nil))
                      level
                      (concat "i" k)))))
 
   (define (while pred do initial)
     (if (pred initial)
         (let ((new-value (do initial)))
-          (nth 2 (while-N pred do (while-0 pred do new-value) 1 "ii")))
+          (nth 2 (while-N pred do (while-0 pred do new-value nil) 1 "ii")))
         initial)))
 
 
@@ -202,7 +202,7 @@
 ;; concatenate one or more (potentially empty) vectors, word lists, or
 ;; hashes.
 ;;
-(define (append a b c d e f g h ...others)
+(define (append ?a ?b ?c ?d ?e ?f ?g ?h ...others)
   (strip-vec (concat a " " b " " c " " d " " e " " f " " g " " h " "
                      (if others (promote others)))))
 
@@ -236,7 +236,7 @@
 ;;     share the same KEY.
 ;;
 
-(define (hash-bind key val hash)
+(define (hash-bind key val ?hash)
   (concat (subst "%" "!8" [key]) "!=" [val]
           (if hash " ")
           hash))
@@ -252,11 +252,11 @@
 (define (hash-find key hash)
   (word 1 (filter (concat (subst "%" "!8" [key]) "!=%") hash)))
 
-(define (hash-get key hash default)
+(define (hash-get key hash ?default)
   (nth 2 (concat (subst "!=" " " (hash-find key hash))
                  (if default (concat " x " (demote default))))))
 
-(define (hash-compact hash result)
+(define (hash-compact hash ?result)
   (if (not hash)
       result
       (let& ((entry (word 1 hash))
@@ -474,7 +474,7 @@
   (value varname))
 
 
-(define (memoenc a b c)
+(define (memoenc a ?b ?c)
   &private
   (if (or a b c)
       (concat "~~" (subst "~" "~0" a) (memoenc b c))))

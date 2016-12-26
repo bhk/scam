@@ -92,7 +92,7 @@
      ;; error?
      (errors (begin
                (for err errors
-                    (info (describe-error err text)))
+                    (info (describe-error err text nil)))
                ["" env]))
 
      ;; execute & display result
@@ -124,7 +124,7 @@
           ((typed ":")    ["" env]) ; reset input state
           ((typed ":q")   nil)      ; exit
           ((eq? line "")   nil)      ; exit (Ctrl-D)
-          ((typed ":e")   (begin (describe-env env) state))
+          ((typed ":e")   (begin (describe-env env nil) state))
           ((typed ":E")   (begin (describe-env env 1) state))
           (else           (eval-and-print (concat text line) env)))))
 
@@ -138,7 +138,7 @@
    (concat "(declare *1 &global)\n"
            "(declare *2 &global)\n"
            (foreach lib LIBS (concat "(require \"" lib "\")")) "\n")
-   (compile-prelude)))
+   (compile-prelude nil)))
 
 
 (define (repl)
@@ -160,7 +160,7 @@
     (if errors
         (begin
           (for err errors
-               (info (describe-error err text)))
+               (info (describe-error err text nil)))
           1)
 
         ;; execute & display result
@@ -172,7 +172,7 @@
 (define (repl-file file)
   (let ((text (read-file file)))
     (if text
-        (let ((o (compile-text text (compile-prelude) file "///~" nil)))
+        (let ((o (compile-text text (compile-prelude nil) file "///~")))
           (define `errors (nth 1 o))
           (define `exe    (nth 2 o))
 
