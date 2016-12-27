@@ -37,7 +37,7 @@ associative arrays, and first-class functions -- as strings.  For example:
 
     > (for f [- + * ^]
     +    (f 3 2))
-    "1 5 6 9"
+    [1 5 6 9]
 
 SCAM's compiled nature allows for more useful error reporting than what Make
 provides:
@@ -58,7 +58,7 @@ provides:
         Line 1: Undefined variable: xxx
         at: (info *xxx*)
 
-* counting arguments to builtin functions (at compile time)
+* counting arguments to functions (at compile time)
 
         > (subst 1 2)
         Line 1: Wrong number of arguments: 'subst' accepts 3
@@ -73,8 +73,8 @@ simplest form:
     12
     > "1 2"
     "1 2"
-    > (concat 1 " " [2 3])
-    "1 2 3"
+    > (cons "a b" [2 3])
+    ["a b" 2 3]
 
 The global variable `*1` holds the most recent return value, and `*2` holds
 the previous return value.

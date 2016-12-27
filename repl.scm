@@ -80,7 +80,8 @@
     (define `exe    (nth 2 o))
     (define `newenv (nth 3 o))
     (define `(is-error codes)
-      (filter codes (word 2 (first errors))))
+      (filter codes (case (first errors)
+                      ((PError n desc) desc))))
 
     (cond
      ;; unterminated expr: append more text

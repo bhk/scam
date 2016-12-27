@@ -95,7 +95,7 @@ In a few cases they designate keywords, like `define` or `let`.
 A compound expression is a parentheses-enclosed, space-delimited list of
 expressions.
 
-    (eq a (subst b c d))
+    (eq? a (subst b c d))
 
     (if a (print b))
 
@@ -197,10 +197,10 @@ in this format.
 
 ### Booleans
 
-Boolean results use the empty string to represent the false or failure
-condition, and any other value to represent true.
+Boolean results use the empty string (`nil`) to represent the false or
+failure condition, and any other value to represent true.
 
-    > (if "" 1 2)
+    > (if nil 1 2)
     2
     > (if "false" 1 2)   ; not false...
     1
@@ -491,8 +491,6 @@ When a function value is defined
 Since functions are values, `(f a b)` is equivalent to `(let ((g f)) (g a
 b))`.
 
-
-#### Variable Numbers of Arguments
 
 ### Syntax Trees
 

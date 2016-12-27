@@ -724,8 +724,8 @@
 (define (case-append-arg node value)
   (case node
     ((IBuiltin name args) (IBuiltin name (conj args value)))
-    ((PError _ _) node)
-    (else (PError 0 (sprintf "internal:append-arg:%q" node)))))
+    ;; could be an error, or block containing errors
+    (else node)))
 
 (define (case-fold args)
   (if (word 2 args)
