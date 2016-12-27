@@ -33,7 +33,7 @@
 ;;
 
 (define (describe-binding bound-name defn all)
-  (if (or all (not (filter "b p i%" (EDefn.priv defn))))
+  (if (or all (EDefn.is-public? defn))
       (case defn
         ((EBuiltin name p args)
          "built-in function")

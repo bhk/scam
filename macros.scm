@@ -104,8 +104,8 @@
     (case sym
       ((PSymbol pos var-name)
        (case binding
-         ((EVar name priv) (il-set "^set" name))
-         ((EFunc name priv inln) (il-set "^fset" name))
+         ((EVar name _) (il-set "^set" name))
+         ((EFunc name _ inln) (il-set "^fset" name))
          (else
           (gen-error sym "%q is not a global variable" (symbol-name sym)))))
       (else
@@ -146,9 +146,9 @@
            (define `(trace ctor name)
              (ctor "^t" (cons (IString name) (c0-vec func-args env))))
            (case defn
-             ((EFunc name p _) (if (not (eq? name NoGlobalName))
+             ((EFunc name _ _) (if (not (eq? name NoGlobalName))
                                    (trace ICall name)))
-             ((EBuiltin name p _) (trace IBuiltin name)))))
+             ((EBuiltin name _ _) (trace IBuiltin name)))))
 
      (if defn
          (gen-error func "FUNC in (? FUNC ...) is not traceable")
@@ -305,7 +305,7 @@
   (case var
     ((PSymbol _ name)
      (define `var-defn
-       (EIL (var-xform (IVar name)) nil))
+       (EIL (var-xform (IVar name))))
      (define `body-node
        (body-xform (c0-block body (hash-bind name var-defn env))))
      (if body
@@ -666,7 +666,7 @@
                                         (IString 99999999)
                                         value-node])))))
          (hash-bind (symbol-name arg)
-                    (EIL arg-node ".")))))
+                    (EIL arg-node)))))
 
 
 ;; Compile a vector of (PATTERN BODY) cases
@@ -684,7 +684,7 @@
           ;; (SYM BODY)
           ((PSymbol n var-name)
            (c0-block body (hash-bind var-name
-                                     (EIL value-node "")
+                                     (EIL value-node)
                                      env)))
 
           ;; ((CTOR ARG...) BODY)

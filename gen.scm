@@ -57,34 +57,46 @@
 ;;
 
 (data EDefn
-      (EBuiltin name &word priv argc) ; builtin function
-      (EFunc    name &word priv inln) ; function var or compound macro
       (EVar     name &word priv)      ; data variable
+      (EFunc    name &word priv inln) ; function var or compound macro
       (ESMacro  form &word priv)      ; symbol macro
       (EXMacro  name &word priv)      ; executable macro
       (ERecord  encs &word priv tag)  ; data record type
-      (EIL      node &word priv)      ; pre-compiled IL node
+      (EBuiltin name &word priv argc) ; builtin function
+      (EIL      node)                 ; pre-compiled IL node
       (EArg     &word argref)         ; function argument
       (EMarker  &word data))          ; marker
 
 (define `(EDefn.priv defn)
   (word 3 defn))
 
+(define `(EDefn.set-priv defn priv)
+  (append (wordlist 1 2 defn)
+          priv
+          (nth-rest 4 defn)))
+
+(define `(EDefn.is-public? defn)
+  (not (filter "p i%" (EDefn.priv defn))))
+
 (define `NoGlobalName ":")
 
-;; PRIV describes the scope and origin of top-level bindings.  This scope
-;;      is used to decide which symbols to export from a file.  The origin
-;;      is used to construct environments for the purpose of expanding
-;;      imported macros.
+;; PRIV describes the scope and origin of top-level bindings.
 ;;
-;;        "b" => a default (base) environment member
-;;        "p" => declared/defined with "&private"
-;;        "i<FILENAME>" => imported from via "require".  <FILENAME> is
-;;              the file from which it was imported IF this binding
-;;              is a macro or inline function; nil otherwise.
-;;        other => ordinary global declarations/definitions (to be exported),
-;;              or a local definition.  Locals are not exported, but also they
-;;              are not present in the environment at the end of the file.
+;;      When `require` imports symbols, only public symbols will be imported
+;;      (unless &private is specified).  This should not involve EBuiltin,
+;;      EIL, EArg, and EMarker because they should not be in any exported
+;;      environment.
+;;
+;;      When expanding ESMacro.form or EFunc.inln, we "rewind" the
+;;      environment to its state at the time of the definition.  If the
+;;      definition was in another file, this means re-creating the
+;;      environment of that other file.
+;;
+;;        "iMOD" => defn was imported from module MOD.
+;;        "i" => defn was imported (for types that do not rewind)
+;;        "p" => defn is &private
+;;        "x" => public (exported)
+;;        "." => public or don't care
 ;;
 ;; NAME = the actual (global) name of the function/variable or builtin.
 ;;         For EFunc records, the value NoGlobalName indicates that the
@@ -424,23 +436,18 @@
          v))
 
 
-;; True when the EDefn record
-;;
-(define `(is-private? defn)
-  (filter "b p i%" (EDefn.priv defn)))
-
-
 (define (import-binding key defn d-name)
-  ;; Return the demoted form of the nth item, but with nil represented as nil, not "!."
-  (define `(dnth n vec)
-    (subst [""] "" (word n vec)))
+  ;; EFunc and ESMacro can rewind
+  (define `(can-rewind defn)
+    (case defn
+      ((EFunc _ _ _) 1)
+      ((ESMacro _ _) 1)))
 
-  (if (not (is-private? defn))
-      (hash-bind key (append (wordlist 1 2 defn)
-                             (concat "i" (if (or (dnth 4 defn)
-                                                 (case defn ((ESMacro n p) 1)))
-                                             d-name))
-                             (nth-rest 4 defn)))))
+  (if (EDefn.is-public? defn)
+      (hash-bind key
+                 (EDefn.set-priv defn
+                                 (concat "i" (if (can-rewind defn)
+                                                 d-name))))))
 
 
 ;; Import the bindings from a MIN file's exports. Return an environment.
@@ -489,7 +496,7 @@
 
 (define *dummy-env*
   &private
-  (hash-bind "" (EIL (IString "") "p")))
+  (hash-bind "" (EIL (IString ""))))
 
 
 ;; Import symbols from `filename`.  `priv` means return all original
@@ -551,7 +558,7 @@
           (^require mod)
           (or (strip-vec (foreach e imports
                                   (case (hash-value e)
-                                    ((EXMacro n p) e))))
+                                    ((EXMacro _ _) e))))
               *dummy-env*)))))
 
 
@@ -562,7 +569,7 @@
         (env env)
         (name name))
     (define `defn (hash-value pair))
-    (define `priv (is-private? defn))
+    (define `priv (EDefn.priv defn))
     (define `mod (filtersub "i%" "%" priv))
 
     (if mod
@@ -603,16 +610,16 @@
 
 (define base-env
   (append
-   (foreach b builtins-1 (hash-bind b (EBuiltin b "b" 1)))
-   (foreach b builtins-2 (hash-bind b (EBuiltin b "b" 2)))
-   (foreach b builtins-3 (hash-bind b (EBuiltin (patsubst ".%" "%" b) "b" 3)))
-   (foreach b "and or call" (hash-bind b (EBuiltin b "b" "%")))
-   (hash-bind "if" (EBuiltin "if" "b" "2 or 3"))
+   (foreach b builtins-1 (hash-bind b (EBuiltin b "i" 1)))
+   (foreach b builtins-2 (hash-bind b (EBuiltin b "i" 2)))
+   (foreach b builtins-3 (hash-bind b (EBuiltin (patsubst ".%" "%" b) "i" 3)))
+   (foreach b "and or call" (hash-bind b (EBuiltin b "i" "%")))
+   (hash-bind "if" (EBuiltin "if" "i" "2 or 3"))
 
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
    (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
-            (hash-bind v (EVar v "b")))))
+            (hash-bind v (EVar v "i")))))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.

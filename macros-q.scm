@@ -325,8 +325,8 @@
                "W S"
                (IString 123))
  (append
-  (hash-bind "a" (EIL (IBuiltin "word" [ (IString 2) (IString 123) ]) "."))
-  (hash-bind "b" (EIL (ICall "^n" [ (IString 3) (IString 123) ]) "."))))
+  (hash-bind "a" (EIL (IBuiltin "word" [ (IString 2) (IString 123) ])))
+  (hash-bind "b" (EIL (ICall "^n" [ (IString 3) (IString 123) ])))))
 
 ;; single case
 (expect (c0-ser "(case v ((Ctor s w v) v))"

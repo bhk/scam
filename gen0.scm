@@ -133,24 +133,24 @@
     ((EArg arg)
      (c0-local arg (hash-get LambdaMarkerKey env) sym))
 
-    ((EVar gname p)
+    ((EVar gname _)
      (IVar gname))
 
-    ((EFunc gname p inln)
+    ((EFunc gname _ inln)
      (if (filter NoGlobalName gname)
          (c0-macro env sym inln)
          (IBuiltin "value" [(IString gname)])))
 
-    ((ESMacro value-form p)
+    ((ESMacro value-form _)
      (c0 value-form (env-rewind env name)))
 
-    ((EIL node priv)
+    ((EIL node)
      node)
 
-    ((ERecord encs p tag)
+    ((ERecord encs _ tag)
      (c0-ctor env sym encs))
 
-    ((EBuiltin name priv argc)
+    ((EBuiltin name _ argc)
      (c0-builtin env name argc))
 
     (else (c0-S-error sym defn))))
@@ -195,7 +195,7 @@
   (define `body-env
     (append (zip formal-args
                  (for a args
-                      (EIL (c0 a env nil) "p")))
+                      (EIL (c0 a env nil))))
             ;; Track the source position where the macro was invoked
             (hash-bind MacroMarkerKey
                        (EMarker (form-index sym)))
@@ -255,10 +255,10 @@
   (define `symname (symbol-name sym))
 
   (case defn
-    ((EFunc realname p inln)
+    ((EFunc realname _ inln)
      (c0-call env sym args realname (first inln) (rest inln)))
 
-    ((EBuiltin realname p argc)
+    ((EBuiltin realname _ argc)
      (or (check-argc argc args sym)
          (IBuiltin realname (c0-vec args env))))
 
@@ -267,7 +267,7 @@
          (c0 (call name args) env inblock)
          (gen-error sym "cannot use xmacro in its own file")))
 
-    ((ERecord encodings priv tag)
+    ((ERecord encodings _ tag)
      (c0-record env sym args encodings tag))
 
     (else
@@ -311,11 +311,11 @@
   &private
 
   (define `(nth-value n)
-    (EIL (IBuiltin "call" [(IString "^n") (IString n) (IVar 9)]) "."))
+    (EIL (IBuiltin "call" [(IString "^n") (IString n) (IVar 9)])))
   (define `(nth-rest-value n)
     (if (eq? n 1)
-        (EIL (IVar 9) ".")
-        (EIL (IBuiltin "wordlist" [(IString n) (IString 999999) (IVar 9)]) ".")))
+        (EIL (IVar 9))
+        (EIL (IBuiltin "wordlist" [(IString n) (IString 999999) (IVar 9)]))))
 
   (foreach n (indices xargs) (lambda-arg (nth n xargs)
                                          (nth-value n)
@@ -328,7 +328,7 @@
   (define `(nth-value n)
     (EArg (concat level n)))
   (define `(nth-rest-value n)
-    (EIL (IBuiltin "foreach" [ (IString "N") (IString n) (IVar "^v") ]) "."))
+    (EIL (IBuiltin "foreach" [ (IString "N") (IString n) (IVar "^v") ])))
 
   (append (hash-bind LambdaMarkerKey (EMarker level))
           ;; first 8 args = $1 ... $8

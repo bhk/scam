@@ -174,19 +174,19 @@
   (expect (hash-get "i" env)
           (EArg ".8"))
   (expect (hash-get "j" env)
-          (EIL (IBuiltin "call" [(IString "^n") (IString 1) (IVar 9)]) "."))
+          (EIL (IBuiltin "call" [(IString "^n") (IString 1) (IVar 9)])))
   (expect (hash-get "k" env)
-          (EIL (IBuiltin "call" [(IString "^n") (IString 2) (IVar 9)]) ".")))
+          (EIL (IBuiltin "call" [(IString "^n") (IString 2) (IVar 9)]))))
 
-(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]) ".")
+(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]))
         (hash-get "..." (lambda-env (pN "a b ...") nil)))
-(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]) ".")
+(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]))
         (hash-get "r" (lambda-env (pN "a b ...r") nil)))
-(expect (EIL (IBuiltin "wordlist" [(IString 2) (IString 999999) (IVar "9")]) ".")
+(expect (EIL (IBuiltin "wordlist" [(IString 2) (IString 999999) (IVar "9")]))
         (hash-get "..." (lambda-env (pN "a b c d e f g h i ...") nil)))
-(expect (EIL (IVar 9) ".")
+(expect (EIL (IVar 9))
         (hash-get "..." (lambda-env (pN "a b c d e f g h ...") nil)))
-(expect (EIL (IVar 9) ".")
+(expect (EIL (IVar 9))
         (hash-get "r" (lambda-env (pN "a b c d e f g h ...r") nil)))
 
 ;; local variable referencing arg 9
@@ -234,12 +234,11 @@
 ;;    ((c1 (c0 ["`" AST]))) -> AST
 
 (define (cqq text)
-  (c0-ser text (append (hash-bind "sym" (EIL (IString "SYM") "."))
+  (c0-ser text (append (hash-bind "sym" (EIL (IString "SYM")))
                        (hash-bind "var" (EVar "VAR" "."))
                        ;; args = [`a `b]
                        (hash-bind "args" (EIL (IString [(PSymbol 1 "a")
-                                                       (PSymbol 2 "b")])
-                                              ".")))))
+                                                       (PSymbol 2 "b")]))))))
 
 (expect (c0 (p1-0 "`x") nil)
         (IString (p1-0 "x")))
