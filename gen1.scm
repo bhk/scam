@@ -371,6 +371,7 @@
 ;; Returns:  [ errors exe ]
 ;;
 (define (gen1 node-vec is-file)
+  &public
   (let ( (c1o (if is-file
                   (c1-file* node-vec)
                   (c1 (IBlock node-vec)))) )

@@ -190,12 +190,6 @@
         (sort-by (lambda (f) (notdir f))
                  ["c/a !0" "a/c!" "c/a" ""]))
 
-;; type?
-
-(expect "F.1" (type? "A% F%" ["F.1" "Q f"]))
-
-(print "core ok")
-
 ;; assoc
 
 (expect [1 2 3]    (assoc 1 [ [2 1 3] [1 2 3] [1] ]))

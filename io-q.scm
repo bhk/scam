@@ -1,5 +1,5 @@
 (require "core")
-(require "io")
+(require "io" &private)
 
 ;; File I/O
 

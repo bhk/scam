@@ -156,6 +156,7 @@
 ;;--------------------------------------------------------------
 
 (define (+ a b)
+  &public
   (let ((sa (sign a))
         (sb (sign b))
         (ua (uencode a))
@@ -168,15 +169,18 @@
 
 
 (define (- a b)
+  &public
   (+ a (subst "--" "" (concat "-" b))))
 
 
 (define (* a b)
+  &public
   (udecode (u* (uencode a) (uencode b))
             (xor (sign a) (sign b))))
 
 
 (define (^ a b)
+  &public
   (let ((sa (sign a))
         (sb (sign b))
         (ua (uencode a))
@@ -187,11 +191,11 @@
                  (and sa (nodd ub) "-")))))
 
 
-(define (> a b) (if (filter "a" (cmp a b)) 1))
-(define (< a b) (if (filter "b" (cmp a b)) 1))
-(define (>= a b) (not (filter "b" (cmp a b))))
-(define (<= a b) (not (filter "a" (cmp a b))))
-(define (== a b) (not (cmp a b)))
+(define (> a b)  &public (if (filter "a" (cmp a b)) 1))
+(define (< a b)  &public (if (filter "b" (cmp a b)) 1))
+(define (>= a b) &public (not (filter "b" (cmp a b))))
+(define (<= a b) &public (not (filter "a" (cmp a b))))
+(define (== a b) &public (not (cmp a b)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -379,6 +383,7 @@
    (subst 0 "" 9 "" 8 71 7 61 6 51 5 41 4 31 3 21 2 11 111111111 "" 1 "1 " n)))
 
 (define (mod a b)
+  &public
   (declare (mod-))
 
   (if (filter "1 2 3 5 9 10" b)
@@ -437,6 +442,7 @@
       0))
 
 (define (sum list)
+  &public
   (if (word 50 list)
       (+ (sum (wordlist 1 (/ (words list) 2) list))
          (sum (nth-rest (1+ (/ (words list) 2)) list)))

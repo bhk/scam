@@ -12,8 +12,8 @@
 ;; those functions are defined.
 
 
-(declare SCAM_MODS &global)
-(declare SCAM_DEBUG &global)
+(declare SCAM_MODS &global &public)
+(declare SCAM_DEBUG &global &public)
 (eval "SCAM_DEBUG ?=")
 
 
@@ -141,12 +141,12 @@ endef
 ;; ^set and ^fset
 
 (define `(esc-RHS str)
-  &private
   (subst "$" "$$"
          "#" "$\""
          "\n" "$'" str))
 
 (define (esc-LHS str)
+  &public
   ;; $(if ,,...) protects ":", "=", *keywords*, and leading/trailing spaces
   (concat "$(if ,,"
           (subst "(" "$["
@@ -204,29 +204,34 @@ endef
 ;;--------------------------------------------------------------
 ;; Support for fundamental data types
 
-(define (promote a) (^u a))
-(define (demote a)  (^d a))
-(define (nth a b)   (^n a b))
-(define (set-global a b ?c) (^set a b c))
-(define (set-rglobal a b ?c) (^fset a b c))
-(define (apply a b) (^apply a b))
+(define (apply a b) &public (^apply a b))
+(define (promote a) &public (^u a))
+(define (demote a)  &public (^d a))
+(define (nth a b)   &public (^n a b))
+(define (set-global a b ?c) &public (^set a b c))
+(define (set-rglobal a b ?c) &public (^fset a b c))
 
-(define `nil "")
+(define `nil &public "")
 
 (define `(not v)
+  &public
   (if v nil "1"))
 
 ;; (nth-rest n vec) == vector starting at `n`th item in `vec`
 (define `(nth-rest n vec)
+  &public
   (wordlist n 99999999 vec))
 
 (define `(first vec)
+  &public
   (^u (word 1 vec)))
 
 (define `(rest vec)
+  &public
   (nth-rest 2 vec))
 
 (define `(rrest vec)
+  &public
   (nth-rest 3 vec))
 
 
@@ -236,6 +241,7 @@ endef
 ;; a quoted symbol: (bound? "map"), not (bound? 'map).
 ;;
 (define `(bound? var)
+  &public
   (if (filter-out "u%" (flavor var)) 1))
 
 
@@ -250,15 +256,18 @@ endef
 (declare *hooks*)
 
 (define (add-hook event funcname)
+  &public
   (set *hooks* (concat *hooks* " " event "=" funcname)))
 
 (define (run-hooks event)
+  &public
   (define `pat (concat event "=%"))
   (foreach funcname (patsubst pat "%" (filter pat *hooks*))
            (call funcname)))
 
 (define ^tags
   &global
+  &public
   "")
 
 (define (^add-tags str)
@@ -270,7 +279,8 @@ endef
 ;; ^require
 
 
-(define ^required-files "///runtime.min")
+(define ^required-files
+  "///runtime.min")
 
 
 ;; Include a module if it hasn't been included yet.
@@ -319,7 +329,8 @@ endef
 ;;----------------------------------------------------------------
 ;; Program execution
 
-(declare *started* &global)
+(declare *started*
+         &global)
 
 
 (define (start main-mod main-func args)

@@ -219,7 +219,7 @@
   (case out
     ((IEnv env il)
      (fexpect env
-              (xns (hash-bind "foo" (EXMacro "~foo" nil))))
+              (xns (hash-bind "foo" (EXMacro "~foo" "x"))))
      (expect (il-ser il)
              (xns "(^fset ~foo,`{1})")))
     (else
@@ -230,7 +230,7 @@
  "(defmacro (foo a) a)"
  (lambda (env sil)
    (expect sil (xns "(^fset ~foo,`{1})"))
-   (expect env (xns (hash-bind "foo" (EXMacro "~foo" nil))))))
+   (expect env (xns (hash-bind "foo" (EXMacro "~foo" "x"))))))
 
 
 ;;--------------------------------
@@ -310,10 +310,16 @@
  "(data T (CA a &word b &list c) (CB))"
  (lambda (env sil)
    (expect (hash-get "CA" env)
-           (ERecord "S W L" "." "!:T0"))
+           (ERecord "S W L" "p" "!:T0"))
    ;; ^add-tags is &global
    (expect sil
            "(^add-tags !1:T0!=CA!0S!0W!0L !1:T1!=CB)")))
+
+(p1-block-cc
+ "(data T &public (CA a &word b &list c))"
+ (lambda (env sil)
+   (expect (hash-get "CA" env)
+           (ERecord "S W L" "x" "!:T0"))))
 
 
 ;;--------------------------------

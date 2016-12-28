@@ -15,8 +15,8 @@
 
   (expect "" errors)
   (expect "a := 1\n" exe)
-  (expect (EVar "a" ".")
-          (hash-get "a" env-out)))
+  (expect (hash-get "a" env-out)
+          (EVar "a" "p")))
 
 
 ;; for eval
@@ -27,7 +27,7 @@
 
   (expect "" errors)
   (expect "$(call ^set,a,1)" exe)
-  (expect (hash-bind "a" (EVar "a" ".")) (word 1 exports)))
+  (expect (hash-bind "a" (EVar "a" "p")) (word 1 exports)))
 
 
 (expect "a := 1\nb := 2\n"

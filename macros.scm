@@ -477,7 +477,7 @@
         (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
                         env))
               (new-env (hash-bind name
-                                  (EXMacro (gen-global-name name env) nil)
+                                  (EXMacro (gen-global-name name env) "x")
                                   env)))
           (IEnv new-env node)))
        (else (err-expected "S" m-name sym "NAME" defmacro-where))))
@@ -525,7 +525,6 @@
 ;;        | "&list"  => value has no leading or trailing whitespace
 ;;
 (define (read-type-r args form tag pattern names flag)
-  &private
   (define `arg (first args))      ; a form
 
   ;; Note: We can use list *encoding* only when a member is of list *type*
@@ -590,7 +589,6 @@
 ;; Return vector of ctor descriptions (see read-type), or a PError record.
 ;;
 (define (read-types parent tag-base ctor-forms ?counter ?prev-ctor ?others)
-  &private
   (define `index (words counter))
   (define `tag (concat tag-base index))
   (define `all-ctors (append others
@@ -609,7 +607,8 @@
 
 (define (ml.special-data env sym args inblock)
   (define `type (first args))
-  (define `ctor-forms (rest args))
+  (define `flags (get-flags args 1))
+  (define `ctor-forms (skip-flags args 1))
 
   (env-strip
    inblock
@@ -619,6 +618,7 @@
              (read-types sym (concat "!:" name) ctor-forms))
             (else
              (err-expected "S" type sym "NAME" data-where))))
+         (scope (if (filter "&public" flags) "x" "p"))
          (env env))
      (begin
         ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
@@ -633,11 +633,11 @@
          (append-for ty types
                      (case ty
                        ((DataType tag name encodings argnames)
-                        (hash-bind name (ERecord encodings "." tag))))))
+                        (hash-bind name (ERecord encodings scope tag))))))
 
        ;; Add tag/pattern bindings to ^tags
        (define `node
-         (ICall (global-name ^add-tags) [(IString tag-defs)]))
+         (ICall "^add-tags" [(IString tag-defs)]))
 
        (or (case types ((PError _ _) types))
            (IEnv (append bindings env) node))))))
@@ -697,7 +697,7 @@
                   (ctor-args ctor-args)
                   (body body))
               (case defn
-                ((ERecord encs priv tag)
+                ((ERecord encs _ tag)
 
                  (define `test-node
                    (IBuiltin "filter" [ (IString tag)

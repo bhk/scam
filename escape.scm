@@ -42,13 +42,13 @@
 ;; $` instead of $$ to avoid exponential growth after repeated escape
 ;; operations.
 (define (escape str)
+  &public
   &inline
   (subst "$" "$`" str))
 
 
 ;; Double all backslash characters preceding "!D", and then remove "!D"
 (define (protect-hash2 str)
-  &private
   (if (findstring "\\.#" str)
       (protect-hash2 (subst "\\.#" ".#\\\\" str))
     (subst ".#" "" str)))
@@ -58,18 +58,15 @@
 ;;    #  -->    \#
 ;;   \#  -->  \\\#
 (define (quote-hash str)
-  &private
   (if (findstring "#" str)
       (protect-hash2 (subst "#" ".#\\#" str))
     str))
 
 (define (replace-nl str)
-  &private
   &inline
   (subst "\n" "$'" str))
 
 (define (replace-hash str)
-  &private
   &inline
   (subst "#" "$\"" str))
 
@@ -77,6 +74,7 @@
 ;; Prevent leading spaces from being trimmed.
 ;;
 (define (protect-ltrim str)
+  &public
   (define `(begins-white str)
     (findstring (word 1 (concat 0 str 0)) 0))
   (concat (if (begins-white str) "$ ") str))
@@ -86,6 +84,7 @@
 ;; in "$(if ,,...)".
 ;;
 (define (protect-trim s)
+  &public
   (if (and (findstring s (wordlist 1 99999999 s))
            (filter-out "\n%" (word 1 s))
            (filter-out "%\n" (lastword s)))
@@ -101,7 +100,6 @@
 ;; remaining "!L", "!R", or "!C" as necessary.
 
 (define (balance2 e)
-  &private
   (promote (if (findstring "!C" e)
                (concat "$(if ,," (subst "!C" "" e) ")")
              e)))
@@ -113,7 +111,6 @@
 ;; If we see a !R, we pop the last word and append "(<content>)" to the previous.
 ;;
 (define (balance-match-r w str stack)
-  &private
   (if w
       (balance-match-r (word 1 str)
            (rest str)
@@ -140,12 +137,10 @@
 
 
 (define (balance-match str)
-  &private
   (balance-match-r (word 1 str) (rest str) "!."))
 
 
 (define (balance str)
-  &private
   (balance2
    (subst " " "" "!R" "$]" "!L" "$["
           (balance-match (subst "," "!C," ")" " !R " "(" " !L"
@@ -163,7 +158,6 @@
 ;; the next word in the list.
 ;;
 (define (check-balance-r str)
-  &private
   (if (word 2 str)
       (check-balance-r
        (concat (subst " " "" (filter-out "!L%!R" (subst "!L" " !L" (word 1 str))))
@@ -171,7 +165,6 @@
       str))
 
 (define (check-balance str)
-  &private
   (check-balance-r (subst " " "" "\t" "" "!" "" "(" "!L" ")" "!R ." str)))
 
 
@@ -180,7 +173,6 @@
 ;; balancing.
 
 (define (make-balanced str chk)
-  &private
   (if (findstring "!" chk)
       (balance str)
       (if (findstring "," chk)
@@ -194,6 +186,7 @@
 ;;  - encode "," except where enclosed in balanced (unencoded) parens
 ;;
 (define (protect-arg str)
+  &public
   (if (or (findstring "(" str)
           (findstring ")" str)
           (findstring "," str))
@@ -208,6 +201,7 @@
 ;; Interestingly, "#" characters must not be quoted.
 ;;
 (define (protect-expr str)
+  &public
   (replace-nl str))
 
 
@@ -218,6 +212,7 @@
 ;;  - encode newlines
 ;;
 (define (protect-lhs str)
+  &public
   (define `keywords
     (concat "ifeq ifneq ifdef ifndef else endif define endef override "
             "include sinclude -include export unexport private undefine vpath"))
@@ -239,6 +234,7 @@
 ;;  - encode newlines
 ;;
 (define (protect-rhs str)
+  &public
   (quote-hash (protect-ltrim (replace-nl str))))
 
 
@@ -250,6 +246,7 @@
 ;; This function conservatively prefixes every 'define' and 'endef' with '$ '.
 ;;
 (define (protect-define str)
+  &public
   (if (or (findstring "define" str)
           (findstring "endef" str)
           (findstring "\\" str))

@@ -47,8 +47,8 @@
 ;; Implicit modules: these are implicit dependencies of all other
 ;; source files.
 ;;
-(define `rt-mod "runtime")  ;; run-time module (implicit "require")
-(define `ct-mod "scam-ct")  ;; compile-time module (implicit "use")
+(define `rt-mod &public "runtime")  ;; run-time module (implicit "require")
+(define `ct-mod &public "scam-ct")  ;; compile-time module (implicit "use")
 
 
 ;; Compile SCAM source to executable code.
@@ -66,6 +66,7 @@
 ;;           non-nil, code will be compiled for file syntax.
 ;;
 (define (compile-text text env infile outfile)
+  &public
   (let-global ((*compile-subject*  (penc text))
                (*compile-file*     infile))
 
@@ -86,6 +87,7 @@
 ;; contains a matching MIN file name.
 ;;
 (define (compile-prelude is-boot)
+  &public
   (if (not is-boot)
       (append (require-module rt-mod nil)
               (use-module ct-mod))))
@@ -109,6 +111,7 @@
 ;; uses = files indirectly required by this source file
 ;;
 (define (compile-file infile outfile is-boot mod-files reqs uses)
+  &public
   (if (findstring "B" SCAM_DEBUG)
       (printf (concat "compile-file: %s -> %s%s\n"
                       " mod-files = %s\n reqs = %s\n uses = %s\n")
@@ -119,7 +122,7 @@
     (let ((text (read-file infile))
           (outfile outfile)
           (imports (compile-prelude is-boot)))
-      (let ((o (compile-text text (rest imports) infile outfile))
+      (let ((o (compile-text text imports infile outfile))
             (text text)
             (infile infile)
             (outfile outfile))

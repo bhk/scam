@@ -1,5 +1,5 @@
 (require "core")
-(require "num")
+(require "num" &private)
 
 (define (E n) (uencode n))
 (define (D n) (udecode n nil))  ;; only positive values

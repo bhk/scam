@@ -110,7 +110,7 @@
 
 ;; PList: (record ...)
 
-(expect (il-ser (c0-record base-env
+(expect (il-ser (c0-record nil
                            (PSymbol 0 "CA")
                            [ (PString 1 "1") (PString 1 "2") ]
                            "S L"
@@ -127,9 +127,9 @@
         "`!:T0 (^d {1}) {2} {3}")
 
 
-;; PList: (<builtin> ...)  with base-env
+;; PList: (<builtin> ...)
 
-(expect (c0-ser "(or 7)" base-env)
+(expect (c0-ser "(or 7)" nil)
         "(.or 7)")
 (expect (c0-ser "(if 1)")
         "!(PError 2 '\\'if\\' accepts 2 or 3 arguments, not 1')")
@@ -190,8 +190,7 @@
         (hash-get "r" (lambda-env (pN "a b c d e f g h ...r") nil)))
 
 ;; local variable referencing arg 9
-(expect (c0-ser "X" (lambda-env (pN "a a a a a a a a X Y")
-                                base-env))
+(expect (c0-ser "X" (lambda-env (pN "a a a a a a a a X Y") nil))
         "(.call ^n,1,{9})")
 
 (expect (c0-ser "(lambda (a) v)")
@@ -217,9 +216,9 @@
 
 ;; PSymbol: builtin  (uses c0-lambda)
 
-(expect (il-ser (c0-builtin base-env "word" "2 or 1"))
+(expect (il-ser (c0-builtin nil "word" "2 or 1"))
         "`(.word {1},{2})")
-(expect (il-ser (c0-builtin base-env "or" "%"))
+(expect (il-ser (c0-builtin nil "or" "%"))
         "`(^apply or,{^av})")
 
 ;; ': quote
@@ -296,15 +295,15 @@
 (define env0 (hash-bind "x" "V x"))
 
 (expect (text-to-env "(declare var)")
-        (hash-bind "var" (EVar (gen-global-name "var" nil) ".")))
-(expect (text-to-env "(declare var &private)")
         (hash-bind "var" (EVar (gen-global-name "var" nil) "p")))
+(expect (text-to-env "(declare var &public)")
+        (hash-bind "var" (EVar (gen-global-name "var" nil) "x")))
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "." [["a" "b"]])))
-(expect (text-to-env "(declare (fn a b) &private)")
         (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "p" [["a" "b"]])))
+(expect (text-to-env "(declare (fn a b) &public)")
+        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "x" [["a" "b"]])))
 
 ;; declare errors
 (expect (c0-ser "(declare)")
@@ -319,7 +318,7 @@
 (p1-block-cc
  "(define x 1) (info x)"
  (lambda (env sil)
-   (expect env (hash-bind "x" (EVar (xns "~x") ".")))
+   (expect env (hash-bind "x" (EVar (xns "~x") "p")))
    (expect sil (xns "(IBlock (^set ~x,1),(.info {~x}))"))))
 
 
@@ -328,23 +327,23 @@
         (xns "(^fset ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
-        (xns (hash-bind "f" (EFunc "~f" "." [["a"]]))))
+        (xns (hash-bind "f" (EFunc "~f" "p" [["a"]]))))
 
 (expect (c0-ser "(define (word a) a)")
         "!(PError 4 'cannot redefine built-in function \\'word\\'')")
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (concat a a))")
-        (hash-bind "M" (EFunc NoGlobalName "." ["a" (p1-0 "(concat a a)")])))
+        (hash-bind "M" (EFunc NoGlobalName "p" ["a" (p1-0 "(concat a a)")])))
 
-(expect (text-to-env "(define `(M a) &private (concat a a))")
-        (hash-bind "M" (EFunc NoGlobalName "p"  ["a" (p1-0 "(concat a a)")])))
+(expect (text-to-env "(define `(M a) &public (concat a a))")
+        (hash-bind "M" (EFunc NoGlobalName "x"  ["a" (p1-0 "(concat a a)")])))
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)" env0)
-        (hash-bind "I" (ESMacro (PString 0 7) ".") env0))
-(expect (text-to-env "(define `I &private 7)" env0)
         (hash-bind "I" (ESMacro (PString 0 7) "p") env0))
+(expect (text-to-env "(define `I &public 7)" env0)
+        (hash-bind "I" (ESMacro (PString 0 7) "x") env0))
 
 ;; (define ...) errors
 
@@ -392,11 +391,11 @@
                         nil 1)))
   (expect (hash-get "g" env)
           (EFunc (gen-global-name "g" nil)
-                 "."
+                 "p"
                  ["x" (p1-0 "(info x)")]))
   (expect (hash-get "f" env)
           (EFunc (gen-global-name "f" nil)
-                 "."
+                 "p"
                  ["a b" (p1-0 "(join a b)")])))
 
 
@@ -411,11 +410,11 @@
 
 (define (canned-MIN name)
   (cond
-   ((eq? "D/M" name) "(declare X &private) (declare x)")
-   ((eq? "M" name) "(declare X &private) (declare x)")
-   ((eq? "F" name) "(define X &private 1) (define (f) &inline X)")
-   ((eq? "CM" name) "(define `(F) &private 3) (define `(G) (F))")
-   ((eq? "SM" name) "(define `A &private 7) (define `B A)")
+   ((eq? "D/M" name) "(declare X) (declare x &public)")
+   ((eq? "M" name) "(declare X) (declare x &public)")
+   ((eq? "F" name) "(define X 1) (define (f) &inline &public X)")
+   ((eq? "CM" name) "(define `(F) 3) (define `(G) &public (F))")
+   ((eq? "SM" name) "(define `A 7) (define `B &public A)")
    (else (expect (concat "Bad module: " name) nil))))
 
 (define (canned-read-file name)
@@ -443,7 +442,7 @@
  ;; (require MOD &private)
 
  (expect (text-to-env "(require \"M\" &private)" nil 1)
-         (append (hash-bind "x" (EVar (gen-global-name "x" nil) "."))
+         (append (hash-bind "x" (EVar (gen-global-name "x" nil) "x"))
                  (hash-bind "X" (EVar (gen-global-name "X" nil) "p"))))
 
  ;; Verify that IMPORTED inline functions & macros are expanded in their

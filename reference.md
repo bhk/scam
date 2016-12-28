@@ -724,7 +724,9 @@ to the function.
 The `require` form provides access to functionality defined in other
 modules.  `MODULE` identifies either a SCAM source file, minus its `.scm`
 extension, relative to the directory containing the requiring file) or a
-bundled module.
+bundled module.  If the `&private` flags is specified, private *and* public
+definitions and declarations will be imported.  Otherwise, only those
+flagged with `&public` will be imported.
 
 `MODULE` must be a literal string value, because `require` is processed at
 build time and compile time in addition to run time.
@@ -840,10 +842,10 @@ it with a definition.  The defined name will be visible to subsequent
 expressions in the same block, and the definition supersedes any
 previous definitions associated with the same name.
 
-`FLAGS` consists of zero or more of the symbols `&private` and `&inline`.
+`FLAGS` consists of zero or more of the symbols `&public` and `&inline`.
 
-  * `&private` indicates that the symbol should not be visible outside
-    of the file in which it is declared.
+  * `&public` indicates that the symbol should be visible outside of the
+    file in which it is declared.
 
   * `&inline` indicates that the function is an inline function.  This flag
     can be used only with `define` (not with `declare`) and only for

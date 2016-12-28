@@ -1,7 +1,5 @@
 TODO
 
- * &private by default; explicit &public.
-
  * Exports, Imports, Rewind
 
    - Revisit export compression since conversion to data records.

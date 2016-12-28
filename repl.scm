@@ -1,5 +1,7 @@
+;;--------------------------------
 ;; repl: Interactive mode for SCAM
-;;
+;;--------------------------------
+
 (require "core")
 (require "io")
 (require "parse")
@@ -9,11 +11,11 @@
 
 
 ;; Override this on the command line to automatically include a different
-;; set of libraries.
-(define LIBS "core io parse escape gen0 gen1 compile num")
+;; set of libraries.  repl supplies *1 and *2.
+(define LIBS "core io parse escape gen0 gen1 compile num repl")
 
-(define *1 &global nil)  ; most recent evaluation result
-(define *2 &global nil)  ; previous result
+(define *1 &public nil)  ; most recent evaluation result
+(define *2 &public nil)  ; previous result
 
 (define (help)
   (print "Commands:\n"
@@ -33,7 +35,7 @@
 ;;
 
 (define (describe-binding bound-name defn all)
-  (if (or all (EDefn.is-public? defn))
+  (if (or all (not (filter "i%" (EDefn.scope defn))))
       (case defn
         ((EBuiltin name p args)
          "built-in function")
@@ -41,11 +43,10 @@
          (concat (if (eq? name NoGlobalName)
                      "compound macro"
                      "function")
-                 (sprintf "\n    (%s %s)" bound-name (first inln))
                  (if (rest inln)
-                     (sprintf " -> %s"
-                              (concat-for f (rest inln) " "
-                                          (format-form f))))))
+                     (sprintf "\n    (%s %s) -> %s"
+                              bound-name (first inln)
+                              (format-form (begin-block (rest inln)))))))
         ((EVar name p)
          "variable")
         ((ESMacro form p)
@@ -136,13 +137,12 @@
 
 (define `initial-state
   (eval-and-print
-   (concat "(declare *1 &global)\n"
-           "(declare *2 &global)\n"
-           (foreach lib LIBS (concat "(require \"" lib "\")")) "\n")
+   (foreach lib LIBS (concat "(require \"" lib "\")\n"))
    (compile-prelude nil)))
 
 
 (define (repl)
+  &public
   (print "SCAM interactive mode. Type '?' for help.")
 
   (while identity read-eval-print initial-state)
@@ -152,6 +152,7 @@
 ;; Evaluate 'text' and print results (without looping).
 ;;
 (define (repl-rep text filename)
+  &public
   (define `env (nth 2 initial-state))
 
   (let ((o (compile-text text env (or filename "[commandline]") "")))
@@ -171,6 +172,7 @@
 ;; Load and excute file 'file'
 ;;
 (define (repl-file file)
+  &public
   (let ((text (read-file file)))
     (if text
         (let ((o (compile-text text (compile-prelude nil) file "///~")))

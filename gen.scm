@@ -15,6 +15,7 @@
 ;; to GNU Make constructs.
 
 (data IL
+      &public
       (IString  value)                      ; "value"
       (IVar     name)                       ; "$(name)"
       (IBuiltin &word name  &list args)     ; "$(name ARGS...)"
@@ -57,35 +58,39 @@
 ;;
 
 (data EDefn
-      (EVar     name &word priv)      ; data variable
-      (EFunc    name &word priv inln) ; function var or compound macro
-      (ESMacro  form &word priv)      ; symbol macro
-      (EXMacro  name &word priv)      ; executable macro
-      (ERecord  encs &word priv tag)  ; data record type
-      (EBuiltin name &word priv argc) ; builtin function
+      &public
+      (EVar     name &word scope)      ; data variable
+      (EFunc    name &word scope inln) ; function var or compound macro
+      (ESMacro  form &word scope)      ; symbol macro
+      (EXMacro  name &word scope)      ; executable macro
+      (ERecord  encs &word scope tag)  ; data record type
+      (EBuiltin name &word scope argc) ; builtin function
       (EIL      node)                 ; pre-compiled IL node
       (EArg     &word argref)         ; function argument
       (EMarker  &word data))          ; marker
 
-(define `(EDefn.priv defn)
+(define `(EDefn.scope defn)
+  &public
   (word 3 defn))
 
-(define `(EDefn.set-priv defn priv)
+(define `(EDefn.set-scope defn scope)
   (append (wordlist 1 2 defn)
-          priv
+          scope
           (nth-rest 4 defn)))
 
 (define `(EDefn.is-public? defn)
-  (not (filter "p i%" (EDefn.priv defn))))
+  &public
+  (filter "x" (EDefn.scope defn)))
 
-(define `NoGlobalName ":")
+(define `NoGlobalName
+    &public
+    ":")
 
-;; PRIV describes the scope and origin of top-level bindings.
+;; SCOPE describes the scope and origin of top-level bindings.
 ;;
-;;      When `require` imports symbols, only public symbols will be imported
-;;      (unless &private is specified).  This should not involve EBuiltin,
-;;      EIL, EArg, and EMarker because they should not be in any exported
-;;      environment.
+;;      When `require` imports symbols, only &public symbols will be
+;;      imported.  This should not involve EBuiltin, EIL, EArg, and EMarker
+;;      because they should not be in any exported environment.
 ;;
 ;;      When expanding ESMacro.form or EFunc.inln, we "rewind" the
 ;;      environment to its state at the time of the definition.  If the
@@ -94,9 +99,9 @@
 ;;
 ;;        "iMOD" => defn was imported from module MOD.
 ;;        "i" => defn was imported (for types that do not rewind)
-;;        "p" => defn is &private
+;;        "p" => defn is private
 ;;        "x" => public (exported)
-;;        "." => public or don't care
+;;        "." => private or don't care
 ;;
 ;; NAME = the actual (global) name of the function/variable or builtin.
 ;;         For EFunc records, the value NoGlobalName indicates that the
@@ -121,10 +126,14 @@
 ;; use keys that begin with ":" to distinguish them from variable names.
 
 ;; The current function nesting level: ".", "..", "...", and so on.
-(define `LambdaMarkerKey ":")
+(define `LambdaMarkerKey
+  &public
+  ":")
 
 ;; The source position of the macro invocation.
-(define `MacroMarkerKey ":m")
+(define `MacroMarkerKey
+  &public
+  ":m")
 
 ;; Exports and Imports
 ;; -------------------
@@ -136,7 +145,7 @@
 ;;
 ;; Exports are consumed  when `(require MOD)` is compiled.  At that time,
 ;; the *public* bindings exported from MOD are imported into the current
-;; environment, and marked as imported: their PRIV fields are set to "i",
+;; environment, and marked as imported: their SCOPE fields are set to "i",
 ;; or (for imported inline functions and macros) "iFILE", where FILE is
 ;; the MIN file from which they were imported.
 ;;
@@ -184,22 +193,23 @@
 
 
 ;; *compile-subject* contains the penc-encoded SCAM source being compiled
-(declare *compile-subject*)
+(declare *compile-subject* &public)
 
 ;; *compile-file* is the name of the source file neing compiled.
-(declare *compile-file*)
+(declare *compile-file* &public)
 
 ;; *compile-outfile* is the name of the MIN file being generated.  This is
 ;; used to find modules when `require` expressions are encountered.
-(declare *compile-outfile*)
+(declare *compile-outfile* &public)
 
 ;; *compile-mods* lists object files to be used to satisy `require`
 ;; statements encountered when compiling.  (Otherwise, bundled modules will
 ;; be used.)
-(declare *compile-mods*)
+(declare *compile-mods* &public)
 
 
 (define `NoOp
+  &public
   (IString ""))
 
 ;; Merge consecutive (IString ...) nodes into one node.  Retain all other
@@ -228,6 +238,7 @@
 ;; IConcatenate nodes in IL domain.
 ;;
 (define (il-concat nodes)
+  &public
   (let ((nodes-out (il-merge-strings (il-flatten nodes) "")))
     (if (word 2 nodes-out)
         (IConcat nodes-out)
@@ -237,6 +248,7 @@
 
 ;; Demote in IL domain
 (define (il-demote node)
+  &public
   (or (case node
         ((IString value) (IString (word 2 node)))
         ((ICall name args) (if (eq? name "^u")
@@ -246,6 +258,7 @@
 
 ;; Promote in IL domain
 (define (il-promote node)
+  &public
   (ICall "^u" [ node ]))
 
 
@@ -291,32 +304,32 @@
 ;; If FLAGS contains a word ending in "&global", the symbol name is returned
 ;; unmodified.
 ;;
+
 (define (gen-global-name local flags)
+  &public
   (declare SCAM_NS &global)
   (if (filter "%&global" flags)
       local
       (concat SCAM_NS local)))
 
 
-(define (filtersub pat repl str)
-  &private
-  (patsubst pat repl (filter pat str)))
-
-
 ;; Generate a unique symbol name derived from `base`.  Returns a symbol
 ;; name.
 ;;
 (define (gensym-name base env suff)
+  &public
   (define `name (concat base "&" suff))
   (if (filter (concat name "!=%") env)
       (gensym-name base (concat env " .") (words env))
       name))
+
 
 ;; Generate a unique symbol derived from symbol `base`.  Returns new symbol.
 ;; The symbol is guaranteed not to conflict with any symbol in `env`, or
 ;; with any other symbol generated with the same `env` and a different `base`.
 ;;
 (define (gensym base env)
+  &public
   (PSymbol 0 (gensym-name (symbol-name base) env nil)))
 
 
@@ -342,12 +355,14 @@
 ;; index from `form`.
 ;;
 (define (gen-error form fmt ...values)
+  &public
   (PError (form-index form) (vsprintf fmt values)))
 
 
 ;; Display a warning during compilation.
 ;;
 (define (compile-warn form fmt ?a ?b ?c)
+  &public
   (info (describe-error (gen-error form fmt a b c)
                         (pdec *compile-subject*)
                         *compile-file*)))
@@ -362,6 +377,7 @@
 
 
 (define (err-expected types form parent what where ?arg1 ?arg2)
+  &public
   (gen-error (or form parent)
              (concat
               (if form "invalid" "missing") " " what " in " where
@@ -391,6 +407,7 @@
 ;; SYM = symbol for function/form that is being invoked
 ;;
 (define (check-argc expected args sym)
+  &public
   (define `ok
     (or (filter expected (words args))
         (and (filter "more" expected)
@@ -411,7 +428,6 @@
 ;; Rarely occurring characters in ENV entries:  , : ; | @ { } " ' ` ( )
 ;;
 (define `(env-compress v)
-  &private
   (subst
     ;; reduce the effects of nesting vectors
     "!11" "!2" "!21" "!3" "!31" "!4" "!41" "!5"
@@ -429,7 +445,6 @@
 ;; env-expand: undo env-compress
 ;;
 (define `(env-expand v)
-  &private
   (subst "!n" "\n" "! " ",i " "!V" "!=V," "|" "!=F," "@" "!30" ":" "!20"
          ";" "!10" "," "!0" "!e" "@" "!d" "|" "!c" ":" "!b" ";" "!a" ","
          "!5" "!41" "!4" "!31" "!3" "!21" "!2" "!11"
@@ -445,22 +460,21 @@
 
   (if (EDefn.is-public? defn)
       (hash-bind key
-                 (EDefn.set-priv defn
+                 (EDefn.set-scope defn
                                  (concat "i" (if (can-rewind defn)
                                                  d-name))))))
 
 
 ;; Import the bindings from a MIN file's exports. Return an environment.
 ;;
-;; exports = parsed exports
-;; priv = whether or not to include import "&private" members
+;; EXPORTS = parsed exports
+;; READ-PRIV = whether or not to include import "&private" members
 ;;    If true, all members are returned.
 ;;    If false, only public members are imported, and imported
 ;;        macros/inline functions will be tagged with `filename`.
-;; d-name = name of the module containing the exports (demoted)
+;; D-NAME = name of the module containing the exports (demoted)
 ;;
 (define (env-import exports read-priv d-name)
-  &private
   (if read-priv
       exports
       (strip-vec
@@ -471,6 +485,7 @@
 ;; Generate "exports" comment line for MIN file
 ;;
 (define (env-export env)
+  &public
   (concat "# Exports: " (env-compress env) "\n"))
 
 
@@ -478,14 +493,12 @@
 ;; entries are prefixed with "(".
 ;;
 (define `(env-parse lines)
-  &private
   (env-expand (first (filtersub ["# Exports: %"] "%" lines))))
 
 
 ;; Read a module from a file or a bundled variable
 ;;
 (define `(env-load filename)
-  &private
   (define `(read-module-lines filename)
     (if (filter "///%" filename)
         (split "\n" (value filename))
@@ -495,16 +508,14 @@
 
 
 (define *dummy-env*
-  &private
   (hash-bind "" (EIL (IString ""))))
 
 
-;; Import symbols from `filename`.  `priv` means return all original
+;; Import symbols from FILENAME.  READ-PRIV means return all original
 ;; environment entries, not just public ones.  Return `nil` on error (bad
 ;; filename).
 ;;
 (define (env-from-file filename read-priv)
-  &private
   ;; This is used to ensure a harmless non-nil result.
   (define `modname (notdir (basename filename)))
 
@@ -521,7 +532,6 @@
 ;; bundled module ("///mod.min"), or nil if neither are found.
 ;;
 (define (mod-find name)
-  &private
   (define `bundlevar (concat "///" (notdir name) ".min"))
 
   (or (firstword (filter (concat "%" (notdir name) ".min") *compile-mods*))
@@ -534,14 +544,15 @@
 
 ;; Read the environment exported from a module.
 ;;
-;; mod  : module name
-;; priv : if true, read all entries.  Otherwise, discard imported/private
-;;        entries and mark other entries as imports.
+;; MOD : module name
+;; READ_PRIV : if true, read all entries.  Otherwise, discard
+;;    imported/private entries and mark other entries as imports.
 ;;
 ;; Return: ENV     on success
 ;;         nil     on failure  (module not found)
 ;;
 (define (require-module mod read-priv)
+  &public
   (env-from-file (mod-find mod) read-priv))
 
 
@@ -552,10 +563,11 @@
 ;;           nil  on failure (module not found)
 ;;
 (define (use-module mod)
+  &public
   (let ((imports (require-module mod nil)))
     (if imports
         (let-global ((SCAM_MODS *compile-mods*))
-          (^require mod)
+          (call "^require" mod)
           (or (strip-vec (foreach e imports
                                   (case (hash-value e)
                                     ((EXMacro _ _) e))))
@@ -569,8 +581,8 @@
         (env env)
         (name name))
     (define `defn (hash-value pair))
-    (define `priv (EDefn.priv defn))
-    (define `mod (filtersub "i%" "%" priv))
+    (define `scope (EDefn.scope defn))
+    (define `mod (filtersub "i%" "%" scope))
 
     (if mod
         (env-rewind-x (require-module (promote mod) 1) name)
@@ -588,22 +600,24 @@
 ;;  defn = definition (in env) [when rewinding to an EFunc]
 ;;
 (define (env-rewind env name)
+  &public
   (append (hash-find LambdaMarkerKey env)
           (env-rewind-x env name)))
 
 
-(define `builtins-1
+(define builtins-1
   (concat "abspath basename dir error eval firstword flavor"
           " info lastword notdir origin realpath shell sort"
           " strip suffix value warning wildcard words"))
 
-(define `builtins-2
+(define builtins-2
   "addprefix addsuffix filter filter-out findstring join word")
 
-(define `builtins-3
+(define builtins-3
   ".foreach patsubst .subst wordlist")
 
 (define builtin-names
+  &public
   (patsubst ".%" "%" (concat builtins-1 " "
                              builtins-2 " "
                              builtins-3)))
@@ -626,6 +640,7 @@
 ;; For non-symbols, return "-" (meaning, essentially, "not applicable").
 ;;
 (define (resolve form env)
+  &public
   (define `(find-name name hash)
     ;; equivalent to `(hash-find (symbol-name form) hash)` but quicker
     (filter (concat (subst "!" "!1" name) "!=%") hash))
@@ -643,6 +658,7 @@
 ;; Make a valid expression from a vector of forms.
 ;;
 (define (begin-block forms)
+  &public
   (if (and forms (not (word 2 forms)))
       (first forms)
       (PList 0 (cons (PSymbol 0 "begin") forms))))

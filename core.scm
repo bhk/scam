@@ -5,33 +5,40 @@
 (declare SCAM_DEBUG &global)
 
 (define (eq? a b)
+  &public
   (define `aa (concat 1 a))
   (define `bb (concat 1 b))
   (if (findstring aa (findstring bb aa))
       1))
 
 (define (identity a)
+  &public
   &inline
   a)
 
 ;; Return the parameter that is not nil (unless both or none are nil)
 (define (xor a b)
+  &public
   (if a (if b nil a) b))
 
 ;; concatenate strings in VEC, separating them with DELIM
 (define (concat-vec vec ?delim)
+  &public
   (promote (subst " " (demote delim) vec)))
 
 ;; add an item to the front of a vector
 (define (cons item vec)
+  &public
   (concat (demote item) (if vec " ") vec))
 
 ;; add `item` to end of a vector `vec`
 (define (conj vec item)
+  &public
   (concat vec (if vec " ") (demote item)))
 
 ;; return last item in vector `vec`
 (define (last vec)
+  &public
   &inline
   (promote (lastword vec)))
 
@@ -40,23 +47,28 @@
 ;; not encode newline characters.
 ;;
 (define (strip-vec vec)
+  &public
   &inline
   (filter "%" vec))
 
 ;; `butlast` is like `rest`, but from the end of the vector
 (define (butlast vec)
+  &public
   (wordlist 2 (words vec) (concat "X " vec)))
 
 (define (map-call funcname vec)
+  &public
   (for x vec (call funcname x)))
 
 ;; `select-vec` = return vector of items for which (fn item) is true
 (define (select-vec fn list)
+  &public
   (filter-out "!" (foreach dx list
                            (if (fn (promote dx)) dx "!"))))
 
 ;; `select-words` = return new list of words for which (fn word) is true
 (define (select-words fn list)
+  &public
   ;; wrap in outer 'foreach' to eliminate redundant spaces
   (foreach a
            (foreach x list (if (fn x) x))
@@ -65,17 +77,18 @@
 
 ;; first non-nil member of vec
 (define (vec-or vec)
+  &public
   &inline
   (first (filter-out [""] vec)))
 
-(define (indicesX in out)
+(define (indices-x in out)
   (if (word (words out) in)
-      (concat (words out) " " (indicesX in (concat "1 " out)))))
+      (concat (words out) " " (indices-x in (concat "1 " out)))))
 
 ;; return list of indices, one for each word in list
-(define (indices list)
-  &inline
-  (indicesX list 1))
+(define `(indices list)
+  &public
+  (indices-x list 1))
 
 
 ;; Reverse a list in groups sized by powers of ten.
@@ -85,7 +98,6 @@
 ;; z="00"  ->   901-1000 801-900 ... 101-200 001-100
 ;;
 (define (rev-by-10s list z)
-  &private
   (define `z+1
     (patsubst "%0" "%1" z))
   (define `z/10
@@ -106,7 +118,6 @@
 ;; Detect length of list to the nearest order of magnitude.
 ;; 0..10 items => "";  11-100 => "0";  101..1000 => "00", ...
 (define (rev-zeroes list z)
-  &private
   (if (word (concat 1 z 1) list)
       (rev-zeroes list (concat 0 z))
       z))
@@ -114,6 +125,7 @@
 ;; Simpler implementations of `reverse` are O(n^2) because `rest` is
 ;; an O(n) operation.
 (define (reverse list)
+  &public
   (nth-rest 1 (rev-by-10s list (rev-zeroes list nil))))
 
 
@@ -138,7 +150,8 @@
 ;; is close to `e`, which minimizes x*log(x).  While we are increasing the
 ;; recursion depth, however, we iterate only once per level.
 
-(declare (while pred do initial))
+(declare (while pred do initial)
+         &public)
 
 (begin
   ;; The "level 0" iteration recurses 20 times and then returns
@@ -187,6 +200,7 @@
 
 
 (define (numeric? s)
+  &public
   ;; reduce all digits to '0' and (E|e)[-]<digit> to 'e'
   (define `a (subst 1 0 2 0 3 0 4 0 5 0 6 0 7 0 8 0 9 0
                     "e" "E" "E-" "E" "E0" "e" " " "_" s))
@@ -199,10 +213,27 @@
       (if c "" s)))
 
 
+;; Is N what a number theorist would call a "natural number"?  (A positive
+;; integer, and therefore not going to cause an exception as the first
+;; argument to `word` or `wordlist`.)
+;;
+(define (natural? n)
+  &public
+  (numeric? (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
+
+
+;; Equivalent to (patsubst pat repl (fiter pat str)).
+;;
+(define `(filtersub pat repl str)
+  &public
+  (patsubst pat repl (filter pat str)))
+
+
 ;; concatenate one or more (potentially empty) vectors, word lists, or
 ;; hashes.
 ;;
 (define (append ?a ?b ?c ?d ?e ?f ?g ?h ...others)
+  &public
   (strip-vec (concat a " " b " " c " " d " " e " " f " " g " " h " "
                      (if others (promote others)))))
 
@@ -237,26 +268,32 @@
 ;;
 
 (define (hash-bind key val ?hash)
+  &public
   (concat (subst "%" "!8" [key]) "!=" [val]
           (if hash " ")
           hash))
 
 (define (hash-key entry)
+  &public
   &inline
   (promote (subst "!8" "%" (word 1 (subst "!=" " " entry)))))
 
 (define (hash-value entry)
+  &public
   &inline
   (nth 2 (subst "!=" " " entry)))
 
 (define (hash-find key hash)
+  &public
   (word 1 (filter (concat (subst "%" "!8" [key]) "!=%") hash)))
 
 (define (hash-get key hash ?default)
+  &public
   (nth 2 (concat (subst "!=" " " (hash-find key hash))
                  (if default (concat " x " (demote default))))))
 
 (define (hash-compact hash ?result)
+  &public
   (if (not hash)
       result
       (let& ((entry (word 1 hash))
@@ -265,7 +302,8 @@
                 (hash-compact (filter-out prefix (rest hash)))))))
 
 
-(declare (format value))
+(declare (format value)
+         &public)
 
 ;; Convert h to hash syntax, or return nil if it is not a valid hash.
 ;;
@@ -288,7 +326,6 @@
 ;; result to `accum` (with a single space separator for each).
 ;;
 (define (data-foreach func encodings values accum)
-  &private
   (define `e (word 1 encodings))
   (define `value
     (cond ((filter "L" e) values)
@@ -334,6 +371,7 @@
 (define *format-funcs* nil)
 
 (define (format-add func)
+  &public
   (set *format-funcs* (cons func *format-funcs*)))
 
 (define (format-custom str funcs)
@@ -344,6 +382,7 @@
 ;; Return readable and parseable representation of STR.
 ;;
 (define (format str)
+  &public
   (define `(format-vector str)
     (if (eq? str (foreach w str (demote (promote w))))
         (concat "[" (foreach w str (format (promote w))) "]")))
@@ -371,6 +410,8 @@
 ;;   %q  ->  describe argument with `format`
 
 (define (vsprintf fmt values)
+  &public
+
   (define `fields
     (subst "%" " !%" " !% !%" "%" (concat "%s" [fmt])))
 
@@ -387,13 +428,16 @@
               (subst "!%" "[unkonwn % escape]%" w))))))
 
 (define (sprintf format ...values)
+  &public
   (vsprintf format values))
 
 (define (printf format ...values)
+  &public
   (info (vsprintf format values)))
 
 
 (define (expect-x a b file-line)
+  &public
   (if (eq? a b)
       (if (findstring "O" SCAM_DEBUG)
           (print file-line ": OK: " a))
@@ -408,6 +452,7 @@
             (error "")))))
 
 (define `(expect a b)
+  &public
   (expect-x a b (current-file-line)))
 
 ;; Compare only the formatted results.  This accommodates only minor
@@ -417,10 +462,12 @@
 ;; another record (when stored as a trailing &list parameter).
 ;;
 (define `(fexpect a b)
+  &public
   (expect-x (format a) (format b) (current-file-line)))
 
 ;; Return 1 if substr appears within str.  Print diagnostic otherwise.
 (define (see substr str)
+  &public
   (if (findstring substr str)
       1
       (begin (print "Expected: " (subst "\n" "\n          " substr))
@@ -429,7 +476,8 @@
 
 ;; Return a vector/wordlist of the unique members of a vector/wordlist.
 ;; Order is preserved; the first occurrence of each member is retained.
-(declare (uniq vec))
+(declare (uniq vec)
+         &public)
 
 (begin
   (define (uniq-x lst)
@@ -444,12 +492,14 @@
 ;; Split STR at each occurrence of DELIM.  Returns vector whose length is one
 ;; more than the number of occurrences of DELIM.
 (define (split delim str)
+  &public
   (foreach w
            (subst [delim] "!. !." [str])
            (or (subst "!." "" w) "!.")))
 
 ;; (1+ NUM) : add one to a non-negative integer
 (define (1+ n)
+  &public
   (cond
    ((filter "%1 %2 %3 %4" n)
     (subst "4~" 5 "3~" 4 "2~" 3 "1~" 2 (concat n "~")))
@@ -466,7 +516,6 @@
 ;---- memoize ----
 
 (define (mcache varname func a b c more)
-  &private
   (if more
       (info "Warning: memoized function passed more than three arguments"))
   (if (not (bound? varname))
@@ -475,7 +524,6 @@
 
 
 (define (memoenc a ?b ?c)
-  &private
   (if (or a b c)
       (concat "~~" (subst "~" "~0" a) (memoenc b c))))
 
@@ -483,6 +531,7 @@
 ;; memoize a function with up to three arguments
 ;;
 (define (memoize funcname)
+  &public
   (if (not (bound? funcname))
       (info (concat "Warning: [memoize-1] function '" funcname "' not defined."))
       (let ((func (value funcname))
@@ -494,6 +543,7 @@
                                (or d e f g h)))))))
 
 (define (sort-by key-func values)
+  &public
   (define `keyed
     (foreach w values
              (concat (demote (key-func (promote w))) "!!" w)))
@@ -501,19 +551,10 @@
   (filter-out "%!!" (subst "!!" "!! " (sort keyed))))
 
 
-;; Check the "type" of a "structure".  This assumes the convention used
-;; throughout scam sources, in which structures are stored in vectors, with
-;; the first element identifying the type.
-;;
-;; `pat` can contain multiple patterns in order to match one or more types.
-;;
-(define `(type? pat struct)
-  (filter pat (word 1 struct)))
-
-
 ;; Return items that match prefix or begin with 'prefix %'.
 ;;
 (define (assoc-initial prefix vec)
+  &public
   (define `assoc-pct
     (subst "!8" prefix
            (filter "!8 !8!0%"
@@ -529,6 +570,7 @@
 ;; Return the first vector whose initial items match those in key-vec.
 ;;
 (define `(assoc-vec key-vec vec)
+  &public
   (assoc-initial [key-vec] vec))
 
 
@@ -536,6 +578,7 @@
 ;; vectors.
 ;;
 (define `(assoc key vec)
+  &public
   ;; double-demote requires just one subst more than single demote
   (assoc-initial (subst "!" "!1" [key]) vec))
 
@@ -543,6 +586,7 @@
 ;; Return the index of ITEM in VEC, or 0 if ITEM is not found.
 ;;
 (define (index-of vec item)
+  &public
   (define `(wrap str) (concat "!_" str "!_"))
 
   (words
@@ -558,6 +602,7 @@
 ;; return nil.
 ;;
 (define (foldl f z v)
+  &public
   (if (firstword v)
       (foldl f (f z (first v)) (rest v))
       z))
@@ -566,6 +611,7 @@
 ;; Like foldl, but starting from the right with (F <last> Z).
 ;;
 (define (foldr f z v)
+  &public
   (if (firstword v)
       (f (first v) (foldr f z (rest v)))
       z))
@@ -573,5 +619,8 @@
 ;; Insert VALUE between items of VEC.
 ;;
 (define (intersperse value vec)
+  &public
   (subst " " (concat " " [value] " ")
          vec))
+
+(print "core ok")

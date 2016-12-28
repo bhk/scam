@@ -19,12 +19,14 @@
 ;; quote argument for POSIX shells
 ;;
 (define (quote-sh-arg arg)
+  &public
   (concat "'" (subst "'" "'\''" arg) "'"))
 
 
 ;; Construct a command line to echo `str`
 ;;
 (define (echo-command str)
+  &public
   (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str))))
 
 
@@ -32,6 +34,7 @@
 ;; because `shell` captures stdout, and writing to stdin fails on Cygwin.
 ;;
 (define (printn ...strings)
+  &public
   (shellc (echo-command (concat-vec strings)) " >&2"))
 
 
@@ -39,6 +42,7 @@
 ;; which trims trailing newlines and then converts newlines to spaces.)
 ;;
 (define (shell! cmd)
+  &public
    (subst " " "" "!n" "\n" "!0" " " "!1" "!"
           (logshell (concat cmd " | sed -e 's/!/!1/g;s/ /!0/g;s/$/!n/g'"))))
 
@@ -49,6 +53,7 @@
 ;; things to happen.
 ;;
 (define (getline prompt)
+  &public
   (if prompt
       (printn prompt))
   (shell! "head -1"))
@@ -59,6 +64,7 @@
 ;; file might be partially constructed.
 ;;
 (define (write-file filename data)
+  &public
   (define `prefile (concat filename ".pre"))
 
   (if filename
@@ -74,12 +80,16 @@
 
 
 (define (read-file fname)
+  &public
   (if fname
       (shell! (concat "cat < " (quote-sh-arg fname)))
       (print "error: read-file: nil filename")))
 
 
+;; Read lines from a file into a vector.
+;;
 (define (read-lines fname ?start ?end)
+  &public
   (define `command
     (concat "sed -E '"
             (if start
@@ -92,6 +102,7 @@
 
 
 (define (file-exists? fname)
+  &public
   ;; `wildcard` is cached by Make and will not reflect files created/deleted
   ;; when the program is running.
   (if

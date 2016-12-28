@@ -13,6 +13,7 @@
 ;; when the inputs are crafted to avoid ambiguities.
 ;;
 (define (il-ser node)
+  &public
   (define `(call-ser pre args)
     (concat "(" pre " " (concat-for a args "," (il-ser a)) ")"))
 
@@ -37,6 +38,7 @@
 ;; make sure they don't get confused.
 ;;
 (define default-env
+  &public
   (append (hash-bind "a" (EArg "1"))
           (hash-bind "v" (EVar "V" "."))
           (hash-bind "f" (EFunc "F" "." [["a" "b"]]))
@@ -48,18 +50,21 @@
 
 ;; Compile one or more forms to serialized IL.
 (define (c0-ser text ?env)
+  &public
   (il-ser (c0-block (parse-text text) (or env default-env))))
 
 
 ;; Parse a vector of forms from text, normalizing positions to 0.
 ;;
 (define (pN text)
+  &public
   (for f (parse-text text)
        (form-set-indices 0 f)))
 
 ;; Parse *one* form from text.
 ;;
 (define (p1 text)
+  &public
   (let ((o (parse-text text)))
     (if (word 2 o)
         (concat "EXTRA NODES: " o))
@@ -70,6 +75,7 @@
 ;; serialized IL node.
 ;;
 (define (p1-block-cc text k)
+  &public
   (c0-block-cc nil (pN text)
                (lambda (env nodes)
                  (k env (il-ser (IBlock nodes))))))
@@ -77,10 +83,12 @@
 ;; Display and return value.
 ;;
 (define (DUMP name val)
+  &public
   (if (findstring "D" SCAM_DEBUG)
       (print name ": " (format val)))
   val)
 
 ;; Translate "~" to local namespace prefix in str.
 (define (xns str)
+  &public
   (subst "~" (gen-global-name "" nil) str))

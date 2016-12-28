@@ -1,7 +1,7 @@
 ;; runtime-q runs in a special environment (same as the environment for
 ;; runtime) in which the runtime is not an implicit requirement, so we
 ;; have to require it explicitly (unlike in ordinary scam sources).
-(require "runtime")
+(require "runtime" &private)
 
 ;; runtime-test
 ;;

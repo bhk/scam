@@ -67,11 +67,6 @@
 ;;--------------------------------------------------------------
 
 
-(define (filtersub pat repl str)
-  &private
-  (patsubst pat repl (filter pat str)))
-
-
 ;; enough for our purposes
 (define `(clean-path f)
   (patsubst "./%" "%" (subst "/./" "/" f)))
@@ -118,7 +113,6 @@
 
 ;; files is a word list
 (define (modnames-of files)
-  &private
   (basename (notdir files)))
 
 
@@ -585,6 +579,7 @@
 ;; built) bundle them in a self-contained executable.
 ;;
 (define (build exe files opts)
+  &public
   (define `rules
     (concat (rule ".PHONY" nil ["/exe" "/dir"] nil)
             (rule "/exe" nil ["/dir" exe] nil)

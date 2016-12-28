@@ -12,6 +12,7 @@
 ;; Use this macro to generate the return value.
 ;;
 (define (block-result inblock env node)
+  &public
   (if inblock
       (IEnv env node)
       (or node NoOp)))
@@ -20,6 +21,7 @@
 ;; Extract sub-node from (IEnv ...) if INBLOCK is nil.
 ;;
 (define (env-strip inblock node)
+  &public
   (if inblock
       node
       (case node
@@ -45,11 +47,13 @@
 
 ;; skip SKIP entries before looking for flags
 (define (get-flags args skip)
+  &public
   (append-for form (wordlist (1+ skip) (scan-flags args skip) args)
               (case form
                 ((PSymbol n name) name))))
 
 (define (skip-flags args skip)
+  &public
   (nth-rest (1+ (scan-flags args skip)) args))
 
 
@@ -91,7 +95,6 @@
 ;; function.
 ;;
 (define (c0-ctor env sym encs)
-  &private
   (define `args
     (for i (indices encs)
          (PSymbol 0 (concat "a" i))))
@@ -128,7 +131,6 @@
 ;;    defn = definition for symbol (from environment)
 ;(define (c0-S form env defn)
 (define (c0-S env sym name defn)
-  &private
   (case defn
     ((EArg arg)
      (c0-local arg (hash-get LambdaMarkerKey env) sym))
@@ -161,6 +163,7 @@
 ;; subsequent ones (inlike c0-block-cc).
 ;;
 (define (c0-vec forms env)
+  &public
   (for f forms (c0 f env)))
 
 
@@ -251,7 +254,6 @@
 ;;
 ;(define (c0-L form env defn inblock)
 (define (c0-L env pos sym args defn inblock)
-  &private
   (define `symname (symbol-name sym))
 
   (case defn
@@ -262,10 +264,10 @@
      (or (check-argc argc args sym)
          (IBuiltin realname (c0-vec args env))))
 
-    ((EXMacro name priv)
-     (if priv
-         (c0 (call name args) env inblock)
-         (gen-error sym "cannot use xmacro in its own file")))
+    ((EXMacro name scope)
+     (if (eq? scope "x")
+         (gen-error sym "cannot use xmacro in its own file")
+         (c0 (call name args) env inblock)))
 
     ((ERecord encodings _ tag)
      (c0-record env sym args encodings tag))
@@ -286,6 +288,8 @@
 
       ;; none of the above
       (else
+       (if (findstring "Cu" SCAM_DEBUG)
+           (printf "env: %q" env))
        (gen-error sym "undefined symbol: %q" symname))))))
 
 
@@ -308,8 +312,6 @@
 ;; level = string of "$" for a lambda marker
 ;;
 (define (lambda-env-arg9 xargs level)
-  &private
-
   (define `(nth-value n)
     (EIL (IBuiltin "call" [(IString "^n") (IString n) (IVar 9)])))
   (define `(nth-rest-value n)
@@ -323,8 +325,6 @@
 
 
 (define (lambda-env-args args level)
-  &private
-
   (define `(nth-value n)
     (EArg (concat level n)))
   (define `(nth-rest-value n)
@@ -358,13 +358,11 @@
 
 
 (define (lambda-error type form parent desc)
-  &private
   (err-expected type form parent desc "(lambda (ARGNAME...) BODY)"))
 
 
 ;; special form: (lambda ARGS BODY)
 (define (ml.special-lambda env sym args inblock)  ;;form env)
-  &private
   (define `arglist (first args))
   (define `body (rest args))
 
@@ -394,14 +392,14 @@
 ;; (define  NAME FLAGS... BODY)
 
 (define (c0-def-symbol env n name flags body is-define is-macro)
-  (define `priv (if (filter "&private" flags) "p" "."))
+  (define `scope (if (filter "&public" flags) "x" "p"))
   (define `is-global (filter "&global" flags))
   (define `gname (gen-global-name name flags))
 
   (define `env-out
     (hash-bind name (if is-macro
-                        (ESMacro (begin-block body) priv)
-                        (EVar gname priv))
+                        (ESMacro (begin-block body) scope)
+                        (EVar gname scope))
                env))
 
   (define `set-il
@@ -433,7 +431,7 @@
 ;; (define  (NAME ARGS...) FLAGS BODY)
 
 (define (c0-def-compound env n name args flags body is-define is-macro)
-  (define `priv (if (filter "&private" flags) "p" "."))
+  (define `scope (if (filter "&public" flags) "x" "p"))
   (define `is-inline (and (not is-macro) (filter "&inline" flags)))
   (define `is-global (filter "&global" flags))
   (define `gname (gen-global-name name flags))
@@ -443,12 +441,12 @@
   (define `env-in
     (if is-macro
         env
-        (hash-bind name (EFunc gname priv [formal-args]) env)))
+        (hash-bind name (EFunc gname scope [formal-args]) env)))
 
   ;; make function known *after* the definition (including inline expansion)
   (define `env-out
     (hash-bind name (EFunc (if is-macro NoGlobalName gname)
-                           priv
+                           scope
                            (cons formal-args
                                  (if (or is-inline is-macro)
                                      body)))
@@ -537,7 +535,7 @@
   (define `flags (get-flags args 1))
   (define `body (skip-flags args 1))
   (define `mod-name (string-value module))
-  (define `priv (filter "&private" flags))
+  (define `read-priv (filter "&private" flags))
 
   (or
    (if body
@@ -545,7 +543,8 @@
 
    (case module
      ((PString pos name)
-      (let ((imports (require-module name priv))
+      (let ((imports (require-module name read-priv))
+            (module module)
             (env env)
             (name name)
             (inblock inblock))
@@ -571,6 +570,7 @@
 ;;       This may be a regular IL node *or* (IEnv env node)
 ;;
 (define (c0-block-cc env forms k ?results ?o)
+  &public
   (define `new-results
     (append results (if o [o])))
 
@@ -589,6 +589,7 @@
 ;; the environment for subsequent expressions). Return a single IL node.
 ;;
 (define (c0-block forms env)
+  &public
   (c0-block-cc env
                forms
                (lambda (env results)
@@ -620,7 +621,6 @@
 (declare (c0-qq))
 
 (define `QQS
-  &private
   "*!*")
 
 ;; TEMPLATE = form encoding QQS as a child
@@ -684,8 +684,12 @@
 
 ;; c0: compile an inline expression.  Return IL.  (see c0-block)
 (define (c0 form env ?inblock)
-  ;;(if (findstring "c0" SCAM_DEBUG)
-  ;;    (printf "form: %q" form))
+  &public
+  (if (findstring "c0" SCAM_DEBUG)
+      (begin
+        (printf "form: %q" form)
+        (if (findstring "c0e" SCAM_DEBUG)
+            (printf "env: %q" env))))
   (case form
     ((PSymbol n value) (c0-S env form value (resolve form env)))
     ((PString n value) (IString value))

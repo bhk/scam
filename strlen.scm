@@ -6,7 +6,6 @@
 
 ;; May be LF or CRLF, depending on platform
 (define -newline
-   &private
 "
 ")
 
@@ -31,13 +30,13 @@
 
 
 (define (strlen-smash s ch)
-  &private
   (if (word 1 ch)
       (strlen-smash (subst (word 1 ch) 0 s) (rest ch))
       s))
 
 
 (define (strlen s)
+  &public
   (let& ((s2 (subst " " 0 "\t" 0 ascii-CR 0 ascii-LF 0 s))
          (s3 (strlen-smash s2 ascii-unprintable))
          (s4 (strlen-smash s3 ascii-printable)))

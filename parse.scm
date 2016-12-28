@@ -8,6 +8,7 @@
 ;; These records, called "forms", describe the parse tree (AST):
 
 (data P
+      &public
       (PList    &word n &list forms)  ; (FORMS...)
       (PString  &word n value)        ; quoted string or number
       (PSymbol  &word n value)        ; identifier
@@ -31,28 +32,32 @@
 ;; sum, the level of nesting where error was encountered.
 
 (define (symbol-name form)
+  &public
   (case form
     ((PSymbol n value) value)
     (else (concat "ERROR:symbol-name(" form ")"))))
 
 ;; convert symbol form to string form
 (define (symbol-to-string form)
+  &public
   (case form
     ((PSymbol n value) (PString n value))
     (else (concat "ERROR:symbol-to-string(" form ")"))))
 
 (define (string-value form)
-  &inline
+  &public
   (case form
     ((PString n value) value)
     (else (concat "ERROR:string-value(" form ")"))))
 
 (define (PList-is-empty? form)
+  &public
   (case form
     ((PList n forms) (not forms))
     (else (concat "ERROR:PList.is-empty?(" form ")"))))
 
 (define (form-index form)
+  &public
   (if (filter "!:%" (word 1 form))
       (word 2 form)
       (if (numeric? form)
@@ -60,6 +65,7 @@
           0)))
 
 (define (form-typename form)
+  &public
   (case form
     ((PList n value) "list")
     ((PSymbol n value) "symbol")
@@ -69,6 +75,7 @@
 ;; Set all form positions to POS.
 ;;
 (define (form-set-indices pos form)
+  &public
   (define `(recur f)
     (form-set-indices pos f))
 
@@ -93,6 +100,7 @@
 ;; parsing if input tree was valid).  Does not rigorously validate.
 ;;
 (define (format-form form)
+  &public
   (case form
     ((PList n forms)
      (concat "(" (concat-for f forms " " (format-form f)) ")"))
@@ -134,7 +142,6 @@
 
 ;; Collapse spaces following a ";" up to the next "\n" or "\""
 (define (compact-comments str)
-  &private
   (subst " " "" "!s" " " "; ;" ";;"
          (foreach c (subst " " "!s" "\"" " \"" "\n" " \n" ";" " ;" str)
                   (if (filter ";%" c)
@@ -144,17 +151,16 @@
 ;; When compressing, don't replace the initial "!0" character in a word
 ;; (which identifies its type to the parser).
 (define (compress-spaces str)
-  &private
   (subst "\n !0" "\n!0" "\n!0!0" "\n!2" "!0!0!0" "!0!2" "!2!0!2!0" "!6" "!6!6" "!c"
          str))
 
 
 (define (expand-spaces str)
-  &private
   (subst "!c" "!6!6" "!6" "!2!2!2" "!2" "!0!0" str))
 
 
 (define (penc text)
+  &public
   (compress-spaces
    (compact-comments
     (subst "," " , " ", @" ",@ " "`" " ` " "'" " ' " "\\\\" "!b" "\\\"" "!Q"
@@ -166,6 +172,7 @@
 
 ;; pdec: undo penc
 (define (pdec text)
+  &public
   (promote
    (expand-spaces
     (subst [" \t"] ["\t"] " " "" "!Q" "\\\"" "!b" "\\\\" "!p" "%" text))))
@@ -175,7 +182,6 @@
 ;; returning the demoted form of the string.
 ;;
 (define (pdec-str text)
-  &private
   (or (expand-spaces
        (subst [" \t"] ["\t"] " " "" "\\t" "!+" "\\n" "\n" "!Q" "\"" "!b" "\\" "!p" "%" text))
       "!."))
@@ -224,7 +230,6 @@
 ;; Extract literal string value, or generate "unterminated quote" error.
 ;;
 (define (new-Q str start end)
-  &private
   (concat end " "
           (if (word end str)
               (PString start (promote (pdec-str (subst "\"" "" (wordlist start end str)))))
@@ -245,7 +250,6 @@
 ;; This is a separate function to keep this rare case outside the tight
 ;; loop.
 (define (parse-seq-err term start-pos err-n err-desc)
-  &private
   (if (filter "." err-desc)
       ;; EOF: unterminated sequence
       (POut start-pos (PError start-pos (subst ")" "(" "]" "[" term)))
@@ -254,7 +258,6 @@
 
 
 (define (parse-seq subj term start-pos out lst)
-  &private
   (case (POut-form out)
     ((PError n desc)
      ;; A ")" or "]" error closes this sequence UNLESS it is nested, as in:
@@ -276,7 +279,6 @@
   (parse-seq subj ")" pos (parse-exp subj (1+ pos)) nil))
 
 (define (parse-array subj pos)
-  &private
   (parse-seq subj "]" pos (parse-exp subj (1+ pos)) [(PSymbol 0 "vector")]))
 
 
@@ -287,7 +289,6 @@
 ;;   OUT = result of parsing expression following W
 ;;
 (define (parse-x2 w pos out)
-  &private
   (define `form-ctor
     (cond ((filter "'" w)  PQuote)
           ((filter "`" w)  PQQuote)
@@ -302,7 +303,6 @@
 
 
 (define (parse-x w subj pos)
-  &private
   (if (filter "!0% \n% ;% ()" (or (word (1+ pos) subj) "()"))
       ;; quotine tokens must immeidately precede an expression
       (POut pos (PError pos w))
@@ -342,6 +342,7 @@
 ;; Return the line number in which `form` occurs in `subj`
 ;;
 (define (describe-lnum pos subj)
+  &public
   (define `pre (wordlist 2 (or pos 1) (concat "x" subj)))
   (words (concat "1 " (filter "\n" (subst "\n" "\n " pre)))))
 
@@ -352,7 +353,6 @@
 ;;   POST = text following tok
 ;;
 (define (describe-line pos subj)
-  &private
   (define `ndx (or pos 1))
   (let ((pre  (last (split "\n" (wordlist 2 ndx (concat "X " subj)))))
         (post (first (split "\n" (nth-rest ndx subj)))))
@@ -364,7 +364,6 @@
 ;; return description line, given error code or description string
 ;;
 (define (get-error-msg desc)
-  &private
   (define `code
     (word 1 desc))
 
@@ -380,17 +379,11 @@
         (else desc)))
 
 
-;; Is n a natural number? (valid for `word` and `wordlist`?)
-;;
-(define (natural? n)
-  &private
-  (numeric? (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
-
-
 ;; Construct error message, given error form and source text
 ;;     FILE:LINE: DESCRIPTION
 ;;     at: PRE*TOK*POST
 (define (describe-error form text filename)
+  &public
   (case form
     ((PError pos desc)
       (let ((subj (penc text))
@@ -410,7 +403,6 @@
 ;;    ERR = nil if sequence ended at EOF,  (PERrror ...) otherwise.
 
 (define (parse-forms-r subj k o form-list)
-  &private
   (define `form (POut-form o))
   (define `pos (POut-pos o))
 
@@ -423,7 +415,6 @@
                          (conj form-list form)))))
 
 (define `(parse-forms subj pos k)
-  &private
   (parse-forms-r subj k (parse-exp subj pos) nil))
 
 
@@ -431,10 +422,12 @@
 ;; `subject` is the penc-encoded form of the original text.
 ;;
 (define (parse-subject subj)
+  &public
   (parse-forms subj 1 (lambda (form-list err)
                         (if err
                             (conj form-list err)
                             form-list))))
 
 (define (parse-text text)
+  &public
   (parse-subject (penc text)))

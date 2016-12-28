@@ -81,10 +81,13 @@
 
 ;; env-export & env-import
 
-;(expect "# Exports: vname!Vvarname,. fname|realname,.,DEFN\n"
-;        (env-export
-;         (append (hash-bind "vname" (EVar "varname" "."))
-;                 (hash-bind "fname" (EFunc "realname" "." "DEFN")))))
+;; import only public members
+
+(expect (import-binding "f" (EFunc "F" "x" ["a b"]) "MOD")
+        (hash-bind "f" (EFunc "F" "iMOD" ["a b"])))
+
+(expect (import-binding "f" (EFunc "F" "p" ["a b"]) "MOD")
+        nil)
 
 
 (define (export-round-trip env flag filename)
@@ -96,19 +99,14 @@
    filename))
 
 
-;; import only public members
-
-(expect (import-binding "f" (EFunc "F" "." ["a b"]) "MOD")
-        (hash-bind "f" (EFunc "F" "iMOD" ["a b"])))
-
 (expect (export-round-trip
-         (append (hash-bind "f" (EFunc "f" "." ["a b"]))
-                 (hash-bind "x" (EVar "X" "."))
-                 (hash-bind "a" (EFunc "fa" "." ["a b" (PSymbol 0 "a")]))
+         (append (hash-bind "f" (EFunc "f" "x" ["a b"]))
+                 (hash-bind "x" (EVar "X" "x"))
+                 (hash-bind "a" (EFunc "fa" "x" ["a b" (PSymbol 0 "a")]))
                  (hash-bind "g" (EFunc "g" "p" nil))  ;; private
                  (hash-bind "g" (EFunc "g" "i" nil))  ;; imported
-                 (hash-bind "m" (ESMacro "Q 1" "."))
-                 (hash-bind "a:n\n,x" (EVar "xyz" ".")))
+                 (hash-bind "m" (ESMacro "Q 1" "x"))
+                 (hash-bind "a:n\n,x" (EVar "xyz" "x")))
          nil
          "MOD")
 
@@ -122,21 +120,21 @@
 ;; import public AND private members
 
 (expect (export-round-trip
-         (append (hash-bind "f" (EFunc "f" "." nil))
-                 (hash-bind "x" (EVar "X" "."))
+         (append (hash-bind "f" (EFunc "f" "x" nil))
+                 (hash-bind "x" (EVar "X" "x"))
                  (hash-bind "a" (EFunc "a" "i" ["a b" (PSymbol 0 "a")]))
                  (hash-bind "g" (EFunc "g" "p" nil))  ;; private
                  (hash-bind "g" (ESMacro "g" "i"))    ;; imported macro
-                 (hash-bind "a:n\n,x" (EVar "xyz" ".")))
+                 (hash-bind "a:n\n,x" (EVar "xyz" "x")))
          1
          "File Name.min")
 
-        (append (hash-bind "f" (EFunc "f" "." nil))
-                (hash-bind "x" (EVar "X" "."))
+        (append (hash-bind "f" (EFunc "f" "x" nil))
+                (hash-bind "x" (EVar "X" "x"))
                 (hash-bind "a" (EFunc "a" "i" ["a b" (PSymbol 0 "a")]))
                 (hash-bind "g" (EFunc "g" "p" nil))
                 (hash-bind "g" (ESMacro "g" "i"))  ;; imported
-                (hash-bind "a:n\n,x" (EVar "xyz" "."))))
+                (hash-bind "a:n\n,x" (EVar "xyz" "x"))))
 
 ;; base-env and resolve
 

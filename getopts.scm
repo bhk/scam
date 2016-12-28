@@ -65,9 +65,10 @@
 
 
 (define (getopts args opts err)
+  &public
   (getopts-loop (filter-out "%= %=..." opts)
-                (patsubst "%=" "%" (filter "%=" opts))
-                (patsubst "%=..." "%" (filter "%=..." opts))
+                (filtersub "%=" "%" opts)
+                (filtersub "%=..." "%" opts)
                 err
                 args
                 nil
