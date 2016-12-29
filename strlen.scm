@@ -9,7 +9,10 @@
 "
 ")
 
+;; This may be nil, depending on the platform.  If nil, we assume no strings
+;; contain CR.
 (define ascii-CR "")
+
 (define ascii-LF (subst ascii-CR "" -newline))
 (define ascii-upper "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z")
 (define ascii-lower "a b c d e f g h i j k l m n o p q r s t u v w x y z")
@@ -37,12 +40,12 @@
 
 (define (strlen s)
   &public
-  (let& ((s2 (subst " " 0 "\t" 0 ascii-CR 0 ascii-LF 0 s))
+  (let& ((s2 (subst " " 0 "\t" 0 (or ascii-CR 0) 0 ascii-LF 0 s))
          (s3 (strlen-smash s2 ascii-unprintable))
          (s4 (strlen-smash s3 ascii-printable)))
     (words (subst 0 "0 " s4))))
 
-
+(expect 1 (strlen "a"))
 (expect 9 (strlen "a\"b'\\x \t\n"))
 
 ;; (count-chars STR SUB) count number of occurrences of SUB in TEXT

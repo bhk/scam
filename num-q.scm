@@ -92,9 +92,20 @@
 (expect "" (range -4 -5))
 (expect "" (range 5 4))
 
+;; TODO
+;;(expect 1 (> 5 1))
+;;(expect 1 (> 5 0))
+;;(expect 1 (> 1 1))
+;;(expect nil (> 0 0))
+
 
 (expect 0 (sum ""))
 (expect "6" (sum "1 2 3"))
 (expect 5050 (sum (range 1 100)))
 
-;(time "sum" (lambda () (sum (range 1 5000))))
+
+(expect 2 (zero-pad 2 1))
+(expect 00000000000000000002 (zero-pad 2 20))
+
+
+;;(time "sum" (lambda () (sum (range 1 5000))))

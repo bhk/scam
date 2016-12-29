@@ -79,6 +79,16 @@
      (expect s (env-expand (env-compress s))))
 
 
+;; tokenize-key, detokenize-key:
+
+(define `(tok-test env)
+  (eq? env (detokenize-key (tokenize-key env))))
+
+(expect 1 (tok-test (hash-bind "a" "a")))
+(expect 1 (tok-test (hash-bind "a" "a%a!p!P!%")))
+(expect 1 (tok-test (hash-bind "%" "a%a!p!P!%")))
+
+
 ;; env-export & env-import
 
 ;; import only public members
@@ -119,22 +129,22 @@
 
 ;; import public AND private members
 
-(expect (export-round-trip
+(fexpect (export-round-trip
+          (append (hash-bind "f" (EFunc "f" "x" 2 nil))
+                  (hash-bind "x" (EVar "X" "x"))
+                  (hash-bind "a" (EFunc "a" "i" 2 ["a b" (PSymbol 0 "a")]))
+                  (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
+                  (hash-bind "g" (ESMacro "g" "i"))    ;; imported macro
+                  (hash-bind "a:n\n,x" (EVar "xyz" "x")))
+          1
+          "File Name.min")
+
          (append (hash-bind "f" (EFunc "f" "x" 2 nil))
                  (hash-bind "x" (EVar "X" "x"))
                  (hash-bind "a" (EFunc "a" "i" 2 ["a b" (PSymbol 0 "a")]))
-                 (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
-                 (hash-bind "g" (ESMacro "g" "i"))    ;; imported macro
-                 (hash-bind "a:n\n,x" (EVar "xyz" "x")))
-         1
-         "File Name.min")
-
-        (append (hash-bind "f" (EFunc "f" "x" 2 nil))
-                (hash-bind "x" (EVar "X" "x"))
-                (hash-bind "a" (EFunc "a" "i" 2 ["a b" (PSymbol 0 "a")]))
-                (hash-bind "g" (EFunc "g" "p" 1 nil))
-                (hash-bind "g" (ESMacro "g" "i"))  ;; imported
-                (hash-bind "a:n\n,x" (EVar "xyz" "x"))))
+                 (hash-bind "g" (EFunc "g" "p" 1 nil))
+                 (hash-bind "g" (ESMacro "g" "i"))  ;; imported
+                 (hash-bind "a:n\n,x" (EVar "xyz" "x"))))
 
 ;; base-env and resolve
 

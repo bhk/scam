@@ -2,7 +2,6 @@ TODO
 
  * Exports, Imports, Rewind
 
-   - Revisit export compression since conversion to data records.
    - Currently, the entire env is exported, including symbols imported from
      other files.  This simplifies macro rewinding.  Instead, we could
      include the imported files by reference.
@@ -325,6 +324,7 @@ Optimizations
 
 
 * Misc
+    * num: (> 5 0) not working?
     * num: treat nil as identity value for each operator: (+ 1) == (+ 1 nil...) == 1
     * num: multi-arg + and *
     * Interleave compile with parsing of top-level expressions.

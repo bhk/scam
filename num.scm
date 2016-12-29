@@ -315,6 +315,7 @@
 
 
 (define (/ a b)
+  &public
   (let ((sa (sign a))
         (sb (sign b))
         (ua (nnorm (uencode a)))
@@ -425,6 +426,7 @@
   (subst "--" "" (concat "-" (or n 0))))
 
 (define (range min max)
+  &public
   (strip
    (if (>= min 0)
        (u-range min max)
@@ -447,3 +449,27 @@
       (+ (sum (wordlist 1 (/ (words list) 2) list))
          (sum (nth-rest (1+ (/ (words list) 2)) list)))
       (sum-small list)))
+
+
+(define (extend-list value count)
+  (if (word count value)
+      (wordlist 1 count value)
+      (extend-list (concat value " " value " " value) count)))
+
+;; Pad a positive number with zeros on the left, yielding a value whose
+;; alpha sort is equivalent to its numeric sort.
+;;
+(define (zero-pad n digits)
+  &public
+  (define `spread
+    (subst "0" "0 " "1" "1 " "2" "2 " "3" "3 " "4" "4 "
+           "5" "5 " "6" "6 " "7" "7 " "8" "8 " "9" "9 " n))
+  (if (not (subst "0" "" digits))
+      (begin
+        (print "zero-pad: invalid digits: " digits)
+        n)
+      (subst " " ""
+             (reverse
+              (wordlist 1 digits
+                        (append (reverse spread)
+                                (extend-list "0 0 0 0 0 0" digits)))))))

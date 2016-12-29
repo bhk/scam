@@ -266,6 +266,9 @@
 ;;     Remove entries in a hash that are superseded by earlier entries that
 ;;     share the same KEY.
 ;;
+;; (hash-keys HASH)
+;;     Return a vector of KEYS from hash H.
+;;
 
 (define (hash-bind key val ?hash)
   &public
@@ -301,6 +304,10 @@
         (append entry
                 (hash-compact (filter-out prefix (rest hash)))))))
 
+(define (hash-keys h)
+  &public
+  (foreach e h
+           (subst "!8" "%" (word 1 (subst "!=" " " e)))))
 
 (declare (format value)
          &public)

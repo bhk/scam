@@ -115,6 +115,12 @@
                               (hash-bind " " 3)
                               (hash-bind "bb" 9))))
 
+(expect ["%" "!8" "a b" ""]
+        (hash-keys (append (hash-bind "%" "")
+                           (hash-bind "!8" "x")
+                           (hash-bind "a b" "%1")
+                           (hash-bind "" "x"))))
+
 ;; format
 
 (expect "[\"a\" \" \" [\"\"]]" (format "a !0 !1."))
