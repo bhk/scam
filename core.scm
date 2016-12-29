@@ -491,11 +491,20 @@
 
 ;; Split STR at each occurrence of DELIM.  Returns vector whose length is one
 ;; more than the number of occurrences of DELIM.
+;;
 (define (split delim str)
   &public
-  (foreach w
-           (subst [delim] "!. !." [str])
-           (or (subst "!." "" w) "!.")))
+  ;; Ensure that the end or start of delim cannot overlap part of an escape
+  ;; sequence.  In an encoded string, "{" and "}" appear only in the
+  ;; following escape sequences: {L} {R} {s} {t} {}
+  (define `(enc str)
+    (or (subst "{" "{L" "}" "{R}" "{L" "{L}" " " "{s}" "\t" "{t}" str) "{}"))
+  (define `(dec str)
+    (subst "{}" "" "{t}" "\t" "{s}" " " "{L}" "{L" "{R}" "}" "{L" "{" str))
+
+  (foreach w (subst (enc delim) "{} {}" (enc str))
+           [(dec w)]))
+
 
 ;; (1+ NUM) : add one to a non-negative integer
 (define (1+ n)
