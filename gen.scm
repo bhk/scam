@@ -59,15 +59,25 @@
 
 (data EDefn
       &public
-      (EVar     name &word scope)      ; data variable
-      (EFunc    name &word scope inln) ; function var or compound macro
-      (ESMacro  form &word scope)      ; symbol macro
-      (EXMacro  name &word scope)      ; executable macro
-      (ERecord  encs &word scope tag)  ; data record type
-      (EBuiltin name &word scope argc) ; builtin function
-      (EIL      node)                 ; pre-compiled IL node
-      (EArg     &word argref)         ; function argument
-      (EMarker  &word data))          ; marker
+      ;; data variable
+      (EVar     name &word scope)
+      ;; function variable or compound macro
+      (EFunc    name &word scope argc &list inln)
+      ;; symbol macro
+      (ESMacro  form &word scope)
+      ;; executable macro
+      (EXMacro  name &word scope)
+      ;; data record type
+      (ERecord  encs &word scope tag)
+      ;; builtin function
+      (EBuiltin name &word scope argc)
+      ;; pre-compiled IL node
+      (EIL      node)
+      ;; function argument
+      (EArg     &word argref)
+      ;; marker
+      (EMarker  &word data))
+
 
 (define `(EDefn.scope defn)
   &public
@@ -107,11 +117,14 @@
 ;;         For EFunc records, the value NoGlobalName indicates that the
 ;;         binding is a compound macro, and not a function variable.
 ;;
+;; ARGC = number of arguments the function/macro accepts, in a form
+;;        ready for check-argc, such as: "0", "1 or 2", "1 or more".
+;;
 ;; INLN = definition of a function or compound macro body:
-;;          [ [ARGNAME...] BODY...]
-;;        where each ARGNAME is a string and BODY... is a vector of forms.
-;;        For inline functions and compoune macros, BODY is non-empty.
-;;        For non-inline functions, BODY is empty.
+;;           [ [ARGNAME...] BODY...]
+;;        where each ARGNAME is a string and BODY... is a vector of
+;;        forms.  For inline functions and compoune macros, BODY is
+;;        non-empty.  For non-inline functions, BODY is empty.
 ;;
 ;; ARGREF = argument reference:
 ;;      .1   --> argument #1 of a top-level function
@@ -387,22 +400,10 @@
              arg1 arg2))
 
 
-;; Check that FORM matches a form type in TYPES.  If not, return
-;; an IL error node describing the error.
-;;
-;; TYPES = a list of acceptable form types, or "" if any non-empty form will do
-;; WHERE = synopsis of syntax being parsed
-;; WHAT = element within `where` being checked
-;;
-;;(define (check-type types form parent what where)
-;;  (if (not (filter (or (patsubst "%" "%%" types) "%") (word 1 form)))
-;;      (err-expected types form parent what where nil)))
-
-;;(define `(check-form ctor form parent what where)
-;;  (check-type (word 1 ctor) form parent what where))
-
-
-;; EXPECTED = filter pattern to match number of arguments, e.g. "2 or 3"
+;; EXPECTED = filter pattern to match number of arguments, and also
+;;      to be used to construct the error message.  E.g. "2 or 3".
+;;      "N or more" can be used to verify that at least N arguments
+;;      are present.
 ;; ARGS = array of arguments
 ;; SYM = symbol for function/form that is being invoked
 ;;
@@ -455,7 +456,7 @@
   ;; EFunc and ESMacro can rewind
   (define `(can-rewind defn)
     (case defn
-      ((EFunc _ _ _) 1)
+      ((EFunc _ _ _ _) 1)
       ((ESMacro _ _) 1)))
 
   (if (EDefn.is-public? defn)

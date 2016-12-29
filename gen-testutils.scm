@@ -41,9 +41,9 @@
   &public
   (append (hash-bind "a" (EArg "1"))
           (hash-bind "v" (EVar "V" "."))
-          (hash-bind "f" (EFunc "F" "." [["a" "b"]]))
+          (hash-bind "f" (EFunc "F" "." 2 nil))
           ;; names that an extra promote/demote will corrupt...
-          (hash-bind "f!0!" (EFunc "F!0!" "." [["a" "b"]]))
+          (hash-bind "f!0!" (EFunc "F!0!" "." 2 nil))
           (hash-bind "d!0!" (EVar "D!0!" "."))))
 
 

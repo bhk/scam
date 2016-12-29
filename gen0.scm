@@ -138,7 +138,7 @@
     ((EVar gname _)
      (IVar gname))
 
-    ((EFunc gname _ inln)
+    ((EFunc gname _ _ inln)
      (if (filter NoGlobalName gname)
          (c0-macro env sym inln)
          (IBuiltin "value" [(IString gname)])))
@@ -167,29 +167,19 @@
   (for f forms (c0 f env)))
 
 
-;; Construct a string describing the number of parameters:
-;;  "a b c"      ==>   "3"
-;;  "a ?b ?c"    ==>   "1 or 2 or 3"
-;;  "a ?b ?c ..." ==>  "1 or more"
-;;
-(define (get-argc args)
-  (if (filter "...% ?%" (lastword args))
-      (if (filter "...%" (lastword args))
-          (concat (words (filter-out "...% ?%" args)) " or more")
-          (concat (get-argc (butlast args)) " or " (words args)))
-      (words args)))
-
-
 ;; Function call by name.
 ;;
 ;;   - Ordinary function:  body is nil
 ;;   - Inline function:    body non-nil
 ;;   - Compound macro:     body non-nil, REALNAME = NoGlobalName
 ;;
-(define (c0-call env sym args realname formal-args body)
+(define (c0-call env sym args realname argc inln)
+  (define `formal-args
+    (first inln))
+  (define `body
+    (rest inln))
   (define `name
     (symbol-name sym))
-
   (define `(zip vec1 vec2)
     (join (addsuffix "!=" vec1) vec2))
 
@@ -205,11 +195,11 @@
             ;; re-bind symbol to non-inline function binding to avoid
             ;; endless cycle of expansion
             (if (not (filter NoGlobalName realname))
-                (hash-bind name (EFunc realname "." [formal-args])))
+                (hash-bind name (EFunc realname "." argc nil)))
             ;; rewind env to allow proper resolution of symbols in body
             (env-rewind env name)))
 
-  (or (check-argc (get-argc formal-args) args sym)
+  (or (check-argc argc args sym)
       (if body
           ;; macro/inline
           (c0-block body body-env)
@@ -257,8 +247,8 @@
   (define `symname (symbol-name sym))
 
   (case defn
-    ((EFunc realname _ inln)
-     (c0-call env sym args realname (first inln) (rest inln)))
+    ((EFunc realname _ argc inln)
+     (c0-call env sym args realname argc inln))
 
     ((EBuiltin realname _ argc)
      (or (check-argc argc args sym)
@@ -426,6 +416,19 @@
               (check-optional-args (rest args) nil)))))
 
 
+;; Construct a string describing the number of parameters:
+;;  "a b c"      ==>   "3"
+;;  "a ?b ?c"    ==>   "1 or 2 or 3"
+;;  "a ?b ?c ..." ==>  "1 or more"
+;;
+(define (get-argc args)
+  (if (filter "...% ?%" (lastword args))
+      (if (filter "...%" (lastword args))
+          (concat (words (filter-out "...% ?%" args)) " or more")
+          (concat (get-argc (butlast args)) " or " (words args)))
+      (words args)))
+
+
 ;; (define `(NAME ARGS...) FLAGS BODY)
 ;; (declare (NAME ARGS...) FLAGS)
 ;; (define  (NAME ARGS...) FLAGS BODY)
@@ -436,20 +439,21 @@
   (define `is-global (filter "&global" flags))
   (define `gname (gen-global-name name flags))
   (define `formal-args (for a args (symbol-name a)))
+  (define `argc (get-argc formal-args))
 
   ;; make function name known *within* the function body (without inline)
   (define `env-in
     (if is-macro
         env
-        (hash-bind name (EFunc gname scope [formal-args]) env)))
+        (hash-bind name (EFunc gname scope argc nil) env)))
 
   ;; make function known *after* the definition (including inline expansion)
   (define `env-out
     (hash-bind name (EFunc (if is-macro NoGlobalName gname)
                            scope
-                           (cons formal-args
-                                 (if (or is-inline is-macro)
-                                     body)))
+                           argc
+                           (if (or is-inline is-macro)
+                               (cons formal-args body)))
                env))
 
   (define `set-il

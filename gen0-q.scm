@@ -98,7 +98,7 @@
 
 (expect (c0-ser "(f 1)" (append
                          (hash-bind "g" (EVar "newG" "."))
-                         (hash-bind "f" (EFunc NoGlobalName "."
+                         (hash-bind "f" (EFunc NoGlobalName "." 1
                                                ["a" (p1 "(filter a g)")]))
                          (hash-bind "g" (EVar "oldG" "."))))
         "(.filter 1,{oldG})")
@@ -206,9 +206,9 @@
 ;; PSymbol: macro  (uses c0-lambda)
 (begin
   (define `macro-inln
-    [ [ "a" "b" ] (p1-0 "(word a b)") ])
+    [ ["a" "b"] (p1-0 "(word a b)") ])
   (define `macro-env
-    (hash-bind "M" (EFunc NoGlobalName "." macro-inln)))
+    (hash-bind "M" (EFunc NoGlobalName "." 2 macro-inln)))
 
   (expect (il-ser (c0-macro macro-env (PSymbol 0 "M") macro-inln))
           "`(.word {1},{2})"))
@@ -301,9 +301,9 @@
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "p" [["a" "b"]])))
+        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "p" 2 nil)))
 (expect (text-to-env "(declare (fn a b) &public)")
-        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "x" [["a" "b"]])))
+        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "x" 2 nil)))
 
 ;; declare errors
 (expect (c0-ser "(declare)")
@@ -327,17 +327,17 @@
         (xns "(^fset ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
-        (xns (hash-bind "f" (EFunc "~f" "p" [["a"]]))))
+        (xns (hash-bind "f" (EFunc "~f" "p" 1 nil))))
 
 (expect (c0-ser "(define (word a) a)")
         "!(PError 4 'cannot redefine built-in function \\'word\\'')")
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (concat a a))")
-        (hash-bind "M" (EFunc NoGlobalName "p" ["a" (p1-0 "(concat a a)")])))
+        (hash-bind "M" (EFunc NoGlobalName "p" 1 ["a" (p1-0 "(concat a a)")])))
 
 (expect (text-to-env "(define `(M a) &public (concat a a))")
-        (hash-bind "M" (EFunc NoGlobalName "x"  ["a" (p1-0 "(concat a a)")])))
+        (hash-bind "M" (EFunc NoGlobalName "x" 1 ["a" (p1-0 "(concat a a)")])))
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)" env0)
@@ -392,11 +392,11 @@
   (expect (hash-get "g" env)
           (EFunc (gen-global-name "g" nil)
                  "p"
-                 ["x" (p1-0 "(info x)")]))
-  (expect (hash-get "f" env)
-          (EFunc (gen-global-name "f" nil)
-                 "p"
-                 ["a b" (p1-0 "(join a b)")])))
+                 1 ["x" (p1-0 "(info x)")]))
+  (fexpect (hash-get "f" env)
+           (EFunc (gen-global-name "f" nil)
+                  "p"
+                  2 ["a b" (p1-0 "(join a b)")])))
 
 
 ;; define and use inline FUNC

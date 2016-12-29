@@ -50,7 +50,7 @@
          (hash-bind "a" "asdf"))
         (env-rewind (hash-bind "x" 1
                           (hash-bind LambdaMarkerKey ".."
-                                (hash-bind "f" (EFunc "f" "." "")
+                                (hash-bind "f" (EFunc "f" "." "1" nil)
                                       (hash-bind "a" "asdf"))))
                     "f"))
 
@@ -83,11 +83,11 @@
 
 ;; import only public members
 
-(expect (import-binding "f" (EFunc "F" "x" ["a b"]) "MOD")
-        (hash-bind "f" (EFunc "F" "iMOD" ["a b"])))
+(fexpect (import-binding "f" (EFunc "F" "x" 2 nil) "MOD")
+         (hash-bind "f" (EFunc "F" "iMOD" 2 nil)))
 
-(expect (import-binding "f" (EFunc "F" "p" ["a b"]) "MOD")
-        nil)
+(fexpect (import-binding "f" (EFunc "F" "p" 2 nil) "MOD")
+         nil)
 
 
 (define (export-round-trip env flag filename)
@@ -99,40 +99,40 @@
    filename))
 
 
-(expect (export-round-trip
-         (append (hash-bind "f" (EFunc "f" "x" ["a b"]))
-                 (hash-bind "x" (EVar "X" "x"))
-                 (hash-bind "a" (EFunc "fa" "x" ["a b" (PSymbol 0 "a")]))
-                 (hash-bind "g" (EFunc "g" "p" nil))  ;; private
-                 (hash-bind "g" (EFunc "g" "i" nil))  ;; imported
-                 (hash-bind "m" (ESMacro "Q 1" "x"))
-                 (hash-bind "a:n\n,x" (EVar "xyz" "x")))
-         nil
-         "MOD")
+(fexpect (export-round-trip
+          (append (hash-bind "f" (EFunc "f" "x" 2 nil))
+                  (hash-bind "x" (EVar "X" "x"))
+                  (hash-bind "a" (EFunc "fa" "x" 2 ["a b" (PSymbol 0 "a")]))
+                  (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
+                  (hash-bind "g" (EFunc "g" "i" 1 nil))  ;; imported
+                  (hash-bind "m" (ESMacro "Q 1" "x"))
+                  (hash-bind "a:n\n,x" (EVar "xyz" "x")))
+          nil
+          "MOD")
 
-        (append (hash-bind "f" (EFunc "f" "iMOD" ["a b"]))
-                (hash-bind "x" (EVar "X" "i"))
-                (hash-bind "a" (EFunc "fa" "iMOD" ["a b" (PSymbol 0 "a")]))
-                (hash-bind "m" (ESMacro "Q 1" "iMOD"))
-                (hash-bind "a:n\n,x" (EVar "xyz" "i"))))
+         (append (hash-bind "f" (EFunc "f" "iMOD" 2 nil))
+                 (hash-bind "x" (EVar "X" "i"))
+                 (hash-bind "a" (EFunc "fa" "iMOD" 2 ["a b" (PSymbol 0 "a")]))
+                 (hash-bind "m" (ESMacro "Q 1" "iMOD"))
+                 (hash-bind "a:n\n,x" (EVar "xyz" "i"))))
 
 
 ;; import public AND private members
 
 (expect (export-round-trip
-         (append (hash-bind "f" (EFunc "f" "x" nil))
+         (append (hash-bind "f" (EFunc "f" "x" 2 nil))
                  (hash-bind "x" (EVar "X" "x"))
-                 (hash-bind "a" (EFunc "a" "i" ["a b" (PSymbol 0 "a")]))
-                 (hash-bind "g" (EFunc "g" "p" nil))  ;; private
+                 (hash-bind "a" (EFunc "a" "i" 2 ["a b" (PSymbol 0 "a")]))
+                 (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
                  (hash-bind "g" (ESMacro "g" "i"))    ;; imported macro
                  (hash-bind "a:n\n,x" (EVar "xyz" "x")))
          1
          "File Name.min")
 
-        (append (hash-bind "f" (EFunc "f" "x" nil))
+        (append (hash-bind "f" (EFunc "f" "x" 2 nil))
                 (hash-bind "x" (EVar "X" "x"))
-                (hash-bind "a" (EFunc "a" "i" ["a b" (PSymbol 0 "a")]))
-                (hash-bind "g" (EFunc "g" "p" nil))
+                (hash-bind "a" (EFunc "a" "i" 2 ["a b" (PSymbol 0 "a")]))
+                (hash-bind "g" (EFunc "g" "p" 1 nil))
                 (hash-bind "g" (ESMacro "g" "i"))  ;; imported
                 (hash-bind "a:n\n,x" (EVar "xyz" "x"))))
 
