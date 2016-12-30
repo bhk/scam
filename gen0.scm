@@ -11,11 +11,11 @@
 ;; Env-modifying functions can return an environment when `inblock` is true.
 ;; Use this macro to generate the return value.
 ;;
-(define (block-result inblock env node)
+(define `(block-result inblock env node)
   &public
   (if inblock
       (IEnv env node)
-      (or node NoOp)))
+      node))
 
 
 ;; Extract sub-node from (IEnv ...) if INBLOCK is nil.
@@ -547,14 +547,17 @@
 
    (case module
      ((PString pos name)
-      (let ((imports (require-module name read-priv))
+      (let ((imports (get-module-env name read-priv))
             (module module)
             (env env)
             (name name)
             (inblock inblock))
         (if imports
             (block-result inblock
-                          (append imports env)
+                          (append (hash-bind ImportMarkerKey
+                                             (EMarker [name]))
+                                  imports
+                                  env)
                           (ICall "^require" [ (IString (notdir name)) ]))
             (gen-error module "require: Cannot find module %q" name))))
 

@@ -293,7 +293,7 @@ $(if $(call ~memoize,~env-from-file),)
 ~builtins-1 := abspath basename dir error eval firstword flavor info lastword notdir origin realpath shell sort strip suffix value warning wildcard words
 ~builtins-2 := addprefix addsuffix filter filter-out findstring join word
 ~builtins-3 := .foreach patsubst .subst wordlist
-~builtin-names := $(patsubst .%,%,$(~builtins-1) $(~builtins-2) $(~builtins-3))
+~builtin-names := $(patsubst .%,%,$(~builtins-1) $(~builtins-2) $(~builtins-3) and or call if)
 ~base-env := $(call ~append,$(foreach b,$(~builtins-1),$(call ~hash-bind,$b,!:EDefn5 $(call ^d,$b) i 1)),$(foreach b,$(~builtins-2),$(call ~hash-bind,$b,!:EDefn5 $(call ^d,$b) i 2)),$(foreach b,$(~builtins-3),$(call ~hash-bind,$b,!:EDefn5 $(call ^d,$(patsubst .%,%,$b)) i 3)),$(foreach b,and or call,$(call ~hash-bind,$b,!:EDefn5 $(call ^d,$b) i %)),$(call ~hash-bind,if,!:EDefn5 if i 2!0or!03),$(foreach v,MAKEFILE_LIST .DEFAULT_GOAL,$(call ~hash-bind,$v,!:EDefn0 $(call ^d,$v) i)))
 ~resolve = $(if $(filter !:P2,$(firstword $1)),$(call ~nth,2,$(subst !=, ,$(or $(filter $(subst !,!1,$(call ^n,3,$1))!=%,$2),$(filter $(subst !,!1,$(call ^n,3,$1))!=%,$(~base-env))))),-)
 ~begin-block = $(if $(and $1,$(if $(word 2,$1),,1)),$(call ^u,$(word 1,$1)),!:P0 0 $(call ~cons,!:P2 0 begin,$1))

@@ -89,7 +89,7 @@
 (define (compile-prelude is-boot)
   &public
   (if (not is-boot)
-      (append (require-module rt-mod nil)
+      (append (get-module-env rt-mod nil)
               (use-module ct-mod))))
 
 

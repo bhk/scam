@@ -148,6 +148,13 @@
   &public
   ":m")
 
+;; This marks where bindings were imported from another module.
+;; The vaue is (demote MOD).
+(define `ImportMarkerKey
+  &public
+  ":r")
+
+
 ;; Exports and Imports
 ;; -------------------
 ;;
@@ -346,14 +353,13 @@
   (PSymbol 0 (gensym-name (symbol-name base) env nil)))
 
 
-;; Return all words after first occurrence of `item` in `vec`.
-;; Note: vec must not contain invalid (non-demoted) character sequences.
+;; Return all words after first occurrence of ITEM in LIST.
+;; Note: LIST must not contain `!S` (any valid vector or hash will not).
 ;;
-(define (after item vec)
-  (strip-vec
-   (subst "!S" " "
-          (rest (subst (concat "!S" item "!S") (concat "!S" item "!S ")
-                       (concat "!S" (subst " " "!S" vec) "!S"))))))
+(define (after item list)
+  (subst "!S" " "
+         (rest (subst (concat "!S" item "!S") (concat "!S" item " ")
+                      (concat "!S" (subst " " "!S" list))))))
 
 
 ;; Returns the bindings in effect when symbol-macro `name` was bound, plus
@@ -523,7 +529,8 @@
          (env-expand (first (filtersub ["# Exports: %"] "%" lines)))))
 
 
-;; Read a module from a file or a bundled variable
+;; Read a module from a file or a bundled variable and return its final
+;; environment ("exports").
 ;;
 (define `(env-load filename)
   (define `(read-module-lines filename)
@@ -542,7 +549,7 @@
 ;; environment entries, not just public ones.  Return `nil` on error (bad
 ;; filename).
 ;;
-(define (env-from-file filename read-priv)
+(define (get-file-env filename read-priv)
   ;; This is used to ensure a harmless non-nil result.
   (define `modname (notdir (basename filename)))
 
@@ -551,7 +558,7 @@
           *dummy-env*)))
 
 
-(memoize (global-name env-from-file))
+(memoize (global-name get-file-env))
 
 
 ;; Return the location of the object file, given the module name.
@@ -572,15 +579,16 @@
 ;; Read the environment exported from a module.
 ;;
 ;; MOD : module name
-;; READ_PRIV : if true, read all entries.  Otherwise, discard
-;;    imported/private entries and mark other entries as imports.
+;; ALL : True => return all environment entries that were visible at
+;;               the end of MOD.
+;;       False => return &pubilc symbols defined/declared in MOD.
 ;;
-;; Return: ENV     on success
-;;         nil     on failure  (module not found)
+;; Return: ENV on success
+;;         nil on failure  (module not found)
 ;;
-(define (require-module mod read-priv)
+(define (get-module-env mod all)
   &public
-  (env-from-file (mod-find mod) read-priv))
+  (get-file-env (mod-find mod) all))
 
 
 ;; Perform a compile-time import of "mod", returning env entries to be added
@@ -591,7 +599,7 @@
 ;;
 (define (use-module mod)
   &public
-  (let ((imports (require-module mod nil)))
+  (let ((imports (get-module-env mod nil)))
     (if imports
         (let-global ((SCAM_MODS *compile-mods*))
           (call "^require" mod)
@@ -612,7 +620,7 @@
     (define `mod (filtersub "i%" "%" scope))
 
     (if mod
-        (env-rewind-x (require-module (promote mod) 1) name)
+        (env-rewind-x (get-module-env (promote mod) 1) name)
         (after pair env))))
 
 
@@ -647,7 +655,8 @@
   &public
   (patsubst ".%" "%" (concat builtins-1 " "
                              builtins-2 " "
-                             builtins-3)))
+                             builtins-3 " "
+                             "and or call if")))
 
 (define base-env
   (append

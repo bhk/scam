@@ -724,9 +724,13 @@ to the function.
 The `require` form provides access to functionality defined in other
 modules.  `MODULE` identifies either a SCAM source file, minus its `.scm`
 extension, relative to the directory containing the requiring file) or a
-bundled module.  If the `&private` flags is specified, private *and* public
-definitions and declarations will be imported.  Otherwise, only those
-flagged with `&public` will be imported.
+bundled module.
+
+Ordinarily, only the `&public` declarations and definitions in MODULE will
+be visible in the requiring file.  The `&private` flag, when present changes
+this behavior, and makes every symbol visible in MODULE visible in the
+requiring module -- just as if the source text of MODULE were included in
+the requiring module.
 
 `MODULE` must be a literal string value, because `require` is processed at
 build time and compile time in addition to run time.

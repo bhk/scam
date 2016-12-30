@@ -434,7 +434,9 @@
          "(^require M)")
 
  (expect (text-to-env "(require \"M\")" nil 1)
-         (hash-bind "x" (EVar (gen-global-name "x" nil) "i")))
+         (append
+          (hash-bind ImportMarkerKey (EMarker "M"))
+          (hash-bind "x" (EVar (gen-global-name "x" nil) "i"))))
 
  (expect (c0-ser "(require \"D/M\" \"xyz\")")
          "!(PError 0 'too many arguments to require')")
@@ -442,7 +444,8 @@
  ;; (require MOD &private)
 
  (expect (text-to-env "(require \"M\" &private)" nil 1)
-         (append (hash-bind "x" (EVar (gen-global-name "x" nil) "x"))
+         (append (hash-bind ImportMarkerKey (EMarker "M"))
+                 (hash-bind "x" (EVar (gen-global-name "x" nil) "x"))
                  (hash-bind "X" (EVar (gen-global-name "X" nil) "p"))))
 
  ;; Verify that IMPORTED inline functions & macros are expanded in their
