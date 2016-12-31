@@ -72,6 +72,62 @@
 (expect (gen-error (PString 12 "x") "Msg: %s %s" "hello" "error")
         (PError 12 "Msg: hello error"))
 
+;;--------------------------------
+;; env-export & env-import
+;;--------------------------------
+
+(define (ImportMarker mod)
+  (hash-bind ImportMarkerKey (EMarker mod)))
+
+
+;; A has no imported bindings
+(define mod-A-env
+  (append (hash-bind "g" (EFunc "F" "x" 1 nil))
+          (hash-bind "q" (EFunc "Q" "p" 1 nil))))
+
+;; B imports A
+(define mod-B-env
+  (append (env-import mod-A-env nil "A")
+          (hash-bind "f" (EFunc "F" "x" 1 nil))))
+
+(define (harness-get-module-env mod all)
+  (expect mod "A")
+  (env-import (env-export mod-A-env) nil mod))
+
+
+;; no imports to trim
+(expect (env-export mod-A-env)
+        mod-A-env)
+
+;; reconstruct A (include)
+(expect (env-import mod-A-env 1 "A")
+        mod-A-env)
+
+;; get public bindinds (import)
+(fexpect (env-import mod-A-env nil "A")
+         (append (ImportMarker "A")
+                 (hash-bind "g" (EFunc "F" "iA" 1 nil))))
+
+;; strip imported bindings
+(expect (env-export mod-B-env)
+        (append (ImportMarker "A")
+                (hash-bind "f" (EFunc "F" "x" 1 nil))))
+
+(let-global
+ ((get-module-env harness-get-module-env))          ;; hook get-module-env
+
+ ;; expand import markers
+ (fexpect (expand-import-markers
+           (append (ImportMarker "A")
+                   (hash-bind "f" (EFunc "F" "x" 1 nil))))
+          (append (env-import mod-A-env nil "A")
+                  (hash-bind "f" (EFunc "F" "x" 1 nil))))
+
+
+ ;; reconstruct B
+ (expect (env-import (env-export mod-B-env) 1 "B")
+         mod-B-env))
+
 
 ;; env-compress
 
@@ -103,7 +159,7 @@
 (define (export-round-trip env flag filename)
   (env-import
    (env-parse [ "# comment"
-                (subst "\n" "" (env-export env))
+                (subst "\n" "" (env-export-line env))
                 "# F F F F F F"])
    flag
    filename))
@@ -120,7 +176,8 @@
           nil
           "MOD")
 
-         (append (hash-bind "f" (EFunc "f" "iMOD" 2 nil))
+         (append (ImportMarker "MOD")
+                 (hash-bind "f" (EFunc "f" "iMOD" 2 nil))
                  (hash-bind "x" (EVar "X" "i"))
                  (hash-bind "a" (EFunc "fa" "iMOD" 2 ["a b" (PSymbol 0 "a")]))
                  (hash-bind "m" (ESMacro "Q 1" "iMOD"))
@@ -129,22 +186,20 @@
 
 ;; import public AND private members
 
-(fexpect (export-round-trip
-          (append (hash-bind "f" (EFunc "f" "x" 2 nil))
-                  (hash-bind "x" (EVar "X" "x"))
-                  (hash-bind "a" (EFunc "a" "i" 2 ["a b" (PSymbol 0 "a")]))
-                  (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
-                  (hash-bind "g" (ESMacro "g" "i"))    ;; imported macro
-                  (hash-bind "a:n\n,x" (EVar "xyz" "x")))
-          1
-          "File Name.min")
+(let-global
+ ((get-module-env harness-get-module-env))          ;; hook get-module-env
 
-         (append (hash-bind "f" (EFunc "f" "x" 2 nil))
-                 (hash-bind "x" (EVar "X" "x"))
-                 (hash-bind "a" (EFunc "a" "i" 2 ["a b" (PSymbol 0 "a")]))
-                 (hash-bind "g" (EFunc "g" "p" 1 nil))
-                 (hash-bind "g" (ESMacro "g" "i"))  ;; imported
-                 (hash-bind "a:n\n,x" (EVar "xyz" "x"))))
+ (define mod-C-env
+   (append (hash-bind "f" (EFunc "f" "x" 2 nil))
+           (hash-bind "x" (EVar "X" "x"))
+           ;; import from A
+           (env-import mod-A-env nil "A")
+           ;; other definitions in this module
+           (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
+           (hash-bind "a:n\n,x" (EVar "xyz" "x"))))
+
+ (fexpect (export-round-trip mod-C-env 1 "File Name.min")
+          mod-C-env))
 
 ;; base-env and resolve
 

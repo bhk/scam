@@ -418,7 +418,7 @@
    (else (expect (concat "Bad module: " name) nil))))
 
 (define (canned-read-file name)
-  (env-export (text-to-env (canned-MIN name) nil 1)))
+  (env-export-line (text-to-env (canned-MIN name) nil 1)))
 
 (declare (mod-find name))
 
@@ -444,8 +444,7 @@
  ;; (require MOD &private)
 
  (expect (text-to-env "(require \"M\" &private)" nil 1)
-         (append (hash-bind ImportMarkerKey (EMarker "M"))
-                 (hash-bind "x" (EVar (gen-global-name "x" nil) "x"))
+         (append (hash-bind "x" (EVar (gen-global-name "x" nil) "x"))
                  (hash-bind "X" (EVar (gen-global-name "X" nil) "p"))))
 
  ;; Verify that IMPORTED inline functions & macros are expanded in their

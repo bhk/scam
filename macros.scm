@@ -734,13 +734,12 @@
 
 (define (ml.special-case env sym args)
   (define `value-form (first args))
-  (let ((value (c0 value-form env))
-        (env env)
-        (args args)
-        (sym sym))
-    (case value
-      ((PError _ _) value)
-      (else
-       (if value-form
-           (case-fold (c0-matches (rest args) value env))
-           (err-expected "" value-form sym "VALUE" case-where))))))
+  (if value-form
+      (let ((value (c0 value-form env))
+            (args args)
+            (env env))
+        (case value
+          ((PError _ _) value)
+          (else (case-fold (c0-matches (rest args) value env)))))
+      ;; no value-form
+      (err-expected "" value-form sym "VALUE" case-where)))

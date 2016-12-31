@@ -68,7 +68,7 @@
 
 
 ;; enough for our purposes
-(define `(clean-path f)
+(define (clean-path f)
   (patsubst "./%" "%" (subst "/./" "/" f)))
 
 
@@ -147,13 +147,13 @@
 ;; valid makefile.  When invoked by the shell, the script invokes `make` to
 ;; process the script as a makefile.
 ;;
-(define `prologue
+(define prologue
 "#!/bin/bash
 :; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; SCAM_ARGS=${a[*]} exec make --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\"
 
 ")
 
-(define `(epilogue main-mod main-func rt)
+(define (epilogue main-mod main-func rt)
   (concat "$(eval $(value " (bundle-var rt) "))\n"
           "$(call ^start," (bundle-var main-mod) "," main-func ",$(SCAM_ARGS))\n"))
 
@@ -256,16 +256,16 @@
 
 ;; plural accessors (each takes a list of module names)
 
-(define `(mmap-objects mmap names)
+(define (mmap-objects mmap names)
   (foreach m names (mod-object (assoc m mmap))))
 
-(define `(mmap-minfiles mmap names)
+(define (mmap-minfiles mmap names)
   (filter-out "///%" (mmap-objects mmap names)))
 
-(define `(mmap-testmods mmap names)
+(define (mmap-testmods mmap names)
   (foreach m names (mod-testmod (assoc m mmap))))
 
-(define `(mmap-okfiles mmap names)
+(define (mmap-okfiles mmap names)
   (addsuffix ".ok"
              (mmap-objects mmap (mmap-testmods mmap names))))
 
@@ -568,10 +568,6 @@
 
     (concat (link-rule exe deps oodeps objects rt-obj keep-syms)
             mod-rules)))
-
-
-(define `(prefix-of sym name)
-  (subst name "" (global-name sym)))
 
 
 ;; Compile a source file and its dependencies to MIN files, verifying each

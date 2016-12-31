@@ -554,10 +554,7 @@
             (inblock inblock))
         (if imports
             (block-result inblock
-                          (append (hash-bind ImportMarkerKey
-                                             (EMarker [name]))
-                                  imports
-                                  env)
+                          (append imports env)
                           (ICall "^require" [ (IString (notdir name)) ]))
             (gen-error module "require: Cannot find module %q" name))))
 

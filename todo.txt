@@ -2,12 +2,18 @@ TODO
 
  * Exports, Imports, Rewind
 
-   - Currently, the entire env is exported, including symbols imported from
-     other files.  This simplifies macro rewinding.  Instead, we could
-     include the imported files by reference.
+   - Should symbol macro env include the marker that compound macro does?
+
    - Fix macro-expansion error reporting: Add file name field to PError.
      Populate it with *compile-file* in parse phase, and current file (based
      on rewind state, maybe saved in env) in gen0.
+
+ * Macros without rewinding
+
+   Compile and store IL, not AST.
+   Introduce new IL node for arguments (to be resolved later).
+   At expansion time, compile arguments, walk IL tree and replace arguments.
+   Needs "absolute" EArg definition (need that anyway).
 
  * Call-site tracing of lambda values
 

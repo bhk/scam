@@ -97,7 +97,7 @@
   (concat "# compiled from " infile "\n"
           (if reqs (concat "# Requires: " reqs "\n"))
           (if uses (concat "# Requires: " uses "\n"))
-          (env-export env)
+          (env-export-line env)
           exe))
 
 
