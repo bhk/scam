@@ -261,6 +261,7 @@
 ;; Add a trace spec to the active set or traces.
 ;;
 (define (trace spec)
+  &public
   (set *traces* (concat *traces* " " spec))
   (trace-check))
 

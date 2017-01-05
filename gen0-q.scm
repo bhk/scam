@@ -43,10 +43,10 @@
 (expect [(PSymbol 2 "bar") ]    (skip-flags flag-args 2))
 
 
-(expect (ILocal 3 0) (c0-local ".3"  (EMarker ".") nil))
-(expect (ILocal 3 1) (c0-local ".3"  (EMarker "..") nil))
-(expect (ILocal 3 1) (c0-local "..3" (EMarker "...") nil))
-(expect (ILocal 3 2) (c0-local ".3"  (EMarker "...") nil))
+(expect (ILocal 3 0) (c0-local ".3"  "." nil))
+(expect (ILocal 3 1) (c0-local ".3"  ".." nil))
+(expect (ILocal 3 1) (c0-local "..3" "..." nil))
+(expect (ILocal 3 2) (c0-local ".3"  "..." nil))
 
 
 ;;--------------------------------

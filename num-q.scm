@@ -46,15 +46,21 @@
 (expect "i" (nodd ".iii"))
 (expect ""  (nodd ".ii"))
 
-(expect "a" (ucmp ".iii" ".ii"))
-(expect "b" (ucmp ".ii" ".iii"))
-(expect "" (ucmp ".ii" ".ii"))
-(expect "b" (ucmp ".iii .i" ".i .iii"))
-
 (expect ".i" (u/2 ".ii"))
 (expect ".iiiii" (u/2 ". .i"))
 (expect ".iiiiiiiii" (u/2 " .iiiiiiiii .i"))
 
+(expect "a" (ucmp ".iii" ".ii"))
+(expect "b" (ucmp ".ii" ".iii"))
+(expect "" (ucmp ".ii" ".ii"))
+(expect "b" (ucmp ".iii .i" ".i .iii"))
+(expect "a" (ucmp ".iiiii" "."))
+(expect "b" (ucmp "." ".iiiii"))
+
+(expect "a" (cmp 1 -1))
+(expect "b" (cmp -1 1))
+(expect "" (cmp 0 -0))
+(expect "" (cmp -0 0))
 
 (expect "b" (cmp 1 2))
 (expect ""  (cmp 2 2))
@@ -62,10 +68,6 @@
 (expect "a" (cmp -1 -2))
 (expect ""  (cmp -2 -2))
 (expect "b" (cmp -3 -2))
-(expect "" (cmp 0 -0))
-(expect "" (cmp -0 0))
-(expect "b" (cmp -1 0))
-(expect "a" (cmp 0 -1))
 (expect "b" (cmp 100 101))
 (expect ""  (cmp 100 00100))
 (expect "a" (cmp 100 9))
@@ -92,12 +94,10 @@
 (expect "" (range -4 -5))
 (expect "" (range 5 4))
 
-;; TODO
-;;(expect 1 (> 5 1))
-;;(expect 1 (> 5 0))
-;;(expect 1 (> 1 1))
-;;(expect nil (> 0 0))
-
+(expect 1 (> 5 1))
+(expect 1 (> 5 0))
+(expect 1 (>= 1 1))
+(expect nil (> 0 0))
 
 (expect 0 (sum ""))
 (expect "6" (sum "1 2 3"))

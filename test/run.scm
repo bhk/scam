@@ -127,19 +127,38 @@
           ((CA a b c)  (concat a b c))
           ((CB)        2)))
 
+
+;; macro / lambda translations
+
+(expect 12
+        (let ((a 1))
+          (define `M
+            (concat a (let ((b 2))
+                        b)))
+          (let ((c 3))
+            M)))
+
+
 ;;----------------------------------------------------------------
 ;; Known bugs
 ;;----------------------------------------------------------------
 
+
+(define (fun-in-macro x)
+  (define `m1 (lambda () x))
+  (define `(m2 a) a)
+
+  ;; BUG:  Macro arg expanded in deeper nesting context.
+  ;;      (e.g. from $1 to $.1)
+  (define `(m3 a) (let ((b 1)) a))
+
+  ;; Compound macro body used in deeper nesting context than defn.
+  (define `(m4) x)
+
+  [ (m1)  (m2 x)  (m3 x) (let ((a 0)) (m4)) ])
+
 ;; BUG: lambda inside macro inside function
-;;
-;; (define (fun-in-macro x)
-;;   (define `m1 (lambda () x))
-;;   (define `(m2 a) a)
-;;   (define `(m3 a) (lambda () a))  ;; BUG
-;;   [ (lambda () x)  m1  (m2 x)  (m2 m1)  (m3 x) ])
-;;
-;; (expect [9 9 9 9] (fun-in-macro 9))
+;;(expect [9 9 9 9] (fun-in-macro 9))
 
 
 ;; BUG: lambda inside data/case (another EIL/Lambda example)

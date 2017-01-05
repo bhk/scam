@@ -638,5 +638,3 @@
   &public
   (subst " " (concat " " [value] " ")
          vec))
-
-(print "core ok")

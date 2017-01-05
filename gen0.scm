@@ -65,6 +65,15 @@
 (declare (c0-block forms env))
 (declare (c0-lambda env args body))
 
+
+;; Return current lambda nesting depth.
+;;
+(define (current-depth env)
+  (let ((defn (hash-get LambdaMarkerKey env)))
+    (case defn
+      ((EMarker level) level))))
+
+
 ;; c0-local: Construct a local variable reference.
 ;;
 ;; A unary counting system identifies levels of nesting of functions:
@@ -77,18 +86,15 @@
 ;; MARKER is an EMarker describing the current nesting level.
 ;; FORM is used in the up-value warning form of the function.
 ;;
-(define (c0-local arg marker sym)
+(define (c0-local arg depth sym)
   (define `ndx
     (subst "." "" arg))
-  (define `level
-    (case marker
-      ((EMarker level) level)))
 
   (if (and (findstring "U" SCAM_DEBUG)
-           (not (findstring level arg)))
+           (not (findstring depth arg)))
           (compile-warn sym "reference to upvalue %q" (symbol-name sym)))
   (ILocal ndx
-         (words (subst "." ". " (subst arg "" (concat level ndx))))))
+         (words (subst "." ". " (subst arg "" (concat depth ndx))))))
 
 
 ;; Return the "value" of a record constructor: an equivalent anonymous
@@ -133,7 +139,7 @@
 (define (c0-S env sym name defn)
   (case defn
     ((EArg arg)
-     (c0-local arg (hash-get LambdaMarkerKey env) sym))
+     (c0-local arg (current-depth env) sym))
 
     ((EVar gname _)
      (IVar gname))
@@ -331,15 +337,10 @@
               (lambda-env-arg9 (nth-rest 9 args) level))))
 
 
-(define (emarker-level marker)
-  (case marker
-    ((EMarker level) level)))
-
-
 (define `(lambda-env args env)
   (append (lambda-env-args
            args
-           (concat "." (emarker-level (hash-get LambdaMarkerKey env))))
+           (concat "." (current-depth env)))
           env))
 
 

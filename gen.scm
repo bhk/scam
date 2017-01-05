@@ -22,7 +22,7 @@
       (ICall    name        &list args)     ; "$(call name,ARGS...)"
       (ILocal   &word ndx   &word level)    ; "$(ndx)"
       (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
-      (IConcat  &list values)               ; "VALUES..."
+      (IConcat  &list nodes)                ; "VALUES..."
       (IBlock   &list nodes)                ; "$(if NODES,,)"
       (ILambda  node)                       ; (lamda-quote (c1 node))
       (IEnv     env &list node))            ; used during phase 0
@@ -33,16 +33,12 @@
 ;;   function body.  All code within a block is executed, and the return
 ;;   values are discarded for all but the last sub-node.
 ;;
-;;   Expressions that are children of a block are called "block-level"
-;;   expressions.  Block-level expressions are special in that they can
-;;   modify the environment for expressions that follow them in the block.
+;; IEnv
 ;;
-;; ILEnv
-;;
-;;    When inside of a "block" environment -- e.g. (begin ...) -- some
-;;    expressions generate an environment along with code.  In that context,
-;;    they will return an ILEnv record, which is then unwrapped by c0-block.
-;;    ILEnv should never be presented to phase 1.
+;;    Some expressions in a block context modify the environment for
+;;    subsequent expressions.  In that case, the phase 0 compilation of
+;;    those expressions return an IEnv record, which is then unwrapped by
+;;    c0-block-cc.  IEnv records should never be presented to phase 1.
 ;;
 ;; Errors
 ;;

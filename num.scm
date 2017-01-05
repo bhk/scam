@@ -116,7 +116,7 @@
           (if (findstring (concat (word 1 a) "i") (word 1 b)) "b"))))
 
 
-;; return 'a' is a>b, 'b' if b>a
+;; return 'a' is a>b, 'b' if b>a; nil when a==b
 (define (cmp a b)
   (let ((sa (sign a))
         (sb (sign b))
@@ -155,8 +155,7 @@
 ;; integer operators
 ;;--------------------------------------------------------------
 
-(define (+ a b)
-  &public
+(define (num+ a b)
   (let ((sa (sign a))
         (sb (sign b))
         (ua (uencode a))
@@ -168,18 +167,28 @@
       (udecode (u+ ua ub) sa))))
 
 
+;; Avoid conflict with Make's `$+` automatic variable
+(define `(+ a b)
+  &public
+  (num+ a b))
+
+
 (define (- a b)
   &public
   (+ a (subst "--" "" (concat "-" b))))
 
 
-(define (* a b)
-  &public
+(define (num* a b)
   (udecode (u* (uencode a) (uencode b))
             (xor (sign a) (sign b))))
 
+;; Avoid conflict with Make's `$*` automatic variable
+(define `(* a b)
+  &public
+  (num* a b))
 
-(define (^ a b)
+
+(define (num^ a b)
   &public
   (let ((sa (sign a))
         (sb (sign b))
@@ -190,11 +199,18 @@
         (udecode (u^ ua ub)
                  (and sa (nodd ub) "-")))))
 
+;; Avoid conflict with Make's `$^` automatic variable
+(define `(^ a b)
+  &public
+  (num^ a b))
+
+
+;; Note: avoid `$<` automatic variable.
 
 (define (> a b)  &public (if (filter "a" (cmp a b)) 1))
-(define (< a b)  &public (if (filter "b" (cmp a b)) 1))
+(define `(< a b) &public (> b a))
 (define (>= a b) &public (not (filter "b" (cmp a b))))
-(define (<= a b) &public (not (filter "a" (cmp a b))))
+(define `(<= a b) &public (>= b a))
 (define (== a b) &public (not (cmp a b)))
 
 
