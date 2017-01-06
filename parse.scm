@@ -304,7 +304,7 @@
 
 (define (parse-x w subj pos)
   (if (filter "!0% \n% ;% ()" (or (word (1+ pos) subj) "()"))
-      ;; quotine tokens must immeidately precede an expression
+      ;; quoting tokens must immeidately precede an expression
       (POut pos (PError pos w))
     (parse-x2 w pos (parse-exp subj (1+ pos)))))
 

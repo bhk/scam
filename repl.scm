@@ -37,23 +37,23 @@
 (define (describe-binding bound-name defn all)
   (if (or all (not (filter "i%" (EDefn.scope defn))))
       (case defn
-        ((EBuiltin name p args)
+        ((EBuiltin name _ args)
          "built-in function")
-        ((EFunc name p inln)
+        ((EFunc name _ _ inln)
          (concat (if (eq? name NoGlobalName)
                      "compound macro"
                      "function")
                  (if (rest inln)
-                     (sprintf "\n    (%s %s) -> %s"
-                              bound-name (first inln)
+                     (sprintf ": %s -> %s"
+                              (first inln)
                               (format-form (begin-block (rest inln)))))))
-        ((EVar name p)
+        ((EVar name _)
          "variable")
-        ((ESMacro form p)
-         (concat "symbol macro: " (format-form form)))
-        ((EXMacro name p)
+        ((EIL _ _ node)
+         (concat "symbol macro: " (format node)))
+        ((EXMacro name _)
          (concat "executable macro"))
-        ((ERecord encs p tag)
+        ((ERecord encs _ tag)
          "constructor")
         (else ""))))
 

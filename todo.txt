@@ -2,18 +2,21 @@ TODO
 
  * Exports, Imports, Rewind
 
-   - Should symbol macro env include the marker that compound macro does?
+   - Use IL for compound macros, and report errors.
 
-   - Fix macro-expansion error reporting: Add file name field to PError.
+     Fixes macro-expansion error reporting: Add file name field to PError.
      Populate it with *compile-file* in parse phase, and current file (based
      on rewind state, maybe saved in env) in gen0.
 
- * Macros without rewinding
+     Eliminates rewinding.
 
-   Compile and store IL, not AST.
-   Introduce new IL node for arguments (to be resolved later).
-   At expansion time, compile arguments, walk IL tree and replace arguments.
-   Needs "absolute" EArg definition (need that anyway).
+ * Warn of aliasing automatic variables: @ % < ? ^ + | *
+
+ * gen0.scm: export gen0 function: vector of AST -> (IEnv env nodes)
+
+   parse: text -> forms
+   gen0:  forms -> env, nodes
+   gen1:  nodes -> errors, code
 
  * Call-site tracing of lambda values
 
@@ -23,17 +26,6 @@ TODO
    &inline functions then only good for (global-name ...) or Make interop.
 
  * (let (([a b c] vec)) ...)  [always succeeds; no "else" condition]
-
- * Lambda bugs
-
-   Some bindings created outside of a lambda do not work inside it.  This
-   happens when ESMacro or EIL bindings refer to local variables.  This can
-   happen with symbol macros, parameters to compound macros, and names bound
-   by case patterns.
-
-   arg9 convention is spread between gen0 & gen1.  Would be better to
-   confine it to gen1.  This means using IArg with indices > 8, and some new
-   IL node (IArgRest) for varargs.
 
  * Parse hash syntax
 

@@ -6,7 +6,11 @@
 (require "parse")
 (require "escape")
 (require "gen")
+(require "num")
 
+;;(define (fdump name value)
+;;  (printf "%s: %q" name value)
+;;  value)
 
 ;; Env-modifying functions can return an environment when `inblock` is true.
 ;; Use this macro to generate the return value.
@@ -57,6 +61,9 @@
   (nth-rest (1+ (scan-flags args skip)) args))
 
 
+(define `(level-count level)
+  (words (subst "." ". " level)))
+
 ;;================================
 ;; c0 compilation
 ;;================================
@@ -64,14 +71,6 @@
 (declare (c0 form env ?inblock))
 (declare (c0-block forms env))
 (declare (c0-lambda env args body))
-
-
-;; Return current lambda nesting depth.
-;;
-(define (current-depth env)
-  (let ((defn (hash-get LambdaMarkerKey env)))
-    (case defn
-      ((EMarker level) level))))
 
 
 ;; c0-local: Construct a local variable reference.
@@ -94,7 +93,7 @@
            (not (findstring depth arg)))
           (compile-warn sym "reference to upvalue %q" (symbol-name sym)))
   (ILocal ndx
-         (words (subst "." ". " (subst arg "" (concat depth ndx))))))
+         (level-count (subst arg "" (concat depth ndx)))))
 
 
 ;; Return the "value" of a record constructor: an equivalent anonymous
@@ -133,9 +132,46 @@
       (gen-error sym "undefined variable %q" (symbol-name sym))))
 
 
-;; Symbol
-;;    defn = definition for symbol (from environment)
-;(define (c0-S form env defn)
+;; Translate macsym body to a different (lower) context
+;;
+;; Captures (local variable references where ups >= TOP) will be adjusted.
+;; Other local variable references will be left unchanged.
+;;
+(define (xlat-node node top deeper)
+  (define `(x* nodes)
+    (for n nodes (xlat-node n top deeper)))
+
+  (case node
+    ((IString s) node)
+    ((IBuiltin name args) (IBuiltin name (x* args)))
+    ((ICall name args) (ICall name (x* args)))
+    ((ILocal ndx ups)
+     (if (>= ups top)
+         (ILocal ndx (+ ups deeper))
+         (ILocal ndx ups)))
+    ((IConcat nodes) (IConcat (x* nodes)))
+    ((ILambda node)
+     (ILambda (xlat-node node (1+ top) deeper)))
+    ((IFuncall nodes) (IFuncall (x* nodes)))
+    ((IBlock nodes) (IBlock (x* nodes)))
+    (else node)))
+
+
+;; FROM-LEVEL = level (unary) where macro was defined.
+;; TO-LEVEL = level (unary) where macro is being expanded.
+;;
+(define (xlat-arg node from-level to-level)
+  (define `(dots- a b)
+    (subst (concat ":" b) "" (concat ":" a)))
+  ;; If from-level == to-level, captures do not need to be translated.
+  ;; If from-level==nil, there are no captures to translate.
+  (if (filter-out to-level from-level)
+      (xlat-node node 0 (level-count (dots- to-level from-level)))
+      node))
+
+
+;; Symbol value
+;;    DEFN = definition bound to symbol
 (define (c0-S env sym name defn)
   (case defn
     ((EArg arg)
@@ -149,11 +185,8 @@
          (c0-macro env sym inln)
          (IBuiltin "value" [(IString gname)])))
 
-    ((ESMacro value-form _)
-     (c0 value-form (env-rewind env name)))
-
-    ((EIL node)
-     node)
+    ((EIL depth _ il)
+     (xlat-arg il depth (current-depth env)))
 
     ((ERecord encs _ tag)
      (c0-ctor env sym encs))
@@ -175,9 +208,9 @@
 
 ;; Function call by name.
 ;;
-;;   - Ordinary function:  body is nil
-;;   - Inline function:    body non-nil
-;;   - Compound macro:     body non-nil, REALNAME = NoGlobalName
+;;   - Ordinary function:  inln is nil
+;;   - Compound macro:     inln non-nil, REALNAME = NoGlobalName
+;;   - Inline function:    inln non-nil, REALNAME = other
 ;;
 (define (c0-call env sym args realname argc inln)
   (define `formal-args
@@ -194,19 +227,19 @@
   (define `body-env
     (append (zip formal-args
                  (for a args
-                      (EIL (c0 a env nil))))
+                      (EIL (current-depth env) "-" (c0 a env nil))))
             ;; Track the source position where the macro was invoked
             (hash-bind MacroMarkerKey
                        (EMarker (form-index sym)))
             ;; re-bind symbol to non-inline function binding to avoid
             ;; endless cycle of expansion
             (if (not (filter NoGlobalName realname))
-                (hash-bind name (EFunc realname "." argc nil)))
+                (hash-bind name (EFunc realname "-" argc nil)))
             ;; rewind env to allow proper resolution of symbols in body
             (env-rewind env name)))
 
   (or (check-argc argc args sym)
-      (if body
+      (if inln
           ;; macro/inline
           (c0-block body body-env)
           ;; non-inline
@@ -308,12 +341,17 @@
 ;; level = string of "$" for a lambda marker
 ;;
 (define (lambda-env-arg9 xargs level)
+  (define `(macsym il)
+    (EIL level "-" il))
+
   (define `(nth-value n)
-    (EIL (IBuiltin "call" [(IString "^n") (IString n) (IVar 9)])))
+    (macsym (IBuiltin "call" [(IString "^n") (IString n) (ILocal 9 0)])))
+
   (define `(nth-rest-value n)
     (if (eq? n 1)
-        (EIL (IVar 9))
-        (EIL (IBuiltin "wordlist" [(IString n) (IString 999999) (IVar 9)]))))
+        (EArg (concat level 9))
+        (macsym
+         (IBuiltin "wordlist" [(IString n) (IString 999999) (ILocal 9 0)]))))
 
   (foreach n (indices xargs) (lambda-arg (nth n xargs)
                                          (nth-value n)
@@ -324,7 +362,7 @@
   (define `(nth-value n)
     (EArg (concat level n)))
   (define `(nth-rest-value n)
-    (EIL (IBuiltin "foreach" [ (IString "N") (IString n) (IVar "^v") ])))
+    (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString n) (IVar "^v")])))
 
   (append (hash-bind LambdaMarkerKey (EMarker level))
           ;; first 8 args = $1 ... $8
@@ -378,30 +416,59 @@
       (if first-form
           (gen-error first-form "too many arguments to (declare ...)"))))
 
+
+;; Return a vector of all PError nodes contained in node (including possibly
+;; node itself).
+;;
+(define (il-errors node)
+  (define `(r* nodes)
+    (append-for node nodes (il-errors node)))
+  (case node
+    ((PError _ _) [node])
+    ((IBuiltin _ args) (r* args))
+    ((ICall _ args) (r* args))
+    ((IFuncall nodes) (r* nodes))
+    ((IConcat nodes) (r* nodes))
+    ((IBlock nodes) (r* nodes))
+    ((ILambda node) (il-errors node))))
+
+
+;; If `node` contains any PError nodes, return a node that contains only them.
+;; Otherwise, return nil.
+;;
+(define (il-error-node node)
+  (let ((errors (il-errors node)))
+    (if errors
+        (if (word 2 errors)
+            (IBlock errors)
+            (first errors)))))
+
 ;; (define `NAME FLAGS... BODY)
 ;; (declare NAME FLAGS...)
 ;; (define  NAME FLAGS... BODY)
 
 (define (c0-def-symbol env n name flags body is-define is-macro)
-  (define `scope (if (filter "&public" flags) "x" "p"))
-  (define `is-global (filter "&global" flags))
-  (define `gname (gen-global-name name flags))
-
-  (define `env-out
-    (hash-bind name (if is-macro
-                        (ESMacro (begin-block body) scope)
-                        (EVar gname scope))
-               env))
-
-  (define `set-il
-    (ICall "^set" [ (IString gname) (c0-block body env) ]))
-
   (or (if (filter "&inline" flags)
           (gen-error n "'&inline' does not apply to symbol definitions"))
+
       (c0-check-body n (first body) is-define)
-      (IEnv env-out
-             (if (and is-define (not is-macro))
-                 set-il))))
+
+      (let ((value (c0-block body env))
+            (scope (if (filter "&public" flags) "x" "p"))
+            (gname (gen-global-name name flags))
+            (env env))
+
+        (define `env-out
+          (hash-bind name (if is-macro
+                              (EIL (current-depth env) scope value)
+                              (EVar gname scope))
+                     env))
+
+        (or (il-error-node value)
+            (IEnv env-out
+                  (and is-define
+                       (not is-macro)
+                       (ICall "^set" [ (IString gname) value ])))))))
 
 
 ;; Generate an error if a non-optional parameter follows an optional one.
@@ -448,6 +515,9 @@
         env
         (hash-bind name (EFunc gname scope argc nil) env)))
 
+  (define `macro-il
+    (c0-lambda env-in args body))
+
   ;; make function known *after* the definition (including inline expansion)
   (define `env-out
     (hash-bind name (EFunc (if is-macro NoGlobalName gname)
@@ -456,9 +526,6 @@
                            (if (or is-inline is-macro)
                                (cons formal-args body)))
                env))
-
-  (define `set-il
-    (ICall "^fset" [ (IString gname) (c0-lambda env-in args body) ]))
 
   (or (c0-check-body n (first body) is-define)
       (if (or is-macro is-inline)
@@ -469,12 +536,15 @@
                                (if is-macro "macros" "inline functions")))))
           ;; ordinary function
           (check-optional-args args))
+
       (if (and (not is-macro)
                (filter name builtin-names))
           (gen-error n "cannot redefine built-in function %q" name))
+
       (IEnv env-out
-            (if (and is-define (not is-macro))
-                set-il))))
+            (and is-define
+                 (not is-macro)
+                 (ICall "^fset" [(IString gname) macro-il])))))
 
 
 ;; Dispatch to c0-def-symbol or c0-def-compound

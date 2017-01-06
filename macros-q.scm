@@ -129,10 +129,13 @@
 ;; (let& ((VAR VAL)...) BODY)
 ;;--------------------------------
 
-(expect (append (hash-bind "y" (ESMacro (PString 0 "Y") ""))
-                (hash-bind "x" (ESMacro (PString 0 1) "")))
-        (let&-env [ [ (PSymbol 0 "x") (PString 0 1) ]
-                    [ (PSymbol 0 "y") (PString 0 "Y") ] ]))
+(expect (let&-env [ [ (PSymbol 0 "x") (PString 0 1) ]
+                    [ (PSymbol 0 "y") (PSymbol 0 "Y") ] ]
+                  (hash-bind "Y" (EVar "yname" "x"))
+                  ".")
+        (append (hash-bind "y" (EIL "." "-" (IVar "yname")))
+                (hash-bind "x" (EIL "." "-" (IString 1)))
+                (hash-bind "Y" (EVar "yname" "x"))))
 
 (expect "1" (c0-ser "(let& ((a 1)) a)"))
 (expect "2" (c0-ser "(let& ((a 1) (b 2)) b)"))
@@ -329,10 +332,11 @@
 (expect
  (arg-bindings [ (PSymbol 0 "a") (PSymbol 0 "b") ]
                "W S"
-               (IString 123))
+               (IString 123)
+               ".")
  (append
-  (hash-bind "a" (EIL (IBuiltin "word" [ (IString 2) (IString 123) ])))
-  (hash-bind "b" (EIL (ICall "^n" [ (IString 3) (IString 123) ])))))
+  (hash-bind "a" (EIL "." "-" (IBuiltin "word" [ (IString 2) (IString 123) ])))
+  (hash-bind "b" (EIL "." "-" (ICall "^n" [ (IString 3) (IString 123) ])))))
 
 ;; single case
 (expect (c0-ser "(case v ((Ctor s w v) v))"
@@ -353,3 +357,9 @@
 ;; bad value expr
 (expect (c0-ser "(case bogus)")
         "!(PError 4 'undefined variable \\'bogus\\'')")
+
+;; wrong number of arguments
+(expect (c0-ser "(case v ((Ctor s l) l))"
+                (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
+                           default-env))
+        "!(PError 8 '\\'Ctor\\' accepts 3 arguments, not 2')")

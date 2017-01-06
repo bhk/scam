@@ -174,20 +174,20 @@
   (expect (hash-get "i" env)
           (EArg ".8"))
   (expect (hash-get "j" env)
-          (EIL (IBuiltin "call" [(IString "^n") (IString 1) (IVar 9)])))
+          (EIL "." "-" (IBuiltin "call" [(IString "^n") (IString 1) (ILocal 9 0)])))
   (expect (hash-get "k" env)
-          (EIL (IBuiltin "call" [(IString "^n") (IString 2) (IVar 9)]))))
+          (EIL "." "-" (IBuiltin "call" [(IString "^n") (IString 2) (ILocal 9 0)]))))
 
-(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]))
-        (hash-get "..." (lambda-env (pN "a b ...") nil)))
-(expect (EIL (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")]))
-        (hash-get "r" (lambda-env (pN "a b ...r") nil)))
-(expect (EIL (IBuiltin "wordlist" [(IString 2) (IString 999999) (IVar "9")]))
-        (hash-get "..." (lambda-env (pN "a b c d e f g h i ...") nil)))
-(expect (EIL (IVar 9))
-        (hash-get "..." (lambda-env (pN "a b c d e f g h ...") nil)))
-(expect (EIL (IVar 9))
-        (hash-get "r" (lambda-env (pN "a b c d e f g h ...r") nil)))
+(expect (hash-get "..." (lambda-env (pN "a b ...") nil))
+        (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")])))
+(expect (hash-get "r" (lambda-env (pN "a b ...r") nil))
+        (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")])))
+(expect (hash-get "..." (lambda-env (pN "a b c d e f g h i ...") nil))
+        (EIL "." "-" (IBuiltin "wordlist" [(IString 2) (IString 999999) (ILocal 9 0)])))
+(expect (hash-get "..." (lambda-env (pN "a b c d e f g h ...") nil))
+        (EArg ".9"))
+(expect (hash-get "r" (lambda-env (pN "a b c d e f g h ...r") nil))
+        (EArg ".9"))
 
 ;; local variable referencing arg 9
 (expect (c0-ser "X" (lambda-env (pN "a a a a a a a a X Y") nil))
@@ -233,11 +233,12 @@
 ;;    ((c1 (c0 ["`" AST]))) -> AST
 
 (define (cqq text)
-  (c0-ser text (append (hash-bind "sym" (EIL (IString "SYM")))
+  (c0-ser text (append (hash-bind "sym" (EIL "" "-" (IString "SYM")))
                        (hash-bind "var" (EVar "VAR" "."))
                        ;; args = [`a `b]
-                       (hash-bind "args" (EIL (IString [(PSymbol 1 "a")
-                                                       (PSymbol 2 "b")]))))))
+                       (hash-bind "args"
+                                  (EIL "" "-" (IString [(PSymbol 1 "a")
+                                                        (PSymbol 2 "b")]))))))
 
 (expect (c0 (p1-0 "`x") nil)
         (IString (p1-0 "x")))
@@ -341,9 +342,9 @@
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)" env0)
-        (hash-bind "I" (ESMacro (PString 0 7) "p") env0))
+        (hash-bind "I" (EIL "" "p" (IString 7)) env0))
 (expect (text-to-env "(define `I &public 7)" env0)
-        (hash-bind "I" (ESMacro (PString 0 7) "x") env0))
+        (hash-bind "I" (EIL "" "x" (IString 7)) env0))
 
 ;; (define ...) errors
 
@@ -369,6 +370,8 @@
         "!(PError 9 'non-optional parameter after optional one')")
 (expect (c0-ser "(define (f ?a x) x)")
         "!(PError 9 'non-optional parameter after optional one')")
+(expect (c0-ser "(define `M UNDEF)")
+        "!(PError 7 'undefined variable \\'UNDEF\\'')")
 
 
 ;; define and use symbol macro

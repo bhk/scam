@@ -139,10 +139,21 @@
             M)))
 
 
-;;----------------------------------------------------------------
-;; Known bugs
-;;----------------------------------------------------------------
+;;--------------------------------
+;; Regression tests
+;;--------------------------------
 
+;; arg9+ references are different from 1...8
+
+(begin
+  (define (f a1 a2 a3 a4 a5 a6 a7 a8 a9 a10)
+    (let ((a 1))
+      (concat a9 a10)))
+
+  (expect 910 (f 1 2 3 4 5 6 7 8 9 10)))
+
+
+;; lambda inside macro inside function  [9 9 1 9] vs. [9 9 9 9]
 
 (define (fun-in-macro x)
   (define `m1 (lambda () x))
@@ -157,26 +168,24 @@
 
   [ (m1)  (m2 x)  (m3 x) (let ((a 0)) (m4)) ])
 
-;; BUG: lambda inside macro inside function
-;;(expect [9 9 9 9] (fun-in-macro 9))
+(expect [9 9 9 9] (fun-in-macro 9))
 
 
-;; BUG: lambda inside data/case (another EIL/Lambda example)
+;; Lambda inside data/case
 ;;
-;; (data A (C a b c))
-;;
-;; (define (fun-in-case x)
-;;   (case x
-;;     ((C a b c)
-;;      (let ((B b))
-;;        (concat a "," B "," c)))))
-;;
-;; (print "fun-in-case = " fun-in-case)
-;; ;; gets "3,2 3," instead
-;; (expect "1,2 3,4" (fun-in-case (C 1 "2 3" 4))))
+(data A (C a b c))
+
+(define (fun-in-case x)
+  (case x
+    ((C a b c)
+     (let ((B b))
+       (concat a "," B "," c)))))
+
+;; gets "3,2 3," instead
+(expect "1,2 3,4" (fun-in-case (C 1 "2 3" 4)))
 
 
-;; BUG: never occurs in expression syntax, but CAN occur in file syntax:
+;; Should not be confused with embedded errors.
 ;;
 (declare (f))
 (set f " ($.@ERROR@) ")

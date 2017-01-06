@@ -59,21 +59,18 @@
       (EVar     name &word scope)
       ;; function variable or compound macro
       (EFunc    name &word scope argc &list inln)
-      ;; symbol macro
-      (ESMacro  form &word scope)
+      ;; pre-compiled IL
+      (EIL      depth &word scope &list il)
       ;; executable macro
       (EXMacro  name &word scope)
       ;; data record type
       (ERecord  encs &word scope tag)
       ;; builtin function
       (EBuiltin name &word scope argc)
-      ;; pre-compiled IL node
-      (EIL      node)
       ;; function argument
       (EArg     &word argref)
       ;; marker
       (EMarker  &word data))
-
 
 (define `(EDefn.scope defn)
   &public
@@ -98,16 +95,15 @@
 ;;      imported.  This should not involve EBuiltin, EIL, EArg, and EMarker
 ;;      because they should not be in any exported environment.
 ;;
-;;      When expanding ESMacro.form or EFunc.inln, we "rewind" the
-;;      environment to its state at the time of the definition.  If the
-;;      definition was in another file, this means re-creating the
-;;      environment of that other file.
+;;      When expanding EFunc.inln, we "rewind" the environment to its state
+;;      at the time of the definition.  If the definition was in another
+;;      file, this means re-creating the environment of that other file.
 ;;
 ;;        "iMOD" => defn was imported from module MOD.
 ;;        "i" => defn was imported (for types that do not rewind)
 ;;        "p" => defn is private
 ;;        "x" => public (exported)
-;;        "." => private or don't care
+;;        "-" => private or don't care
 ;;
 ;; NAME = the actual (global) name of the function/variable or builtin.
 ;;         For EFunc records, the value NoGlobalName indicates that the
@@ -119,17 +115,18 @@
 ;; INLN = definition of a function or compound macro body:
 ;;           [ [ARGNAME...] BODY...]
 ;;        where each ARGNAME is a string and BODY... is a vector of
-;;        forms.  For inline functions and compoune macros, BODY is
+;;        forms.  For inline functions and compound macros, BODY is
 ;;        non-empty.  For non-inline functions, BODY is empty.
 ;;
-;; ARGREF = argument reference:
+;; ARGREF = description of local variable or capture.  Note that these
+;;   references are absolute, an ILocal records use relative addressing.
 ;;      .1   --> argument #1 of a top-level function
 ;;      ..1  --> argument #1 of a function within a function
-;;      ...1 --> argument #1 of a  third-level nested function
+;;      ...1 --> argument #1 of a third-level nested function
 ;;
-;; FORM = an AST node that describes the symbol macro definition.  This
-;;     will be expanded in the scope of the bindings in effect where the
-;;     macro was defined.
+;; DEPTH = nesting depth at which the IL portion of an EIL entry was
+;;     compiled.  When the EIL entry is instantiated, DEPTH tells how to
+;;     translate ILocal records that identify captures.
 ;;
 ;; EMarker values embed contextual data other than variable bindings.  They
 ;; use keys that begin with ":" to distinguish them from variable names.
@@ -222,7 +219,6 @@
 ;; statements encountered when compiling.  (Otherwise, bundled modules will
 ;; be used.)
 (declare *compile-mods* &public)
-
 
 (define `NoOp
   &public
@@ -338,6 +334,15 @@
   (if (filter (concat name "!=%") env)
       (gensym-name base (concat env " .") (words env))
       name))
+
+
+;; Return current lambda nesting depth.
+;;
+(define (current-depth env)
+  &public
+  (let ((defn (hash-get LambdaMarkerKey env)))
+    (case defn
+      ((EMarker level) level))))
 
 
 ;; Generate a unique symbol derived from symbol `base`.  Returns new symbol.
@@ -485,11 +490,10 @@
 
 
 (define (import-binding key defn d-name)
-  ;; EFunc and ESMacro can rewind
+  ;; EFunc expansion involves rewinding the environment.
   (define `(can-rewind defn)
     (case defn
-      ((EFunc _ _ _ _) 1)
-      ((ESMacro _ _) 1)))
+      ((EFunc _ _ _ _) 1)))
 
   (if (EDefn.is-public? defn)
       (hash-bind key
@@ -573,7 +577,7 @@
 
 
 (define *dummy-env*
-  (hash-bind "" (EIL (IString ""))))
+  (hash-bind "" (EIL "" "-" NoOp)))
 
 
 ;; Import symbols from FILENAME.  ALL means return all original environment

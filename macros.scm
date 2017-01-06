@@ -259,7 +259,7 @@
 ;; Scoping works like `let*`, but the expressions evaluated at each
 ;; occurrence of the variable (zero or more times).
 ;;
-;; `let&` generates an ESMacro environment record.
+;; `let&` generates an EIL environment record.
 ;;
 ;; Each *use* of the macro will be compiled in the scope of the definition.
 ;; We know that scope because we know where the definition itself lies in
@@ -268,12 +268,16 @@
 (define let&-where
   "(let& ((VAR VALUE)...) BODY)")
 
-(define (let&-env pairs)
-  (reverse
-   (append-for p pairs
-               (case (first p)
-                 ((PSymbol _ name)
-                  (hash-bind name (ESMacro (nth 2 p) nil)))))))
+(define (let&-env pairs env depth)
+  (define `p (first pairs))
+  (define `p-binding
+    (case (first p)
+      ((PSymbol _ name)
+       (hash-bind name (EIL depth "-" (c0 (nth 2 p) env))))))
+
+  (if pairs
+      (let&-env (rest pairs) (append p-binding env) depth)
+      env))
 
 (define (ml.special-let& env sym args)
   (let ((body (rest args))
@@ -281,7 +285,7 @@
         (env env))
     (case pairs
       ((PError _ _) pairs)
-      (else (c0-block body (append (let&-env pairs) env))))))
+      (else (c0-block body (let&-env pairs env (current-depth env)))))))
 
 
 ;;--------------------------------
@@ -305,7 +309,7 @@
   (case var
     ((PSymbol _ name)
      (define `var-defn
-       (EIL (var-xform (IVar name))))
+       (EIL "" "-" (var-xform (IVar name))))
      (define `body-node
        (body-xform (c0-block body (hash-bind name var-defn env))))
      (if body
@@ -652,7 +656,7 @@
   "(case VALUE (PATTERN BODY)...)")
 
 ;; Return bindings for arguments in a (CTOR ARG...) pattern.
-(define (arg-bindings args encs value-node)
+(define (arg-bindings args encs value-node depth)
   (foreach
    n (indices encs)
    (let& ((enc (word n encs))
@@ -666,12 +670,12 @@
                                         (IString 99999999)
                                         value-node])))))
          (hash-bind (symbol-name arg)
-                    (EIL arg-node)))))
+                    (EIL depth "-" arg-node)))))
 
 
 ;; Compile a vector of (PATTERN BODY) cases
 ;;
-(define (c0-matches cases value-node env)
+(define (c0-clauses cases value-node env)
   (for
    c cases    ; c = `(PATTERN BODY)
    (case c
@@ -684,7 +688,7 @@
           ;; (SYM BODY)
           ((PSymbol n var-name)
            (c0-block body (hash-bind var-name
-                                     (EIL value-node)
+                                     (EIL (current-depth env) "-" value-node)
                                      env)))
 
           ;; ((CTOR ARG...) BODY)
@@ -695,6 +699,7 @@
             (let ((defn (resolve ctor-form env))
                   (value-node value-node)
                   (ctor-args ctor-args)
+                  (ctor-form ctor-form)
                   (body body))
               (case defn
                 ((ERecord encs _ tag)
@@ -703,13 +708,14 @@
                    (IBuiltin "filter" [ (IString tag)
                                        (IBuiltin "firstword" [value-node]) ]))
                  (define `bindings
-                   (arg-bindings ctor-args encs value-node))
+                   (arg-bindings ctor-args encs value-node (current-depth env)))
 
                  (define `then-node
                    (c0-block body (append bindings env)))
 
-                 ;; Success
-                 (IBuiltin "if" [ test-node then-node ]))))
+                 (or (check-argc (words encs) ctor-args ctor-form)
+                     ;; Success
+                     (IBuiltin "if" [ test-node then-node ])))))
 
             (case ctor-form
               ((PSymbol _ name)
@@ -740,6 +746,6 @@
             (env env))
         (case value
           ((PError _ _) value)
-          (else (case-fold (c0-matches (rest args) value env)))))
+          (else (case-fold (c0-clauses (rest args) value env)))))
       ;; no value-form
       (err-expected "" value-form sym "VALUE" case-where)))

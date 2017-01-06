@@ -171,7 +171,7 @@
                   (hash-bind "a" (EFunc "fa" "x" 2 ["a b" (PSymbol 0 "a")]))
                   (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
                   (hash-bind "g" (EFunc "g" "i" 1 nil))  ;; imported
-                  (hash-bind "m" (ESMacro "Q 1" "x"))
+                  (hash-bind "m" (EIL "" "x" NoOp))
                   (hash-bind "a:n\n,x" (EVar "xyz" "x")))
           nil
           "MOD")
@@ -180,7 +180,7 @@
                  (hash-bind "f" (EFunc "f" "iMOD" 2 nil))
                  (hash-bind "x" (EVar "X" "i"))
                  (hash-bind "a" (EFunc "fa" "iMOD" 2 ["a b" (PSymbol 0 "a")]))
-                 (hash-bind "m" (ESMacro "Q 1" "iMOD"))
+                 (hash-bind "m" (EIL "" "i" NoOp))
                  (hash-bind "a:n\n,x" (EVar "xyz" "i"))))
 
 
