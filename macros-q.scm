@@ -2,6 +2,10 @@
 ;; Tests for compile.scm
 ;;--------------------------------------------------------------
 
+(require "core")
+(require "parse")
+(require "gen")
+(require "gen0")
 (require "gen-testutils")
 (require "macros" &private)
 

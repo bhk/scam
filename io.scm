@@ -43,8 +43,9 @@
 ;;
 (define (shell! cmd)
   &public
-   (subst " " "" "!n" "\n" "!0" " " "!1" "!"
-          (logshell (concat cmd " | sed -e 's/!/!1/g;s/ /!0/g;s/$/!n/g'"))))
+  (subst " " "" "!n" "\n" "!0" " " "!1" "!"
+
+         (logshell (concat cmd " | sed -e 's/!/!1/g;s/ /!0/g;s/$/!n/g'"))))
 
 
 ;; Read one line from stdin.

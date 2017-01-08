@@ -32,29 +32,6 @@
 ;; Environment definitions
 ;;
 
-;; after, env-rewind
-
-(expect "b c a"  (after "a" "a b c a"))
-(expect "c d e"  (after "c" "a b c c d e"))
-(expect ""       (after "f" "a b c d e f"))
-(expect ""       (after "z" "a b c d e f"))
-
-(expect (hash-bind "a" "asdf")
-        (env-rewind-M (hash-bind "x" 1
-                            (hash-bind "m" "-"
-                                  (hash-bind "a" "asdf")))
-                      "m"))
-
-(expect (append
-         (hash-bind LambdaMarkerKey "..")
-         (hash-bind "a" "asdf"))
-        (env-rewind (hash-bind "x" 1
-                          (hash-bind LambdaMarkerKey ".."
-                                (hash-bind "f" (EFunc "f" "." "1" nil)
-                                      (hash-bind "a" "asdf"))))
-                    "f"))
-
-
 ;; gensym
 
 (expect (gensym-name "foo" nil nil)
@@ -76,23 +53,14 @@
 ;; env-export & env-import
 ;;--------------------------------
 
-(define (ImportMarker mod)
-  (hash-bind ImportMarkerKey (EMarker mod)))
-
-
 ;; A has no imported bindings
 (define mod-A-env
   (append (hash-bind "g" (EFunc "F" "x" 1 nil))
           (hash-bind "q" (EFunc "Q" "p" 1 nil))))
 
-;; B imports A
-(define mod-B-env
-  (append (env-import mod-A-env nil "A")
-          (hash-bind "f" (EFunc "F" "x" 1 nil))))
-
 (define (harness-get-module-env mod all)
   (expect mod "A")
-  (env-import (env-export mod-A-env) nil mod))
+  (env-import (env-export mod-A-env) nil))
 
 
 ;; no imports to trim
@@ -100,33 +68,12 @@
         mod-A-env)
 
 ;; reconstruct A (include)
-(expect (env-import mod-A-env 1 "A")
+(expect (env-import mod-A-env 1)
         mod-A-env)
 
 ;; get public bindinds (import)
-(fexpect (env-import mod-A-env nil "A")
-         (append (ImportMarker "A")
-                 (hash-bind "g" (EFunc "F" "iA" 1 nil))))
-
-;; strip imported bindings
-(expect (env-export mod-B-env)
-        (append (ImportMarker "A")
-                (hash-bind "f" (EFunc "F" "x" 1 nil))))
-
-(let-global
- ((get-module-env harness-get-module-env))          ;; hook get-module-env
-
- ;; expand import markers
- (fexpect (expand-import-markers
-           (append (ImportMarker "A")
-                   (hash-bind "f" (EFunc "F" "x" 1 nil))))
-          (append (env-import mod-A-env nil "A")
-                  (hash-bind "f" (EFunc "F" "x" 1 nil))))
-
-
- ;; reconstruct B
- (expect (env-import (env-export mod-B-env) 1 "B")
-         mod-B-env))
+(fexpect (env-import mod-A-env nil)
+         (hash-bind "g" (EFunc "F" "i" 1 nil)))
 
 
 ;; env-compress
@@ -149,20 +96,19 @@
 
 ;; import only public members
 
-(fexpect (import-binding "f" (EFunc "F" "x" 2 nil) "MOD")
-         (hash-bind "f" (EFunc "F" "iMOD" 2 nil)))
+(fexpect (import-binding "f" (EFunc "F" "x" 2 nil))
+         (hash-bind "f" (EFunc "F" "i" 2 nil)))
 
-(fexpect (import-binding "f" (EFunc "F" "p" 2 nil) "MOD")
+(fexpect (import-binding "f" (EFunc "F" "p" 2 nil))
          nil)
 
 
-(define (export-round-trip env flag filename)
+(define (export-round-trip env flag)
   (env-import
    (env-parse [ "# comment"
                 (subst "\n" "" (env-export-line env))
                 "# F F F F F F"])
-   flag
-   filename))
+   flag))
 
 
 (fexpect (export-round-trip
@@ -173,13 +119,11 @@
                   (hash-bind "g" (EFunc "g" "i" 1 nil))  ;; imported
                   (hash-bind "m" (EIL "" "x" NoOp))
                   (hash-bind "a:n\n,x" (EVar "xyz" "x")))
-          nil
-          "MOD")
+          nil)
 
-         (append (ImportMarker "MOD")
-                 (hash-bind "f" (EFunc "f" "iMOD" 2 nil))
+         (append (hash-bind "f" (EFunc "f" "i" 2 nil))
                  (hash-bind "x" (EVar "X" "i"))
-                 (hash-bind "a" (EFunc "fa" "iMOD" 2 ["a b" (PSymbol 0 "a")]))
+                 (hash-bind "a" (EFunc "fa" "i" 2 ["a b" (PSymbol 0 "a")]))
                  (hash-bind "m" (EIL "" "i" NoOp))
                  (hash-bind "a:n\n,x" (EVar "xyz" "i"))))
 
@@ -192,13 +136,11 @@
  (define mod-C-env
    (append (hash-bind "f" (EFunc "f" "x" 2 nil))
            (hash-bind "x" (EVar "X" "x"))
-           ;; import from A
-           (env-import mod-A-env nil "A")
            ;; other definitions in this module
            (hash-bind "g" (EFunc "g" "p" 1 nil))  ;; private
            (hash-bind "a:n\n,x" (EVar "xyz" "x"))))
 
- (fexpect (export-round-trip mod-C-env 1 "File Name.min")
+ (fexpect (export-round-trip mod-C-env 1)
           mod-C-env))
 
 ;; base-env and resolve

@@ -38,16 +38,11 @@
 ;; (current-file-line)
 ;;--------------------------------
 
+;; "FILE:LINE" at which the macro containing this line is invoked.
+;;
 (define (ml.special-current-file-line env sym args)
-  (define `pos
-    (let ((m (hash-get MacroMarkerKey env)))
-      (case m
-        ((EMarker pos) pos)
-        (else (form-index sym)))))
-  (define `lnum
-    (describe-lnum pos *compile-subject*))
-
-  (IString (concat *compile-file* ":" lnum)))
+  (or (check-argc 0 args sym)
+      (IWhere (get-file-line (form-index sym)))))
 
 
 ;;--------------------------------

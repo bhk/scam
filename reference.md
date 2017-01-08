@@ -478,11 +478,11 @@ value.
     > (f 1 2 3 4 nil nil)
     [3 4]
 
-Optional parameters may not be followed by non-optional parameters.  "Rest"
-parameters (`...NAME`) are considered optional, and may appear only as the
-last of the formal parameter.
+"Rest" parameters (`...NAME`) may appear only as the last of the formal
+parameter.  Optional parameters may not be followed by oher optional
+parameters or a rest parameter.
 
-Optional parameters may not be used with macros or inline functions.
+Rest parameters may not be used with macros or inline functions.
 
 #### Function Variables
 

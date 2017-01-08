@@ -1,22 +1,8 @@
 TODO
 
- * Exports, Imports, Rewind
-
-   - Use IL for compound macros, and report errors.
-
-     Fixes macro-expansion error reporting: Add file name field to PError.
-     Populate it with *compile-file* in parse phase, and current file (based
-     on rewind state, maybe saved in env) in gen0.
-
-     Eliminates rewinding.
-
- * Warn of aliasing automatic variables: @ % < ? ^ + | *
-
- * gen0.scm: export gen0 function: vector of AST -> (IEnv env nodes)
-
-   parse: text -> forms
-   gen0:  forms -> env, nodes
-   gen1:  nodes -> errors, code
+ * Allow varargs in macros:
+      Maybe:  (ILocal "1+" ups)
+      At macro expand time, evalutes to precisely-sized vector.
 
  * Call-site tracing of lambda values
 
@@ -115,8 +101,7 @@ TODO
         ^u, ^d, ^n, ^set, ^fset, ^Y, ^E, ^av, ^t, ^require, ^start
 
  * aliases: (define `g f) assigns g the correct value, but arity information
-   is lost, and it compiles to a lambda-call, not a call-by-name.  Getting this
-   to properly rewind is the challenge.
+   is lost, and it compiles to a lambda-call, not a call-by-name.
 
  * Custom constructors
 

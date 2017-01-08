@@ -234,8 +234,8 @@
 
 
 ;; Repeat WORDS (B - A + 1) times.
-;; Note: A and B must be >= 1
-;;.
+;; Note: A and B must be >= 1.
+;;
 (define (make-list a b words)
   (if (word b words)
       (subst " " "" (wordlist a b words))
@@ -289,6 +289,7 @@
     ((IBlock nodes) (c1-Block nodes))
     ((IFuncall nodes) (c1-Funcall nodes))
     ((IBuiltin name args) (c1-Builtin name args))
+    ((IWhere value) (escape value))
     (else (c1-Error node))))
 
 

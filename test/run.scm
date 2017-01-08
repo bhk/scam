@@ -96,9 +96,16 @@
 (set-rglobal "fun" "define\nendef\n\\")
 (expect "$ define\n$ endef\n\\$ " fun)
 
+;; current-file-line
+
+(define `(fl0)
+  (current-file-line))
+
+(expect "run.scm:104" (notdir (current-file-line)))
+(expect "run.scm:105" (notdir (fl0)))
+
 
 ;; Implicit macros
-
 
 (define TA 0)
 (when 1
@@ -190,5 +197,12 @@
 (declare (f))
 (set f " ($.@ERROR@) ")
 
+;; Value of macro in different nesting context (up-value must be adjusted)
+;;
+(expect ((let ((a 7))
+           (define `(M x) (concat a x))
+           (let ((b 1))
+             M)) 2)
+        72)
 
 (print "test-gen ok")

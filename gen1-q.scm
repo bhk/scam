@@ -1,6 +1,9 @@
 ;; tests for gen1
 
+(require "core")
 (require "parse")  ;; for PError
+(require "gen")
+(require "escape")
 (require "gen1" &private)
 
 ;; make-list

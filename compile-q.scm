@@ -1,5 +1,8 @@
 ;; tests for compile
 
+(require "core")
+(require "gen")
+(require "io")
 (require "compile" &private)
 
 

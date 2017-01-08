@@ -2,6 +2,7 @@
 ;; parse-q : parsing tests
 ;;--------------------------------
 
+(require "core")
 (require "parse" &private)
 
 ;;--------------------------------

@@ -1,3 +1,6 @@
+(require "core")
+(require "gen")
+(require "parse")
 (require "gen0" &private)
 (require "gen-testutils")
 (require "io")
@@ -94,14 +97,47 @@
         "!(PError 2 '\\'f\\' accepts 1 or 2 or 3 arguments, not 0')")
 
 
-;; PList: (inlinefunc ...) and env-rewinding
+;; PList: (inlinefunc ...)
 
-(expect (c0-ser "(f 1)" (append
-                         (hash-bind "g" (EVar "newG" "."))
-                         (hash-bind "f" (EFunc NoGlobalName "." 1
-                                               ["a" (p1 "(filter a g)")]))
-                         (hash-bind "g" (EVar "oldG" "."))))
-        "(.filter 1,{oldG})")
+(define `inln-f
+  (cons "." (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
+                               (ILocal 1 1)  ;; capture
+                               (ILocal 2 0)])))
+(expect (c0-ser "(f 1 a)"
+                (append (hash-bind "f" (EFunc NoGlobalName "." 2 inln-f))
+                        (hash-bind "a" (EArg ".7"))
+                        (hash-bind LambdaMarkerKey (EMarker ".."))))
+        "(.subst 1,{1^1},{7^1})")
+
+(define `inln-f-2
+  (cons "." (ILambda (IBuiltin "word"
+                               [ (ILocal 2 0)     ;; interior arg
+                                 (ILocal 1 1)     ;; macro arg
+                                 ]))))
+(expect (c0-ser "(f 1)"
+                (append (hash-bind "f" (EFunc NoGlobalName "." 1 inln-f-2))
+                        (hash-bind LambdaMarkerKey (EMarker ".."))))
+        "`(.word {2},1)")
+
+
+;; Expand IWhere in macros.  Supports (current-file-line).
+
+(let-global
+ ((*compile-subject* "a b c")
+  (*compile-file* "F2"))
+
+ (expect (xlat-where (IWhere "F1:9") 1)
+         (IWhere "F2:1"))
+
+ ;; Expand compound macro with IWhere record.
+ (define `inln-f-where (cons "." (IWhere "FM:99")))
+ (expect (c0-ser "(f)" (hash-bind "f" (EFunc NoGlobalName "." 0 inln-f-where)))
+         "!(IWhere 'F2:1')")
+
+ ;; Expand symbol macro with IWhere record.
+ (expect (c0-ser "S" (hash-bind "S" (EIL "" "p" (IWhere "FM:9"))))
+         "!(IWhere 'F2:1')"))
+
 
 ;; PList: (datavar ...)
 
@@ -205,13 +241,13 @@
 
 ;; PSymbol: macro  (uses c0-lambda)
 (begin
-  (define `macro-inln
-    [ ["a" "b"] (p1-0 "(word a b)") ])
-  (define `macro-env
-    (hash-bind "M" (EFunc NoGlobalName "." 2 macro-inln)))
-
-  (expect (il-ser (c0-macro macro-env (PSymbol 0 "M") macro-inln))
-          "`(.word {1},{2})"))
+  (define `inln
+    (cons "." (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
+                                 (ILocal 1 1)  ;; capture
+                                 (ILocal 2 0)])))
+  (expect (il-ser (c0-macro (hash-bind LambdaMarkerKey (EMarker ".."))
+                            inln))
+          "`(.subst {1},{1^2},{2})"))
 
 
 ;; PSymbol: builtin  (uses c0-lambda)
@@ -330,15 +366,15 @@
 (expect (text-to-env "(define (f a) a)" nil 1)
         (xns (hash-bind "f" (EFunc "~f" "p" 1 nil))))
 
-(expect (c0-ser "(define (word a) a)")
-        "!(PError 4 'cannot redefine built-in function \\'word\\'')")
-
 ;; define compound macro
-(expect (text-to-env "(define `(M a) (concat a a))")
-        (hash-bind "M" (EFunc NoGlobalName "p" 1 ["a" (p1-0 "(concat a a)")])))
+(expect (text-to-env "(define `(M a) (words a))")
+        (hash-bind "M" (EFunc NoGlobalName "p" 1
+                              (cons "" (IBuiltin "words" [(ILocal 1 0)])))))
 
-(expect (text-to-env "(define `(M a) &public (concat a a))")
-        (hash-bind "M" (EFunc NoGlobalName "x" 1 ["a" (p1-0 "(concat a a)")])))
+(expect (text-to-env "(define `(M a) &public (words a))")
+        (hash-bind "M" (EFunc NoGlobalName "x" 1
+                              (cons "" (IBuiltin "words" [(ILocal 1 0)])))))
+
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)" env0)
@@ -363,16 +399,28 @@
 (expect (c0-ser "(define X &inline 1)")
         "!(PError 4 ''&inline' does not apply to symbol definitions')")
 (expect (c0-ser "(define `(m ...x) x)")
-        "!(PError 8 'macros cannot have optional parameters')")
+        "!(PError 8 'macros cannot have rest (...) parameters')")
+;; Allow "?x", but not "...x".
+(expect (c0-ser "(define `(m ?a) a)")
+        "")
 (expect (c0-ser "(define (m ...x) &inline x)")
-        "!(PError 7 'inline functions cannot have optional parameters')")
+        "!(PError 7 'inline functions cannot have rest (...) parameters')")
 (expect (c0-ser "(define (f ...x z) x)")
+        "!(PError 9 'non-optional parameter after optional one')")
+(expect (c0-ser "(lambda (f ...x z) x)")
         "!(PError 9 'non-optional parameter after optional one')")
 (expect (c0-ser "(define (f ?a x) x)")
         "!(PError 9 'non-optional parameter after optional one')")
+;; report errors when compiled, not when used
 (expect (c0-ser "(define `M UNDEF)")
         "!(PError 7 'undefined variable \\'UNDEF\\'')")
-
+(expect (c0-ser "(define `(M) UNDEF)")
+        "!(PError 9 'undefined variable \\'UNDEF\\'')")
+;; check for name conflicts with built-ins and automatic vars
+(expect (c0-ser "(define + 1)")
+        "!(PError 4 'cannot redefine automatic variable '$+'')")
+(expect (c0-ser "(define (word a) a)")
+        "!(PError 4 'cannot redefine built-in function \\'word\\'')")
 
 ;; define and use symbol macro
 
@@ -381,11 +429,14 @@
 
 ;; define and use compound macro
 
-(expect (c0-ser "(define `(M a) (info a) 3) (M 2)")
-        "(IBlock (.info 2),3)")
+(expect (c0-ser "(define `(M a) (info a)) (M 2)")
+        "(.info 2)")
 
 (expect (c0-ser "(define `(M a) (info a)) M")
         "`(.info {1})")
+
+(expect (c0-ser "(define `(M ?a) (info a)) (M)")
+        "(.info )")
 
 
 ;; define inline FUNC
@@ -395,11 +446,13 @@
   (expect (hash-get "g" env)
           (EFunc (gen-global-name "g" nil)
                  "p"
-                 1 ["x" (p1-0 "(info x)")]))
+                 1
+                 (cons "" (IBuiltin "info" [ (ILocal 1 0) ]))))
   (fexpect (hash-get "f" env)
            (EFunc (gen-global-name "f" nil)
                   "p"
-                  2 ["a b" (p1-0 "(join a b)")])))
+                  2
+                  (cons "" (IBuiltin "join" [ (ILocal 1 0) (ILocal 2 0) ])))))
 
 
 ;; define and use inline FUNC
@@ -437,9 +490,7 @@
          "(^require M)")
 
  (expect (text-to-env "(require \"M\")" nil 1)
-         (append
-          (hash-bind ImportMarkerKey (EMarker "M"))
-          (hash-bind "x" (EVar (gen-global-name "x" nil) "i"))))
+         (hash-bind "x" (EVar (gen-global-name "x" nil) "i")))
 
  (expect (c0-ser "(require \"D/M\" \"xyz\")")
          "!(PError 0 'too many arguments to require')")

@@ -2,6 +2,7 @@
 ;; escaping tests
 ;;--------------------------------
 
+(require "core")
 (require "escape" &private)
 
 (expect ""                      (protect-arg ""))

@@ -432,11 +432,13 @@
                     (word 2 (subst "!%q" "!. " w))))
              ((findstring "!%" w)
               ;; "!%x" => bad format string
-              (subst "!%" "[unkonwn % escape]%" w))))))
+              (subst "!%" "[unknown % escape]%" w))))))
+
 
 (define (sprintf format ...values)
   &public
   (vsprintf format values))
+
 
 (define (printf format ...values)
   &public

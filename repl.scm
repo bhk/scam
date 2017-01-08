@@ -39,14 +39,12 @@
       (case defn
         ((EBuiltin name _ args)
          "built-in function")
-        ((EFunc name _ _ inln)
+        ((EFunc name _ argc inln)
          (concat (if (eq? name NoGlobalName)
                      "compound macro"
                      "function")
-                 (if (rest inln)
-                     (sprintf ": %s -> %s"
-                              (first inln)
-                              (format-form (begin-block (rest inln)))))))
+                 (if inln
+                     (sprintf " (%s arguments)" argc))))
         ((EVar name _)
          "variable")
         ((EIL _ _ node)

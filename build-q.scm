@@ -1,3 +1,4 @@
+(require "core")
 (require "build" &private)
 
 ;; traverse-graph
