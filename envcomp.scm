@@ -50,8 +50,8 @@
    (sort
     (for c subs
          (let ((n (count c env)))
-           [ (zero-pad (* n (- (strlen c) 1)) 5)  ; bytes saved
-             (zero-pad n 4)                       ; # occurrences
+           [ (num-pad (* n (- (strlen c) 1)) 5 0) ; bytes saved
+             (num-pad n 4 0)                      ; # occurrences
              c ])))))                             ; substring
 
 
@@ -180,7 +180,7 @@
 ;;
 
 (define best-chars
-  (sort-by (lambda (c) (zero-pad (count c scam-env) 6))
+  (sort-by (lambda (c) (num-pad (count c scam-env) 6 0))
            subchars))
 
 ;; (printf "best-chars: (%s)  %q " (words best-chars) best-chars)

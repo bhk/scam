@@ -50,27 +50,27 @@
 (expect ".iiiii" (u/2 ". .i"))
 (expect ".iiiiiiiii" (u/2 " .iiiiiiiii .i"))
 
-(expect "a" (ucmp ".iii" ".ii"))
-(expect "b" (ucmp ".ii" ".iii"))
+(expect 1 (ucmp ".iii" ".ii"))
+(expect 2 (ucmp ".ii" ".iii"))
 (expect "" (ucmp ".ii" ".ii"))
-(expect "b" (ucmp ".iii .i" ".i .iii"))
-(expect "a" (ucmp ".iiiii" "."))
-(expect "b" (ucmp "." ".iiiii"))
+(expect 2 (ucmp ".iii .i" ".i .iii"))
+(expect 1 (ucmp ".iiiii" "."))
+(expect 2 (ucmp "." ".iiiii"))
 
-(expect "a" (cmp 1 -1))
-(expect "b" (cmp -1 1))
+(expect 1 (cmp 1 -1))
+(expect 2 (cmp -1 1))
 (expect "" (cmp 0 -0))
 (expect "" (cmp -0 0))
 
-(expect "b" (cmp 1 2))
-(expect ""  (cmp 2 2))
-(expect "a" (cmp 3 2))
-(expect "a" (cmp -1 -2))
-(expect ""  (cmp -2 -2))
-(expect "b" (cmp -3 -2))
-(expect "b" (cmp 100 101))
-(expect ""  (cmp 100 00100))
-(expect "a" (cmp 100 9))
+(expect 2  (cmp 1 2))
+(expect "" (cmp 2 2))
+(expect 1  (cmp 3 2))
+(expect 1  (cmp -1 -2))
+(expect "" (cmp -2 -2))
+(expect 2  (cmp -3 -2))
+(expect 2  (cmp 100 101))
+(expect "" (cmp 100 00100))
+(expect 1  (cmp 100 9))
 
 
 (foreach n "1 2 3 4 5 6 7 8 9 10 21 12 13 14 15 16 17 18 19 20"
@@ -99,13 +99,25 @@
 (expect 1 (>= 1 1))
 (expect nil (> 0 0))
 
+(expect 1 (min 1 2))
+(expect 1 (min 2 1))
+
+(expect 2 (max 1 2))
+(expect 2 (max 2 1))
+
+(expect 5 (abs 5))
+(expect 5 (abs -5))
+
 (expect 0 (sum ""))
 (expect "6" (sum "1 2 3"))
 (expect 5050 (sum (range 1 100)))
 
-
-(expect 2 (zero-pad 2 1))
-(expect 00000000000000000002 (zero-pad 2 20))
-
+(expect 9 (num-pad 9 1 0))
+(expect 123 (num-pad 123 1 0))
+(expect 0123 (num-pad 123 4 0))
+(expect "-00005" (num-pad -5 6 0))
+(expect "    -5" (num-pad -5 6))
+(expect " -123456789.0" (num-pad -123456789.0 13 " "))
+(expect 00000000000000000123 (num-pad 123 20 0))
 
 ;;(time "sum" (lambda () (sum (range 1 5000))))

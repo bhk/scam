@@ -108,15 +108,18 @@
                       (u+ a (concat (join negb "i") " .-"))))))
 
 
-
+;; Compare two unsigned encoded numbers, returning:
+;;   1 if a > b
+;;   2 if b > a
+;;   nil otherwise
 (define (ucmp a b)
   (if (or a b)
       (or (ucmp (rest a) (rest b))
-          (if (findstring (concat (word 1 b) "i") (word 1 a)) "a")
-          (if (findstring (concat (word 1 a) "i") (word 1 b)) "b"))))
+          (if (findstring (concat (word 1 b) "i") (word 1 a)) 1)
+          (if (findstring (concat (word 1 a) "i") (word 1 b)) 2))))
 
-
-;; return 'a' is a>b, 'b' if b>a; nil when a==b
+;; Compare two decimal numbers; result same as ucmp.
+;;
 (define (cmp a b)
   (let ((sa (sign a))
         (sb (sign b))
@@ -125,9 +128,9 @@
     (if (xor sa sb)
         ;; different signs ... but check for 0 and -0
         (and (or (findstring "i" ua) (findstring "i" ub))
-             (if sb "a" "b"))
+             (if sb 1 2))
         ;; same sign: compare abs vals and invert result if both are negative
-        (filter "a b" (subst "-b" "a" "-a" "b" (concat sa (ucmp ua ub)))))))
+        (filter "1 2" (subst "-2" 1 "-1" 2 (concat sa (ucmp ua ub)))))))
 
 
 (define (nodd n)
@@ -199,20 +202,23 @@
         (udecode (u^ ua ub)
                  (and sa (nodd ub) "-")))))
 
-;; Avoid conflict with Make's `$^` automatic variable
+;; Use macro to avoid conflict with Make's `$^` automatic variable.
 (define `(^ a b)
   &public
   (num^ a b))
 
 
-;; Note: avoid `$<` automatic variable.
-
-(define (> a b)  &public (if (filter "a" (cmp a b)) 1))
-(define `(< a b) &public (> b a))
-(define (>= a b) &public (not (filter "b" (cmp a b))))
+(define `(== a b) &public (not (cmp a b)))
+(define `(!= a b) &public (if (cmp a b) 1))
+(define (> a b)   &public (filter 1 (cmp a b)))
+(define `(< a b)  &public (> b a))
+(define (>= a b)  &public (not (< a b)))
 (define `(<= a b) &public (>= b a))
-(define (== a b) &public (not (cmp a b)))
 
+(define (max a b) &public (if (> b a) b a))
+(define (min a b) &public (if (< b a) b a))
+
+(define `(abs n)  &public (patsubst "-%" "%" n))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -305,7 +311,7 @@
                 (dmax dmax))
             ;; Use dmin if it's the same as dmax or if dmax is too big
             (if (or (eq? dmin dmax)
-                    (filter "b" (ucmp rmin b)))
+                    (filter 2 (ucmp rmin b)))
                 (longdiv-next dmin rmin more-a b)
                 (longdiv-next dmax (u- rmin b) more-a b))))))
 
@@ -467,25 +473,43 @@
       (sum-small list)))
 
 
-(define (extend-list value count)
-  (if (word count value)
-      (wordlist 1 count value)
-      (extend-list (concat value " " value " " value) count)))
-
-;; Pad a positive number with zeros on the left, yielding a value whose
-;; alpha sort is equivalent to its numeric sort.
+;; Return number of characters in N, assuming N is a valid number.
 ;;
-(define (zero-pad n digits)
+(define `(num-length num)
+  (words (subst "0" "0 " "1" "1 " "2" "2 " "3" "3 " "4" "4 "
+                "5" "5 " "6" "6 " "7" "7 " "8" "8 " "9" "9 "
+                "." ". " "-" "- "
+                num)))
+
+;; Return 1 if NUM is equal to 0.
+;;
+(define `(is-zero num)
+  (if (subst "0" "" "-" "" "." "" num) nil 1))
+
+
+;; Return list of words at least WIDTH long, repeating PADDING as necessary.
+;;
+(define (extend-pad width padding)
+  (if (word width padding)
+      padding
+      (extend-pad width (concat padding " " padding))))
+
+
+;; Pad a number NUM to FIELD-WIDTH (if it is not that wide) with the
+;; character in PAD-CHAR.  If PAD-CHAR is "0", insert padding after a
+;; leading "-" (if any).  PAD-CHAR defaults to " ".
+;;
+(define (num-pad num field-width ?pad-char)
   &public
-  (define `spread
-    (subst "0" "0 " "1" "1 " "2" "2 " "3" "3 " "4" "4 "
-           "5" "5 " "6" "6 " "7" "7 " "8" "8 " "9" "9 " n))
-  (if (not (subst "0" "" digits))
-      (begin
-        (print "zero-pad: invalid digits: " digits)
-        n)
-      (subst " " ""
-             (reverse
-              (wordlist 1 digits
-                        (append (reverse spread)
-                                (extend-list "0 0 0 0 0 0" digits)))))))
+  (define `padding
+    (subst " " "" "~" (or pad-char " ")
+           (rest (wordlist (num-length num) field-width
+                           (extend-pad field-width "~ ~ ~ ~ ~ ~ ~ ~")))))
+
+  (if (is-zero field-width)
+      ;; add no padding
+      num
+      (concat (subst "-" (sign num)
+                     "P" padding
+                     (if (filter 0 pad-char) "-P" "P-"))
+              (abs num))))
