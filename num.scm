@@ -4,15 +4,6 @@
 
 (require "core")
 
-;; This module defines the following functions:
-;;
-;;    +  -  *  /  ^  ==  <  >  <=  >=
-;;
-;; WARNING: some of these function names conflict with names that GNU Make
-;; assigns when processing commands ... e.g. "$*" represents all
-;; prerequisites. As a result, these should only be called *before*
-;; rule evaluation.
-;;
 ;; Most internal functions operate on an encoded form of numbers that uses
 ;; one word for each digit, in LSB form.  For non-negative (unsigned)
 ;; numbers, each word consists of a "." followed by 0-9 "i" characters.
@@ -47,10 +38,9 @@
           "3" "2i" "2" "1i" "1" "0i" "-" "" "0" " ." s)))
 
 
-;  sign = "-" or ""
+;; SIGN = "-" or ""
 (define (udecode n sign)
   (let& ((nr (subst " " "" (reverse n)))
-         ; nlz = no leading zeros
          (nchop (subst " " "" (rest (subst ".i" " .i" (concat "." nr))))))
         (concat
          (and (findstring "i" n) sign)
@@ -59,7 +49,7 @@
              "0"))))
 
 
-;; "carry" values greater than 9 to the next significant place.
+;; "Carry" values greater than 9 to the next significant place.
 ;; It assumes an individual digit is not larger than 99.
 (define (ucarry n)
   (while (lambda (x) (findstring "iiiiiiiiii ." x))
@@ -91,13 +81,13 @@
            (findstring "-" n)))
 
 
-;; subtract two unsigned numbers, returning a (possibly negative) number.
+;; Subtract two unsigned numbers, returning a (possibly negative) number.
 ;;
 ;; a - b = a + (NINES - b) + -NINES
 ;; NINES-b = for each digit in b, 9 - digit
 ;; -NINES  = -100... + 1
 ;;
-;; We pass a negative number fo 'u+', but first ensure that the negative
+;; We pass a negative number of 'u+', but first ensure that the negative
 ;; digit is above the range of digits that might generate carries.
 ;;
 (define (u- a b)
@@ -137,7 +127,7 @@
   (findstring "i" (subst "ii" "" (word 1 n))))
 
 
-;; divide by two, rounding down
+;; Divide by two, rounding down.
 (define (u/2 n)
   (nnorm (rest (ucarry (subst "i" "iiiii" n)))))
 
@@ -155,7 +145,7 @@
 
 
 ;;--------------------------------------------------------------
-;; integer operators
+;; Integer operators
 ;;--------------------------------------------------------------
 
 (define (num+ a b)
@@ -223,9 +213,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-;; (define (Is n) (words (subst "i" "i " n)))
-
-
 ;; Convert up to three digits to string of that many i's.
 ;;  (topdigits "? ? .iii .ii .i" 3)  ->  <123-char-long string of i's>
 (define (topdigits num at)
@@ -273,13 +260,13 @@
 ;;   more-a holds the remaining (LSB) digits of the quotient
 ;;
 ;; We sample the top two digits of b and corresponding MSB digits of a and
-;; then use strdiv to constrian possibilities for the next digit.
+;; then use strdiv to constrain possibilities for the next digit.
 ;;
 ;;   btop = 1 ... 99    [top two digits, unless b has only one digit]
 ;;   atop = 0 ... 999   [up to top three digits]
 ;;
 ;; When b has two or fewer digits, this is an exact answer.  When b has more
-;; digits, it lets us bound the range of possibilties, since atop and btop
+;; digits, it lets us bound the range of possibilities, since atop and btop
 ;; bound the range of possibilities for a and b: they essentially round down
 ;; to the next whole number since less significant digits are discarded.
 ;;
@@ -309,22 +296,11 @@
                 (more-a more-a)
                 (dmin dmin)
                 (dmax dmax))
-            ;; Use dmin if it's the same as dmax or if dmax is too big
+            ;; Use DMIN if it's the same as DMAX or if DMAX is too big
             (if (or (eq? dmin dmax)
                     (filter 2 (ucmp rmin b)))
                 (longdiv-next dmin rmin more-a b)
                 (longdiv-next dmax (u- rmin b) more-a b))))))
-
-
-;; Awkward construct without mutation or multiple return values.
-;;
-;; x = ...
-;; y = ...
-;; if cond then
-;;    x = ...
-;;    y = ...
-;; end
-;; ...use of x, y...
 
 
 ;; work on LenB digits at a time
@@ -424,8 +400,8 @@
 ;; MIN and MAX must be non-negative integers.
 ;;
 ;; This optimized version avoids O(n^2) performance that results from
-;; concatentation.
-
+;; concatenation.
+;;
 (define (u-range min max)
   (if (>= min max)
       (if (== min max)

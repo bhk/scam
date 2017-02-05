@@ -791,7 +791,7 @@ define ///scam.min
 # compiled from scam.scm
 # Requires: core repl build getopts gen runtime
 # Requires: scam-ct
-# Exports: main+opt-err+usage)0]or]more
+# Exports: main+opt-err+version#2;\.;p;\';1.0 usage)0]or]more
 $(call ^require,core)
 $(call ^require,repl)
 $(call ^require,build)
@@ -805,6 +805,7 @@ $(and $(if $1,$(info scam: $(call ~vsprintf,$1,$(foreach N,2,$(^v)))))1,$(info U
     scam -e EXPR           : eval and print value of expression
     scam -r MAK            : load and execute executable file MAK
     scam [-x] FILE ARG...  : compile and execute FILE
+    scam -v                : show version
 
 Options:
 
@@ -813,7 +814,7 @@ Options:
 )1,$(if $1,1))
 endef
 ~opt-err = $(call ~usage,Unrecognized command option '%s',$1)
-~main = $(call ^Y,$(call ~getopts,$1,-e= -h -i -r= -o= --symbols --boot --no-trace -x=...,$(value ~opt-err)),,,,,,,,,$`(if $`(call ~hash-get,o,$`(call ~nth,2,$`1)),$`(call ~build,$`(call ~hash-get,o,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1),$`(call ~nth,2,$`1)),$`(if $`(call ~hash-get,h,$`(call ~nth,2,$`1)),$`(call ~usage),$`(if $`(call ~hash-get,e,$`(call ~nth,2,$`1)),$`(call ~repl-rep,$`(call ~hash-get,e,$`(call ~nth,2,$`1)),),$`(if $`(call ~hash-get,r,$`(call ~nth,2,$`1)),$`(eval include $`(call ~hash-get,r,$`(call ~nth,2,$`1))),$`(if $`(or $`(call ~hash-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)),$`(if $`(call ~eq?,$`(call ~gen-global-name,main,),~main),$`(and $`(info scam: -x not supported; namespace collision)1,1),$`(and $`(call ~repl-file,$`(call ^u,$`(word 1,$`(or $`(call ~hash-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)))))1,$`(call ~run-hooks,load)1,$`(call $`(call ~gen-global-name,main,),$`(wordlist 2,99999999,$`(or $`(call ~hash-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)))))),$`(call ~repl)))))))
+~main = $(call ^Y,$(call ~getopts,$1,-e= -h -i -r= -o= --symbols --boot --no-trace -x=... -v,$(value ~opt-err)),,,,,,,,,$`(if $`(call ~hash-get,v,$`(call ~nth,2,$`1)),$`(info SCAM version 1.0),$`(if $`(call ~hash-get,o,$`(call ~nth,2,$`1)),$`(call ~build,$`(call ~hash-get,o,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1),$`(call ~nth,2,$`1)),$`(if $`(call ~hash-get,h,$`(call ~nth,2,$`1)),$`(call ~usage),$`(if $`(call ~hash-get,e,$`(call ~nth,2,$`1)),$`(call ~repl-rep,$`(call ~hash-get,e,$`(call ~nth,2,$`1)),),$`(if $`(call ~hash-get,r,$`(call ~nth,2,$`1)),$`(eval include $`(call ~hash-get,r,$`(call ~nth,2,$`1))),$`(if $`(or $`(call ~hash-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)),$`(if $`(call ~eq?,$`(call ~gen-global-name,main,),~main),$`(and $`(info scam: -x not supported; namespace collision)1,1),$`(and $`(call ~repl-file,$`(call ^u,$`(word 1,$`(or $`(call ~hash-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)))))1,$`(call ~run-hooks,load)1,$`(call $`(call ~gen-global-name,main,),$`(wordlist 2,99999999,$`(or $`(call ~hash-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)))))),$`(call ~repl))))))))
 
 endef
  

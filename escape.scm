@@ -15,9 +15,9 @@
 ;; where in the Makefile the code will appear:
 ;;
 ;;   - the left-hand-side of a variable definition (before "=", ":=" or "+=")
-;;   - the right-hand-side of a veriable definition
+;;   - the right-hand-side of a variable definition
 ;;   - the contents of a "define VAR ... endef" statement
-;;   - an expression occuring by itself on a line.
+;;   - an expression occurring by itself on a line.
 ;;   - an argument to a function
 ;;      - arguments to '$(and ...)' and '$(or ...)'
 ;;      - the first argument to $(call ...)

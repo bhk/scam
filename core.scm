@@ -222,7 +222,7 @@
   (numeric? (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
 
 
-;; Equivalent to (patsubst pat repl (fiter pat str)).
+;; Equivalent to (patsubst pat repl (filter pat str)).
 ;;
 (define `(filtersub pat repl str)
   &public
@@ -386,7 +386,7 @@
       (or ((first funcs) str)
           (format-custom str (rest funcs)))))
 
-;; Return readable and parseable representation of STR.
+;; Return a readable and parse-able representation of STR.
 ;;
 (define (format str)
   &public
@@ -465,7 +465,7 @@
   (expect-x a b (current-file-line)))
 
 ;; Compare only the formatted results.  This accommodates only minor
-;; differences in the concerete layout that do not affect the meaning.  For
+;; differences in the concrete layout that do not affect the meaning.  For
 ;; example, a record ending in a &list member (that is empty) will have a
 ;; trailing space when constructed, but not after being retrieve from
 ;; another record (when stored as a trailing &list parameter).
@@ -615,9 +615,9 @@
                          (wrap (subst " " "!_" vec)))))))
 
 
-;; Apply two-arg function F to all elements of V, starting at the left with
-;; (F Z <first>).  If there is only one element, return it.  If V is empty,
-;; return nil.
+;; Apply two-argument function F to all elements of V, starting at the left
+;; with (F Z <first>).  If there is only one element, return it.  If V is
+;; empty, return nil.
 ;;
 (define (foldl f z v)
   &public

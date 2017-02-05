@@ -24,7 +24,7 @@
       (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
       (IConcat  &list nodes)                ; "VALUES..."
       (IBlock   &list nodes)                ; "$(if NODES,,)"
-      (ILambda  node)                       ; (lamda-quote (c1 node))
+      (ILambda  node)                       ; (lambda-quote (c1 node))
       (IWhere   value)                      ; "value"
       (IEnv     env &list node))            ; used during phase 0
 
@@ -36,7 +36,7 @@
 ;;
 ;; IWhere
 ;;
-;;    IWhere represents a constant string that idnicated a source file
+;;    IWhere represents a constant string that indicated a source file
 ;;    position formatted as "FILE:LINE".  When IWhere occurs within a macro,
 ;;    its contents will be rewritten when the macro is expanded to reflect
 ;;    where the macro was invoked.
@@ -171,7 +171,7 @@
 ;; differentiating it from other records, and from vectors.  Each tag begins
 ;; with "!:", which cannot appear in any of SCAM's standard subordinate data
 ;; types (vectors, hashes, numbers).  Record types are therefore disjoint
-;; from each other and from subordinate types.  (Althouh vectors and numbers
+;; from each other and from subordinate types.  (Although vectors and numbers
 ;; are not disjoint from each other... 1 == [1] == [[1]].)
 ;;
 ;; Subsequent words in the record describe the members of the record.  An
@@ -194,14 +194,14 @@
 ;; *compile-subject* contains the penc-encoded SCAM source being compiled
 (declare *compile-subject* &public)
 
-;; *compile-file* is the name of the source file neing compiled.
+;; *compile-file* is the name of the source file being compiled.
 (declare *compile-file* &public)
 
 ;; *compile-outfile* is the name of the MIN file being generated.  This is
 ;; used to find modules when `require` expressions are encountered.
 (declare *compile-outfile* &public)
 
-;; *compile-mods* lists object files to be used to satisy `require`
+;; *compile-mods* lists object files to be used to satisfy `require`
 ;; statements encountered when compiling.  (Otherwise, bundled modules will
 ;; be used.)
 (declare *compile-mods* &public)
@@ -267,7 +267,7 @@
 ;; Namespacing
 ;; -----------
 ;;
-;; Namespaces help avoid conflicts bewteen compiler sources and "target"
+;; Namespaces help avoid conflicts between compiler sources and "target"
 ;; code, which must coexist in the same Make instance in the following
 ;; scenarios:
 ;;
@@ -279,7 +279,7 @@
 ;;  - "use" statements specify modules to be executed by the compiler,
 ;;    perhaps after being compiled by the same compiler.
 ;;
-;; See reference.md for more on namepaces.
+;; See reference.md for more on namespaces.
 ;;
 ;; The global variable SCAM_NS provides the namespace prefix during
 ;; compilation.
@@ -557,7 +557,7 @@
 ;; MOD : module name
 ;; ALL : True => return all environment entries that were visible at
 ;;               the end of MOD.
-;;       False => return &pubilc symbols defined/declared in MOD.
+;;       False => return &public symbols defined/declared in MOD.
 ;;
 ;; Return: ENV on success
 ;;         nil on failure  (module not found)

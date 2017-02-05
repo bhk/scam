@@ -4,7 +4,7 @@
 
 ;; When a SCAM source file is compiled, the generated code will contain
 ;; embedded references to the runtime.  The runtime must therefore be loaded
-;; before any SCAM module can execute; in fact, the runtime itself intiates
+;; before any SCAM module can execute; in fact, the runtime itself initiates
 ;; execution of the program (see Program Execution, below).
 ;;
 ;; *This* file is itself compiled from SCAM source, so we have to take care
@@ -49,7 +49,7 @@ endef
   &global
   (subst "!." "" "!0" " " "!+" "\t" "!1" "!" str))
 
-;; (^n n vec) => nth member of vector `vec`
+;; (^n n vec) => Nth member of vector VEC
 ;;
 (define (^n n vec)
   &global
@@ -58,8 +58,8 @@ endef
 
 ;; ^Y : invokes lambda expression
 ;;
-;;  $(call ^Y,a,b,c,d,e,f,g,h,i,lambda) invokes `lambda`. `a` through `h`
-;;  hold the first 8 arguments; `i` is a vector of remaining args.
+;;  $(call ^Y,a,b,c,d,e,f,g,h,i,lambda) invokes LAMBDA.  A through H
+;;  hold the first 8 arguments; I is a vector of remaining arguments.
 ;;
 (declare (^Y ...args)
          &global)
@@ -154,7 +154,7 @@ endef
           ")"))
 
 
-;; Assign a new value to a simple variable, and return `retval`.
+;; Assign a new value to a simple variable, and return RETVAL.
 ;;
 (define (^set name value ?retval)
   &global
@@ -163,7 +163,7 @@ endef
                         (esc-RHS value)))
           retval))
 
-;; Assign a new value to a recursive variable, and return `retval`.
+;; Assign a new value to a recursive variable, and return RETVAL.
 ;;
 (define (^fset name value retval)
   &global
@@ -217,7 +217,7 @@ endef
   &public
   (if v nil "1"))
 
-;; (nth-rest n vec) == vector starting at `n`th item in `vec`
+;; (nth-rest n vec) == vector starting at Nth item in VEC.
 (define `(nth-rest n vec)
   &public
   (wordlist n 99999999 vec))
@@ -293,13 +293,13 @@ endef
   (define `mod (notdir name))
   (define `bundle (concat "///" mod ".min"))
 
-  ;; Load and execute `path`
+  ;; Load and execute PATH.
   (define `(load path)
     (if (filter "///%" path)
         (eval (value path))
         (eval (concat "include " path))))
 
-  ;; If a matching file is listed in SCAM_MODS, use that file
+  ;; If a matching file is listed in SCAM_MODS, use that file.
   (define `named-mod
     (word 1 (foreach f SCAM_MODS
                      (if (filter mod (notdir (basename f)))

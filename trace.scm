@@ -142,9 +142,9 @@
 ;; Return a function body that invokes the named function multiple times,
 ;; and returns the result of the last invocation.
 ;;
-;;   fname = name of function to call <reps> times (the original definition)
-;;   reps = number of repetitions
-;;   recur = if true, recursion is expected.
+;;   FNAME = name of function to call <reps> times (the original definition).
+;;   REPS = number of repetitions.
+;;   RECUR = if true, recursion is expected.
 ;;
 (define (trace-repeater fname reps recur)
   (subst "NAME" fname
@@ -266,10 +266,10 @@
   (trace-check))
 
 
-;; Ingore all variables defined in this module and earlier.
+;; Ignore all variables defined in this module and earlier.
 (set *trace-ignore-vars* variables)
 
-;; Establish environment-specified traces
+;; Establish environment-specified traces.
 (trace SCAM_TRACE)
 (add-hook "load" (global-name trace-check))
 (add-hook "exit" (global-name trace-dump))

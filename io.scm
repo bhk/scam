@@ -23,7 +23,7 @@
   (concat "'" (subst "'" "'\''" arg) "'"))
 
 
-;; Construct a command line to echo `str`
+;; Construct a command line to echo STR
 ;;
 (define (echo-command str)
   &public

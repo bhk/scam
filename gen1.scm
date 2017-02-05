@@ -316,7 +316,7 @@
 
   (if (or (findstring "$" (subst "$`" "" rhs))
           (findstring "$`." rhs))
-      ;; RHS not constant (has unescaped "$"), or would contain "$."
+      ;; RHS not constant (has un-escaped "$"), or would contain "$."
       (concat "$(call " "^fset" "," (protect-arg lhs) "," (protect-arg rhs) ")\n")
       (if (or (findstring "#" rhs)
               (findstring "\n" rhs)
@@ -324,7 +324,7 @@
               (filter "~%" (subst "\t" "~" " " "~" rhs)))
 
           ;; Use 'define ... endef' so that $(value F) will be *identical*
-          ;; to rhs almost always.
+          ;; to RHS almost always.
           (concat "define " (protect-lhs lhs) "\n"
                   (protect-define (unescape rhs))
                   "\nendef\n")

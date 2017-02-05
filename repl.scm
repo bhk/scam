@@ -167,7 +167,7 @@
         (print (exe)))))
 
 
-;; Load and excute file 'file'
+;; Load and execute file 'file'
 ;;
 (define (repl-file file)
   &public

@@ -12,11 +12,11 @@
 ;; The following private options are used only when compiling the compiler:
 ;;
 ;;  --symbols : Retain symbol information when building an executable.  This
-;;              is used when building the interpter/compiler.
+;;              is used when building the interpreter/compiler.
 ;;  --boot    : Selects "bootstrap" mode, in which the run-time and compile-time
 ;;              implied dependencies are read from sources, not bundles.
 ;;  --rt FILE : specifies a source file to be used as the runtime for the
-;;              generated exectuable.
+;;              generated executable.
 ;;  --ct FILE : specifies a source file that defines compile-time macros.
 
 (define (usage ?fmt ...values)
@@ -28,6 +28,7 @@
     scam -e EXPR           : eval and print value of expression
     scam -r MAK            : load and execute executable file MAK
     scam [-x] FILE ARG...  : compile and execute FILE
+    scam -v                : show version
 
 Options:
 
@@ -37,13 +38,17 @@ Options:
   (if fmt 1))
 
 
+(define `version
+  "1.0")
+
+
 (define (opt-err opt)
   (usage "Unrecognized command option '%s'" opt))
 
 
 (define (main argv)
   (define `opt-names
-    "-e= -h -i -r= -o= --symbols --boot --no-trace -x=...")
+    "-e= -h -i -r= -o= --symbols --boot --no-trace -x=... -v")
 
   (let ((o (getopts argv opt-names opt-err)))
     (define `files (nth 1 o))
@@ -62,6 +67,9 @@ Options:
             (call user-main (rest argv)))))
 
     (cond
+     ((opt "v")
+      (print "SCAM version " version))
+
      ((opt "o")
       (build (opt "o") files opts))
 

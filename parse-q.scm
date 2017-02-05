@@ -85,7 +85,7 @@
 ;; find-word
 (fexpect 3 (find-word "b a b c" 2 "b"))
 
-;; parse-exp: unterminated error
+;; parse-exp: un-terminated error
 (fexpect (POut 2 (PError 2 ")"))
         (parse-exp "!0 )" 1))
 

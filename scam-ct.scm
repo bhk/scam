@@ -2,7 +2,7 @@
 ;; scam-ct.scm
 ;;--------------------------------
 
-;; This file is an implict "use" dependency of ordinary SCAM programs.
+;; This file is an implicit "use" dependency of ordinary SCAM programs.
 
 ;; This is needed only to pull in runtime exports.  (Both scam-ct.scm and
 ;; runtime.scm are given no implicit dependencies.)  Unfortunately, this

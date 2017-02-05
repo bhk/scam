@@ -8,7 +8,7 @@
 (require "gen0")
 
 ;; Functions named "ml.special-NAME" implement special forms.  They are
-;; executed at compile-time when a list form starting with the correponding
+;; executed at compile-time when a list form starting with the corresponding
 ;; NAME is encountered.  These functions are passed a list of arguments
 ;; (each an AST) and an environment.  They return an IL tree.
 ;;
@@ -404,7 +404,7 @@
   "(cond (TEST BODY)...)")
 
 ;; Combine a cond clause with its "else" value.
-;;   CLAUSE = `(TEST BDOY)
+;;   CLAUSE = `(TEST BODY)
 ;;   ELSE-FORM = value of remaining clauses
 (define (cond-wrap clause else-form)
   (case clause

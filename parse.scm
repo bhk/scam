@@ -4,7 +4,6 @@
 
 (require "core")
 
-
 ;; These records, called "forms", describe the parse tree (AST):
 
 (data P
@@ -23,7 +22,7 @@
 ;; The first word of DESC is one of the following:
 ;;
 ;;   .       ==> at end of string/no more expressions to parse
-;;   "       ==> unterminated string; <n> at open quote
+;;   "       ==> un-terminated string; <n> at open quote
 ;;   ) or ]  ==> unmatched close; <n> at unmatched char
 ;;   ( or [  ==> unmatched open, waiting for more.  <n> at unmatched char
 ;;   ` or ,  ==> quote/unquote without following expression
@@ -170,7 +169,8 @@
            ["\t"] (concat " " [" \t"] " ")
            (if text (demote text))))))
 
-;; pdec: undo penc
+;; Undo `penc`.
+;;
 (define (pdec text)
   &public
   (promote
@@ -178,7 +178,7 @@
     (subst [" \t"] ["\t"] " " "" "!Q" "\\\"" "!b" "\\\\" "!p" "%" text))))
 
 
-;; pdec-str: undo penc and also process backslash sequences [e.g.: \" -> " ]
+;; Undo `penc` and also process backslash sequences [e.g.: \" -> " ],
 ;; returning the demoted form of the string.
 ;;
 (define (pdec-str text)
@@ -187,8 +187,9 @@
       "!."))
 
 
-;; return index of next word that matches pat, starting at pos
+;; Return index of next word that matches PAT, starting at POS.
 ;; Check three words at a time to improve speed.
+;;
 (define (find-word str pos pat)
   (foreach p (1+ (1+ pos))
            (if (filter pat (or (wordlist pos p str) pat))
@@ -201,14 +202,11 @@
                (find-word str (1+ p) pat))))
 
 
-;;---- Parsing functions ----
+;; Construct a parse function result.
 ;;
-;; `parse-XXX` functions return a `POut` containing:
+;;   POS = position of the last token matched
+;;   FORM = instatce `data P` type.
 ;;
-;;    pos = position of the last token matched
-;;    form = `data P` instance
-;;
-
 (define `(POut pos form)
   (concat pos " " form))
 
@@ -304,7 +302,7 @@
 
 (define (parse-x w subj pos)
   (if (filter "!0% \n% ;% ()" (or (word (1+ pos) subj) "()"))
-      ;; quoting tokens must immeidately precede an expression
+      ;; quoting tokens must immediately precede an expression
       (POut pos (PError pos w))
     (parse-x2 w pos (parse-exp subj (1+ pos)))))
 
@@ -339,7 +337,7 @@
 ;;--------------------------------
 
 
-;; Return the line number in which `form` occurs in `subj`
+;; Return the line number for the token at index POS in SUBJ.
 ;;
 (define (describe-lnum pos subj)
   &public
@@ -347,8 +345,9 @@
   (words (concat "1 " (filter "\n" (subst "\n" "\n " pre)))))
 
 
-;; Return the line containing `form` as a vector: [PRE TOK POST]
-;;   TOK = the token `form` corresponds to
+;; Return the line containing the token at index POS as a vector:
+;; [PRE TOK POST]
+;;   TOK = the token at index POS
 ;;   PRE = text preceding tok on the line
 ;;   POST = text following tok
 ;;
@@ -361,7 +360,7 @@
       (pdec (rest post)) ]))
 
 
-;; return description line, given error code or description string
+;; Return description line, given error code or description string.
 ;;
 (define (get-error-msg desc)
   (define `code
@@ -382,6 +381,7 @@
 ;; Construct error message, given error form and source text
 ;;     FILE:LINE: DESCRIPTION
 ;;     at: PRE*TOK*POST
+;;
 (define (describe-error form text filename)
   &public
   (case form
@@ -400,8 +400,8 @@
                      file msg))))))
 
 ;; (parse-forms subj pos k) -->  (k form-list err)
-;;    ERR = nil if sequence ended at EOF,  (PERrror ...) otherwise.
-
+;;    ERR = nil if sequence ended at EOF,  (PError ...) otherwise.
+;;
 (define (parse-forms-r subj k o form-list)
   (define `form (POut-form o))
   (define `pos (POut-pos o))
