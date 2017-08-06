@@ -2,20 +2,22 @@
 
 ## Index
 
- * [Overview] (#overview)
- * [Syntax] (#syntax)
- * [Data Types] (#data-types)
-   * [Numbers] (#numbers)
-   * [Booleans] (#booleans)
-   * [Vectors] (#vectors)
-   * [Records] (#records)
-   * [Functions] (#functions)
- * [Variables] (#variables)
- * [Macros] (#macros)
- * [Special Forms] (#special-forms)
- * [Manifest Symbols] (#manifest-symbols)
- * [Make Features] (#make-features)
- * [Debugging] (#debugging)
+ * [Overview](#overview)
+ * [Syntax](#syntax)
+ * [Data Types](#data-types)
+   * [Numbers](#numbers)
+   * [Booleans](#booleans)
+   * [Vectors](#vectors)
+   * [Vectors](#vectors)
+   * [Dictionaries](#dictionaries)
+   * [Records](#records)
+   * [Functions](#functions)
+ * [Variables](#variables)
+ * [Macros](#macros)
+ * [Special Forms](#special-forms)
+ * [Manifest Symbols](#manifest-symbols)
+ * [Make Features](#make-features)
+ * [Debugging](#debugging)
 
 
 ## Overview
@@ -71,14 +73,11 @@ equivalent to writing `"1.0"`.
 
 ### Symbols
 
-Symbols are sequences of characters delimited by whitespace, `(`, `)`, `[`,
-`]`, or `;`.
+Symbols are sequences of non-whitespace characters, except for any of the
+following: ``()[]{},;:%$\`"``.
 
     a
-    this-is-a-long-symbol-with-perhaps-*/@-unusual-characters!
-
-When symbols are used to name variables, they may not contain `:`, `%`, or
-`$` characters.
+    this-is-a-long-symbol-with/perhaps/*unusual*-`characters'!
 
 Symbols can identify:
 
@@ -177,7 +176,7 @@ of any use to you.
 
 Some of these subordinate types are overlapping sets.  For example, `1` is
 equivalent to `[1]` (and `[[1]]` and so on).  But mostly they are disjoint.
-`For example, each data record can be distinguished from any other data
+For example, each data record can be distinguished from any other data
 record, and from a hash map, and from a vector.  Non-empty hash maps and
 vectors are also disjoint.  (The empty string, also called `nil`, also
 represents an empty hash, an empty vector, and false.)  This allows SCAM to
@@ -284,17 +283,31 @@ are the first two printable characters (code points 0x20 and 0x21) in ASCII
 and ASCII-derived encodings (such as Unicode).
 
 Note that in a word-encoded value -- and therefore, in a vector -- `!` is
-always followed by one a four characters.  Some sequences that cannot appear
-in a vector or word-encoded value are used elsewhere in SCAM:
+always followed by one of four characters.  Other two-character sequences
+can be combined with word-encoded values to designate separators or markers.
+In SCAM hash maps, `!=` delimits word-encoded keys from values.
 
-    `!=` delimits a key from a value in a hash binding.  Keys and values are
-    word-encoded.
+
+### Hashes
+
+Hashes in SCAM are lists of zero or more (key, value) pairs.  They are
+similar in purpose to "a-lists" in Lisp, "dictionaries" in Python, "tables"
+in Lua, "hashes" in Perl, and so on.  While they are not necessarily
+implemented in terms of "hash tables", lookup is quite fast due to the way
+make's builtins are used.  Pairs may be combined using `append`.  `hash-get`
+retrieves a value, given a key and a hash.
+
+    > (append (hash-bind "a" 1)
+    +         (hash-bind "b" [1 2 3]))
+    {a: 1, b: [1 2 3]}
+    > (hash-get "b" *1)
+    [1 2 3]
 
 
 ### Records
 
 The `data` special form introduces a new "data type" (see the [above
-discussion] (#data-types)) that takes the form of a union of record types.
+discussion](#data-types)) that takes the form of a union of record types.
 This is similar to the "algebraic data types" in some other languages.  Each
 record can contain zero or more values.
 
@@ -303,9 +316,8 @@ record can contain zero or more values.
     +    (Rect a b)
     +    (Triangle b h))
 
-This defines a number of constructors that can be called like functions to
-construct a value of that type, and can be used in a `case` statement to
-deconstruct such a value.
+This example defines three constructors -- `Square`, `Rect`, and `Triangle`
+-- that can be called like functions to construct a value of that type.
 
     > (define s (Rect 3 5))
     > s
@@ -319,18 +331,25 @@ string value, but we would normally never have to see this.
     !:Shape1 3 5
 
 The `case` statement performs pattern matching.  It allows us to use
-constructors on the receiving end of an assignment, and it combines this
-with type detection.  The first parameter is the value to be matched, and
-the remainder of the forms `(PATTERN BODY)` pairs.  It test these in order,
-and hen the first pattern matches the value it evaluates and returns BODY.
-If no patterns match, `nil` is returned.
+construction expressions on the receiving end of an assignment.
+
+    > (case s
+    +   ((Square a) (+ a a))
+    +   ((Rect a b) (+ a b)))
+    8
+
+The first parameter is the value to be matched, and the remainder of the
+forms are `(PATTERN BODY)` pairs.  It tests these in order, and when the
+first pattern matches the value it evaluates and returns BODY.  If no
+patterns match, `nil` is returned.
 
 A pattern can be a (CONSTRUCTOR-NAME ARG...) where each ARG is a symbol.
 When the match is made, these symbols are bound to the corresponding members
 of the record when the BODY is evaluated.
 
 Another valid pattern is any symbol.  This kind of pattern always succeds,
-and the symbol will be bound the record value while BODY is evaluated.
+and the symbol will be bound to the record value while its corresponding
+BODY is evaluated.
 
     > (define (area shape)
     +   (case shape
@@ -369,11 +388,12 @@ A slightly more interesting example:
     > (calc (Exp (Add 3 4) (Mul 5 6)))
     22539340290692258087863249
 
-Here, we could have used a `(Num n)` constructor to distinguish numbers from
-operations, but ordinary numbers are already distinguished from all
-user-defined record types.  They are also distinct from vectors, hash maps,
-and all other `data`-defined types.  In fact, we could add a case for
-`Triangle`:
+Note that the last pattern in the above `case` statement treats any value
+not matching the previous patterns as a number.  Here, we could (and perhaps
+should) have used a `(Num n)` constructor to distinguish numbers from
+operations, but it is worth noting that record values will not be confused
+with ordinary numbers.  They are also distinguishedfrom vectors, hash maps,
+and other record types.  In fact, we could add a case for `Triangle`:
 
     ...
     ((Triangle b h) (/ (* (calc b) (calc h)) 2))
@@ -381,12 +401,14 @@ and all other `data`-defined types.  In fact, we could add a case for
 
 ... and then ask it to calculate `(calc (Add (Triangle 2 3) 4))`.
 
-The type name that follows `data` will not appear elsewhere in your SCAM
-program.  It is used to distinguish its constructor from others of the same
-name.  For example, `(data A (Ctor a))` and `(data B (Ctor a))` define two
-different constructors that produce different types of records.  Expressions
-like `(Ctor 1)` or `(case x ((Ctor a) ..))` refer to the `Ctor` that is
-visible in the lexical scope where the expression is found.
+The type name that follows `data` has no significance except to distinguish
+its record values from those of other record types.  It will not appear
+elsewhere in your SCAM program.  For example, `(data A (Ctor a))` and `(data
+B (Ctor a))` define two different constructors that produce different types
+of records.  When a constructor is mentioned in an expression, the meaning
+of the constructor depends on the lexical scope in effect where it is
+referenced.  Here is an example that defines two different `Orange`
+constructors, one a member of `data Fruit` and one a member of `data Color`:
 
     > (data Fruit (Apple) (Orange))
     > (define (is-fruit fr)
@@ -533,8 +555,8 @@ symbol in SCAM, you must first introduce the binding using the `declare` or
 For readers comparing with other Lisp dialects, it is useful to note that
 globals are functionally equivalent to "dynamic" or "special" variables in
 the parlance of Common Lisp. The following special forms deal with global
-variables: [`define`] (#define), [`declare`] (#declare), [`let-global`]
-(#let-global), [`set`] (#set), [`set-global`] (#set-global), [`set-rglobal`]
+variables: [`define`](#define), [`declare`](#declare), [`let-global`]
+(#let-global), [`set`](#set), [`set-global`](#set-global), [`set-rglobal`]
 (#set-rglobal).
 
 Automatic variables are the variables created by GNU Make's `foreach`
@@ -710,7 +732,7 @@ A `lambda` expression evaluates to a function value.
 
 `ARG...` is zero or more symbols that name the formal arguments.
 
-`BODY` is a block of one or more expressions (see [`begin`] (#begin) )
+`BODY` is a block of one or more expressions (see [`begin`](#begin) )
 that will be executed when the function is called. The initial environment
 of `BODY` contains bindings for the arguments names to the values passed
 to the function.
@@ -981,7 +1003,7 @@ with an error.
 
     (set-rglobal NAME-EXPR VALUE)
 
-This is equivalent to [`set-global`] (#set-global), except that is executes
+This is equivalent to [`set-global`](#set-global), except that is executes
 a "recursive" global variable assignment.  REPL example:
 
     > (set-rglobal "V" "abc")
@@ -1231,7 +1253,7 @@ name can produce unexpected results. The following example demonstrates
     > (call f "x")
     "xx"
 
-The names [`foreach`] (#foreach) and [`subst`] (#subst) builtins are
+The names [`foreach`](#foreach) and [`subst`](#subst) builtins are
 actually special forms that invoke the true builtins, which are available
 in their raw forms by the names `.foreach` and `.subst`.
 
@@ -1247,8 +1269,8 @@ is used:
     > (foreach x "1 2 3" (1+ x))
     "2 3 4"
 
-The [`foreach`] (#foreach) special form avoids this problem.  The
-[`subst`] (#subst) special form enhances `.subst` by allowing multiple
+The [`foreach`](#foreach) special form avoids this problem.  The
+[`subst`](#subst) special form enhances `.subst` by allowing multiple
 substitutions to be performed.
 
 
@@ -1279,7 +1301,7 @@ Make builtin functions are directly usable by SCAM programs:
     words addprefix addsuffix filter filter-out findstring join word
     patsubst subst wordlist if and or call
 
-In the case of [`foreach`] (#foreach) and [`subst`] (#subst), those
+In the case of [`foreach`](#foreach) and [`subst`](#subst), those
 names are bound to equivalent, but more friendly wrappers.
 
 ### Rule Processing

@@ -225,6 +225,7 @@
 
 ;; foldl
 (expect "((0!)2)" (foldl (lambda (a b) (concat "(" a b ")")) 0 ["!" 2]))
+(expect "0" (foldl (lambda (a b) (concat "(" a b ")")) 0 []))
 
 ;; foldr
 (expect "(!(20))" (foldr (lambda (a b) (concat "(" a b ")")) 0 ["!" 2]))

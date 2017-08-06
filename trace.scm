@@ -7,15 +7,15 @@
 ;; This module instruments functions at run time to log and report
 ;; tracing data.  It can be used in two ways:
 ;;
-;;  * Assigning `SCAM_TRACE` on the command line or in the environment
+;;  * Assigning `SCAM_TRACE` on the make command line or in the environment
 ;;    before running a SCAM program will enable tracing during the execution
-;;    of the program's `main` function.  The value of SCAM_TRACE is a
-;;    "trace specification" (described below).
+;;    of the program's `main` function.  The value of SCAM_TRACE is a "trace
+;;    specification" (described below).
 ;;
 ;;    Note that instrumentation of functions is not performed until after a
-;;    module is loaded.  When code within a module that executes at load
-;;    time -- i.e. during the call to `require` -- functions defined within
-;;    that module will not be subject to tracing.
+;;    module is loaded.  Any code within a module that executes at load time
+;;    -- i.e. during the call to `require` -- will not be subject to the
+;;    tracing triggered by `SCAM_TRACE`.
 ;;
 ;;  * Any SCAM program can require the "trace" module and call the `trace`
 ;;    function to instrument functions.  `trace` accepts a trace
