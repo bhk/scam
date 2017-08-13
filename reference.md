@@ -129,9 +129,12 @@ Dictionary constructors contain a list of key-value pairs between `{` and
     { a: 1, b: 3, "a b c": "d e f" }
     {}
 
-When a symbol is given as a key, the name of the symbol (rather than the
-value of the symbol) is used as the key value.  So, for example, `{a:1}` and
-`{"a":1}` are equivalent.
+Keys can be specified as a symbol, a symbol prefixed with `=`, or any
+expression.  A symbol not beginning with `=` is treated literally; the name
+of the symbol becomes the key.  When a symbol is prefixed with `=` the value
+of the symbol will be used as the key.  For example, `{ a: 1 }` is
+equivalent to `{ "a": 1 }`, and `{ =a: 1 }` is equivalent to `{ (if 1 a): 1
+}`.
 
 ### Syntax Quoting
 

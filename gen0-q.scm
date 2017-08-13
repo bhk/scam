@@ -79,8 +79,9 @@
 (expect (c0-ser "{}") "")
 (expect (c0-ser "{a:1}") "a!=1")
 (expect (c0-ser "{a:a}") "a!=(^d {1})")
-(expect (c0-ser "{(f 1 2):a}") "(.subst %,!8,(^d (F 1,2)))!=(^d {1})")
+(expect (c0-ser "{(f 1 2):a}") "(^k (F 1,2))!=(^d {1})")
 (expect (c0-ser "{a:1 b:2}") "a!=1 b!=2")
+(expect (c0-ser "{=a:1}") "(^k {1})!=1")
 
 ;; c0-block
 

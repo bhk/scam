@@ -1,7 +1,5 @@
 TODO
 
- * Parse "=symbol" form.
-
  * Allow varargs in macros:
       Maybe:  (ILocal "1+" ups)
       At macro expand time, evalutes to precisely-sized vector.

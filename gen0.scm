@@ -755,6 +755,16 @@
 ;; dictionaries
 ;;--------------------------------
 
+;; Compile a form and encode its IL value as a dictionary key.
+(define (c0-dict-key form env)
+  (let ((node (il-demote (c0 form env))))
+    (or (case node
+          ((ICall name args)
+           (if (eq? name "^d")
+               (ICall "^k" args))))
+        (il-subst "%" "!8" node))))
+
+
 (define (c0-D env n pairs)
   (define `il-pairs
     (foreach
@@ -763,11 +773,14 @@
      (define `value (dict-value pair))
      (define `key-node
        (case key
-         ;;  {symbol: ...} is treated as {"symbol": ...}
-         ((PSymbol _ name)
-          (IString (demote name)))
+         ;; {symbol: ...} is treated as {"symbol": ...}
+         ;; Note: symbols cannot contain "%"
+         ((PSymbol n name)
+          (if (filter "=%" name)
+              (c0-dict-key (PSymbol n (patsubst "=%" "%" name)) env)
+              (IString (demote name))))
          (else
-          (il-subst "%" "!8" (il-demote (c0 key env))))))
+          (c0-dict-key key env))))
      (define `value-node
        (il-demote (c0 value env)))
 

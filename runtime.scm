@@ -55,6 +55,12 @@ endef
   &global
   (^u (word n vec)))
 
+;; Encode dictionary key
+;;
+(define (^k str)
+  &global
+  (declare ^d &global)
+  (subst "%" "!8" ^d))
 
 ;; ^Y : invokes lambda expression
 ;;
