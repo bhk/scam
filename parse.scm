@@ -335,9 +335,9 @@
   (or (parse-dict-error out ": }" start-pos)
       (case form
         ((PError n desc)
-         (if (eq? desc "}")
-             (POut n (PError n ":?")))))
-      (parse-dict-3 subj start-pos pairs key (parse-exp subj (1+ pos)))))
+         (if (eq? desc ":")
+             (parse-dict-3 subj start-pos pairs key (parse-exp subj (1+ pos))))))
+      (POut pos (PError pos ":?"))))
 
 ;; expect VALUE
 (define (parse-dict-3 subj start-pos pairs key out)
@@ -348,7 +348,7 @@
         ((PError n desc)
          (if (eq? desc "}")
              (POut n (PError n "v?")))))
-      (parse-dict-4 subj start-pos (append pairs {(or key): form})
+      (parse-dict-4 subj start-pos (append pairs { =key: form})
                     (parse-skip subj (1+ pos)))))
 
 ;; expect "," or "}"

@@ -154,6 +154,7 @@
 (fexpect (POut 5 (PError 5 "} ) }")) (p1  "{ ( }"))
 (fexpect (POut 3 (PError 1 "{") ) (p1 "{a"))
 (fexpect (POut 3 (PError 3 ":?") ) (p1 "{a}"))
+(fexpect (POut 4 (PError 4 ":?") ) (p1 "{1 1"))
 (fexpect (POut 4 (PError 4 "v?") ) (p1 "{a:}"))
 
 
