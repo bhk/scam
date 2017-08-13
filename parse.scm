@@ -11,6 +11,7 @@
       (PList    &word n &list forms)  ; (FORMS...)
       (PString  &word n value)        ; quoted string or number
       (PSymbol  &word n value)        ; identifier
+      (PDict    &word n &list pairs)  ; { ... }
       (PQuote   &word n &list form)   ; quoted expression (syntax)
       (PQQuote  &word n &list form)   ; quasi-quoted expression
       (PUnquote &word n &list form)   ; unquoted expression
@@ -19,16 +20,22 @@
 
 ;; N = word index at which form began
 ;;
-;; The first word of DESC is one of the following:
+;; The first word of DESC in PError is one of the following:
 ;;
-;;   .       ==> at end of string/no more expressions to parse
-;;   "       ==> un-terminated string; <n> at open quote
-;;   ) or ]  ==> unmatched close; <n> at unmatched char
-;;   ( or [  ==> unmatched open, waiting for more.  <n> at unmatched char
-;;   ` or ,  ==> quote/unquote without following expression
+;;   .       ==> at end of string/no more expressions to parse.
+;;   "       ==> un-terminated string; N is at open quote.
+;;   (, [, { ==> un-terminated form; N is at start.
+;;   ), ], } ==> unbalanced terminator; N is at the terminator.
+;;   ` or ,  ==> quote/unquote without following expression.
+;;   :?      ==> missing expected ":" in a dictionary
+;;   v?      ==> missing expected value for dictionary entry
+;;   :       ==> unexpected ":" token
 ;;
-;; This may be followed by subsequent words of ")" or "]" indicating, in
-;; sum, the level of nesting where error was encountered.
+;; If the error occurred within a nested context, the first word of DESC
+;; will be followed by one or more ")", "]", or "}".  This allows us to
+;; distinguish a non-expression token (e.g.  a terminator) that was
+;; immediately encountered (where it might be valid) from the same token
+;; found in a nested context where it was not valid.
 
 (define (symbol-name form)
   &public
@@ -164,8 +171,8 @@
    (compact-comments
     (subst "," " , " ", @" ",@ " "`" " ` " "'" " ' " "\\\\" "!b" "\\\"" "!Q"
            ";" " ; " "!0" " !0 " "\n" " \n " "\"" " \" " "]" " ] " "[" " [ "
-           ")" " ) " "(" " ( " "$" " $ " ":" " : " "%" " !p "
-           "0  !" "0!" "  " " "
+           "{" " { " "}" " } " ")" " ) " "(" " ( " "$" " $ " ":" " : "
+           "%" " !p " "0  !" "0!" "  " " "
            ["\t"] (concat " " [" \t"] " ")
            (if text (demote text))))))
 
@@ -280,6 +287,80 @@
   (parse-seq subj "]" pos (parse-exp subj (1+ pos)) [(PSymbol 0 "vector")]))
 
 
+;; parse-dict
+
+
+;; Advance to next "significant" word in SUBJ.  Return (concat POS " " WORD).
+(define (parse-skip subj pos)
+  (if (filter "!0% \n% ;%" (word pos subj))
+      (parse-skip subj (1+ pos))
+      (concat pos " " (word pos subj))))
+
+
+(declare (parse-dict-1 subj start-pos pairs out))
+(declare (parse-dict-2 subj start-pos pairs key out))
+(declare (parse-dict-3 subj start-pos pairs key out))
+(declare (parse-dict-4 subj start-pos pairs out))
+
+(define (parse-dict subj pos)
+  (parse-dict-1 subj pos nil (parse-exp subj (1+ pos))))
+
+;; EOF-CODE = error code to report when EOF is encountered.
+;; EOF-POS = pos to place in PError when EOF is encountered.
+;; OK-CODES = pattern describing error codes to ignore
+;; START-POS =
+(define (parse-dict-error pout ok-codes start-pos)
+  (case (POut-form pout)
+    ((PError n desc)
+     (if (eq? "." desc)
+         (POut n (PError start-pos "{"))
+         (if (not (filter ok-codes [desc]))
+             (POut n (PError n (concat desc " }"))))))))
+
+;; expect KEY or "}"
+(define (parse-dict-1 subj start-pos pairs out)
+  (define `pos (POut-pos out))
+  (define `form (POut-form out))
+  (or (parse-dict-error out "}" start-pos)
+      (case form
+        ((PError n desc)
+         (POut pos (PDict start-pos pairs)))
+        (else
+         (parse-dict-2 subj start-pos pairs form (parse-exp subj (1+ pos)))))))
+
+;; expect ":"
+(define (parse-dict-2 subj start-pos pairs key out)
+  (define `pos (POut-pos out))
+  (define `form (POut-form out))
+  (or (parse-dict-error out ": }" start-pos)
+      (case form
+        ((PError n desc)
+         (if (eq? desc "}")
+             (POut n (PError n ":?")))))
+      (parse-dict-3 subj start-pos pairs key (parse-exp subj (1+ pos)))))
+
+;; expect VALUE
+(define (parse-dict-3 subj start-pos pairs key out)
+  (define `pos (POut-pos out))
+  (define `form (POut-form out))
+  (or (parse-dict-error out "}" start-pos)
+      (case form
+        ((PError n desc)
+         (if (eq? desc "}")
+             (POut n (PError n "v?")))))
+      (parse-dict-4 subj start-pos (append pairs (hash-bind key form))
+                    (parse-skip subj (1+ pos)))))
+
+;; expect "," or "}"
+(define (parse-dict-4 subj start-pos pairs out)
+  (define `pos (word 1 out))
+  (define `w (word 2 out))
+  (parse-dict-1 subj start-pos pairs
+                (parse-exp subj (if (filter "," w)
+                                    (1+ pos)
+                                    pos))))
+
+
 ;; parse-x : Handle quoting operators.
 ;;
 ;;   W = "`", "'", ",", or ",@"
@@ -320,11 +401,12 @@
    (foreach
     w (word pos subj)
     (cond ((filter "!0% \n%" w)  (parse-exp subj (1+ pos)))
-          ((filter ") ]" w)      (POut pos (PError pos w)))
+          ((filter ") ] }" w)    (POut pos (PError pos w)))
           ((filter "(" w)        (parse-list subj pos))
           ((filter "\"" w)       (new-Q subj pos (find-word subj (1+ pos) "\"")))
           ((filter ";%" w)       (parse-exp subj (1+ (find-word subj pos "\n%"))))
           ((filter "[" w)        (parse-array subj pos))
+          ((filter "{" w)        (parse-dict subj pos))
           ((filter "' ` , ,@" w) (parse-x w subj pos))
           ((numeric? w)          (POut pos (PString pos w)))
           ((filter "$ : !p" w)   (POut pos (PError pos (pdec w))))
@@ -369,11 +451,20 @@
   (cond ((filter "` '" code)
          (concat "prefix \"" code "\" must immediately precede expression"))
 
-        ((filter "( ) [ ]" code)
+        ((filter "( ) [ ] { }" code)
          (concat "unmatched \"" code "\""))
 
         ((filter "\"" code)
          "unterminated string")
+
+        ((filter ":" code)
+         "saw \":\" where not expected")
+
+        ((filter ":?" code)
+         "expected \": VALUE\" following dictionary key")
+
+        ((filter "v?" code)
+         "expected value following dictionary \"KEY:\"")
 
         (else desc)))
 

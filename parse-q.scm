@@ -38,7 +38,7 @@
 (expect "a : b"                 (penc "a:b"))
 (expect "a !0!0 b !0!0 ( "      (penc "a  b  ("))
 (expect "a !0!0 b !0!0 ( !0 !1" (penc "a  b  ( !"))
-;(expect "!b \" "                (penc "\\\\\""))
+(expect "!b \" "                (penc "\\\\\""))
 (expect "!b!Q"                  (penc "\\\\\\\""))
 (expect " , , ,@ , "            (penc ",,,@,"))
 
@@ -51,7 +51,7 @@
 (pde " ")
 (pde "x\ty \t z")
 (pde "                    ")
-(pde "a b !0 c\"d(x);z")
+(pde "a b !0 c\"d(x);1{3}z")
 (pde "x; \\  ;; \\\" \\\\\" 0 ! ")
 
 ;; pdec-str un-does penc but also decodes backslash sequences
@@ -137,6 +137,25 @@
 (fexpect (POut 1 (PError 1 "[") ) (p1 "["))
 (fexpect (POut 3 (PError 3 ") ]")) (p1 "[ ) ]"))
 (fexpect (POut 5 (PError 5 "] ) ]")) (p1  "[ ( ]"))
+
+;; dictionaries
+(fexpect (POut 2 (PDict 1 []))     (p1 "{}"))
+(fexpect (POut 4 (PDict 2 []))     (p1 " { } "))
+(fexpect (POut 9 (PDict 1 (hash-bind (PSymbol 3 "a") (PString 7 1))))
+         (p1 "{ a : 1 } "))
+(fexpect (POut 9 (PDict 1 (hash-bind (PSymbol 3 "a") (PString 7 1))))
+         (p1 "{ a : 1,} "))
+(fexpect (POut 11 (PDict 1 (append (hash-bind (PSymbol 2 "a") (PString 4 1))
+                                   (hash-bind (PSymbol 8 "b") (PString 10 2)))))
+         (p1 "{a:1 , b:2} "))
+
+(fexpect (POut 2 (PError 1 "{") ) (p1 "{"))
+(fexpect (POut 3 (PError 3 ") }")) (p1 "{ ) }"))
+(fexpect (POut 5 (PError 5 "} ) }")) (p1  "{ ( }"))
+(fexpect (POut 3 (PError 1 "{") ) (p1 "{a"))
+(fexpect (POut 3 (PError 3 ":?") ) (p1 "{a}"))
+(fexpect (POut 4 (PError 4 "v?") ) (p1 "{a:}"))
+
 
 ;; quote with "'"
 (fexpect (POut 7 (PQuote 2 (PList 3 [ (PSymbol 4 "qwe") (PString 6 1) ])))

@@ -121,6 +121,14 @@
                            (hash-bind "a b" "%1")
                            (hash-bind "" "x"))))
 
+;; symbol?
+
+(expect "" (symbol? ""))
+(expect "a!" (symbol? "a!"))
+(expect "" (symbol? "a!0b"))
+(expect "" (symbol? "a(b)"))
+
+
 ;; format
 
 (expect "[\"a\" \" \" [\"\"]]" (format "a !0 !1."))
@@ -128,7 +136,7 @@
 (expect "\"!x\"" (format "!x"))
 (expect "[\" \"]" (format "!0"))
 (expect "-12" (format "-12"))
-(expect "{\"a\": \"b\"}" (format (hash-bind "a" "b")))
+(expect "{a: \"b\"}" (format (hash-bind "a" "b")))
 (expect "{\" \": \"\"}" (format (hash-bind " " "")))
 
 ;; format-custom

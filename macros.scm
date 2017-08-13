@@ -353,16 +353,11 @@
 ;; (concat-for VAR VEC DELIM BODY)
 ;;--------------------------------
 
-(define concat-for-where
-  "(concat-for VAR VEC DELIM BODY)")
-
 ;; Similar to `(for ...)` but evaluates to the string concatenation of all
 ;; BODY values.
-;;
-(define (il-subst a b node)
-  (case node
-    ((IString value) (IString (subst a b value)))
-    (else (IBuiltin "subst" [ (IString a) (IString b) node ]))))
+
+(define concat-for-where
+  "(concat-for VAR VEC DELIM BODY)")
 
 (define (il-spc-encode node)
   (il-subst " " "|0" (il-subst "|" "|1" node)))

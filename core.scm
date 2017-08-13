@@ -312,6 +312,21 @@
 (declare (format value)
          &public)
 
+
+;; Return STR if it should be displayed as a symbol (versus a quoted
+;; string) in hashes.
+(define (symbol? str)
+  (and (findstring str (promote (word 1 str)))
+       (not (or (findstring "\n" str)
+                (findstring "(" str)
+                (findstring ")" str)
+                (findstring "[" str)
+                (findstring "]" str)
+                (findstring "," str)
+                (findstring ";" str)
+                (findstring "!=" str)))
+       str))
+
 ;; Convert h to hash syntax, or return nil if it is not a valid hash.
 ;;
 (define (format-hash h)
@@ -319,8 +334,11 @@
     (foreach e h
              (begin
                (define `key (hash-key e))
+               (define `key-fmt (or (symbol? key)
+                                    (format key)))
                (define `value (hash-value e))
-               [(concat (format key) ": " (format value))])))
+               [(concat key-fmt ": " (format value))])))
+
   (define `(hash-elem w ndx)
     (nth ndx (subst "!=" " " w)))
 
@@ -467,7 +485,7 @@
 ;; Compare only the formatted results.  This accommodates only minor
 ;; differences in the concrete layout that do not affect the meaning.  For
 ;; example, a record ending in a &list member (that is empty) will have a
-;; trailing space when constructed, but not after being retrieve from
+;; trailing space when constructed, but not after being retrieved from
 ;; another record (when stored as a trailing &list parameter).
 ;;
 (define `(fexpect a b)

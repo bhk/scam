@@ -84,7 +84,7 @@
 
     (cond
      ;; unterminated expr: append more text
-     ((is-error "( [") [text env])
+     ((is-error "( [ {") [text env])
 
      ;; no expressions found: start fresh at ">" prompt
      ((is-error ".") ["" env])

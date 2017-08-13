@@ -1,5 +1,7 @@
 TODO
 
+ * Rename hash to "dictionary", "hash-..." to "dict-...".
+
  * Allow varargs in macros:
       Maybe:  (ILocal "1+" ups)
       At macro expand time, evalutes to precisely-sized vector.
@@ -12,8 +14,6 @@ TODO
    &inline functions then only good for (global-name ...) or Make interop.
 
  * (let (([a b c] vec)) ...)  [always succeeds; no "else" condition]
-
- * Parse hash syntax
 
  * Record reflection.  What format-record needs:
 

@@ -10,7 +10,7 @@
 ;; IL Records
 ;; ----------
 ;;
-;; "IL" is an intermediate language, structured as a tree of vectors.  The
+;; "IL" is an intermediate language, structured as a tree of records.  The
 ;; first word of each vector describes its type.  IL constructs map closely
 ;; to GNU Make constructs.
 
@@ -258,6 +258,14 @@
 (define (il-promote node)
   &public
   (ICall "^u" [ node ]))
+
+
+;; NODE is IL; A and B are actual strings.
+(define (il-subst a b node)
+  &public
+  (case node
+    ((IString value) (IString (subst a b value)))
+    (else (IBuiltin "subst" [ (IString a) (IString b) node ]))))
 
 
 ;;--------------------------------------------------------------

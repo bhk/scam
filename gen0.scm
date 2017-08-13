@@ -752,6 +752,31 @@
 
 
 ;;--------------------------------
+;; dictionaries
+;;--------------------------------
+
+(define (c0-D env n pairs)
+  (define `il-pairs
+    (foreach
+     pair pairs
+     (define `key (hash-key pair))
+     (define `value (hash-value pair))
+     (define `key-node
+       (case key
+         ;;  {symbol: ...} is treated as {"symbol": ...}
+         ((PSymbol _ name)
+          (IString (demote name)))
+         (else
+          (il-subst "%" "!8" (il-demote (c0 key env))))))
+     (define `value-node
+       (il-demote (c0 value env)))
+
+     [(il-concat [ key-node (IString "!=") value-node ])]))
+
+  (il-concat (intersperse (IString " ") il-pairs)))
+
+
+;;--------------------------------
 ;; quasi-quoting
 ;;--------------------------------
 
@@ -843,6 +868,7 @@
     ((PString n value) (IString value))
     ((PList n subforms) (c0-L env n (first subforms) (rest subforms)
                               (resolve (first subforms) env) inblock))
+    ((PDict n pairs) (c0-D env n pairs))
     ((PQuote n subform) (IString subform))
     ((PQQuote n subform) (c0-qq env subform))
     ((PError n code) form)
