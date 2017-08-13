@@ -5,8 +5,8 @@ SCAM stands for "Scheme Compiler Atop Make", and it is all of the following:
  * A Lisp/Scheme dialect. Some notable characteristics are:
 
     - All values are immutable character strings.  A rich set of subordinate
-      data types are projected onto this set: numbers, vectors, dictionaries,
-      algebraic types, and first class (anonymous) functions.
+      data types are projected onto this set: numbers, vectors, associative
+      arrays, algebraic types, and first class (anonymous) functions.
 
     - SCAM combines lexical scoping and modularity.  Included modules
       inject symbols into the lexical scope of the including module.

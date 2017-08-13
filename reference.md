@@ -1,4 +1,4 @@
-# SCAM Reference
+# SCAM Language Reference
 
 ## Index
 
@@ -48,7 +48,7 @@ values of these top-level expressions are discarded.
 String literals are enclosed in double quote characters (`"`).
 
 The sequences `\n` and `\t` represent newline and tab. Use a backslash
-`\` to escape another blackslash or a double quote. String literals
+`\` to escape another backslash or a double quote. String literals
 *may* contain embedded (unquoted) newlines (except in the REPL).
 
     "abc"
@@ -303,9 +303,9 @@ In dictionaries, `!=` delimits word-encoded keys from values.
 
 ### Dictionaries
 
-Dictionaries in SCAM are analogous to "a-lists" in Lisp, "dictionaries" in
-Python, "tables" in Lua, "hashes" in Perl, and so on.  Each dictionary is a
-list of key-value pairs.
+Dictionaries are associative arrays, similar to "a-lists" in Lisp,
+"dictionaries" in Python, "hashes" in Perl, "tables" in Lua, and so on.
+Each dictionary is a list of key-value pairs.
 
 A number of functions are provided for working with dictionaries:
 
@@ -320,6 +320,8 @@ A number of functions are provided for working with dictionaries:
 
  - `(dict-compact DICT)` removes pairs from DICT that are preceded by
    another pair sharing the same KEY.
+
+ - `(dict-keys DICT)` returns a vector of all keys in DICT.
 
 An empty dictionary, `{}`, is equivalent to `nil`.
 
@@ -376,7 +378,7 @@ A pattern can be a (CONSTRUCTOR-NAME ARG...) where each ARG is a symbol.
 When the match is made, these symbols are bound to the corresponding members
 of the record when the BODY is evaluated.
 
-Another valid pattern is any symbol.  This kind of pattern always succeds,
+Another valid pattern is any symbol.  This kind of pattern always succeeds,
 and the symbol will be bound to the record value while its corresponding
 BODY is evaluated.
 
@@ -515,7 +517,7 @@ function definition or declaration:
     at: (*g* 1 2 3)
 
 In order to capture an arbitrary number of arguments in one variable, prefix
-the name of the last parameter with `...`.  The variable will evalute to a
+the name of the last parameter with `...`.  The variable will evaluate to a
 vector containing the rest of the arguments passed to the function.  For
 example:
 
@@ -531,7 +533,7 @@ value.
     [3 4]
 
 "Rest" parameters (`...NAME`) may appear only as the last of the formal
-parameter.  Optional parameters may not be followed by oher optional
+parameter.  Optional parameters may not be followed by other optional
 parameters or a rest parameter.
 
 Rest parameters may not be used with macros or inline functions.
@@ -1249,7 +1251,7 @@ from SCAM as a special form. For example:
     > (addsuffix ".c" "x")
     "x.c"
 
-When the balue of a builtin is requested, an equivalent function value is
+When the value of a builtin is requested, an equivalent function value is
 provided:
 
     > shell
