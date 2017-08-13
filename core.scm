@@ -342,7 +342,8 @@
     (nth ndx (subst "!=" " " w)))
 
   (if (findstring "!=" h)
-      (if (eq? h (foreach w h (dict-bind (dict-elem w 1) (dict-elem w 2))))
+      (if (eq? h (foreach w h
+                          {(dict-elem w 1): (dict-elem w 2)} ))
           (concat "{" (concat-vec pairs ", ") "}"))))
 
 

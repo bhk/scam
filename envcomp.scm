@@ -132,9 +132,7 @@
 (define (rank-after target subs candidates)
   (let ((ex (reduce-string target subs subchars))
         (cx (append-for c candidates
-                        (dict-bind
-                         (reduce-string c subs subchars)
-                         c)))
+                        {(reduce-string c subs subchars): c}))
         (size0 (bytes target)))
     (compile-cmp subs subchars)
     (compare-size "size" size0 (bytes ex))

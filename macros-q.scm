@@ -96,7 +96,8 @@
 
 (expect (c0-ser "(? f 1)")
         "(^t F,1)")
-(expect (c0-ser "(? m a)" (dict-bind "m" (EFunc NoGlobalName "." 1 nil)))
+(expect (c0-ser "(? m a)"
+                { m: (EFunc NoGlobalName "." 1 nil) })
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
@@ -135,11 +136,11 @@
 
 (expect (let&-env [ [ (PSymbol 0 "x") (PString 0 1) ]
                     [ (PSymbol 0 "y") (PSymbol 0 "Y") ] ]
-                  (dict-bind "Y" (EVar "yname" "x"))
+                  { Y: (EVar "yname" "x") }
                   ".")
-        (append (dict-bind "y" (EIL "." "-" (IVar "yname")))
-                (dict-bind "x" (EIL "." "-" (IString 1)))
-                (dict-bind "Y" (EVar "yname" "x"))))
+        { y: (EIL "." "-" (IVar "yname")),
+          x: (EIL "." "-" (IString 1)),
+          Y: (EVar "yname" "x") })
 
 (expect "1" (c0-ser "(let& ((a 1)) a)"))
 (expect "2" (c0-ser "(let& ((a 1) (b 2)) b)"))
@@ -194,7 +195,7 @@
 ;; general case
 (expect "(.subst |1,|,(.subst |0, ,(.subst  ,(.subst |,|1,{D}),(.foreach x,a b,(.subst  ,|0,(.subst |,|1,(^u {x})))))))"
         (c0-ser "(concat-for x \"a b\" d x)"
-            (dict-bind "d" (EVar "D" nil))))
+                { d: (EVar "D" nil) }))
 
 ;;--------------------------------
 ;; (cond (TEST BODY)...)
@@ -226,7 +227,7 @@
   (case out
     ((IEnv env il)
      (fexpect env
-              (xns (dict-bind "foo" (EXMacro "~foo" "x"))))
+              (xns { foo: (EXMacro "~foo" "x") }))
      (expect (il-ser il)
              (xns "(^fset ~foo,`{1})")))
     (else
@@ -237,7 +238,7 @@
  "(defmacro (foo a) a)"
  (lambda (env sil)
    (expect sil (xns "(^fset ~foo,`{1})"))
-   (expect env (xns (dict-bind "foo" (EXMacro "~foo" "x"))))))
+   (expect env (xns { foo: (EXMacro "~foo" "x") }))))
 
 
 ;;--------------------------------
@@ -250,7 +251,7 @@
  ((use-module
    (lambda (mod-name)
      (set *use-test* mod-name)
-     (dict-bind "name" (EXMacro "name" "i")))))
+     { name: (EXMacro "name" "i") })))
 
  (expect (c0-ser "(use \"x\" \"y\")")
          "!(PError 2 '\\'use\\' accepts 1 argument, not 2')")
@@ -260,7 +261,7 @@
  (p1-block-cc
   "(use \"MOD\")"
   (lambda (env sil)
-    (expect env (dict-bind "name" (EXMacro "name" "i")))
+    (expect env { name: (EXMacro "name" "i") })
     (expect sil "")
     (expect *use-test* "MOD"))))
 
@@ -338,9 +339,8 @@
                "W S"
                (IString 123)
                ".")
- (append
-  (dict-bind "a" (EIL "." "-" (IBuiltin "word" [ (IString 2) (IString 123) ])))
-  (dict-bind "b" (EIL "." "-" (ICall "^n" [ (IString 3) (IString 123) ])))))
+ { a: (EIL "." "-" (IBuiltin "word" [ (IString 2) (IString 123) ])),
+   b: (EIL "." "-" (ICall "^n" [ (IString 3) (IString 123) ])) })
 
 ;; single case
 (expect (c0-ser "(case v ((Ctor s w v) v))"

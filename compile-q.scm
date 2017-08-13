@@ -30,7 +30,8 @@
 
   (expect "" errors)
   (expect "$(call ^set,a,1)" exe)
-  (expect (dict-bind "a" (EVar "a" "p")) (word 1 exports)))
+  (expect { a: (EVar "a" "p") }
+          (word 1 exports)))
 
 
 (expect "a := 1\nb := 2\n"

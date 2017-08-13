@@ -39,13 +39,12 @@
 ;;
 (define default-env
   &public
-  (append (dict-bind "a" (EArg "1"))
-          (dict-bind "v" (EVar "V" "."))
-          (dict-bind "f" (EFunc "F" "." 2 nil))
-          ;; names that an extra promote/demote will corrupt...
-          (dict-bind "f!0!" (EFunc "F!0!" "." 2 nil))
-          (dict-bind "d!0!" (EVar "D!0!" "."))))
-
+  { a: (EArg "1"),
+    v: (EVar "V" "."),
+    f: (EFunc "F" "." 2 nil),
+    ;; names that an extra promote/demote will corrupt...
+    "f!0!": (EFunc "F!0!" "." 2 nil),
+    "d!0!": (EVar "D!0!" ".") })
 
 
 ;; Compile one or more forms to serialized IL.

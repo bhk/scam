@@ -659,8 +659,7 @@
             (else (IBuiltin "wordlist" [ ndx-node
                                         (IString 99999999)
                                         value-node])))))
-         (dict-bind (symbol-name arg)
-                    (EIL depth "-" arg-node)))))
+         { (symbol-name arg): (EIL depth "-" arg-node) })))
 
 
 ;; Compile a vector of (PATTERN BODY) cases

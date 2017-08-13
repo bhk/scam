@@ -405,8 +405,8 @@
   (foreach name (symbol-name sym)
            (if (filter "...%" name)
                ;; "...X" => bind "X";  "..." => bind "..."
-               (dict-bind (or (patsubst "...%" "%" name) name) rest-value)
-               (dict-bind (patsubst "?%" "%" name) single-value))))
+               { (or (patsubst "...%" "%" name) name): rest-value }
+               { (patsubst "?%" "%" name): single-value })))
 
 
 ;; Add local variables to environment.
@@ -437,7 +437,7 @@
   (define `(nth-rest-value n)
     (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString n) (IVar "^v")])))
 
-  (append (dict-bind LambdaMarkerKey (EMarker level))
+  (append { (or LambdaMarkerKey): (EMarker level) }
           ;; first 8 args = $1 ... $8
           (foreach n (indices (wordlist 1 8 args))
                    (lambda-arg (nth n args)

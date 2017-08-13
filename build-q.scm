@@ -4,10 +4,11 @@
 ;; traverse-graph
 
 (define nodemap
-  (dict-bind "a" "b c"
-  (dict-bind "b" "c d e"
-  (dict-bind "c" "f"
-  (dict-bind "d" "g")))))
+   { a: "b c",
+     a: "b c",
+     b: "c d e",
+     c: "f",
+     d: "g" })
 
 (expect "a c b f d e g"
         (traverse-graph "a c"
@@ -37,9 +38,9 @@
 ;;----------------------------------------------------------------
 
 (define `(scan sources rebundle is-boot mmap-in)
-  (scan-modules (append (dict-bind "odir" "out/")
-                        (dict-bind "rebundle" rebundle)
-                        (dict-bind "boot" is-boot))
+  (scan-modules { odir: "out/",
+                  rebundle: rebundle,
+                  boot: is-boot }
                 sources mmap-in))
 
 (define `(sexpect a b)

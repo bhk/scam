@@ -94,32 +94,23 @@
 
 (expect "x!=y a!=!." (dict-bind "x" "y" (dict-bind "a" "")))
 
-(expect "a % c" (dict-key (dict-bind "a % c" " d % ")))
-(expect " d % " (dict-value (dict-bind "a % c" " d % ")))
+(expect "a % c" (dict-key {"a % c": " d % "}))
+(expect " d % " (dict-value {"a % c": " d % "}))
 
-(expect "!0!=x" (dict-find " " (dict-bind " " "x")))
-(expect "x!=M" (dict-find "x" (dict-bind "x" "M" (dict-bind "x" "K"))))
+(expect "!0!=x" (dict-find " " {" ": "x"}))
+(expect "x!=M" (dict-find "x" {x: "M", x: "K"}))
 
-(expect " " (dict-get "" (dict-bind "a" "b" (dict-bind "" " " (dict-bind "x" "y")))))
-(expect "%" (dict-get "" (dict-bind "" "%") "default"))
-(expect "" (dict-get "%" (dict-bind "%" "") "default"))
-(expect "default" (dict-get "x" (dict-bind "" "") "default"))
-(expect "val1" (dict-get "x%x" (dict-bind "x%x" "val1" (dict-bind "x%x" "%"))))
+(expect " " (dict-get "" {a: "b", "": " ", x: "y"}))
+(expect "%" (dict-get "" {"": "%"} "default"))
+(expect "" (dict-get "%" {"%": ""} "default"))
+(expect "default" (dict-get "x" {"": ""} "default"))
+(expect "val1" (dict-get "x%x" {"x%x": "val1", "x%x": "%"}))
 
-(expect (append (dict-bind " " 1)
-                (dict-bind "b" 2)
-                (dict-bind "bb" 9))
-        (dict-compact (append (dict-bind " " 1)
-                              (dict-bind "b" 2)
-                              (dict-bind "b" 7)
-                              (dict-bind " " 3)
-                              (dict-bind "bb" 9))))
+(expect {" ":1, b:2, bb:9}
+        (dict-compact {" ":1, b:2, b:7, " ":3, bb:9}))
 
 (expect ["%" "!8" "a b" ""]
-        (dict-keys (append (dict-bind "%" "")
-                           (dict-bind "!8" "x")
-                           (dict-bind "a b" "%1")
-                           (dict-bind "" "x"))))
+        (dict-keys {"%": "", "!8": "x", "a b": "%1", "": "x"}))
 
 ;; symbol?
 
@@ -136,8 +127,8 @@
 (expect "\"!x\"" (format "!x"))
 (expect "[\" \"]" (format "!0"))
 (expect "-12" (format "-12"))
-(expect "{a: \"b\"}" (format (dict-bind "a" "b")))
-(expect "{\" \": \"\"}" (format (dict-bind " " "")))
+(expect "{a: \"b\"}" (format {a:"b"}))
+(expect "{\" \": \"\"}" (format {" ":""}))
 
 ;; format-custom
 
@@ -151,9 +142,9 @@
 
 (let-global
  ((^tags (append ^tags
-                 (dict-bind "!:A" ["CtorA" "W" "L"])
-                 (dict-bind "!:B" ["CtorB" "W" "S"])
-                 (dict-bind "!:V" ["Void"]))))
+                 { "!:A": ["CtorA" "W" "L"],
+                   "!:B": ["CtorB" "W" "S"],
+                   "!:V": ["Void"] })))
 
  (expect "(CtorA [\" \"] [\" \" 1 2 3])"
          (format "!:A !0 !0 1 2 3"))

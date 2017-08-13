@@ -549,8 +549,9 @@
             (error "Warning: must use --boot; bundles are unusable"))))
 
   ;; Scan dependencies for rt & ct, giving them no implicit deps.
-  (define `env1 (append (dict-bind "odir" (dir exe))
-                        (dict-bind "rebundle" rebundle)))
+  (define `env1
+    { odir: (dir exe),
+      rebundle: rebundle })
   ;; Boot modules do NOT implicitly depend on rt and ct.
   (define `env0 (dict-bind "boot" 1 env1))
 
