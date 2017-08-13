@@ -9,8 +9,8 @@
   (define `omap (nth 2 o))
 
   (expect ["a b" "c"] files)
-  (expect "x y z" (hash-get "arg" omap))
-  (expect "1" (hash-get "f" (omap))))
+  (expect "x y z" (dict-get "arg" omap))
+  (expect "1" (dict-get "f" (omap))))
 
 
 (let ((o (getopts ["--arg" "x y z" "a b" "-f" "c"]
@@ -25,5 +25,5 @@
   (define `files (nth 1 o))
   (define `omap (nth 2 o))
 
-  (expect "B" (hash-get "b" omap))
-  (expect nil (hash-get "a" omap)))
+  (expect "B" (dict-get "b" omap))
+  (expect nil (dict-get "a" omap)))

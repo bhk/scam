@@ -55,9 +55,9 @@
 ;; Environment Records
 ;; -------------------
 ;;
-;; The environment is a stack of bindings: a vector of hash entries with
-;; newer (lexically closer) bindings toward the beginning.  When used as a
-;; hash, it maps a symbol name to its in-scope *definition*.  Each
+;; The environment is a stack of bindings: a dictionary with newer
+;; (lexically closer) bindings toward the beginning.  When used as a
+;; dictionary, it maps a symbol name to its in-scope *definition*.  Each
 ;; definition is a vector in one of the following formats:
 ;;
 
@@ -170,9 +170,9 @@
 ;; A TAG is a string stored in the first word of a constructed record,
 ;; differentiating it from other records, and from vectors.  Each tag begins
 ;; with "!:", which cannot appear in any of SCAM's standard subordinate data
-;; types (vectors, hashes, numbers).  Record types are therefore disjoint
-;; from each other and from subordinate types.  (Although vectors and numbers
-;; are not disjoint from each other... 1 == [1] == [[1]].)
+;; types (vectors, dictionaries, numbers).  Record types are therefore
+;; disjoint from each other and from subordinate types.  (Although vectors
+;; and numbers are not disjoint from each other... 1 == [1] == [[1]].)
 ;;
 ;; Subsequent words in the record describe the members of the record.  An
 ;; ENCODING describes how arguments are encoded in words:
@@ -185,8 +185,8 @@
 ;;
 ;;    [CTORNAME ENCODING...]
 ;;
-;; Global variable `^tags` holds a hash that maps TAGs to PATTERNs for all
-;; constructors whose definitions have been executed.
+;; Global variable `^tags` holds a dictionary that maps TAGs to PATTERNs for
+;; all constructors whose definitions have been executed.
 ;;
 ;;--------------------------------------------------------------
 
@@ -334,7 +334,7 @@
 ;;
 (define (current-depth env)
   &public
-  (let ((defn (hash-get LambdaMarkerKey env)))
+  (let ((defn (dict-get LambdaMarkerKey env)))
     (case defn
       ((EMarker level) level))))
 
@@ -468,7 +468,7 @@
 
 (define (import-binding key defn)
   (if (EDefn.is-public? defn)
-      (hash-bind key (EDefn.set-scope defn "i"))))
+      (dict-bind key (EDefn.set-scope defn "i"))))
 
 
 (declare (get-module-env mod all))
@@ -488,7 +488,7 @@
       ;; Add only public symbols.
       (strip-vec
        (foreach b env
-                (import-binding (hash-key b) (hash-value b))))))
+                (import-binding (dict-key b) (dict-value b))))))
 
 
 ;; Discard imported bindings.  Leave other public and private bindings.
@@ -498,7 +498,7 @@
 (define `(env-export env)
   (strip-vec
    (foreach b env
-            (if (not (filter "i" (EDefn.scope (hash-value b))))
+            (if (not (filter "i" (EDefn.scope (dict-value b))))
                 b))))
 
 
@@ -530,7 +530,7 @@
 
 
 (define *dummy-env*
-  (hash-bind "" (EIL "" "-" NoOp)))
+  (dict-bind "" (EIL "" "-" NoOp)))
 
 
 ;; Import symbols from FILENAME.  ALL means return all original environment
@@ -588,7 +588,7 @@
         (let-global ((SCAM_MODS *compile-mods*))
           (call "^require" mod)
           (or (strip-vec (foreach e imports
-                                  (case (hash-value e)
+                                  (case (dict-value e)
                                     ((EXMacro _ _) e))))
               *dummy-env*)))))
 
@@ -613,16 +613,16 @@
 
 (define base-env
   (append
-   (foreach b builtins-1 (hash-bind b (EBuiltin b "i" 1)))
-   (foreach b builtins-2 (hash-bind b (EBuiltin b "i" 2)))
-   (foreach b builtins-3 (hash-bind b (EBuiltin (patsubst ".%" "%" b) "i" 3)))
-   (foreach b "and or call" (hash-bind b (EBuiltin b "i" "%")))
-   (hash-bind "if" (EBuiltin "if" "i" "2 or 3"))
+   (foreach b builtins-1 (dict-bind b (EBuiltin b "i" 1)))
+   (foreach b builtins-2 (dict-bind b (EBuiltin b "i" 2)))
+   (foreach b builtins-3 (dict-bind b (EBuiltin (patsubst ".%" "%" b) "i" 3)))
+   (foreach b "and or call" (dict-bind b (EBuiltin b "i" "%")))
+   (dict-bind "if" (EBuiltin "if" "i" "2 or 3"))
 
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
    (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
-            (hash-bind v (EVar v "i")))))
+            (dict-bind v (EVar v "i")))))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.
@@ -630,12 +630,12 @@
 ;;
 (define (resolve form env)
   &public
-  (define `(find-name name hash)
-    ;; equivalent to `(hash-find (symbol-name form) hash)` but quicker
-    (filter (concat (subst "!" "!1" name) "!=%") hash))
+  (define `(find-name name dict)
+    ;; equivalent to `(dict-find (symbol-name form) dict)` but quicker
+    (filter (concat (subst "!" "!1" name) "!=%") dict))
 
   (case form
-    ((PSymbol n name) (hash-value (or (find-name name env)
+    ((PSymbol n name) (dict-value (or (find-name name env)
                                       (find-name name base-env))))
     (else "-")))
 

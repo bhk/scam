@@ -53,7 +53,7 @@ Options:
   (let ((o (getopts argv opt-names opt-err)))
     (define `files (nth 1 o))
     (define `opts (nth 2 o))
-    (define `(opt name) (hash-get name opts))
+    (define `(opt name) (dict-get name opts))
 
     (define `(exec argv)
       (define `user-main (gen-global-name "main" nil))

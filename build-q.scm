@@ -4,14 +4,14 @@
 ;; traverse-graph
 
 (define nodemap
-  (hash-bind "a" "b c"
-  (hash-bind "b" "c d e"
-  (hash-bind "c" "f"
-  (hash-bind "d" "g")))))
+  (dict-bind "a" "b c"
+  (dict-bind "b" "c d e"
+  (dict-bind "c" "f"
+  (dict-bind "d" "g")))))
 
 (expect "a c b f d e g"
         (traverse-graph "a c"
-                        (lambda (node) (hash-get node nodemap))
+                        (lambda (node) (dict-get node nodemap))
                         (lambda (node) (concat "{" node "}"))))
 
 
@@ -37,9 +37,9 @@
 ;;----------------------------------------------------------------
 
 (define `(scan sources rebundle is-boot mmap-in)
-  (scan-modules (append (hash-bind "odir" "out/")
-                        (hash-bind "rebundle" rebundle)
-                        (hash-bind "boot" is-boot))
+  (scan-modules (append (dict-bind "odir" "out/")
+                        (dict-bind "rebundle" rebundle)
+                        (dict-bind "boot" is-boot))
                 sources mmap-in))
 
 (define `(sexpect a b)

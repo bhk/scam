@@ -57,9 +57,9 @@
 
 
 (define (describe-env env all)
-  (foreach w (reverse (hash-compact env))
-           (let ((name (hash-key w))
-                 (desc (describe-binding (hash-key w) (hash-value w) all)))
+  (foreach w (reverse (dict-compact env))
+           (let ((name (dict-key w))
+                 (desc (describe-binding (dict-key w) (dict-value w) all)))
              (if desc
                  (printf "  %s : %s" name desc)))))
 

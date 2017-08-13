@@ -141,12 +141,12 @@
 ;; dictionaries
 (fexpect (POut 2 (PDict 1 []))     (p1 "{}"))
 (fexpect (POut 4 (PDict 2 []))     (p1 " { } "))
-(fexpect (POut 9 (PDict 1 (hash-bind (PSymbol 3 "a") (PString 7 1))))
+(fexpect (POut 9 (PDict 1 (dict-bind (PSymbol 3 "a") (PString 7 1))))
          (p1 "{ a : 1 } "))
-(fexpect (POut 9 (PDict 1 (hash-bind (PSymbol 3 "a") (PString 7 1))))
+(fexpect (POut 9 (PDict 1 (dict-bind (PSymbol 3 "a") (PString 7 1))))
          (p1 "{ a : 1,} "))
-(fexpect (POut 11 (PDict 1 (append (hash-bind (PSymbol 2 "a") (PString 4 1))
-                                   (hash-bind (PSymbol 8 "b") (PString 10 2)))))
+(fexpect (POut 11 (PDict 1 (append (dict-bind (PSymbol 2 "a") (PString 4 1))
+                                   (dict-bind (PSymbol 8 "b") (PString 10 2)))))
          (p1 "{a:1 , b:2} "))
 
 (fexpect (POut 2 (PError 1 "{") ) (p1 "{"))

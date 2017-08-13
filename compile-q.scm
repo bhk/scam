@@ -18,7 +18,7 @@
 
   (expect "" errors)
   (expect "a := 1\n" exe)
-  (expect (hash-get "a" env-out)
+  (expect (dict-get "a" env-out)
           (EVar "a" "p")))
 
 
@@ -30,7 +30,7 @@
 
   (expect "" errors)
   (expect "$(call ^set,a,1)" exe)
-  (expect (hash-bind "a" (EVar "a" "p")) (word 1 exports)))
+  (expect (dict-bind "a" (EVar "a" "p")) (word 1 exports)))
 
 
 (expect "a := 1\nb := 2\n"

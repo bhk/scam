@@ -111,9 +111,9 @@
                                (ILocal 1 1)  ;; capture
                                (ILocal 2 0)])))
 (expect (c0-ser "(f 1 a)"
-                (append (hash-bind "f" (EFunc NoGlobalName "." 2 inln-f))
-                        (hash-bind "a" (EArg ".7"))
-                        (hash-bind LambdaMarkerKey (EMarker ".."))))
+                (append (dict-bind "f" (EFunc NoGlobalName "." 2 inln-f))
+                        (dict-bind "a" (EArg ".7"))
+                        (dict-bind LambdaMarkerKey (EMarker ".."))))
         "(.subst 1,{1^1},{7^1})")
 
 (define `inln-f-2
@@ -122,8 +122,8 @@
                                  (ILocal 1 1)     ;; macro arg
                                  ]))))
 (expect (c0-ser "(f 1)"
-                (append (hash-bind "f" (EFunc NoGlobalName "." 1 inln-f-2))
-                        (hash-bind LambdaMarkerKey (EMarker ".."))))
+                (append (dict-bind "f" (EFunc NoGlobalName "." 1 inln-f-2))
+                        (dict-bind LambdaMarkerKey (EMarker ".."))))
         "`(.word {2},1)")
 
 
@@ -138,11 +138,11 @@
 
  ;; Expand compound macro with IWhere record.
  (define `inln-f-where (cons "." (IWhere "FM:99")))
- (expect (c0-ser "(f)" (hash-bind "f" (EFunc NoGlobalName "." 0 inln-f-where)))
+ (expect (c0-ser "(f)" (dict-bind "f" (EFunc NoGlobalName "." 0 inln-f-where)))
          "!(IWhere 'F2:1')")
 
  ;; Expand symbol macro with IWhere record.
- (expect (c0-ser "S" (hash-bind "S" (EIL "" "p" (IWhere "FM:9"))))
+ (expect (c0-ser "S" (dict-bind "S" (EIL "" "p" (IWhere "FM:9"))))
          "!(IWhere 'F2:1')"))
 
 
@@ -161,12 +161,12 @@
         "!:D0 1 2")
 
 (expect (il-ser
-         (c0-ctor (hash-bind "Ctor" (ERecord "S L" "." "!:T0"))
+         (c0-ctor (dict-bind "Ctor" (ERecord "S L" "." "!:T0"))
                   (PSymbol 0 "Ctor")
                   "S L"))
         "`!:T0 (^d {1}) {2}")
 
-(expect (c0-ser "C" (hash-bind "C" (ERecord "S W L" "." "!:T0")))
+(expect (c0-ser "C" (dict-bind "C" (ERecord "S W L" "." "!:T0")))
         "`!:T0 (^d {1}) {2} {3}")
 
 
@@ -193,7 +193,7 @@
   (define (test-xmacro form)
     (PString 1 "hi"))
   (define `test-xm-env
-    (hash-bind "var" (EXMacro (global-name test-xmacro) "i")))
+    (dict-bind "var" (EXMacro (global-name test-xmacro) "i")))
 
   (expect (c0-ser "(var 7)" test-xm-env)
           "hi"))
@@ -204,32 +204,32 @@
 (expect (lambda-env [(PSymbol 1 "b")]
                     (lambda-env [(PSymbol 1 "a")]
                                 nil))
-        (append (hash-bind LambdaMarkerKey (EMarker ".."))
-                (hash-bind "b" (EArg "..1"))
-                (hash-bind LambdaMarkerKey (EMarker "."))
-                (hash-bind "a" (EArg ".1"))))
+        (append (dict-bind LambdaMarkerKey (EMarker ".."))
+                (dict-bind "b" (EArg "..1"))
+                (dict-bind LambdaMarkerKey (EMarker "."))
+                (dict-bind "a" (EArg ".1"))))
 
 (let ((env (lambda-env (pN "a b c e f g h i j k") nil)))
   (expect (word 1 env)
-          (hash-bind LambdaMarkerKey (EMarker ".")))
-  (expect (hash-get "a" env)
+          (dict-bind LambdaMarkerKey (EMarker ".")))
+  (expect (dict-get "a" env)
           (EArg ".1"))
-  (expect (hash-get "i" env)
+  (expect (dict-get "i" env)
           (EArg ".8"))
-  (expect (hash-get "j" env)
+  (expect (dict-get "j" env)
           (EIL "." "-" (IBuiltin "call" [(IString "^n") (IString 1) (ILocal 9 0)])))
-  (expect (hash-get "k" env)
+  (expect (dict-get "k" env)
           (EIL "." "-" (IBuiltin "call" [(IString "^n") (IString 2) (ILocal 9 0)]))))
 
-(expect (hash-get "..." (lambda-env (pN "a b ...") nil))
+(expect (dict-get "..." (lambda-env (pN "a b ...") nil))
         (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")])))
-(expect (hash-get "r" (lambda-env (pN "a b ...r") nil))
+(expect (dict-get "r" (lambda-env (pN "a b ...r") nil))
         (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString 3) (IVar "^v")])))
-(expect (hash-get "..." (lambda-env (pN "a b c d e f g h i ...") nil))
+(expect (dict-get "..." (lambda-env (pN "a b c d e f g h i ...") nil))
         (EIL "." "-" (IBuiltin "wordlist" [(IString 2) (IString 999999) (ILocal 9 0)])))
-(expect (hash-get "..." (lambda-env (pN "a b c d e f g h ...") nil))
+(expect (dict-get "..." (lambda-env (pN "a b c d e f g h ...") nil))
         (EArg ".9"))
-(expect (hash-get "r" (lambda-env (pN "a b c d e f g h ...r") nil))
+(expect (dict-get "r" (lambda-env (pN "a b c d e f g h ...r") nil))
         (EArg ".9"))
 
 ;; local variable referencing arg 9
@@ -252,7 +252,7 @@
     (cons "." (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
                                  (ILocal 1 1)  ;; capture
                                  (ILocal 2 0)])))
-  (expect (il-ser (c0-macro (hash-bind LambdaMarkerKey (EMarker ".."))
+  (expect (il-ser (c0-macro (dict-bind LambdaMarkerKey (EMarker ".."))
                             inln))
           "`(.subst {1},{1^2},{2})"))
 
@@ -276,10 +276,10 @@
 ;;    ((c1 (c0 ["`" AST]))) -> AST
 
 (define (cqq text)
-  (c0-ser text (append (hash-bind "sym" (EIL "" "-" (IString "SYM")))
-                       (hash-bind "var" (EVar "VAR" "."))
+  (c0-ser text (append (dict-bind "sym" (EIL "" "-" (IString "SYM")))
+                       (dict-bind "var" (EVar "VAR" "."))
                        ;; args = [`a `b]
-                       (hash-bind "args"
+                       (dict-bind "args"
                                   (EIL "" "-" (IString [(PSymbol 1 "a")
                                                         (PSymbol 2 "b")]))))))
 
@@ -336,18 +336,18 @@
 ;; declare & define
 ;;
 
-(define env0 (hash-bind "x" "V x"))
+(define env0 (dict-bind "x" "V x"))
 
 (expect (text-to-env "(declare var)")
-        (hash-bind "var" (EVar (gen-global-name "var" nil) "p")))
+        (dict-bind "var" (EVar (gen-global-name "var" nil) "p")))
 (expect (text-to-env "(declare var &public)")
-        (hash-bind "var" (EVar (gen-global-name "var" nil) "x")))
+        (dict-bind "var" (EVar (gen-global-name "var" nil) "x")))
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "p" 2 nil)))
+        (dict-bind "fn" (EFunc (gen-global-name "fn" nil) "p" 2 nil)))
 (expect (text-to-env "(declare (fn a b) &public)")
-        (hash-bind "fn" (EFunc (gen-global-name "fn" nil) "x" 2 nil)))
+        (dict-bind "fn" (EFunc (gen-global-name "fn" nil) "x" 2 nil)))
 
 ;; declare errors
 (expect (c0-ser "(declare)")
@@ -362,7 +362,7 @@
 (p1-block-cc
  "(define x 1) (info x)"
  (lambda (env sil)
-   (expect env (hash-bind "x" (EVar (xns "~x") "p")))
+   (expect env (dict-bind "x" (EVar (xns "~x") "p")))
    (expect sil (xns "(IBlock (^set ~x,1),(.info {~x}))"))))
 
 
@@ -371,23 +371,23 @@
         (xns "(^fset ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
-        (xns (hash-bind "f" (EFunc "~f" "p" 1 nil))))
+        (xns (dict-bind "f" (EFunc "~f" "p" 1 nil))))
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (words a))")
-        (hash-bind "M" (EFunc NoGlobalName "p" 1
+        (dict-bind "M" (EFunc NoGlobalName "p" 1
                               (cons "" (IBuiltin "words" [(ILocal 1 0)])))))
 
 (expect (text-to-env "(define `(M a) &public (words a))")
-        (hash-bind "M" (EFunc NoGlobalName "x" 1
+        (dict-bind "M" (EFunc NoGlobalName "x" 1
                               (cons "" (IBuiltin "words" [(ILocal 1 0)])))))
 
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)" env0)
-        (hash-bind "I" (EIL "" "p" (IString 7)) env0))
+        (dict-bind "I" (EIL "" "p" (IString 7)) env0))
 (expect (text-to-env "(define `I &public 7)" env0)
-        (hash-bind "I" (EIL "" "x" (IString 7)) env0))
+        (dict-bind "I" (EIL "" "x" (IString 7)) env0))
 
 ;; (define ...) errors
 
@@ -450,12 +450,12 @@
 (let ((env (text-to-env (concat "(define (f a b) &inline (join a b))"
                                 "(define (g x) &inline (info x))")
                         nil 1)))
-  (expect (hash-get "g" env)
+  (expect (dict-get "g" env)
           (EFunc (gen-global-name "g" nil)
                  "p"
                  1
                  (cons "" (IBuiltin "info" [ (ILocal 1 0) ]))))
-  (fexpect (hash-get "f" env)
+  (fexpect (dict-get "f" env)
            (EFunc (gen-global-name "f" nil)
                   "p"
                   2
@@ -497,7 +497,7 @@
          "(^require M)")
 
  (expect (text-to-env "(require \"M\")" nil 1)
-         (hash-bind "x" (EVar (gen-global-name "x" nil) "i")))
+         (dict-bind "x" (EVar (gen-global-name "x" nil) "i")))
 
  (expect (c0-ser "(require \"D/M\" \"xyz\")")
          "!(PError 0 'too many arguments to require')")
@@ -505,8 +505,8 @@
  ;; (require MOD &private)
 
  (expect (text-to-env "(require \"M\" &private)" nil 1)
-         (append (hash-bind "x" (EVar (gen-global-name "x" nil) "x"))
-                 (hash-bind "X" (EVar (gen-global-name "X" nil) "p"))))
+         (append (dict-bind "x" (EVar (gen-global-name "x" nil) "x"))
+                 (dict-bind "X" (EVar (gen-global-name "X" nil) "p"))))
 
  ;; Verify that IMPORTED inline functions & macros are expanded in their
  ;; original environment (read from their MIN files' exports) so they can

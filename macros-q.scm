@@ -96,7 +96,7 @@
 
 (expect (c0-ser "(? f 1)")
         "(^t F,1)")
-(expect (c0-ser "(? m a)" (hash-bind "m" (EFunc NoGlobalName "." 1 nil)))
+(expect (c0-ser "(? m a)" (dict-bind "m" (EFunc NoGlobalName "." 1 nil)))
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
@@ -135,11 +135,11 @@
 
 (expect (let&-env [ [ (PSymbol 0 "x") (PString 0 1) ]
                     [ (PSymbol 0 "y") (PSymbol 0 "Y") ] ]
-                  (hash-bind "Y" (EVar "yname" "x"))
+                  (dict-bind "Y" (EVar "yname" "x"))
                   ".")
-        (append (hash-bind "y" (EIL "." "-" (IVar "yname")))
-                (hash-bind "x" (EIL "." "-" (IString 1)))
-                (hash-bind "Y" (EVar "yname" "x"))))
+        (append (dict-bind "y" (EIL "." "-" (IVar "yname")))
+                (dict-bind "x" (EIL "." "-" (IString 1)))
+                (dict-bind "Y" (EVar "yname" "x"))))
 
 (expect "1" (c0-ser "(let& ((a 1)) a)"))
 (expect "2" (c0-ser "(let& ((a 1) (b 2)) b)"))
@@ -194,7 +194,7 @@
 ;; general case
 (expect "(.subst |1,|,(.subst |0, ,(.subst  ,(.subst |,|1,{D}),(.foreach x,a b,(.subst  ,|0,(.subst |,|1,(^u {x})))))))"
         (c0-ser "(concat-for x \"a b\" d x)"
-            (hash-bind "d" (EVar "D" nil))))
+            (dict-bind "d" (EVar "D" nil))))
 
 ;;--------------------------------
 ;; (cond (TEST BODY)...)
@@ -226,7 +226,7 @@
   (case out
     ((IEnv env il)
      (fexpect env
-              (xns (hash-bind "foo" (EXMacro "~foo" "x"))))
+              (xns (dict-bind "foo" (EXMacro "~foo" "x"))))
      (expect (il-ser il)
              (xns "(^fset ~foo,`{1})")))
     (else
@@ -237,7 +237,7 @@
  "(defmacro (foo a) a)"
  (lambda (env sil)
    (expect sil (xns "(^fset ~foo,`{1})"))
-   (expect env (xns (hash-bind "foo" (EXMacro "~foo" "x"))))))
+   (expect env (xns (dict-bind "foo" (EXMacro "~foo" "x"))))))
 
 
 ;;--------------------------------
@@ -250,7 +250,7 @@
  ((use-module
    (lambda (mod-name)
      (set *use-test* mod-name)
-     (hash-bind "name" (EXMacro "name" "i")))))
+     (dict-bind "name" (EXMacro "name" "i")))))
 
  (expect (c0-ser "(use \"x\" \"y\")")
          "!(PError 2 '\\'use\\' accepts 1 argument, not 2')")
@@ -260,7 +260,7 @@
  (p1-block-cc
   "(use \"MOD\")"
   (lambda (env sil)
-    (expect env (hash-bind "name" (EXMacro "name" "i")))
+    (expect env (dict-bind "name" (EXMacro "name" "i")))
     (expect sil "")
     (expect *use-test* "MOD"))))
 
@@ -316,7 +316,7 @@
 (p1-block-cc
  "(data T (CA a &word b &list c) (CB))"
  (lambda (env sil)
-   (expect (hash-get "CA" env)
+   (expect (dict-get "CA" env)
            (ERecord "S W L" "p" "!:T0"))
    ;; ^add-tags is &global
    (expect sil
@@ -325,7 +325,7 @@
 (p1-block-cc
  "(data T &public (CA a &word b &list c))"
  (lambda (env sil)
-   (expect (hash-get "CA" env)
+   (expect (dict-get "CA" env)
            (ERecord "S W L" "x" "!:T0"))))
 
 
@@ -339,18 +339,18 @@
                (IString 123)
                ".")
  (append
-  (hash-bind "a" (EIL "." "-" (IBuiltin "word" [ (IString 2) (IString 123) ])))
-  (hash-bind "b" (EIL "." "-" (ICall "^n" [ (IString 3) (IString 123) ])))))
+  (dict-bind "a" (EIL "." "-" (IBuiltin "word" [ (IString 2) (IString 123) ])))
+  (dict-bind "b" (EIL "." "-" (ICall "^n" [ (IString 3) (IString 123) ])))))
 
 ;; single case
 (expect (c0-ser "(case v ((Ctor s w v) v))"
-               (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
+               (dict-bind "Ctor" (ERecord "S W L" "." "!:T0")
                           default-env))
         "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}))")
 
 ;; multiple cases
 (expect (c0-ser "(case v ((Ctor s w l) l) (a a))"
-                (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
+                (dict-bind "Ctor" (ERecord "S W L" "." "!:T0")
                           default-env))
         "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}),{V})")
 
@@ -364,6 +364,6 @@
 
 ;; wrong number of arguments
 (expect (c0-ser "(case v ((Ctor s l) l))"
-                (hash-bind "Ctor" (ERecord "S W L" "." "!:T0")
+                (dict-bind "Ctor" (ERecord "S W L" "." "!:T0")
                            default-env))
         "!(PError 8 '\\'Ctor\\' accepts 3 arguments, not 2')")

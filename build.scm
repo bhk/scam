@@ -307,8 +307,8 @@
 (define (scan-modules env sources ?mmap)
   (define `file (first sources))
   (define `others (rest sources))
-  (define `env.odir (hash-get "odir" env))
-  (define `env.rebundle (hash-get "rebundle" env))
+  (define `env.odir (dict-get "odir" env))
+  (define `env.rebundle (dict-get "rebundle" env))
 
   (define `modname (modnames-of file))
   (define `source (if-exists (filter "%.scm" file)))
@@ -335,7 +335,7 @@
           (object object)
           (deps (scan-deps source object)))
 
-      (define `env.boot (hash-get "boot" env))
+      (define `env.boot (dict-get "boot" env))
 
       (define `requires
         (append (nth 1 deps)
@@ -549,10 +549,10 @@
             (error "Warning: must use --boot; bundles are unusable"))))
 
   ;; Scan dependencies for rt & ct, giving them no implicit deps.
-  (define `env1 (append (hash-bind "odir" (dir exe))
-                        (hash-bind "rebundle" rebundle)))
+  (define `env1 (append (dict-bind "odir" (dir exe))
+                        (dict-bind "rebundle" rebundle)))
   ;; Boot modules do NOT implicitly depend on rt and ct.
-  (define `env0 (hash-bind "boot" 1 env1))
+  (define `env0 (dict-bind "boot" 1 env1))
 
   (define `mm0 (scan-modules env0 [(boot-file rt-mod)
                                    (boot-file ct-mod)]))
@@ -581,9 +581,9 @@
             (rule "/exe" nil ["/dir" exe] nil)
             (rule "/dir" nil [] [(lambda () (concat "mkdir -p " (dir exe)))])
             (exe-rules exe files
-                       (hash-get "no-trace" opts)
-                       (hash-get "boot" opts)
-                       (hash-get "symbols" opts))))
+                       (dict-get "no-trace" opts)
+                       (dict-get "boot" opts)
+                       (dict-get "symbols" opts))))
 
   ;; Set SCAM_DEBUG=B to see rules.
   (eval (dbg-print "B" "Eval: %s" rules)))

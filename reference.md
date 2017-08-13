@@ -8,7 +8,6 @@
    * [Numbers](#numbers)
    * [Booleans](#booleans)
    * [Vectors](#vectors)
-   * [Vectors](#vectors)
    * [Dictionaries](#dictionaries)
    * [Records](#records)
    * [Functions](#functions)
@@ -121,6 +120,19 @@ Vectors represent sequences of values.  [Vector operations]
 (#vectors) such as `nth`, `first`, and `rest` can be used extract
 values from vectors.
 
+### Dictionary Constructors
+
+Dictionary constructors contain a list of key-value pairs between `{` and
+`}`.  A comma separates each pair, and optionally terminates the list.
+
+    {a:1}
+    { a: 1, b: 3, "a b c": "d e f" }
+    {}
+
+When a symbol is given as a key, the name of the symbol (rather than the
+value of the symbol) is used as the key value.  So, for example, `{a:1}` and
+`{"a":1}` are equivalent.
+
 ### Syntax Quoting
 
 A "single quote" or "backtick" character can precede an expression,
@@ -177,10 +189,8 @@ of any use to you.
 Some of these subordinate types are overlapping sets.  For example, `1` is
 equivalent to `[1]` (and `[[1]]` and so on).  But mostly they are disjoint.
 For example, each data record can be distinguished from any other data
-record, and from a hash map, and from a vector.  Non-empty hash maps and
-vectors are also disjoint.  (The empty string, also called `nil`, also
-represents an empty hash, an empty vector, and false.)  This allows SCAM to
-display values in a more meaningful way.
+record, vector, or dictionary.  Non-empty vectors and dictionaries also
+disjoint.  This allows SCAM to display values in a more meaningful way.
 
 
 ### Numbers
@@ -285,22 +295,38 @@ and ASCII-derived encodings (such as Unicode).
 Note that in a word-encoded value -- and therefore, in a vector -- `!` is
 always followed by one of four characters.  Other two-character sequences
 can be combined with word-encoded values to designate separators or markers.
-In SCAM hash maps, `!=` delimits word-encoded keys from values.
+In dictionaries, `!=` delimits word-encoded keys from values.
 
 
-### Hashes
+### Dictionaries
 
-Hashes in SCAM are lists of zero or more (key, value) pairs.  They are
-similar in purpose to "a-lists" in Lisp, "dictionaries" in Python, "tables"
-in Lua, "hashes" in Perl, and so on.  While they are not necessarily
-implemented in terms of "hash tables", lookup is quite fast due to the way
-make's builtins are used.  Pairs may be combined using `append`.  `hash-get`
-retrieves a value, given a key and a hash.
+Dictionaries in SCAM are analogous to "a-lists" in Lisp, "dictionaries" in
+Python, "tables" in Lua, "hashes" in Perl, and so on.  Each dictionary is a
+list of key-value pairs.
 
-    > (append (hash-bind "a" 1)
-    +         (hash-bind "b" [1 2 3]))
-    {a: 1, b: [1 2 3]}
-    > (hash-get "b" *1)
+A number of functions are provided for working with dictionaries:
+
+ - `(dict-get KEY DICT)` retrieves the VALUE element of the first pair
+   matching KEY.
+
+ - `(dict-find KEY DICT)` returns the first pair matching KEY.
+
+ - `(dict-key PAIR)` extract the "key" element from PAIR.
+
+ - `(dict-value PAIR)` extract the "value" element from PAIR.
+
+ - `(dict-compact DICT)` removes pairs from DICT that are preceded by
+   another pair sharing the same KEY.
+
+An empty dictionary, `{}`, is equivalent to `nil`.
+
+A dictionary with one item is equivalent to a single pair.  Pairs can be
+combined using `append`.
+
+    > (append { a: nil }
+    +         { b: (range 1 3) } )
+    {a: "", b: [1 2 3]}
+    > (dict-get "b" *1)
     [1 2 3]
 
 
@@ -392,8 +418,9 @@ Note that the last pattern in the above `case` statement treats any value
 not matching the previous patterns as a number.  Here, we could (and perhaps
 should) have used a `(Num n)` constructor to distinguish numbers from
 operations, but it is worth noting that record values will not be confused
-with ordinary numbers.  They are also distinguishedfrom vectors, hash maps,
-and other record types.  In fact, we could add a case for `Triangle`:
+with ordinary numbers.  They are also distinguished from vectors,
+dictionaries, and other record types.  In fact, we could add a case for
+`Triangle`:
 
     ...
     ((Triangle b h) (/ (* (calc b) (calc h)) 2))

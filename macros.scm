@@ -268,7 +268,7 @@
   (define `p-binding
     (case (first p)
       ((PSymbol _ name)
-       (hash-bind name (EIL depth "-" (c0 (nth 2 p) env))))))
+       (dict-bind name (EIL depth "-" (c0 (nth 2 p) env))))))
 
   (if pairs
       (let&-env (rest pairs) (append p-binding env) depth)
@@ -306,7 +306,7 @@
      (define `var-defn
        (EIL "" "-" (var-xform (IVar name))))
      (define `body-node
-       (body-xform (c0-block body (hash-bind name var-defn env))))
+       (body-xform (c0-block body (dict-bind name var-defn env))))
      (if body
          ;; list, delim, and body ok
          (IBuiltin "foreach" [ (IString name) (c0 list env) body-node ])
@@ -470,7 +470,7 @@
         ;; compile as a function
         (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
                         env))
-              (new-env (hash-bind name
+              (new-env (dict-bind name
                                   (EXMacro (gen-global-name name env) "x")
                                   env)))
           (IEnv new-env node)))
@@ -620,14 +620,14 @@
          (append-for ty types
                      (case ty
                        ((DataType tag name encodings argnames)
-                        (hash-bind tag (append name encodings))))))
+                        (dict-bind tag (append name encodings))))))
 
        ;; Add record descriptions to the environment
        (define `bindings
          (append-for ty types
                      (case ty
                        ((DataType tag name encodings argnames)
-                        (hash-bind name (ERecord encodings scope tag))))))
+                        (dict-bind name (ERecord encodings scope tag))))))
 
        ;; Add tag/pattern bindings to ^tags
        (define `node
@@ -659,7 +659,7 @@
             (else (IBuiltin "wordlist" [ ndx-node
                                         (IString 99999999)
                                         value-node])))))
-         (hash-bind (symbol-name arg)
+         (dict-bind (symbol-name arg)
                     (EIL depth "-" arg-node)))))
 
 
@@ -677,7 +677,7 @@
         (case pattern
           ;; (SYM BODY)
           ((PSymbol n var-name)
-           (c0-block body (hash-bind var-name
+           (c0-block body (dict-bind var-name
                                      (EIL (current-depth env) "-" value-node)
                                      env)))
 

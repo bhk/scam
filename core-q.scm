@@ -90,36 +90,36 @@
 (expect "a b c!1 d!1 e!1" (append "" "" "" "a" "b" "" "" "c!1" "d!1" "e!1"))
 
 
-;; hash functions
+;; dictionary functions
 
-(expect "x!=y a!=!." (hash-bind "x" "y" (hash-bind "a" "")))
+(expect "x!=y a!=!." (dict-bind "x" "y" (dict-bind "a" "")))
 
-(expect "a % c" (hash-key (hash-bind "a % c" " d % ")))
-(expect " d % " (hash-value (hash-bind "a % c" " d % ")))
+(expect "a % c" (dict-key (dict-bind "a % c" " d % ")))
+(expect " d % " (dict-value (dict-bind "a % c" " d % ")))
 
-(expect "!0!=x" (hash-find " " (hash-bind " " "x")))
-(expect "x!=M" (hash-find "x" (hash-bind "x" "M" (hash-bind "x" "K"))))
+(expect "!0!=x" (dict-find " " (dict-bind " " "x")))
+(expect "x!=M" (dict-find "x" (dict-bind "x" "M" (dict-bind "x" "K"))))
 
-(expect " " (hash-get "" (hash-bind "a" "b" (hash-bind "" " " (hash-bind "x" "y")))))
-(expect "%" (hash-get "" (hash-bind "" "%") "default"))
-(expect "" (hash-get "%" (hash-bind "%" "") "default"))
-(expect "default" (hash-get "x" (hash-bind "" "") "default"))
-(expect "val1" (hash-get "x%x" (hash-bind "x%x" "val1" (hash-bind "x%x" "%"))))
+(expect " " (dict-get "" (dict-bind "a" "b" (dict-bind "" " " (dict-bind "x" "y")))))
+(expect "%" (dict-get "" (dict-bind "" "%") "default"))
+(expect "" (dict-get "%" (dict-bind "%" "") "default"))
+(expect "default" (dict-get "x" (dict-bind "" "") "default"))
+(expect "val1" (dict-get "x%x" (dict-bind "x%x" "val1" (dict-bind "x%x" "%"))))
 
-(expect (append (hash-bind " " 1)
-                (hash-bind "b" 2)
-                (hash-bind "bb" 9))
-        (hash-compact (append (hash-bind " " 1)
-                              (hash-bind "b" 2)
-                              (hash-bind "b" 7)
-                              (hash-bind " " 3)
-                              (hash-bind "bb" 9))))
+(expect (append (dict-bind " " 1)
+                (dict-bind "b" 2)
+                (dict-bind "bb" 9))
+        (dict-compact (append (dict-bind " " 1)
+                              (dict-bind "b" 2)
+                              (dict-bind "b" 7)
+                              (dict-bind " " 3)
+                              (dict-bind "bb" 9))))
 
 (expect ["%" "!8" "a b" ""]
-        (hash-keys (append (hash-bind "%" "")
-                           (hash-bind "!8" "x")
-                           (hash-bind "a b" "%1")
-                           (hash-bind "" "x"))))
+        (dict-keys (append (dict-bind "%" "")
+                           (dict-bind "!8" "x")
+                           (dict-bind "a b" "%1")
+                           (dict-bind "" "x"))))
 
 ;; symbol?
 
@@ -136,8 +136,8 @@
 (expect "\"!x\"" (format "!x"))
 (expect "[\" \"]" (format "!0"))
 (expect "-12" (format "-12"))
-(expect "{a: \"b\"}" (format (hash-bind "a" "b")))
-(expect "{\" \": \"\"}" (format (hash-bind " " "")))
+(expect "{a: \"b\"}" (format (dict-bind "a" "b")))
+(expect "{\" \": \"\"}" (format (dict-bind " " "")))
 
 ;; format-custom
 
@@ -151,9 +151,9 @@
 
 (let-global
  ((^tags (append ^tags
-                 (hash-bind "!:A" ["CtorA" "W" "L"])
-                 (hash-bind "!:B" ["CtorB" "W" "S"])
-                 (hash-bind "!:V" ["Void"]))))
+                 (dict-bind "!:A" ["CtorA" "W" "L"])
+                 (dict-bind "!:B" ["CtorB" "W" "S"])
+                 (dict-bind "!:V" ["Void"]))))
 
  (expect "(CtorA [\" \"] [\" \" 1 2 3])"
          (format "!:A !0 !0 1 2 3"))

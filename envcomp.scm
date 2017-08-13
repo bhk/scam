@@ -63,7 +63,7 @@
        (printf "%s %s \"%s\""
                (nth 1 e)
                (nth 2 e)
-               (hash-get (nth 3 e) map (nth 3 e)))))
+               (dict-get (nth 3 e) map (nth 3 e)))))
 
 
 ;; Compress target by replacing each string in SUBS with a string in CHARS.
@@ -132,13 +132,13 @@
 (define (rank-after target subs candidates)
   (let ((ex (reduce-string target subs subchars))
         (cx (append-for c candidates
-                        (hash-bind
+                        (dict-bind
                          (reduce-string c subs subchars)
                          c)))
         (size0 (bytes target)))
     (compile-cmp subs subchars)
     (compare-size "size" size0 (bytes ex))
-    (rank-freqs (hash-keys cx) ex cx)
+    (rank-freqs (dict-keys cx) ex cx)
     ex))
 
 
@@ -148,7 +148,7 @@
 (define (strip-imports v)
   (strip-vec
   (foreach w v
-           (if (not (filter "i%" (EDefn.scope (hash-value w))))
+           (if (not (filter "i%" (EDefn.scope (dict-value w))))
                w))))
 
 

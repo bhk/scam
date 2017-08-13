@@ -348,7 +348,7 @@
         ((PError n desc)
          (if (eq? desc "}")
              (POut n (PError n "v?")))))
-      (parse-dict-4 subj start-pos (append pairs (hash-bind key form))
+      (parse-dict-4 subj start-pos (append pairs (dict-bind key form))
                     (parse-skip subj (1+ pos)))))
 
 ;; expect "," or "}"

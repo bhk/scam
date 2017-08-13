@@ -230,7 +230,7 @@
 
 
 ;; concatenate one or more (potentially empty) vectors, word lists, or
-;; hashes.
+;; dictionaries.
 ;;
 (define (append ?a ?b ?c ?d ?e ?f ?g ?h ...others)
   &public
@@ -238,73 +238,72 @@
                      (if others (promote others)))))
 
 
-;;---- Hash operations ----
+;;---- Dictionary operations ----
 ;;
-;; A `hash` is a word list of key/value pairs.  Keys and values are
+;; A `dictionary` is a word list of key/value pairs.  Keys and values are
 ;; encoded and delimited with "!=".
 ;;
-;; (hash-bind KEY VALUE [HASH])
-;;     Bind KEY to VALUE, prepending it to HASH (if given).
+;; (dict-bind KEY VALUE [DICT])
+;;     Bind KEY to VALUE, prepending it to DICT (if given).
 ;;
-;; (hash-get KEY HASH DEFAULT)
-;;     Return the value bound to KEY.  If more than one entry matches KEY,
-;;     only the first is returned.  If no entry is found, DEFAULT is
+;; (dict-get KEY DICT DEFAULT)
+;;     Return the value bound to KEY.  If more than one pair matches KEY,
+;;     only the first is returned.  If no pair is found, DEFAULT is
 ;;     returned.
 ;;
-;; (hash-find KEY HASH)
-;;     Return the first hash entry matching KEY.  Unlike hash-get, this
-;;     indicates whether a match was found (every hash word will be
-;;     non-nil).
+;; (dict-find KEY DICT)
+;;     Return the first pair matching KEY.  Unlike dict-get, this
+;;     indicates whether a match was found (every pair is non-nil).
 ;;
-;; (hash-key ENTRY)
-;;     Return the key portion of a hash word.
+;; (dict-key PAIR)
+;;     Return the key portion of a pair.
 ;;
-;; (hash-value ENTRY)
-;;     Return the value portion of a hash word.
+;; (dict-value PAIR)
+;;     Return the value portion of a pair.
 ;;
-;; (hash-compact HASH)
-;;     Remove entries in a hash that are superseded by earlier entries that
+;; (dict-compact DICT)
+;;     Remove pairs in a dictionary that are preceded by pairs that
 ;;     share the same KEY.
 ;;
-;; (hash-keys HASH)
-;;     Return a vector of KEYS from hash H.
+;; (dict-keys DICT)
+;;     Return a vector of KEYS from DICT.
 ;;
 
-(define (hash-bind key val ?hash)
+(define (dict-bind key val ?dict)
   &public
   (concat (subst "%" "!8" [key]) "!=" [val]
-          (if hash " ")
-          hash))
+          (if dict " ")
+          dict))
 
-(define (hash-key entry)
+(define (dict-key pair)
   &public
   &inline
-  (promote (subst "!8" "%" (word 1 (subst "!=" " " entry)))))
+  (promote (subst "!8" "%" (word 1 (subst "!=" " " pair)))))
 
-(define (hash-value entry)
+(define (dict-value pair)
   &public
   &inline
-  (nth 2 (subst "!=" " " entry)))
+  (nth 2 (subst "!=" " " pair)))
 
-(define (hash-find key hash)
+(define (dict-find key dict)
   &public
-  (word 1 (filter (concat (subst "%" "!8" [key]) "!=%") hash)))
+  (word 1 (filter (concat (subst "%" "!8" [key]) "!=%") dict)))
 
-(define (hash-get key hash ?default)
+(define (dict-get key dict ?default)
   &public
-  (nth 2 (concat (subst "!=" " " (hash-find key hash))
+  (nth 2 (concat (subst "!=" " " (dict-find key dict))
                  (if default (concat " x " (demote default))))))
 
-(define (hash-compact hash ?result)
+(define (dict-compact dict ?result)
   &public
-  (if (not hash)
+  (if (not dict)
       result
-      (let& ((entry (word 1 hash))
-             (prefix (word 1 (subst "!=" "!=% " entry))))
-        (append entry
-                (hash-compact (filter-out prefix (rest hash)))))))
+      (let& ((pair (word 1 dict))
+             (prefix (word 1 (subst "!=" "!=% " pair))))
+        (append pair
+                (dict-compact (filter-out prefix (rest dict)))))))
 
-(define (hash-keys h)
+(define (dict-keys h)
   &public
   (foreach e h
            (subst "!8" "%" (word 1 (subst "!=" " " e)))))
@@ -314,7 +313,7 @@
 
 
 ;; Return STR if it should be displayed as a symbol (versus a quoted
-;; string) in hashes.
+;; string) in a dictionary.
 (define (symbol? str)
   (and (findstring str (promote (word 1 str)))
        (not (or (findstring "\n" str)
@@ -327,23 +326,23 @@
                 (findstring "!=" str)))
        str))
 
-;; Convert h to hash syntax, or return nil if it is not a valid hash.
+;; Convert h to dictionary syntax, or return nil.
 ;;
-(define (format-hash h)
+(define (format-dict h)
   (define `pairs
     (foreach e h
              (begin
-               (define `key (hash-key e))
+               (define `key (dict-key e))
                (define `key-fmt (or (symbol? key)
                                     (format key)))
-               (define `value (hash-value e))
+               (define `value (dict-value e))
                [(concat key-fmt ": " (format value))])))
 
-  (define `(hash-elem w ndx)
+  (define `(dict-elem w ndx)
     (nth ndx (subst "!=" " " w)))
 
   (if (findstring "!=" h)
-      (if (eq? h (foreach w h (hash-bind (hash-elem w 1) (hash-elem w 2))))
+      (if (eq? h (foreach w h (dict-bind (dict-elem w 1) (dict-elem w 2))))
           (concat "{" (concat-vec pairs ", ") "}"))))
 
 
@@ -373,7 +372,7 @@
   (define `tag (word 1 record))
 
   (if (filter "!:%" tag)
-      (let ((pattern (hash-get tag ^tags))
+      (let ((pattern (dict-get tag ^tags))
             (values (rest record))
             (tag tag)
             (record record))
@@ -414,7 +413,7 @@
 
   (or (format-custom str *format-funcs*)
       (if (findstring "!" str)
-          (or (format-hash str)
+          (or (format-dict str)
               (format-record str)))
       (if (or (findstring "!" str)
               (and (findstring " " str)

@@ -1,6 +1,6 @@
 TODO
 
- * Rename hash to "dictionary", "hash-..." to "dict-...".
+ * Parse "=symbol" form.
 
  * Allow varargs in macros:
       Maybe:  (ILocal "1+" ups)

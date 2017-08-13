@@ -405,8 +405,8 @@
   (foreach name (symbol-name sym)
            (if (filter "...%" name)
                ;; "...X" => bind "X";  "..." => bind "..."
-               (hash-bind (or (patsubst "...%" "%" name) name) rest-value)
-               (hash-bind (patsubst "?%" "%" name) single-value))))
+               (dict-bind (or (patsubst "...%" "%" name) name) rest-value)
+               (dict-bind (patsubst "?%" "%" name) single-value))))
 
 
 ;; Add local variables to environment.
@@ -437,7 +437,7 @@
   (define `(nth-rest-value n)
     (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString n) (IVar "^v")])))
 
-  (append (hash-bind LambdaMarkerKey (EMarker level))
+  (append (dict-bind LambdaMarkerKey (EMarker level))
           ;; first 8 args = $1 ... $8
           (foreach n (indices (wordlist 1 8 args))
                    (lambda-arg (nth n args)
@@ -548,7 +548,7 @@
             (env env))
 
         (define `env-out
-          (hash-bind name (if is-macro
+          (dict-bind name (if is-macro
                               (EIL (current-depth env) scope value)
                               (EVar gname scope))
                      env))
@@ -587,7 +587,7 @@
   (define `env-in
     (if is-macro
         env
-        (hash-bind name (EFunc gname scope argc nil) env)))
+        (dict-bind name (EFunc gname scope argc nil) env)))
 
   (or (c0-check-body n (first body) is-define)
 
@@ -615,7 +615,7 @@
                              ((ILambda body) body))))))
 
         (or (il-error-node macro-il)
-            (IEnv (hash-bind name defn env)
+            (IEnv (dict-bind name defn env)
                   (and is-define
                        (not is-macro)
                        (ICall "^fset" [(IString gname) macro-il])))))))
@@ -759,8 +759,8 @@
   (define `il-pairs
     (foreach
      pair pairs
-     (define `key (hash-key pair))
-     (define `value (hash-value pair))
+     (define `key (dict-key pair))
+     (define `value (dict-value pair))
      (define `key-node
        (case key
          ;;  {symbol: ...} is treated as {"symbol": ...}

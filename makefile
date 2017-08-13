@@ -42,7 +42,6 @@ C = .out/c
 
 expect = grep $1 $2 > /dev/null && echo $2 ok || (echo '$2:1: looking for '"$1" && false)
 
-
 .PHONY: a b c aok bok cok promote install clean
 
 cok:
