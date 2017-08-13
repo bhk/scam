@@ -268,7 +268,7 @@
   (define `p-binding
     (case (first p)
       ((PSymbol _ name)
-       (dict-bind name (EIL depth "-" (c0 (nth 2 p) env))))))
+       { =name: (EIL depth "-" (c0 (nth 2 p) env)) })))
 
   (if pairs
       (let&-env (rest pairs) (append p-binding env) depth)
@@ -306,7 +306,7 @@
      (define `var-defn
        (EIL "" "-" (var-xform (IVar name))))
      (define `body-node
-       (body-xform (c0-block body (dict-bind name var-defn env))))
+       (body-xform (c0-block body (append { =name: var-defn } env))))
      (if body
          ;; list, delim, and body ok
          (IBuiltin "foreach" [ (IString name) (c0 list env) body-node ])
@@ -470,9 +470,9 @@
         ;; compile as a function
         (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
                         env))
-              (new-env (dict-bind name
-                                  (EXMacro (gen-global-name name env) "x")
-                                  env)))
+              (new-env (append
+                        { =name: (EXMacro (gen-global-name name env) "x") }
+                        env)))
           (IEnv new-env node)))
        (else (err-expected "S" m-name sym "NAME" defmacro-where))))
     (else (err-expected "L" what sym "(NAME ARG...)" defmacro-where))))
@@ -620,14 +620,14 @@
          (append-for ty types
                      (case ty
                        ((DataType tag name encodings argnames)
-                        (dict-bind tag (append name encodings))))))
+                        { =tag: (append name encodings) }))))
 
        ;; Add record descriptions to the environment
        (define `bindings
          (append-for ty types
                      (case ty
                        ((DataType tag name encodings argnames)
-                        (dict-bind name (ERecord encodings scope tag))))))
+                        { =name: (ERecord encodings scope tag) }))))
 
        ;; Add tag/pattern bindings to ^tags
        (define `node
@@ -676,9 +676,9 @@
         (case pattern
           ;; (SYM BODY)
           ((PSymbol n var-name)
-           (c0-block body (dict-bind var-name
-                                     (EIL (current-depth env) "-" value-node)
-                                     env)))
+           (c0-block body (append { =var-name:
+                                    (EIL (current-depth env) "-" value-node) }
+                                  env)))
 
           ;; ((CTOR ARG...) BODY)
           ((PList n syms)

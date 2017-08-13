@@ -344,14 +344,14 @@
 
 ;; single case
 (expect (c0-ser "(case v ((Ctor s w v) v))"
-               (dict-bind "Ctor" (ERecord "S W L" "." "!:T0")
-                          default-env))
+               (append { Ctor: (ERecord "S W L" "." "!:T0") }
+                       default-env))
         "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}))")
 
 ;; multiple cases
 (expect (c0-ser "(case v ((Ctor s w l) l) (a a))"
-                (dict-bind "Ctor" (ERecord "S W L" "." "!:T0")
-                          default-env))
+                (append { Ctor: (ERecord "S W L" "." "!:T0") }
+                        default-env))
         "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}),{V})")
 
 ;; non-ctor in pattern
@@ -364,6 +364,6 @@
 
 ;; wrong number of arguments
 (expect (c0-ser "(case v ((Ctor s l) l))"
-                (dict-bind "Ctor" (ERecord "S W L" "." "!:T0")
-                           default-env))
+                (append { Ctor: (ERecord "S W L" "." "!:T0") }
+                        default-env))
         "!(PError 8 '\\'Ctor\\' accepts 3 arguments, not 2')")

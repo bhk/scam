@@ -36,7 +36,8 @@
     (getopts-loop opts0 opts1 optsN err a f m))
 
   (define `(add-value value)
-    (dict-bind (patsubst "-%" "%" (patsubst "-%" "%" opt)) value ovalues))
+    (append { (patsubst "-%" "%" (patsubst "-%" "%" opt)): value }
+            ovalues))
 
   (cond
    ;; done?

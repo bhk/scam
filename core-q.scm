@@ -92,8 +92,6 @@
 
 ;; dictionary functions
 
-(expect "x!=y a!=!." (dict-bind "x" "y" (dict-bind "a" "")))
-
 (expect "a % c" (dict-key {"a % c": " d % "}))
 (expect " d % " (dict-value {"a % c": " d % "}))
 

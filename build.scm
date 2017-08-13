@@ -553,7 +553,7 @@
     { odir: (dir exe),
       rebundle: rebundle })
   ;; Boot modules do NOT implicitly depend on rt and ct.
-  (define `env0 (dict-bind "boot" 1 env1))
+  (define `env0 (append {boot: 1} env1))
 
   (define `mm0 (scan-modules env0 [(boot-file rt-mod)
                                    (boot-file ct-mod)]))

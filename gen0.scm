@@ -548,10 +548,10 @@
             (env env))
 
         (define `env-out
-          (dict-bind name (if is-macro
-                              (EIL (current-depth env) scope value)
-                              (EVar gname scope))
-                     env))
+          (append { =name: (if is-macro
+                               (EIL (current-depth env) scope value)
+                               (EVar gname scope)) }
+                  env))
 
         (or (il-error-node value)
             (IEnv env-out
@@ -587,7 +587,7 @@
   (define `env-in
     (if is-macro
         env
-        (dict-bind name (EFunc gname scope argc nil) env)))
+        (append { =name: (EFunc gname scope argc nil) } env)))
 
   (or (c0-check-body n (first body) is-define)
 
@@ -615,7 +615,7 @@
                              ((ILambda body) body))))))
 
         (or (il-error-node macro-il)
-            (IEnv (dict-bind name defn env)
+            (IEnv (append {=name: defn} env)
                   (and is-define
                        (not is-macro)
                        (ICall "^fset" [(IString gname) macro-il])))))))

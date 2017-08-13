@@ -243,9 +243,6 @@
 ;; A `dictionary` is a word list of key/value pairs.  Keys and values are
 ;; encoded and delimited with "!=".
 ;;
-;; (dict-bind KEY VALUE [DICT])
-;;     Bind KEY to VALUE, prepending it to DICT (if given).
-;;
 ;; (dict-get KEY DICT DEFAULT)
 ;;     Return the value bound to KEY.  If more than one pair matches KEY,
 ;;     only the first is returned.  If no pair is found, DEFAULT is
@@ -268,12 +265,6 @@
 ;; (dict-keys DICT)
 ;;     Return a vector of KEYS from DICT.
 ;;
-
-(define (dict-bind key val ?dict)
-  &public
-  (concat (subst "%" "!8" [key]) "!=" [val]
-          (if dict " ")
-          dict))
 
 (define (dict-key pair)
   &public
