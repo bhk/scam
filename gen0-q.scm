@@ -114,7 +114,7 @@
 (expect (c0-ser "(f 1 a)"
                 { f: (EFunc NoGlobalName "." 2 inln-f),
                   a: (EArg ".7"),
-                  (or LambdaMarkerKey): (EMarker "..") })
+                  =LambdaMarkerKey: (EMarker "..") })
         "(.subst 1,{1^1},{7^1})")
 
 (define `inln-f-2
@@ -124,7 +124,7 @@
                                  ]))))
 (expect (c0-ser "(f 1)"
                  { f: (EFunc NoGlobalName "." 1 inln-f-2),
-                   (or LambdaMarkerKey): (EMarker "..") })
+                   =LambdaMarkerKey: (EMarker "..") })
         "`(.word {2},1)")
 
 
@@ -205,14 +205,14 @@
 (expect (lambda-env [(PSymbol 1 "b")]
                     (lambda-env [(PSymbol 1 "a")]
                                 nil))
-        (append { (or LambdaMarkerKey): (EMarker ".."),
+        (append { =LambdaMarkerKey: (EMarker ".."),
                   b: (EArg "..1"),
-                  (or LambdaMarkerKey): (EMarker "."),
+                  =LambdaMarkerKey: (EMarker "."),
                   a: (EArg ".1") }))
 
 (let ((env (lambda-env (pN "a b c e f g h i j k") nil)))
   (expect (word 1 env)
-          { (or LambdaMarkerKey): (EMarker ".")})
+          { =LambdaMarkerKey: (EMarker ".")})
   (expect (dict-get "a" env)
           (EArg ".1"))
   (expect (dict-get "i" env)
@@ -253,7 +253,7 @@
     (cons "." (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
                                  (ILocal 1 1)  ;; capture
                                  (ILocal 2 0)])))
-  (expect (il-ser (c0-macro { (or LambdaMarkerKey): (EMarker "..") }
+  (expect (il-ser (c0-macro { =LambdaMarkerKey: (EMarker "..") }
                             inln))
           "`(.subst {1},{1^2},{2})"))
 

@@ -437,7 +437,7 @@
   (define `(nth-rest-value n)
     (EIL "" "-" (IBuiltin "foreach" [(IString "N") (IString n) (IVar "^v")])))
 
-  (append { (or LambdaMarkerKey): (EMarker level) }
+  (append { =LambdaMarkerKey: (EMarker level) }
           ;; first 8 args = $1 ... $8
           (foreach n (indices (wordlist 1 8 args))
                    (lambda-arg (nth n args)

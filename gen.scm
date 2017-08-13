@@ -468,7 +468,7 @@
 
 (define (import-binding key defn)
   (if (EDefn.is-public? defn)
-      {(or key): (EDefn.set-scope defn "i")}))
+      {=key: (EDefn.set-scope defn "i")}))
 
 
 (declare (get-module-env mod all))
@@ -614,19 +614,19 @@
 (define base-env
   (append
    (foreach b builtins-1
-            { (or b): (EBuiltin b "i" 1) })
+            { =b: (EBuiltin b "i" 1) })
    (foreach b builtins-2
-            { (or b): (EBuiltin b "i" 2) })
+            { =b: (EBuiltin b "i" 2) })
    (foreach b builtins-3
-            { (or b): (EBuiltin (patsubst ".%" "%" b) "i" 3)})
+            { =b: (EBuiltin (patsubst ".%" "%" b) "i" 3)})
    (foreach b "and or call"
-            { (or b): (EBuiltin b "i" "%") })
+            { =b: (EBuiltin b "i" "%") })
    {if: (EBuiltin "if" "i" "2 or 3")}
 
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
    (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
-            { (or v): (EVar v "i") })))
+            { =v: (EVar v "i") })))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.
