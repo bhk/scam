@@ -1,7 +1,5 @@
 ;; TODO:
-;;  - Fix: Sign mismatch in fp+
-;;  - fp-
-;;  - division
+;;  - sub, divide
 ;;  - Accept (emit?) "e+XX"
 ;;  - Projectively extended real number line:  q/0 == Infinity
 ;;  - benchmark add/subtract
@@ -20,28 +18,19 @@
 ;; Various encodings of numbers are used by this module:
 ;;
 ;; U: This encoding represents non-negative integers in base 10, using one
-;;    word per digit in little-endian form.  Each word consists of a "."
+;;    word per digit in little-endian form.  Each word consists of a ":"
 ;;    followed by 0-9 "i" characters:
 ;;
-;;      ".i . .ii"  =>  201
-;;      ". . ."     =>  000
-;;
-;; UN: This variation on U encoding admits negative integers using a 10's
-;;    complement form: the last (and most significant) "digit" is ".-"
-;;    representing -1 in that place (-1, -10, -100, etc.).  All digits of
-;;    lower significance constitute a non-negative number to be added the to
-;;    the negative value.
-;;
-;;      ". . .-"     =>  -100
-;;      ".i .ii .-"  =>  -79
+;;       ":i : :ii"  =>  201
+;;       ": : :"     =>  000
 ;;
 ;; F: This encoding represents a floating point number as three values: "EXP
 ;;    SIGN MAN". EXP is the exponent as a decimal integer.  SIGN is "+" or
 ;;    "-". MAN is the absolute value of the mantissa, U-encoded.  The
 ;;    numeric value is given by: MAN * 10^EXP * (SIGN=="-" ? -1 : 1)
 ;;
-;;      "0 - .ii . .iii"     ==>  -302
-;;      "-10 + .iii .ii .i"  ==>  1.23e-8
+;;       "0 - :ii : :iii"     ==>  -302
+;;       "-10 + :iii :ii :i"  ==>  1.23e-8
 ;;
 ;; N: Number: The format accepted and returned by public functions.
 ;;
@@ -97,48 +86,46 @@
 ;; U-encode N, a non-negative decimal integer.
 (define (u-enc n)
   (reverse
-   (subst "." " *"
-          "9" "8i" "8" "7i" "7" "6i" "6" "5i" "5" "4i" "4" "3i"
-          "3" "2i" "2" "1i" "1" "0i" "0" " ." n)))
+   (subst "9" "8i" "8" "7i" "7" "6i" "6" "5i" "5" "4i" "4" "3i"
+          "3" "2i" "2" "1i" "1" "0i" "0" " :" n)))
 
 (define (u-dec u)
-  (subst " " "" "*" "."
+  (subst " " ""
          (reverse
-          (or (subst "." "0" "0i" "1" "1i" "2" "2i" "3" "3i" "4" "4i" "5"
+          (or (subst ":" "0" "0i" "1" "1i" "2" "2i" "3" "3i" "4" "4i" "5"
                      "5i" "6" "6i" "7" "7i" "8" "8i" "9" u)))))
 
 
 ;; Remove extraneous most-significant zeros from U-encoded numbers.
 ;; trim MSB zeroes
 (define (u-norm u)
-  (strip (subst "." " ." (butlast (subst " " ""  "i." "i ."
-                                         (concat u "."))))))
+  (strip (subst ":" " :" (butlast (subst " " ""  "i:" "i :"
+                                         (concat u ":"))))))
 
 ;; Convert a U-encoded value to a non-negative decimal integer,
 ;; normalized (without extraneous significant 0's).
 ;;
 (define (u-dec-norm u)
-  (or (subst "." "0" "0i" "1" "1i" "2" "2i" "3" "3i" "4" "4i" "5"
-             "5i" "6" "6i" "7" "7i" "8" "8i" "9" " " "" "*" "."
-             (rest (subst " " "" ".i" " .i" (concat "." (reverse u)))))
+  (or (subst ":" "0" "0i" "1" "1i" "2" "2i" "3" "3i" "4" "4i" "5"
+             "5i" "6" "6i" "7" "7i" "8" "8i" "9" " " "" "*" ":"
+             (rest (subst " " "" ":i" " :i" (concat ":" (reverse u)))))
       0))
 
 
-;; Decimal points: If there is a decimal point, u-enc preserves it as "*",
-;; and u-dec converts "*" characters to ".".  Arithmetic functions do not
-;; recognize decimal points; they are only present in (otherwise) U-encoded
-;; strings when used by f-enc and f-dec.
+;; Decimal points: If there is a decimal point, u-enc preserves it.
+;; Arithmetic functions do not recognize decimal points; they are only
+;; present in (otherwise) U-encoded strings when used by f-enc and f-dec.
 
 ;; Return the number of digits "below" the decimal point ("to the right of"
 ;; in ordinary decimal notation).
 ;;
 (define `(u-find-point u)
-  (if (findstring "*" u)
-      (words (subst "_" " " (word 1 (subst " " "_" "*" "_ *" u))))
+  (if (findstring "." u)
+      (words (subst "_" " " (word 1 (subst " " "_" "." "_ ." u))))
       0))
 
 (expect 0 (u-find-point (u-enc "123")))
-(expect 2 (u-find-point (u-enc "1.23")))
+(expect 2 (u-find-point (u-enc "1 .23")))
 
 
 ;; Insert a decimal point "above" EXP digits, extending U as necessary.  In
@@ -146,13 +133,13 @@
 ;;
 (define `(u-add-point u exp)
   ;; Construct U-encoded 0.0000 (with EXP trailing 0's)
-  (define `zpz (concat (nwords (abs exp) ". . .") " *."))
-  (subst ".." "." "*" "* " (join zpz u)))
+  (define `zpz (concat (nwords (abs exp) ": : :") " .:"))
+  (subst "::" ":" "." ". " (join zpz u)))
 
 
 ;; Count number of consecutive least-significant (trailing) zeroes in U.
 (define (u-ctz u)
-  (words (subst "_" " " (word 1 (concat "_" (subst " " "_" ".i" " " u))))))
+  (words (subst "_" " " (word 1 (concat "_" (subst " " "_" ":i" " " u))))))
 
 (expect 0 (u-ctz (u-enc "123")))
 (expect 1 (u-ctz (u-enc "120")))
@@ -162,32 +149,32 @@
 ;; For digits greater than 9, propagate values to the next higher digit,
 ;; *IF* there is a "next" digit.
 (define (u-carry n)
-  (while (lambda (x) (findstring "iiiiiiiiii ." x))
-         (lambda (x) (subst "iiiiiiiiii ." " .i" x))
+  (while (lambda (x) (findstring "iiiiiiiiii :" x))
+         (lambda (x) (subst "iiiiiiiiii :" " :i" x))
          n))
 
 
 ;; Add two U-encoded values.  Add a most-significant zero to accommodate
 ;; carry.
 (define (u+ a b)
-  (u-carry (concat (subst "i." "i" ".." "." (join a b)) " .")))
+  (u-carry (concat (subst "i:" "i" "::" ":" (join a b)) " :")))
 
    (define `(i-u+ a b) (u-dec-norm (u+ (u-enc a) (u-enc b))))
    (expect 5 (i-u+ 2 3))
    (expect 198 (i-u+ 99 99))
 
 (define (u* a b)
-  (u+ (subst "i" (subst "." "" (firstword a)) b)  ;; "big" carry (4,2,1)
+  (u+ (subst "i" (subst ":" "" (firstword a)) b)  ;; "big" carry (4,2,1)
       (if (word 2 a)
-          (u* (rest a) (concat ". " b)))))
+          (u* (rest a) (concat ": " b)))))
 
    (define `(i-u* a b) (u-dec-norm (u* (u-enc a) (u-enc b))))
    (expect 6 (i-u* 2 3))
    (expect 998001 (i-u* 999 999))
 
 
-(define (u+1 a)
-  (u-carry (join (or a ".") "i")))
+;;(define (u+1 a)
+;;  (u-carry (join (or a ":") "i")))
 
 
 ;; Compare two unsigned encoded numbers, returning:
@@ -201,20 +188,20 @@
           (if (findstring (concat (word 1 a) "i") (word 1 b)) 2))))
 
 (define (u-extend u digits)
-  (subst ".." "." (join (nwords digits ". . .") u)))
+  (subst "::" ":" (join (nwords digits ": : :") u)))
 
   ;; test
-  (expect ". . ." (u-extend "." 3))
+  (expect ": : :" (u-extend ":" 3))
 
 (define (u-negate u)
   (join
-   (foreach w u (concat "." (subst w "" ".iiiiiiiii")))
+   (foreach w u (concat ":" (subst w "" ":iiiiiiiii")))
    "i"))
 
   ;; test
-  (expect ".iiiiiiiiii" (u-negate "."))
-  (expect ".i" (u-negate ".iiiiiiiii"))
-  (expect ".iiiiiiiii .iiiiiiiii ." (u-negate ".i . .iiiiiiiii"))
+  (expect ":iiiiiiiiii" (u-negate ":"))
+  (expect ":i" (u-negate ":iiiiiiiii"))
+  (expect ":iiiiiiiii :iiiiiiiii :" (u-negate ":i : :iiiiiiiii"))
 
 
 ;;----------------------------------------------------------------
@@ -297,17 +284,17 @@
 (define (f-enc n)
   (let ((sgn (if (filter "-%" n) "-"))
         (exp (or (word 2 (subst "e" "e " n)) 0))
-        (lhs (u-enc (word 1 (subst "e" " " "-" "" n)))))
+        (lhs (u-enc (subst "." " ." (word 1 (subst "e" " " "-" "" n))))))
     (append (i- exp (u-find-point lhs))
             (or sgn "+")
-            (strip (subst "*" "" lhs)))))
+            (strip (subst "." "" lhs)))))
 
 
-(expect "2 + .ii"  (f-enc "2e2"))
-(expect "0 + . . .ii"  (f-enc "200"))
-(expect "-2 - .i" (f-enc "-1e-2"))
-(expect "2 + .iii .ii .i" (f-enc "1.23e4"))
-(expect "-1 + .iii .ii .i" (f-enc "1.23e1"))
+(expect "2 + :ii"  (f-enc "2e2"))
+(expect "0 + : : :ii"  (f-enc "200"))
+(expect "-2 - :i" (f-enc "-1e-2"))
+(expect "2 + :iii :ii :i" (f-enc "1.23e4"))
+(expect "-1 + :iii :ii :i" (f-enc "1.23e1"))
 
 
 ;; Trim leading and trailing zeros from a decimal fraction,
@@ -346,7 +333,7 @@
    (let ((n (i+ exp (words (rest man)))))
      (if (or (i> n 20)
              (i> -6 n))
-         (let& ((d (u-dec (patsubst "%*" "* %" (concat man "*")))))
+         (let& ((d (u-dec (patsubst "%." ". %" (concat man ".")))))
                (concat (trim d) "e" n))))
 
    ;; Fixed-point
@@ -386,7 +373,7 @@
 
 (define (f+ a b)
   (define `shift-b
-    (concat (nwords (i- (f-exp b) (f-exp a)) ". . .") " " (f-man b)))
+    (concat (nwords (i- (f-exp b) (f-exp a)) ": : :") " " (f-man b)))
 
   (if (i> (f-exp a) (f-exp b))
       ;; swap
@@ -404,6 +391,9 @@
 (expect 100.02 (fp+ 2e-2 1e2))
 (expect 1000.0001 (fp+ 1000 0.0001))
 
+;;TODO
+;;(expect -3 (fp+ -1 -2))
+;;(expect -2 (fp+ 1 -3))
 
 (define (f* fa fb)
   (append (i+ (f-exp fa) (f-exp fb))
