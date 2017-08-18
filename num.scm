@@ -374,9 +374,6 @@
 (define (mod-5 n)
   (word (subst 0 10 (mod-10 n)) "1 2 3 4 0 1 2 3 4 0"))
 
-(define (mod-8 n)
-  (subst 9 1 8 0 (mod-10 n)))
-
 (define (mod-9 n)
   (words
    (subst 0 "" 9 "" 8 71 7 61 6 51 5 41 4 31 3 21 2 11 111111111 "" 1 "1 " n)))
