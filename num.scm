@@ -359,7 +359,7 @@
                      (if (filter "%4 %5 %6 %7" n) " 1 1 1 1")))))
 
 (define (div-10 n)
-  (patsubst (concat "%" (mod-10 n)) "%" n))
+  (or (patsubst (concat "%" (mod-10 n)) "%" n) 0))
 
 (define (mod-1 n)
   0)
@@ -371,18 +371,33 @@
   (or (subst 0 "" 9 "" 6 "" 3 "" 7 1 4 1 8 11 5 11 2 11 111 "" 11 2 n)
       0))
 
+(define (mod-4 n)
+  (word (concat (mod-2 (div-10 n))
+                (or (if (filter "%1 %5 %9" n) 1)
+                    (if (filter "%2 %6" n) 2)
+                    (if (filter "%3 %7" n) 3)
+                    4))
+        "1 2 3 0 . . . . . . 3 0 1 2"))
+
 (define (mod-5 n)
   (word (subst 0 10 (mod-10 n)) "1 2 3 4 0 1 2 3 4 0"))
+
+;; mod2:  0 1 0 1 0 1
+;; mod3:  0 1 2 0 1 2
+;; mod6:  0 1 2 3 4 5
+(define (mod-6 n)
+  (word (concat (mod-2 n) (subst 0 3 (mod-3 n))) "4 2 0 . . . . . . . 1 5 3"))
 
 (define (mod-9 n)
   (words
    (subst 0 "" 9 "" 8 71 7 61 6 51 5 41 4 31 3 21 2 11 111111111 "" 1 "1 " n)))
 
+
 (define (mod a b)
   &public
   (declare (mod-))
 
-  (if (filter "1 2 3 5 9 10" b)
+  (if (filter "1 2 3 5 6 9 10" b)
       (call (concat (global-name mod-) b) a)
       (let ((sa (sign a))
             (ua (nnorm (uencode a)))
@@ -390,7 +405,6 @@
         (if (not ub)
             "nan"
             (udecode (umod ua ub) sa)))))
-
 
 
 ;; (range MIN MAX) --> list/vector of numbers from MIN through MAX inclusive.
