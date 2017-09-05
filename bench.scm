@@ -3,19 +3,22 @@
 
 ;;----------------  Timings
 ;; num.scm: 4488 pairs
-;;    1378 add  (10 reps)
-;;    1946 sub
-;;    2146 mul
-;;      15 range
+;;   1457 add
+;;   2055 sub
+;;   2191 mul
+;;   2529 mod
+;;   201 exp
+;;   7 sum
+;;   15 range
 ;;
-;; fp.scm: 4488 pairs
-;;    1040 add  (10 reps)
-;;    1430 sub
-;;    1662 mul
-;;    4538 range
-;;      11 range
-
-;;(define `(+ a b) (i+ a b))
+;; fp.scm
+;;   821 add
+;;   1244 sub
+;;   995 mul
+;;   819 mod
+;;   47.8 exp
+;;   1.73 sum[i]
+;;   10.1 range
 
 (define (get-time-ms)
   (subst "." "" (shell ".out/timems")))
@@ -65,4 +68,18 @@
 (time (lambda () (perform - pairs)) 1 "sub")
 (time (lambda () (perform * pairs)) 1 "mul")
 
+(define mod-pairs
+  (foreach a (range 1 100)
+           (foreach b (append [1 2 2 2 2 3 3 3 4 5 6 7 8 9] (range 1 17))
+                    (concat a ";" b))))
+(time (lambda () (perform mod mod-pairs)) 1 "mod")
+
+(time (lambda () (^ 131 131)) 10 "exp")
+
+(define irange (range 1 20))
+(time (lambda () (sum irange)) 100 "sum[i]")
+
 (time (lambda () (range 56 1523)) 10 "range")
+
+;;(define frange (foreach n irange (concat n "." n)))
+;;(time (lambda () (sum frange)) 100 "sum[f]")

@@ -1,15 +1,13 @@
 ;; TODO:
-;;  - sum, num-pad
 ;;  - (div-rem float float)
-;;      (div-rem N 1)  -->  [floor(N) N-floor(N)]
+;;      (div-rem N 1)  -->  [floor(N) (- N floor(N))]
+;;  - Exponentiation with non-integral exponents
 ;;  - Accept E-notation for integers in: range, ^
 ;;  - Accept "undefined"?
-;;  - round, /%, ...
-;;  - fr-exp (return m and e s.t. x = m2ᵉ)
-;;  - num-pi(ndigits)
-;;  - MSB: make u-cmp, u-norm, and carry less expensive?
+;;  - Switch to big-endian: hurts u-add, but helps u-cmp, u-norm, carry?
 ;;  - Support "+" prefix
 ;;  - Parsing:  allow "+DIGITS" and "E+EXP" in SCAM numbers
+;;  - (tail ...) to core.scm
 
 (require "core")
 
@@ -63,22 +61,54 @@
 ;;----------------------------------------------------------------
 
 ;; Return string LEN words long, constructed by repeating W.
-(define (nwords len w)
+(define (nwords-loop len w)
   (if (subst "0" "" len)
       (if (word len w)
           (wordlist 1 len w)
-          (nwords len (concat w " " w " " w)))))
+          (nwords-loop len (concat w " " w " " w)))))
+
+(define `(nwords len w)
+  (nwords-loop len (concat w " " w " " w)))
 
 (define `(nzeros e)
-  (subst " " "" (nwords e "0 0 0")))
+  (subst " " "" (nwords e "0")))
 
+;; Absolute value of a number.  Applies to any decimal representation; does
+;; not return a normalized form.
+;;
 (define `(abs n)
   &public
   (patsubst "-%" "%" (subst "+" "" n)))
 
+;; Negate a number.  Applies to any decimal representation; does not return
+;; a normalized form.
+;;
+(define `(0- n)
+  (subst "--" "" (concat "-" (subst "+" "" n))))
+
+;; Return the last N words in LST, where N >= 0.
+;;
+(define (tail n lst)
+  (if (subst 0 "" n)
+      (if (word n lst)
+          (nth-rest (words (nth-rest n lst)) lst)
+          lst)))
+
 ;;----------------------------------------------------------------
 ;; U encoding
 ;;----------------------------------------------------------------
+
+;; Convert each ":iii..." word to a digit.  Do not reverse or remove spaces.
+;;
+(define `(unary-to-digits u)
+  (subst ":" "0" "0i" "1" "1i" "2" "2i" "3" "3i" "4" "4i" "5"
+         "5i" "6" "6i" "7" "7i" "8" "8i" "9" u))
+
+;; Convert a string of digits to a list of ":iii..." words.
+;;
+(define `(digits-to-unary n)
+  (subst "9" "8i" "8" "7i" "7" "6i" "6" "5i" "5" "4i" "4" "3i"
+         "3" "2i" "2" "1i" "1" "0i" "0" " :" n))
 
 ;; Return NIL if U is zero.
 (define `(u-nonzero? u)
@@ -92,84 +122,89 @@
 (define `(u-odd? u)
   (findstring "i" (subst "ii" "" (word 1 u))))
 
-;; Convert from N to U encoding.  Strip any sign symbol.
-(define (u-enc n)
-  (reverse
-   (subst "+" "" "-" ""
-          "9" "8i" "8" "7i" "7" "6i" "6" "5i" "5" "4i" "4" "3i"
-          "3" "2i" "2" "1i" "1" "0i" "0" " :" n)))
+;; More efficient reverse for lists of digits (at least when small).
+;;
+(define (numreverse n)
+  (if (word 5 n)
+      (reverse n)
+      (strip (subst "~" "" (sort (join "~~~ ~~ ~" n))))))
 
+;; Convert from N to U encoding.  Strip any sign symbol.
+;;
+(define (u-enc n)
+  (if (filter "0 1 2 3 4 5 6 7 8 9" (subst " " "x" n))
+      ;; one word => no reverse, fewer ops
+      (concat ":" (subst " " "" (wordlist 1 n "i i i i i i i i i")))
+      (numreverse (digits-to-unary (subst "+" "" "-" "" n)))))
+
+;; Convert from U to N encoding.
+;;
 (define (u-dec u)
-  (subst " " ""
-         (reverse
-          (or (subst ":" "0" "0i" "1" "1i" "2" "2i" "3" "3i" "4" "4i" "5"
-                     "5i" "6" "6i" "7" "7i" "8" "8i" "9" u)))))
+  (subst " " "" (unary-to-digits (numreverse u))))
+
+;; Convert a U-encoded value to a non-negative decimal integer and
+;; normalize: no extraneous significant 0's, "0" instead of empty string.
+;;
+(define (u-dec-norm u)
+  (define `(ztrim digits)
+    (subst " " "" (rest (subst " 0" 0 (concat "0 " digits)))))
+  (or (ztrim (numreverse (unary-to-digits u)))
+      0))
 
 ;; Remove extraneous most-significant zeros from U-encoded numbers.
 ;; trim MSB zeroes
 (define (u-norm u)
-  (strip (subst ":" " :" (butlast (subst " " "" "i:" "i :"
-                                         (concat u ":"))))))
+  (strip (subst ":" " :" (filter "%i" (subst " " "" "i:" "i :" u)))))
 
-;; Convert a U-encoded value to a non-negative decimal integer,
-;; normalized (without extraneous significant 0's).
+;; Return decimal fixed-point representation of U/10^N.  Extraneous
+;; zeros (at the MS and LS ends) will be trimmed.
 ;;
-(define `(u-dec-norm u)
-  (or (subst ":" "0" "0i" "1" "1i" "2" "2i" "3" "3i" "4" "4i" "5"
-             "5i" "6" "6i" "7" "7i" "8" "8i" "9" " " ""
-             (rest (subst " " "" ":i" " :i" (concat ":" (reverse u)))))
-      0))
+(define (u-dec/10^n u n)
+  ;; zpz: U-encoded 0.0000 (with N trailing 0's)
+  (define `zpz (concat (nwords n ":") " .:"))
+  ;; Normalize: no trailing "0", no inital "00", no leading/trailing ".".
+  (define `(norm n)
+    (patsubst "%." "%"
+              (patsubst ".%" "0.%"
+                        (subst " " 0 (nth-rest 1 (subst 0 " " n))))))
 
-;; Decimal points: If there is a decimal point, u-enc preserves it.
-;; Arithmetic functions do not recognize decimal points; they are only
-;; present in (otherwise) U-encoded strings when used by f-enc and f-dec.
+  (norm (u-dec (subst "::" ":" "." ". " (join zpz u)))))
 
-;; Return the number of digits "below" the decimal point ("to the right of"
-;; in ordinary decimal notation).
-;;
-(define `(u-find-point u)
-  (if (findstring "." u)
-      (words (subst "_" " " (word 1 (subst " " "_" "." "_ ." u))))
-      0))
-
-;; Insert a decimal point "above" EXP digits, extending U as necessary.  In
-;; other words, EXP is the number of fracional digits.
-;;
-(define `(u-add-point u exp)
-  ;; Construct U-encoded 0.0000 (with EXP trailing 0's)
-  (define `zpz (concat (nwords (abs exp) ": : :") " .:"))
-  (subst "::" ":" "." ". " (join zpz u)))
-
-
-;; Count number of consecutive least-significant (trailing) zeroes in U.
-(define (u-ctz u)
-  (words (subst "_" " " (word 1 (concat "_" (subst " " "_" ":i" " " u))))))
-
-;; For digits greater than 9, propagate values to the next higher digit,
-;; *IF* there is a "next" digit.
-(define (u-carry-n n)
-  (while (lambda (x) (findstring "iiiiiiiiii :" x))
-         (lambda (x) (subst "iiiiiiiiii :" " :i" x))
-         n))
-
-(define (u-carry-check x)
+(define (u-carry-loop x)
   (if (findstring "iiiiiiiiii :" x)
-      (u-carry-n (subst "iiiiiiiiii :" " :i" x))
+      (u-carry-loop (subst "iiiiiiiiii :" " :i" x))
       x))
 
+;; Propagate value from digits greater than 10 to the next higher digit.
+;;
 (define `(u-carry x)
-  (u-carry-check (subst "iiiiiiiiii :" " :i" x)))
+  (u-carry-loop (subst "iiiiiiiiii :" " :i" x)))
+
+;; Combine respective digits without performing carry or extending digits.
+;;
+(define `(raw-add a b)
+  (subst "i:" "i" "::" ":" (join a b)))
 
 ;; Add two U-encoded values.  Add a most-significant zero to accommodate
 ;; carry.
 (define (u+ a b)
   &inline
-  (u-carry (concat (subst "i:" "i" "::" ":" (join a b)) " :")))
+  (u-carry (concat (raw-add a b) " :")))
+
+(define `(mul-carry u)
+  (u-carry-loop
+   (subst "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii :" " :iiii"
+          "iiiiiiiiiiiiiiiiiiii :" " :ii"
+          "iiiiiiiiii :" " :i"
+          "iiiiiiiiii :" " :i"
+          (concat u " :"))))
 
 (define (u* a b)
-  (u+ (subst "i" (subst ":" "" (firstword a)) b)  ;; "big" carry (4,2,1)
-      (if (word 2 a)
-          (u* (rest a) (concat ": " b)))))
+  (mul-carry
+   (raw-add
+    (subst "i" (subst ":" "" (firstword a)) b)
+    (if (word 2 a)
+        (u* (rest a) (concat ": " b))))))
 
 ;; Compare two unsigned encoded numbers, returning:
 ;;   1 if a > b
@@ -185,8 +220,8 @@
   (filter 2 (u-cmp a b)))
 
 ;; Make U have DIGITS digits by appending 0's to most-significant end.
-(define (u-extend u digits)
-  (subst "::" ":" (join (nwords digits ": : :") u)))
+(define (u-extend-ms u digits)
+  (subst "::" ":" (join (nwords digits ":") u)))
 
 ;; Replace each digit D in U with 9-D, then add one.  The result is
 ;; 10^MAG-U, where MAG is the number of digits in U.  Modulo 10^MAG, the
@@ -203,6 +238,8 @@
 (define (u^2 n)
   (u* n n))
 
+;; Return A^B.
+;;
 (define (u^ a b)
   (if (u-odd? b)
       (u-norm (u* a (u^2 (u^ a (u/2 b)))))
@@ -214,43 +251,38 @@
 ;; SU & I encoding
 ;;----------------------------------------------------------------
 
-;; SU:  a U-encoded number optionally preceded by a "-"
-(define (su-dec u)
-  (if (findstring "-" (word 1 u))
-      (concat "-" (u-dec-norm (rest u)))
-      (u-dec-norm u)))
-
-;; su-sub: (U,U) --> SU
-;; Subtract UB from UA, returning an SU-encoded integer.
-;;
-(define (su-sub ua ub)
-  (let ((total (u+ ua (u-negate (u-extend ub (words ua)))))
-        (len (words (join ua ub))))
-    (if (u-nonzero? (word len (rest total)))
-        (wordlist 1 len total)
-        (concat "- " (wordlist 1 len (u-negate total))))))
-
 ;; Return "-" if I is negative, `nil` otherwise.
 ;;
 (define `(i-neg? i)
   (findstring "-" i))
 
+;; SU:  a U-encoded number optionally preceded by a "-"
+(define (su-enc n)
+  (append (i-neg? n)
+          (u-enc n)))
 
-;; Strip leading zeros and remove sign ("-" or "+") from decimal integer I.
+(define (su-dec u)
+  (concat (if (u-nonzero? u)
+              (filter "-" (word 1 u)))
+          (u-dec-norm (filter-out "-" u))))
+
+;; su-sub: (U,U) --> SU
+;; Subtract UB from UA, returning an SU-encoded integer.
+;;
+(define (su-sub ua ub)
+  (let ((total (u+ ua (u-negate (u-extend-ms ub (words ua)))))
+        (len (words (join ua ub))))
+    (if (u-nonzero? (word len (rest total)))
+        (wordlist 1 len total)
+        (concat "- " (wordlist 1 len (u-negate total))))))
+
+;; Strip leading zeros and remove extraneous sign ("-" or "+") from decimal
+;; integer I.
 ;;
 (define `(i-norm i)
   (define `u (subst "-" "" "+" "" i))
   (define `t (subst " " "" (rest (subst 0 "0 " " 0" 0 (concat "0" u)))))
-
-  (patsubst "-0" 0 (concat (i-neg? i) (or t 0))))
-
-;; Trim leading and trailing zeros from a decimal fraction,
-;; ensuring number does not begin or end in ".".
-;;
-(define (frac-trim n)
-  (define `trimz (subst " " 0 (nth-rest 1 (subst 0 " " n))))
-  (patsubst "%." "%" (patsubst ".%" "0.%" trimz)))
-
+  (or (addprefix (i-neg? i) t) 0))
 
 ;; Compare two decimal numbers; result same as ucmp.
 ;;
@@ -289,13 +321,7 @@
 
 (define (i+ a b)
   &public
-  (define `i
-    (su-dec (su+ (findstring "-" a) (u-enc a) (findstring "-" b) (u-enc b))))
-  (patsubst "-0" 0 i))
-
-;; Negate a number.  Applies to floats or ints.
-(define `(0- n)
-  (subst "--" "" (concat "-" (subst "+" "" n))))
+  (su-dec (su+ (findstring "-" a) (u-enc a) (findstring "-" b) (u-enc b))))
 
 (define `(i- a b)
   (i+ a (0- b)))
@@ -304,8 +330,8 @@
   (define `i (u-dec-norm (u* (u-enc a) (u-enc b))))
   (patsubst "-0" 0 (subst "--" "" (concat (i-neg? a) (i-neg? b) i))))
 
-(define (i> a b)
-  (findstring 1 (i-cmp a b)))
+(define `(i> a b)
+  (filter 1 (i-cmp a b)))
 
 ;; Count "tick marks" (i's) in U, where U has 3 or fewer digits.
 ;;
@@ -373,11 +399,10 @@
          (concat guess "i" " " (u-norm (su-sub rem b)))))))
 
 
-;; u-div-rem: Divide A by B, returning [Q RWHOLE RFRAC].
+;; u-divx: Divide A by B, returning [Q RWHOLE RFRAC].
 ;;
-;; A is split into whole and fractional portions, AWHOLE and AFRAC.  AWHOLE
-;; must be less than B*10.  AFRAC is in big-endian order.  The numerical
-;; value of A is given by:
+;; A must be less than 10*B.  A is split into whole and fractional portions,
+;; AWHOLE and AFRAC.  The numerical value of A is given by:
 ;;
 ;;    A = AWHOLE + (reverse(AFRAC) / 10^words(AFRAC))
 ;;
@@ -393,21 +418,23 @@
 ;; All values are U-encoded non-negative integers, except for AFRAC
 ;; (big-endian U) and PREC (a decimal integer >= 1).
 ;;
-(define (u-div-loop div1-out frac1 frac b prec q-prev)
+(define (u-divx-loop div1-out frac1 frac b prec q-prev)
   (define `qdigit (word 1 div1-out))
   (define `rem (rest div1-out))
   (define `q (append qdigit q-prev))
   (define `whole (concat (or frac1 ":") " " rem))
 
   (if (word prec (concat ": " q-prev))
-      [ q rem (append (reverse frac) frac1) ]
-      (u-div-loop (u-div1 whole b) (word 1 frac) (rest frac) b prec q)))
+      [ q rem (append (numreverse frac) frac1) ]
+      (u-divx-loop (u-div1 whole b) (word 1 frac) (rest frac) b prec q)))
 
-(define (u-div-rem awhole afrac b prec)
-  (u-div-loop (u-div1 awhole b) (word 1 afrac) (rest afrac) b prec nil))
+(define (u-divx awhole afrac b prec)
+  (u-divx-loop (u-div1 awhole b) (word 1 afrac) (rest afrac) b prec nil))
 
 
-(define (u-mod a b)
+;; Divide A by B, returning [QUOTIENT REMAINDER].
+;;
+(define (u-div a b)
   (or
    (if (u-zero? a)
        ":")
@@ -417,12 +444,39 @@
           (words (or (rest (nth-rest (words b) (patsubst "%" ":" a))) 1)))
          (a a)
          (b b))
-     (define `o (u-div-rem (nth-rest shift-index a)
-                           (reverse (wordlist 2 shift-index (concat ": " a)))
-                           b
-                           shift-index))
-     (nth 2 o))))
+     (u-divx (nth-rest shift-index a)
+             (numreverse (wordlist 2 shift-index (concat ": " a)))
+             b
+             shift-index))))
 
+
+(define (u-mod-loop a bi 10-mod-b)
+  (define `a/10-mod-b
+    (u-mod-loop (rest a) bi 10-mod-b))
+
+  (if a
+      (subst bi "" (concat (subst ":" "" (word 1 a))
+                           (if 10-mod-b
+                               (subst "i" 10-mod-b a/10-mod-b))))))
+
+;; A mod B in ticks, where BI = ticks in B.  For B in {1, 2, 4, 5, 8} not
+;; all digits will need to be examined.
+(define (u-mod-loop a bi digit-mod-b residue)
+  (if (and a digit-mod-b)
+      (u-mod-loop (rest a)
+                  bi
+                  (subst "i" "iiiiiiiiii" bi "" digit-mod-b)
+                  (subst bi "" (concat (subst ":" "" "i" digit-mod-b (word 1 a))
+                                       residue)))
+      residue))
+
+;; Return A modulo B, where BI = B in ticks (single digit, no ":").
+(define (u-mod a bi)
+  (define `ticks
+    (if (filter "iii iiiiiiiii" bi)
+        (subst ":" "" " " "" bi "" a)
+        (u-mod-loop a bi "i" nil)))
+  (words (subst "i" "i " ticks)))
 
 (define (i-mod a b)
   (let ((sa (i-neg? a))
@@ -430,8 +484,12 @@
         (ub (u-norm (u-enc b))))
     (if (u-zero? ub)
         "undefined"
-        (concat sa (u-dec (u-mod ua ub))))))
+        (concat sa (if (word 2 ub)
+                       (u-dec-norm (nth 2 (u-div ua ub)))
+                       (u-mod ua (subst ":" "" ub)))))))
 
+(expect 1 (i-mod 1 7))
+(expect 0 (i-mod 0 7))
 
 ;;----------------------------------------------------------------
 ;; F encoding
@@ -456,16 +514,25 @@
           (if (f-negative? f) "+" "-")
           (f-mul f)))
 
+(define `(float? n)
+  (findstring "." (subst "e" "." (subst "E" "e" n))))
+
 ;; Construct F-encoding of N.  The result is not normalized in any sense,
 ;; so redundant zeros may be present and "-0" and "0" will be different.
 ;;
 (define (f-enc n)
-  (let ((sgn (if (filter "-%" n) "-"))
-        (exp (or (word 2 (subst "e" "e " n)) 0))
-        (lhs (u-enc (subst "." " ." (word 1 (subst "e" " " "-" "" n))))))
-    (f-ctor (i- exp (u-find-point lhs))
-            (or sgn "+")
-            (strip (subst "." "" lhs)))))
+  (if (float? n)
+      (let ((w (subst "E" " " "e" " " "+" "" n)))
+        (define `m (word 1 w))
+        (define `e (word 2 w))
+        (define `frac (word 3 (subst "." " . " (concat 0 m))))
+
+        (f-ctor (i- e (words (u-enc frac)))
+                (or (i-neg? m) "+")
+                (u-enc (subst "." "" m))))
+      (f-ctor 0
+              (or (i-neg? n) "+")
+              (u-enc n))))
 
 ;; f-dec : Use exponential (XXXeXX) notation when the magnitude is between
 ;; 20 and -6 inclusive, otherwise use fixed-point.  Then ensures that 64-bit
@@ -488,17 +555,17 @@
    ;; Zero
    (if (not mul) 0)
 
-   ;; Exponential
+   ;; Scientific
    (let ((n (i+ exp (words (rest mul)))))
      (if (or (i> n 20)
              (i> -6 n))
-         (let& ((d (u-dec (patsubst "%." ". %" (concat mul ".")))))
-               (concat (frac-trim d) "e" n))))
+         (let& ((frac (u-dec/10^n mul (words (rest mul)))))
+               (concat frac "e" (subst "+-" "-" (concat "+" n))))))
 
    ;; Fixed-point
    (if (findstring "-" exp)
        ;; exp is negative
-       (frac-trim (u-dec (u-add-point mul (abs exp))))
+       (u-dec/10^n mul (abs exp))
        ;; exp is positive
        (concat (u-dec mul) (nzeros exp)))))
 
@@ -512,7 +579,7 @@
 (define (f+ a b)
   ;; Shift B to match the exponent of A (add least-significant 0's)
   (define `shift-b
-    (concat (nwords (i- (f-exp b) (f-exp a)) ": : :") " " (f-mul b)))
+    (concat (nwords (i- (f-exp b) (f-exp a)) ":") " " (f-mul b)))
 
   (if (i> (f-exp a) (f-exp b))
       ;; swap
@@ -548,7 +615,7 @@
 
   ;; All remaining digits of A following AWHOLE (if any)
   (define `afrac
-    (rest (nth-rest bmag (reverse amul))))
+    (rest (nth-rest bmag (numreverse amul))))
 
   (or
    (if (u-zero? bmul)
@@ -564,7 +631,7 @@
        ;; so that all PREC digits of Q will be significant.
        (f-div3 aexp asign amul bexp bsign (append bmul ":") prec))
 
-   (let ((drr (u-div-rem awhole afrac bmul prec)))
+   (let ((drr (u-divx awhole afrac bmul prec)))
      (define `q (first drr))
      (define `rwhole (nth 2 drr))
      (define `rfrac (nth 3 drr))
@@ -582,7 +649,7 @@
                  "+"
                  "-")
              (if round-up?
-                 (u-carry (join q "i"))
+                 (u-carry-loop (join q "i"))
                  q)))))
 
 ;; Divide A by B, returning rounded quotient with PREC significant digits.
@@ -614,9 +681,6 @@
 ;;----------------------------------------------------------------
 ;; N encoding
 ;;----------------------------------------------------------------
-
-(define `(float? str)
-  (findstring "." (subst "e" "." (subst "E" "e" str))))
 
 (define (num+ a b)
   (if (float? (concat a b))
@@ -659,17 +723,13 @@
 (define `(- a b) &public (num- a b))
 (define `(* a b) &public (num* a b))
 (define `(/ a b ?p) &public (fnum/ a b p))
-
 (define `(^ a b) &public (num^ a b))
-
 (define `(mod a b) &public (i-mod a b))
-
 (define `(> a b) &public (filter 1 (num-cmp a b)))
 (define `(< a b) &public (> b a))
-(define `(>= a b) &public (not (< a b)))
+(define `(>= a b) &public (filter 1 (or (num-cmp a b) 1)))
 (define `(<= a b) &public (>= b a))
 (define `(= a b) &public (not (num-cmp a b)))
-(define `(== a b) &public (not (num-cmp a b)))
 (define `(!= a b) &public (if (num-cmp a b) 1))
 
 (define (max a b)
@@ -684,11 +744,36 @@
       b
       a))
 
-
 ;;----------------------------------------------------------------
 ;; Other functions
 ;;----------------------------------------------------------------
 
+(define (fsum-loop a nums)
+  (if nums
+      (fsum-loop (f+ a (f-enc (word 1 nums))) (rest nums))
+      a))
+
+(define (susum-loop a v1 vec)
+  (if v1
+      (susum-loop (su+ (findstring "-" (word 1 a))
+                       (filter-out "-" a)
+                       (i-neg? v1)
+                       (u-enc v1))
+                  (word 1 vec)
+                  (rest vec))
+      a))
+
+;; Sum a vector of numbers.
+;;
+(define (sum vec)
+  &public
+  (if (word 1 vec)
+      (if (float? vec)
+          (f-dec (fsum-loop (f-enc (word 1 vec)) (rest vec)))
+          (su-dec (susum-loop (su-enc (word 1 vec))
+                              (word 2 vec)
+                              (nth-rest 3 vec))))
+      0))
 
 ;; (range MIN MAX) --> list/vector of numbers from MIN through MAX inclusive.
 ;; MIN and MAX must be non-negative integers.
@@ -696,9 +781,8 @@
 ;; MIN and MAX must be normalized (no extraneous trailing zeros).
 ;;
 (define (i-range min max)
-  (if (>= min max)
-      (if (eq? min max)
-          min)
+  (if (i> min max)
+      nil
       (if (filter "%0" min)
           (if (filter "%9" max)
               (concat
@@ -709,7 +793,7 @@
                                    (or (patsubst "%9" "%" max) 0))
                         (concat n "0 " n "1 " n "2 " n "3 " n "4 "
                                 n "5 "n "6 " n "7 " n "8 " n "9 ")))
-              (concat (i-range min (- max 1)) " " max))
+              (concat (i-range min (i- max 1)) " " max))
           (concat min " " (i-range (1+ min) max)))))
 
 
@@ -726,289 +810,82 @@
        (i-range (i-norm a) (i-norm b)))))
 
 
-;;========================================================================
-;; tests
-;;========================================================================
+;; f-enc-norm: `-` only when non-zero, no leading zeros
+;;
+(define (f-enc-norm x)
+  (let ((f (f-enc x)))
+    (f-ctor (i-norm (f-exp f))
+            (if (f-nonzero? f) (f-sign f) "+")
+            (u-norm (f-mul f)))))
 
 
-;;---------------- Utilities
+(define (pad-and-sign digits pad minus)
+  (define `(pad-pat char)
+    (if (filter 0 pad)
+        (concat char "%")
+        (concat "%" char)))
 
-;; nwords
-(expect "" (nwords 0 ":"))
-(expect ":" (nwords 1 ":"))
-(expect ": : :" (nwords 3 ":"))
-(expect ": : : :" (nwords 4 ":"))
+  ;; replace one of the pad characters with "-"
+  (define `minus-digits
+    (subst " " ""
+           (patsubst (pad-pat "_") (pad-pat "-")
+                     (subst "_" "_ " " _" "_" digits))))
 
-;; nzeros
-(expect "" (nzeros 0))
-(expect "000" (nzeros 3))
-
-;; abs
-(expect 0 (abs -0))
-(expect 1e-20 (abs 1e-20))
-(expect 1 (abs -1))
-
-;;---------------- U encoding
-
-;; u-enc
-(expect 0 (u-find-point (u-enc "123")))
-(expect 2 (u-find-point (u-enc "1 .23")))
-
-;; u-ctz
-(expect 0 (u-ctz (u-enc "123")))
-(expect 1 (u-ctz (u-enc "120")))
-(expect 3 (u-ctz (u-enc "000")))
-
-;; u+
-(define `(i-u+ a b) (u-dec-norm (u+ (u-enc a) (u-enc b))))
-(expect 5 (i-u+ 2 3))
-(expect 198 (i-u+ 99 99))
-
-;; u*
-(define `(i-u* a b) (u-dec-norm (u* (u-enc a) (u-enc b))))
-(expect 6 (i-u* 2 3))
-(expect 998001 (i-u* 999 999))
-
-;; u-negate
-(expect ": : :" (u-extend ":" 3))
-
-;; u-negate
-(expect ":iiiiiiiiii" (u-negate ":"))
-(expect ":i" (u-negate ":iiiiiiiii"))
-(expect ":iiiiiiiii :iiiiiiiii :" (u-negate ":i : :iiiiiiiii"))
-
-;; u-carry
-(expect ":ii :i" (u-carry ":iiiiiiiiiiii :"))
-
-;; u/2
-(expect ":i" (u/2 ":ii"))
-(expect ":ii" (u/2 ":iiiii"))
-(expect ":ii" (u/2 ":iiiii"))
-(expect ":iiiiiii" (u/2 ":iiiii :i"))
+  (subst "_" pad (if minus minus-digits digits)))
 
 
-;;---------------- SU & I encoding
+;; NWHOLE: The maximum number of characters to be used to display the whole
+;;    (non-fractional) portion, including `-` if the value is negative.
+;;
+;; PAD: when this is `0` or ` `, the whole portion will be padded with
+;;    this character to consume NWHOLE characters.  When nil, the number
+;;    will not be extended.
+;;
+;; NFRAC: If non-nil, a decimal point and this many fractional digits
+;;    will be included.  If nil, no decimal point will be included. The
+;;    number will be rounded to the nearest value that can be represented.
+;;
+;; If NFRAC is too small to include all fractional digits, the number will
+;; be rounded to the nearest value that can be displayed.  If NWHOLE is too
+;; small to include all significant digits, all digits will be replaced with
+;; `?` characters.
+;;
+;; When the pad character is `0`, padding is to the righ of the `-` sign,
+;; and when it is ` ` the padding appears to the left of the sign.
+;;
+(define (num-format x nwhole ?pad ?nfrac)
+  (let ((f (f-enc-norm x)))
+    (define `mul (f-mul f))
+    (define `exp (f-exp f))
+    (define `minus (filter "-" (f-sign f)))
 
-;; su+
-(expect "- :i" (su+ "-" ":ii" "" ":i"))
-(expect ":i" (su+ "-" ":ii" "" ":iii"))
+    (define `whole-len
+      (words (filter-out "+" (nth-rest 2 f))))
 
-;; su-sub, su-dec
-(expect 1 (su-dec (su-sub ":iiii" ":iii")))
-(expect -1 (su-dec (su-sub ":iii" ":iiii")))
-(expect 0 (su-dec (su-sub ":ii" ":ii")))
-(expect 1 (su-dec (su-sub ":i" nil)))
-(expect -1 (su-dec (su-sub nil ":i")))
+    (define `whole-val
+      (if (i-neg? exp)
+          (nth-rest (1+ (0- exp)) mul)
+          (append (nwords exp ":") mul)))
 
-;; i+
-(expect 3 (i+ 2 1))
-(expect 3 (i+ "+2" 1))
-(expect -3 (i+ -2 -1))
-(expect 99 (i+ 100 -1))
-(expect -99 (i+ 1 -100))
-(expect -99 (i+ -100 1))
-(expect 99 (i+ -1 100))
-(expect 0 (i+ -1 1))
-(expect 0 (i+ -0 0))
-(expect 0 (i+ 0 -0))
-(expect 0 (i+ -0 -0))
+    (define `frac-val
+      (if (i-neg? exp)
+          (wordlist 1 (0- exp) mul)
+          nil))
 
-;; i-
-(expect 1 (i- 2 1))
-(expect -2 (i- 1 3))
-(expect 4 (i- 1 -3))
+    (define `frac
+      (tail nfrac (append (nzeros nfrac) frac-val)))
 
-;; i*
-(expect 6 (i* "+2" "+3"))
-(expect -6 (i* -2 "+3"))
-(expect -6 (i* "+2" -3))
-(expect 6 (i* -2 -3))
+    ;; formatted string with "_" where padding should/would go
+    (define `digits
+      (append (if nfrac (append frac "."))
+              (subst "_:" ":"
+                     (join (nwords nwhole "_")
+                           whole-val))))
 
-
-;;----------------  F encoding
-
-;; f-enc
-(expect "2 + :ii"  (f-enc "2e2"))
-(expect "0 + : : :ii"  (f-enc "200"))
-(expect "-2 - :i" (f-enc "-1e-2"))
-(expect "2 + :iii :ii :i" (f-enc "1.23e4"))
-(expect "-1 + :iii :ii :i" (f-enc "1.23e1"))
-
-;; trim
-(expect "0.01005" (frac-trim 000.0100500))
-(expect "0" (frac-trim "0."))
-(expect "0" (frac-trim ".0"))
-
-;; f-enc & f-dec
-(expect "undefined" (f-dec "0 N"))
-(expect "20" (f-dec "1 + :ii"))
-(expect "0.02" (f-dec "-2 + :ii"))
-
-(define (f-norm n) (f-dec (f-enc n)))
-(expect 1 (f-norm 1))
-(expect 10 (f-norm 100e-1))
-(expect 100 (f-norm 1e2))
-(expect 12.3 (f-norm 1230e-2))
-(expect -0.012 (f-norm -1200e-5))
-(expect 1e23 (f-norm 1000e20))
-(expect 1.234e23 (f-norm 1234e20))
-(expect 101 (f-norm 1.01e2))
-(expect 100.1 (f-norm 1.001e2))
-
-(expect 0.000001 (f-norm 1e-6))
-(expect 1e-7 (f-norm 1e-7))
-(expect 100000000000000000000 (f-norm 1e20))
-(expect 1e21 (f-norm 1e21))
-
-;; fp+
-(expect 3 (fnum+ 1 2))
-(expect 300 (fnum+ 1e2 2e2))
-(expect 102 (fnum+ 1e2 2e0))
-(expect 200.01 (fnum+ 2e2 1e-2))
-(expect 100.02 (fnum+ 2e-2 1e2))
-(expect 1000.0001 (fnum+ 1000 0.0001))
-(expect -3 (fnum+ -1 -2))
-(expect -2 (fnum+ 1 -3))
-
-;; fp*
-(expect 1.0201 (fnum* 1.01 1.01))
-(expect 21.21 (fnum* 1.01 21))
-(expect 12.12 (fnum* 12 1.01))
-
-;; fp/
-
-(expect (subst " " "" (nwords 123 "i"))
-        (ticks ":iii :ii :i"))
-(expect "iii" (tick-div "iiiiiiiiiiiii" "iiii"))
-
-(expect ":i :ii" (u-div1 ":iiiii" ":iii"))
-(expect ":iii :i :i" (u-div1 ":i : :i" ": :iii"))
-;; 1080 / 109 = 9, remainder 99
-(expect ":iiiiiiiii :iiiiiiiii :iiiiiiiii"
-        (u-div1 ": :iiiiiiii : :i" ":iiiiiiiii : :i"))
-
-(define `(n-div-rem a afrac b prec)
-  (let ((o (u-div-rem (u-enc a) (reverse (u-enc afrac)) (u-enc b) prec)))
-    (for u o (u-dec u))))
-
-;; Return PREC digits
-(expect [0200 nil nil] (n-div-rem 12 nil 60 4))
-(expect [5000 nil nil] (n-div-rem 60 nil 12 4))
-(expect [12 340 nil] (n-div-rem 1234 nil 1000 2))
-;; Use AFRAC
-(expect [12345 6 nil] (n-div-rem 12 3456 10 5))
-
-;; divide by zero
-(expect "undefined" (fnum/ 12 0 12))
-;; digits in B < digits in A > prec
-(expect 110 (fnum/ 1234 11 2))
-;; digits in B < digits in A < prec (rounds down)
-(expect 112.18 (fnum/ 1234 11 5))
-;; digits in B > digits in A < prec
-(expect 0.00218962 (fnum/ 10 4567 6))
-;; top digits of A < top digits of B
-(expect 0.12281 (fnum/ 112 912 5))
-;; top digits of A > top digits of B
-(expect 9.99 (fnum/ 999 100 5))
-;; signs...
-(expect 2 (fnum/ -4 -2 4))
-(expect -2 (fnum/ -4 2 4))
-(expect -2 (fnum/ 4 -2 4))
-;; Round to even (up or down)) at 0.5
-(expect 2 (fnum/ 15 10 1))
-(expect [2 5 nil] (n-div-rem 25 nil 10 1))
-(expect 2 (fnum/ 25 10 1))
-
-;; f-cmp
-(expect nil (fnum-cmp 0 0))
-(expect 1 (fnum-cmp 2 1))
-(expect 2 (fnum-cmp 1 2))
-(expect 2 (fnum-cmp 0001 2))
-(expect nil (fnum-cmp 00 -0))
-
-;;----------------  N encoding (ordinary decimal)
-
-;; +
-(expect 3 (+ 1 2))
-(expect 1.01 (+ 1 0.01))
-(expect 101 (+ 1 1e2))
-
-;; -
-(expect 3 (- 1 -2))
-(expect 3.1 (- 1 -2.1))
-
-;; *
-(expect 6.03 (* 3 2.01))
-(expect 6 (* 2 3))
-
-;; /
-(expect 0.3333 (/ 1 3 4))
-
-
-;; <, >
-(expect 1 (< 1 2))
-(expect nil (< 1 1))
-(expect nil (< 2 1))
-(expect 1 (< -2 1))
-(expect 1 (< -2 -1))
-;;TODO(expect nil (< -0 0))
-
-(expect 1 (> 2 1))
-
-;; <=, >=
-(expect 1 (<= 1 2))
-(expect 1 (<= 1 1))
-(expect nil (<= 2 1))
-(expect 1 (>= 2 1))
-
-;; =
-(expect 1 (= 1 01))
-
-;; min
-(expect 1 (min 1 2))
-(expect 1 (min 2 1))
-(expect -2 (min -2 1))
-(expect -1 (min -1 2))
-(expect -2 (min -1 -2))
-
-;; max
-(expect 2 (max 1 2))
-(expect 2 (max 2 1))
-(expect 1 (max -2 1))
-(expect 2 (max -1 2))
-(expect -1 (max -1 -2))
-
-;; ^
-(expect 1 (^ 1 4))
-(expect 1 (^ 9 0))
-(expect 9 (^ 9 1))
-(expect -1 (^ -1 3))
-(expect 1024 (^ 2 10))
-
-;; mod
-(expect 0 (mod 0 7))
-(expect "undefined" (mod 0 0))
-(expect 2 (mod 2 7))
-(expect -2 (mod -2 7))
-(expect 6 (mod 20 7))
-(expect 3 (mod 80 7))
-
-
-;;----------------  Other functions
-
-(expect 1 (i-norm 0001))
-(expect 1 (i-norm "+0001"))
-(expect -10200 (i-norm -00010200))
-(expect 0 (i-norm -0))
-(expect 0 (i-norm 0))
-
-;; range
-(expect "3 4 5 6" (range 3 6))
-(expect "-2 -1 0 1 2" (range -2 2))
-(expect "-2 -1 0" (range -2 0))
-(expect "-2 -1 0" (range -2 -0))
-(expect "-2 -1" (range -2 -1))
-(expect "0 1" (range -0 1))
-(expect "0" (range -0 0))
-(expect "0 1" (range 000 001))
-(expect "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20" (range 0 20))
+    ;; Handle large numbers without excessive memory usage.
+    (if (i> whole-len nwhole)
+        ;; too big
+        (subst "0" "?" (concat (nzeros nwhole)
+                               (if nfrac (concat "." (nzeros nfrac)))))
+        ;; not too big
+        (pad-and-sign (u-dec digits) pad minus))))
