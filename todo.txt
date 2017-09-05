@@ -11,7 +11,9 @@ TODO
    fix (? builtin ...) and (? macro ...).
    &inline functions then only good for (global-name ...) or Make interop.
 
- * (let (([a b c] vec)) ...)  [always succeeds; no "else" condition]
+ * Deconstruct vectors in `let`
+    (let (([a b c] vec)) ...)
+    Okay if it always succeeds; no "else".
 
  * Record reflection.  What format-record needs:
 
@@ -111,12 +113,10 @@ TODO
 
  * scam -x
 
-   Make `require` work with source files in `scam [-x] FILE ...` commands.
-   Build with `scam -o .scam/NAME` & then run.
+   Make `require` work with source files in `scam [-x] FILE ...` commands
+   when the module is not bundled.
 
- * arbitrary precision floating point
-    - fp divide w/ specified precision
-    - bug: (^ 2 100)  [in fp]
+   Build with `scam -o .scam/NAME` & then run.
 
  * Integrate `strlen` with core.scm and use `strlen` to report column
    for errors.
@@ -305,8 +305,13 @@ Optimizations
 
 
 * Misc
-    * num: (> 5 0) not working?
-    * num: treat nil as identity value for each operator: (+ 1) == (+ 1 nil...) == 1
+    * (div-rem float float) : (div-rem N 1) == [floor(N) (- N floor(N))]
+    * Exponentiation with non-integral exponents
+    * num: accept E-notation for integers in: range, ^
+    * num: accept "undefined" everywhere
+    * num: wwitch to big-endian: hurts u-add, but helps u-cmp, u-norm, carry?
+    * support "+" prefix in numeric constants
+    * (tail ...) to core.scm
     * num: multi-arg + and *
     * Interleave compile with parsing of top-level expressions.
     * Improve void-node?  (void? (if c a b)) --> (and (void? a) (void? b))

@@ -1,8 +1,8 @@
 (require "core")
-(require "fp")
+(require "num")
 
 ;;----------------  Timings
-;; num.scm: 4488 pairs
+;; (old) num.scm
 ;;   1457 add
 ;;   2055 sub
 ;;   2191 mul
@@ -81,5 +81,5 @@
 
 (time (lambda () (range 56 1523)) 10 "range")
 
-;;(define frange (foreach n irange (concat n "." n)))
-;;(time (lambda () (sum frange)) 100 "sum[f]")
+(define frange (foreach n irange (concat n "." n)))
+(time (lambda () (sum frange)) 100 "sum[f]")

@@ -3,7 +3,6 @@
 ;;--------------------------------
 
 ;; Analyze compression performance.
-;; compression performance
 
 (require "core")
 (require "gen" &private)
@@ -50,9 +49,9 @@
    (sort
     (for c subs
          (let ((n (count c env)))
-           [ (num-pad (* n (- (strlen c) 1)) 5 0) ; bytes saved
-             (num-pad n 4 0)                      ; # occurrences
-             c ])))))                             ; substring
+           [ (num-format (* n (- (strlen c) 1)) 5 0) ; bytes saved
+             (num-format n 4 0)                      ; # occurrences
+             c ])))))                                ; substring
 
 
 ;; Display occurrences and savings for each string in SUBS.  MAP maps the
@@ -95,7 +94,7 @@
 (define (compare-size label original new)
   (printf "%s : %s -> %s  %s%% reduction"
           label original new
-          (/ (* (- original new) 100) original)))
+          (/ (* (- original new) 100) original 4)))
 
 
 (define (compile-subs subs subchars)
@@ -178,7 +177,7 @@
 ;;
 
 (define best-chars
-  (sort-by (lambda (c) (num-pad (count c scam-env) 6 0))
+  (sort-by (lambda (c) (num-format (count c scam-env) 6 0))
            subchars))
 
 ;; (printf "best-chars: (%s)  %q " (words best-chars) best-chars)
@@ -204,6 +203,9 @@
     "!111"
     "!1110"
     "!1111"
+    "!11111"
+    "!111111"
+    "!111110"
     "!11110"
     "!0!11"
     "!=!1:EDefn"
@@ -240,6 +242,7 @@
     ":IL3"
     ":IL4"
     ":IL6"
+    ":P2"
     "special-"
     "ml.special-"
     " ml.special-"
@@ -252,7 +255,7 @@
     "word"
     ])
 
-;;(rank-after scam-env [] candidate-strings)
+;; (rank-after scam-env [] candidate-strings)
 
 (define `compress-strings
   [
@@ -266,16 +269,17 @@
    ":IL4"
    "!10"                     ;; 1056
    "!110"                    ;; 242
-   "!1111"                   ;; 984
-   "111"                     ;; 400
+   "!111111"                 ;; 250
+   "!1111"                   ;; 576
+   "111"                   ;; 178
    "!1110"                   ;; 326
    "!=!1:EDefn"              ;; 1449
    "!=!1:EDefn1!0~%!0"       ;; 5264
    "!=!1:EDefn1!0:!0"        ;; 240   "
    " ml.special-"            ;; 286
    "!=!1:EDefn1!0~%!0p!0"    ;; 498
-   "!=!1:EDefn1!0~%!0p!01 "  ;; 172
    "!=!1:EDefn1!0~%!0x!0"    ;; 254
+   "!=!1:EDefn1!0~%!0p!01 "  ;; 172
    ])
 
 
