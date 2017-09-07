@@ -1,25 +1,6 @@
 (require "core")
 (require "num")
 
-;;----------------  Timings
-;; (old) num.scm
-;;   1457 add
-;;   2055 sub
-;;   2191 mul
-;;   2529 mod
-;;   201 exp
-;;   7 sum
-;;   15 range
-;;
-;; fp.scm
-;;   821 add
-;;   1244 sub
-;;   995 mul
-;;   819 mod
-;;   47.8 exp
-;;   1.73 sum[i]
-;;   10.1 range
-
 (define (get-time-ms)
   (subst "." "" (shell ".out/timems")))
 
@@ -61,25 +42,27 @@
   (foreach p pairs
            (if (op (field 1 p) (field 2 p)) nil)))
 
+;;----------------  Timings
+;;   245 ^
+
 (print (words pairs) " pairs")
-;;(time (lambda () (findstring "-" "+")) 10000 "findstring")
-;;(time (lambda () (filter "-" "+")) 10000 "filter")
-(time (lambda () (perform + pairs)) 1 "add")
-(time (lambda () (perform - pairs)) 1 "sub")
-(time (lambda () (perform * pairs)) 1 "mul")
+;;(time (lambda () (perform + pairs)) 1 "add")
+;;(time (lambda () (perform - pairs)) 1 "sub")
+;;(time (lambda () (perform * pairs)) 1 "mul")
 
 (define mod-pairs
   (foreach a (range 1 100)
            (foreach b (append [1 2 2 2 2 3 3 3 4 5 6 7 8 9] (range 1 17))
                     (concat a ";" b))))
-(time (lambda () (perform mod mod-pairs)) 1 "mod")
+;;(time (lambda () (perform mod mod-pairs)) 1 "mod")
 
-(time (lambda () (^ 131 131)) 10 "exp")
+(define exp-range (for d (range 0 13) (concat d 1)))
+(time (lambda () (for n exp-range (^ n n))) 1 "^")
 
 (define irange (range 1 20))
-(time (lambda () (sum irange)) 100 "sum[i]")
+;;(time (lambda () (sum irange)) 100 "sum[i]")
 
-(time (lambda () (range 56 1523)) 10 "range")
+;;(time (lambda () (range 56 1523)) 10 "range")
 
 (define frange (foreach n irange (concat n "." n)))
-(time (lambda () (sum frange)) 100 "sum[f]")
+;;(time (lambda () (sum frange)) 100 "sum[f]")

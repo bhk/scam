@@ -255,14 +255,24 @@
 ;; SU & I encoding
 ;;----------------------------------------------------------------
 
-;; Return "-" if I is negative, `nil` otherwise.
+;; Return "-" if I is preceded with a minus sign.  This means that
+;; I <= 0.
 ;;
-(define `(i-neg? i)
+(define `(i-minus i)
   (findstring "-" i))
+
+(define `(i-nonzero? i)
+  (subst "-" "" "0" "" i))
+
+(define `(i-neg? i)
+  (and (i-minus i) (i-nonzero? i) "-"))
+
+(define `(i-odd? i)
+  (filter "%1 %3 %5 %7 %9" i))
 
 ;; SU:  a U-encoded number optionally preceded by a "-"
 (define (su-enc n)
-  (append (i-neg? n)
+  (append (i-minus n)
           (u-enc n)))
 
 (define (su-dec u)
@@ -286,13 +296,13 @@
 (define `(i-norm i)
   (define `u (subst "-" "" "+" "" i))
   (define `t (subst " " "" (rest (subst 0 "0 " " 0" 0 (concat "0" u)))))
-  (or (addprefix (i-neg? i) t) 0))
+  (or (addprefix (i-minus i) t) 0))
 
 ;; Compare two decimal numbers; result same as ucmp.
 ;;
 (define (i-cmp a b)
-  (let ((sa (i-neg? a))
-        (sb (i-neg? b))
+  (let ((sa (i-minus a))
+        (sb (i-minus b))
         (ua (u-enc a))
         (ub (u-enc b)))
     (if (xor sa sb)
@@ -332,7 +342,7 @@
 
 (define (i* a b)
   (define `i (u-dec-norm (u* (u-enc a) (u-enc b))))
-  (patsubst "-0" 0 (subst "--" "" (concat (i-neg? a) (i-neg? b) i))))
+  (patsubst "-0" 0 (subst "--" "" (concat (i-minus a) (i-minus b) i))))
 
 (define `(i> a b)
   (filter 1 (i-cmp a b)))
@@ -505,17 +515,16 @@
 (define `(f-exp f) (word 1 f))
 (define `(f-sign f) (word 2 f))
 (define `(f-mul f) (nth-rest 3 f))
-(define `(f-neg f) (findstring "-" (word 2 f)))
 
 (define `(f-nonzero? f)
   (findstring "i" f))
 
-(define `(f-negative? f)
+(define `(f-minus f)
   (filter "-" (f-sign f)))
 
 (define (f-negate f)
   (f-ctor (f-exp f)
-          (if (f-negative? f) "+" "-")
+          (if (f-minus f) "+" "-")
           (f-mul f)))
 
 (define `(float? n)
@@ -532,10 +541,10 @@
         (define `frac (word 3 (subst "." " . " (concat 0 m))))
 
         (f-ctor (i- e (words (u-enc frac)))
-                (or (i-neg? m) "+")
+                (or (i-minus m) "+")
                 (u-enc (subst "." "" m))))
       (f-ctor 0
-              (or (i-neg? n) "+")
+              (or (i-minus n) "+")
               (u-enc n))))
 
 ;; f-dec : Use exponential (XXXeXX) notation when the magnitude is between
@@ -552,7 +561,8 @@
    (if (filter-out "+" sign)
        (if (filter "-" sign)
            ;; Negative
-           (concat "-" (f-dec3 exp "+" mul))
+           (patsubst "-0" 0
+                    (concat "-" (f-dec3 exp "+" mul)))
            ;; undefined
            "undefined"))
 
@@ -589,7 +599,7 @@
       ;; swap
       (f+ b a)
       ;; shift B
-      (let& ((total (su+ (f-neg a) (f-mul a) (f-neg b) shift-b)))
+      (let& ((total (su+ (f-minus a) (f-mul a) (f-minus b) shift-b)))
             (append (f-exp a)
                     (subst "+ -" "-"
                            "- - " ""
@@ -669,11 +679,11 @@
       ;; same sign
       (let ((sum (f+ a (f-negate b))))
         (if (f-nonzero? sum)
-            (if (f-negative? sum) 2 1)
+            (if (f-minus sum) 2 1)
             nil))
       ;; different sign
       (if (or (f-nonzero? a) (f-nonzero? b))
-          (if (f-negative? a) 2 1))))
+          (if (f-minus a) 2 1))))
 
 ;; These forms accept and return N-encoded values.
 (define `(fnum+ a b) (f-dec (f+ (f-enc a) (f-enc b))))
@@ -708,16 +718,13 @@
 
 (define (num^ a b)
   &public
-  (let ((sa (i-neg? a))
-        (sb (i-neg? b))
-        (ua (u-enc a))
-        (ub (u-enc b)))
-    (if (or sb (float? b))
-        "undefined"
-        (concat (and sa
-                     (u-odd? ub)
-                     "-")
-                (u-dec (u^ ua ub))))))
+  (if (or (float? b) (i-neg? b))
+      "undefined"
+      (let ((fa (f-enc a)))
+        (f-dec3
+         (i* (f-exp fa) b)
+         (if (and (f-minus fa) (i-odd? b)) "-" "+")
+         (u^ (f-mul fa) (u-enc b))))))
 
 
 ;; Note: macros avoid conflict with Make "automatic" variables (`$*`, `$+`,
@@ -761,7 +768,7 @@
   (if v1
       (susum-loop (su+ (findstring "-" (word 1 a))
                        (filter-out "-" a)
-                       (i-neg? v1)
+                       (i-minus v1)
                        (u-enc v1))
                   (word 1 vec)
                   (rest vec))
@@ -804,7 +811,7 @@
 (define (range a b)
   &public
   (strip
-   (if (i-neg? a)
+   (if (i-minus a)
        ;; Negative A
        (concat
         (addprefix "-" (reverse (range (max (0- b) 1) (0- a))))
@@ -868,12 +875,12 @@
       (words (filter-out "+" (nth-rest 2 f))))
 
     (define `whole-val
-      (if (i-neg? exp)
+      (if (i-minus exp)
           (nth-rest (1+ (0- exp)) mul)
           (append (nwords exp ":") mul)))
 
     (define `frac-val
-      (if (i-neg? exp)
+      (if (i-minus exp)
           (wordlist 1 (0- exp) mul)
           nil))
 
