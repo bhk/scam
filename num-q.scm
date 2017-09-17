@@ -107,11 +107,6 @@
 (expect "2 + :iii :ii :i" (f-enc "1.23e4"))
 (expect "-1 + :iii :ii :i" (f-enc "1.23e1"))
 
-;; trim
-;;(expect "0.01005" (frac-trim 000.0100500))
-;;(expect "0" (frac-trim "0."))
-;;(expect "0" (frac-trim ".0"))
-
 ;; f-enc & f-dec
 (expect "undefined" (f-dec "0 N"))
 (expect "20" (f-dec "1 + :ii"))
@@ -219,6 +214,8 @@
 
 ;; /
 (expect 0.3333 (/ 1 3 4))
+;; Default precision
+(expect 0.3333333333333333 (/ 1 3))
 
 
 ;; <, >

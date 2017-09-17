@@ -39,7 +39,7 @@ Options:
 
 
 (define `version
-  "1.2")
+  "1.2.1")
 
 
 (define (opt-err opt)

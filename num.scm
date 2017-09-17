@@ -6,15 +6,30 @@
 
 ;; Exported functions:
 ;;
-;;    +, -, *, / ^, mod, =, !=, <, >, <=, >=
-;;    min, max, sum, range
+;;    +, -, *, / ^, mod
+;;    =, !=, <, >, <=, >=
+;;    0-, abs, min, max, sum, range, num-format
 ;;
 ;; Most functions accept exactly two arguments and operate on
-;; arbitrary-precision floating point: `+`, `-`, and `*` return exact
-;; results.  `/` accepts a third argument that specifies the precision
-;; required.  `^`, `mod`, and `range` accept integral parameters.
+;; arbitrary-precision floating point.
+;;
+;; `+`, `-`, and `*` return exact results.  `/` accepts a third argument, an
+;; integer that specifies the number of digits of precision required (the
+;; default is 16).
+;;
+;; `mod`, and `range` accept integral parameters.  The second argument to
+;; `^` must be a non-negative integer.
+;;
+;; Operations involving numbers with decimal integer notation (no "." and no
+;; exponent) will usually return a result in integer notation.  Operations
+;; on numbers with "." or "e" will typically (but not always) result in a
+;; normalized form, using scientific notation when the magnitude of the
+;; number -- M, where the most significant digit is 1...9 * 10^M -- is
+;; greater than 20 or less then -5.  [Tests for numeric equality should
+;; use `=`, rather than `eq?`.]
+;;
 
-
+;;----------------------------------------------------------------
 ;; Various encodings of numbers are used internally by this module:
 ;;
 ;; U: This encoding represents non-negative integers in base 10, using one
@@ -88,6 +103,7 @@
 ;; a normalized form.
 ;;
 (define `(0- n)
+  &public
   (subst "--" "" (concat "-" (subst "+" "" n))))
 
 ;; Return the last N words in LST, where N >= 0.
@@ -393,7 +409,7 @@
 ;;    Error < 100/10 - 99/11 = 1
 ;;
 ;; Further increases in ATOP affect only the subtractive term, and thereby
-;; decress the error.  (The first term, A/B, must be less than 10.)
+;; decrease the error.  (The first term, A/B, must be less than 10.)
 ;; Increases in BTOP also decrease the error.
 ;;
 ;;          A/B  -       Est  <= 1
@@ -554,7 +570,7 @@
 
 ;; EXP = exponent (integer)
 ;; IS-NEG = true if number is negative
-;; MUL = multiplier, normalized (no zero in most-siginificant digit)
+;; MUL = multiplier, normalized (no zero in the most-significant digit)
 ;;
 (define (f-dec3 exp sign mul)
   (or
@@ -861,7 +877,7 @@
 ;; small to include all significant digits, all digits will be replaced with
 ;; `?` characters.
 ;;
-;; When the pad character is `0`, padding is to the righ of the `-` sign,
+;; When the pad character is `0`, padding is to the right of the `-` sign,
 ;; and when it is ` ` the padding appears to the left of the sign.
 ;;
 (define (num-format x nwhole ?pad ?nfrac)

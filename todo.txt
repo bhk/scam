@@ -309,7 +309,7 @@ Optimizations
     * Exponentiation with non-integral exponents
     * num: accept E-notation for integers in: range, ^
     * num: accept "undefined" everywhere
-    * num: wwitch to big-endian: hurts u-add, but helps u-cmp, u-norm, carry?
+    * num: switch to big-endian: hurts u-add, but helps u-cmp, u-norm, carry?
     * support "+" prefix in numeric constants
     * (tail ...) to core.scm
     * num: multi-arg + and *

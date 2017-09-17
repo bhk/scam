@@ -203,7 +203,7 @@
   &public
   ;; reduce all digits to '0' and (E|e)[-]<digit> to 'e'
   (define `a (subst 1 0 2 0 3 0 4 0 5 0 6 0 7 0 8 0 9 0
-                    "e" "E" "E-" "E" "E0" "e" " " "_" s))
+                    "+" "-" "e" "E" "E-" "E" "E0" "e" " " "_" s))
   ;; remove one leading "-"
   (define `b (subst "0" "" (patsubst "-%" "%" a)))
   ;; after removing '.' and 'e', there should be nothing left

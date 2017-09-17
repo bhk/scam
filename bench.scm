@@ -1,6 +1,10 @@
 (require "core")
 (require "num")
 
+;; Build .out/timems if it isn't there...
+(or (wildcard ".out/timems")
+    (shell "cc -o .out/timems misc/timems.c"))
+
 (define (get-time-ms)
   (subst "." "" (shell ".out/timems")))
 
@@ -46,23 +50,23 @@
 ;;   245 ^
 
 (print (words pairs) " pairs")
-;;(time (lambda () (perform + pairs)) 1 "add")
-;;(time (lambda () (perform - pairs)) 1 "sub")
-;;(time (lambda () (perform * pairs)) 1 "mul")
+(time (lambda () (perform + pairs)) 1 "add")
+(time (lambda () (perform - pairs)) 1 "sub")
+(time (lambda () (perform * pairs)) 1 "mul")
 
 (define mod-pairs
   (foreach a (range 1 100)
            (foreach b (append [1 2 2 2 2 3 3 3 4 5 6 7 8 9] (range 1 17))
                     (concat a ";" b))))
-;;(time (lambda () (perform mod mod-pairs)) 1 "mod")
+(time (lambda () (perform mod mod-pairs)) 1 "mod")
 
 (define exp-range (for d (range 0 13) (concat d 1)))
 (time (lambda () (for n exp-range (^ n n))) 1 "^")
 
 (define irange (range 1 20))
-;;(time (lambda () (sum irange)) 100 "sum[i]")
+(time (lambda () (sum irange)) 100 "sum[i]")
 
-;;(time (lambda () (range 56 1523)) 10 "range")
+(time (lambda () (range 56 1523)) 10 "range")
 
 (define frange (foreach n irange (concat n "." n)))
-;;(time (lambda () (sum frange)) 100 "sum[f]")
+(time (lambda () (sum frange)) 100 "sum[f]")
