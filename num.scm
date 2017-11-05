@@ -245,7 +245,7 @@
 
 ;; Replace each digit D in U with 9-D, then add one.  The result is
 ;; 10^MAG-U, where MAG is the number of digits in U.  Modulo 10^MAG, the
-;; result is simply -U.
+;; result is simply -U.  NOTE: digits are not normalized (may have 10 i's).
 (define (u-negate u)
   (join
    (foreach w u (concat ":" (subst w "" ":iiiiiiiii")))
@@ -304,7 +304,7 @@
         (len (words (join ua ub))))
     (if (u-nonzero? (word len (rest total)))
         (wordlist 1 len total)
-        (concat "- " (wordlist 1 len (u-negate total))))))
+        (concat "- " (wordlist 1 len (u-carry (u-negate total)))))))
 
 ;; Strip leading zeros and remove extraneous sign ("-" or "+") from decimal
 ;; integer I.

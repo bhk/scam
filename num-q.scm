@@ -77,9 +77,11 @@
 (expect 3 (i+ "+2" 1))
 (expect -3 (i+ -2 -1))
 (expect 99 (i+ 100 -1))
+(expect 100 (i+ 101 -1))
 (expect -99 (i+ 1 -100))
 (expect -99 (i+ -100 1))
 (expect 99 (i+ -1 100))
+(expect 100 (i+ -1 101))
 (expect 0 (i+ -1 1))
 (expect 0 (i+ -0 0))
 (expect 0 (i+ 0 -0))
@@ -111,6 +113,8 @@
 (expect "undefined" (f-dec "0 N"))
 (expect "20" (f-dec "1 + :ii"))
 (expect "0.02" (f-dec "-2 + :ii"))
+;; bug in 1.2.1:
+(expect "1e+30" (f-dec "-1 + : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :i"))
 
 (define (f-norm n) (f-dec (f-enc n)))
 (expect 1 (f-norm 1))
