@@ -200,11 +200,11 @@
 
 ;; describe-error
 
-(expect 1 (natural? 1))
-(expect "" (natural? 1.0))
-(expect "" (natural? 1e5))
-(expect "" (natural? -1))
-(expect "" (natural? 0))
+(expect 1 (word-index? 1))
+(expect "" (word-index? 1.0))
+(expect "" (word-index? 1e5))
+(expect "" (word-index? -1))
+(expect "" (word-index? 0))
 
 
 (define (tde form)

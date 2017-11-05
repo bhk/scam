@@ -44,8 +44,7 @@
 (expect "" (vec-or ["" "" "" ""]))
 
 (expect "" (indices ""))
-(expect "1 2 3 " (indices "a b c"))
-
+(expect [1 2 3] (indices "a b c"))
 
 (expect "2" (numeric? "2"))
 (expect "-1" (numeric? "-1"))

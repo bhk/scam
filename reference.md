@@ -5,8 +5,8 @@
  * [Overview](#overview)
  * [Syntax](#syntax)
  * [Data Types](#data-types)
-   * [Numbers](#numbers)
    * [Booleans](#booleans)
+   * [Numbers](#numbers)
    * [Vectors](#vectors)
    * [Dictionaries](#dictionaries)
    * [Records](#records)
@@ -17,12 +17,13 @@
  * [Manifest Symbols](#manifest-symbols)
  * [Make Features](#make-features)
  * [Debugging](#debugging)
+ * [Libraries](#libraries)
 
 
 ## Overview
 
 A SCAM program consists of *expressions*. Some examples of expressions are
-constants, and variable definitions, and function calls.
+constants, variable definitions, and function calls.
 
 Expressions are *evaluated* when the program is executed. Evaluation
 computes a data value that is said to be "returned" from the expression.
@@ -43,6 +44,7 @@ values of these top-level expressions are discarded.
 
 ## Syntax
 
+
 ### String Literals
 
 String literals are enclosed in double quote characters (`"`).
@@ -56,27 +58,29 @@ The sequences `\n` and `\t` represent newline and tab. Use a backslash
 
 String literals evaluate to the content of the string.
 
+
 ### Numbers
 
 Numbers consist entirely of digits, optionally preceded with a `-`
-character, and optionally including one decimal point after the first
-digit, and optionally followed by an exponent -- "e" or "E" followed by a
-decimal integer.
+character, and optionally including one decimal point after the first digit,
+and optionally followed by an exponent -- "e" or "E" followed by an optional
+sign ("+" or "-") and a decimal integer
 
     123
     12341234234982341234.0987098677896
-    0.12e99
+    0.12e+99
 
 Numbers evaluate to the string used to represent them. Writing `1.0` is
 equivalent to writing `"1.0"`.
 
+
 ### Symbols
 
 Symbols are sequences of non-whitespace characters, except for any of the
-following: ``()[]{},;:%$\`"``.
+following: ``()[]{},;:%$\`'"``.
 
     a
-    this-is-a-long-symbol-with/perhaps/*unusual*-`characters'!
+    this-is-a-long-symbol-with/perhaps/*unusual*-characters!
 
 Symbols can identify:
 
@@ -84,9 +88,10 @@ Symbols can identify:
 - [macros](#macros)
 - [special forms](#special-forms)
 - [record constructors](#records)
-- [GNU Make builtins](#builtins)
+- [GNU Make built-in functions](#built-ins)
 
 In a few cases they designate keywords, like `define` or `let`.
+
 
 ### Compound Expressions
 
@@ -109,16 +114,18 @@ sub-expressions will be evaluated, and the value of the first expression
 will be treated as a function, which will be called with all the other
 sub-expression values as its arguments.
 
+
 ### Vector Constructors
 
-Vector constructors are a number of expressions enclosed in square brackets.
+Vector constructors are written as a pair of sqaure brackets enclosing zero
+or more expressions.
 
     [ 1 2 "c" ]
     []
 
-Vectors represent sequences of values.  [Vector operations]
-(#vectors) such as `nth`, `first`, and `rest` can be used extract
-values from vectors.
+Vector values and functions that operate on them are [described
+below](#vectors).
+
 
 ### Dictionary Constructors
 
@@ -135,6 +142,10 @@ of the symbol becomes the key.  When a symbol is prefixed with `=` the value
 of the symbol will be used as the key.  For example, `{ a: 1 }` is
 equivalent to `{ "a": 1 }`, and `{ =a: 1 }` is equivalent to `{ (if 1 a): 1
 }`.
+
+Dictionary values and functions that operate on them are [described
+below](#dictionaries).
+
 
 ### Syntax Quoting
 
@@ -173,33 +184,60 @@ safety is guaranteed, there are no run-time type violations, and control
 flow integrity is always preserved.
 
 That said, we can also think of SCAM as hosting a rich set of *subordinate*
-data types.  These are ranges or sets of values (types in the strict sense)
-that serve a certain purpose and are used in a certain way.  For example,
-*some* strings can represent (or "be") numbers.  Not all strings are
-numbers, but all numbers are strings.  Similarly, some strings can represent
-vectors of strings.  Not all strings are vectors, but all vectors are
-strings, so we can think of vectors as a subset of the set of strings.  At
-the same time, a vector can contain any number of any string values, so we
-can also think of is as a Cartesian product of the set of strings.
+data types.  These are ranges or sets of values (types, if you will) that
+serve a certain purpose and are used in a certain way.  For example, *some*
+strings can represent (or "be") numbers.  Not all strings are numbers, but
+all numbers are strings.  Similarly, some strings can represent vectors of
+strings.  Not all strings are vectors, but all vectors are strings, so we
+can think of vectors as a subset of the set of strings.  At the same time, a
+vector can contain any number of any string values, so we can also think of
+is as a Cartesian product of the set of strings.
 
 In terms of these subordinate types, SCAM is not statically typed at all.
-SCAM is mostly oblivious.  It does provide syntax for constructing some of
-these types and functions for manipulating them, but if you were to pass,
-say, a non-vector to the `append` function, it will perform a deterministic
-string manipulation and happily succeed, even though the result may not be
-of any use to you.
+SCAM is mostly oblivious to them.  It provides syntax for constructing some
+of these types, functions for manipulating them, and it can convert them
+back to source code form.  However, if you were to pass, say, a non-vector
+to the `append` function, it will perform a deterministic string
+manipulation and happily succeed, even though the result may not be of any
+use to you.
 
 Some of these subordinate types are overlapping sets.  For example, `1` is
-equivalent to `[1]` (and `[[1]]` and so on).  But mostly they are disjoint.
+equivalent to `[1]` (and `[[1]]` and so on), but mostly they are disjoint.
 For example, each data record can be distinguished from any other data
 record, vector, or dictionary.  Non-empty vectors and dictionaries also
 disjoint.  This allows SCAM to display values in a more meaningful way.
 
 
+### Booleans
+
+The empty string (written `""` or `nil`) is used to represent "false" when
+functions, macros, or special forms operate on or return boolean values.
+Any non-nil value is considered "true"; the value "1" is often used to
+represent true.
+
+    > (if nil 1 2)
+    2
+    > (if "false" 1 2)   ; not false...
+    1
+
+Make built-ins `and` and `or` interpret strings in this manner.  `or` returns
+the first non-nil argument, and `and` returns the last argument if all
+arguments are true.
+
+SCAM's core library provides `not` and `xor` logical operators.
+
+   > (xor "a" "b")
+   > (xor "a" nil)
+   a
+   > (not "x")
+   > (not nil)
+   1
+
+
 ### Numbers
 
 Numbers are typically represented as a string of decimal digits. GNU Make
-builtin functions and the the `num` module supplied with SCAM expect numbers
+built-in functions and the the `num` module supplied with SCAM expect numbers
 in this format.
 
     > (word 2 "a b c")
@@ -207,23 +245,28 @@ in this format.
     > (+ 12 34)
     46
 
-### Booleans
+The `numeric?` function test whether a string is a number, and `word-index?`
+tests whether a stirng is safe to pass as a word index to Make built-in
+functions (a positive integer represented with only digits -- no exponent or
+decimal).
 
-Boolean results use the empty string (`nil`) to represent the false or
-failure condition, and any other value to represent true.
+    > (numeric? "1e20")
+    1e20
+    > (if (word-index? "1e20") "yes" "no")
+    no
+    > (if (word-index? 0) "yes" "no")
+    no
+    > (if (word-index? 1) "yes" "no")
+    yes
 
-    > (if nil 1 2)
-    2
-    > (if "false" 1 2)   ; not false...
-    1
 
 ### Vectors
 
-A vector is a list of zero or more words delimited by a whitespace
-character.  Each word contains a string that has been *word-encoded*.  By
-encoding vectors in this manner we can employ Make builtin functions that
-provide random access into a word list, such as `word`, `wordlist`, and
-`lastword`.
+A vector is a sequence of *word-encoded* values delimited by space
+characters.  Word-encoding is a reversible transformation that replaces
+space and tab characters with non-whitespace characters.  By encoding
+vectors in this manner we can employ Make built-in functions that provide
+random access into a word list, such as `word`, `wordlist`, and `lastword`.
 
 The function `demote` word-encodes a string, and `promote` reverses the
 effects of `demote`. Word encoding leaves strings unchanged unless they
@@ -273,7 +316,6 @@ prompt:
     a b!0c
     > (print (nth 2 ["a" "b c"]))
     b c
-
 
 #### Word-Encoding Details
 
@@ -575,8 +617,7 @@ of a local variable is limited to the expression in which it is defined, and
 the lifetime of the local variable is limited to the execution of that
 expression. Local variables are immutable. They are assigned a value when
 when their containing expression is evaluated, and they cannot be assigned a
-different value during the evaluation of that expression.  See [`let`]
-(#let).
+different value during the evaluation of that expression.  See [`let`](#let).
 
 Global variables are ordinary GNU Make variables. Their lifetime is
 unlimited, and they are visible to other SCAM modules and Makefiles (SCAM
@@ -587,12 +628,12 @@ symbol in SCAM, you must first introduce the binding using the `declare` or
 For readers comparing with other Lisp dialects, it is useful to note that
 globals are functionally equivalent to "dynamic" or "special" variables in
 the parlance of Common Lisp. The following special forms deal with global
-variables: [`define`](#define), [`declare`](#declare), [`let-global`]
-(#let-global), [`set`](#set), [`set-global`](#set-global), [`set-rglobal`]
-(#set-rglobal).
+variables: [`define`](#define), [`declare`](#declare),
+[`let-global`](#let-global), [`set`](#set), [`set-global`](#set-global),
+[`set-rglobal`](#set-rglobal).
 
 Automatic variables are the variables created by GNU Make's `foreach`
-builtin or SCAM's `for` macro. Automatic variables are immutable (as are
+built-in or SCAM's `for` macro. Automatic variables are immutable (as are
 local variables) but they are visible to code in other modules, shadowing
 any global variables that are known to those other modules.
 
@@ -609,6 +650,7 @@ behavior:
   - Use very short variable names for automatic variables.
 
   - Avoid very short variable names for local variables.
+
 
 ### Variable Flavor
 
@@ -633,6 +675,7 @@ variables, and other values will be stored in simple variables.
     > (define x 1)
     > (flavor "x")
     "simple"
+
 
 ### Namespaces
 
@@ -735,7 +778,7 @@ three different categories:
  - Manifest macros
 
 Manifest functions are like other functions in SCAM, except that they are
-provided by the language itself.  Special forms, builtins, and macros are
+provided by the language itself.  Special forms, built-ins, and macros are
 not functions, so they do not have values and cannot be passed to other
 functions; they can only be invoked like a function.
 
@@ -844,7 +887,6 @@ Dependencies are discovered just as with the `require` directive.
 Unlike the `require` directive, `use` does not introduce any run-time
 dependencies.  The specified module is instead loaded by the compiler, at
 compile-time.
-
 
 ### `let`
 
@@ -1061,7 +1103,7 @@ This special form concatenates all of its arguments.
     (subst FROM TO {FROM TO}... VALUE)
 
 This special form replaces substrings with replacement strings within the
-given VALUE.  It is equivalent to the GNU Make builtin `subst` except that
+given VALUE.  It is equivalent to the GNU Make built-in `subst` except that
 it accepts multiple pairs of replacement strings.  For example:
 
     > (subst 2 3 1 2 12)
@@ -1240,24 +1282,24 @@ This symbol evaluates to the file currently being loaded via `require`.
 This is evaluated at run-time, not compile-time, so it does not necessarily
 return the name of the file in which it appears.
 
-### Builtins
+### Built-Ins
 
-Every Make [builtin function]
-(http://www.gnu.org/software/make/manual/make.html#Functions) is available
-from SCAM as a special form. For example:
+Every Make [built-in
+function](http://www.gnu.org/software/make/manual/make.html#Functions) is
+available from SCAM as a special form. For example:
 
     > (word 2 "a b c")
     "b"
     > (addsuffix ".c" "x")
     "x.c"
 
-When the value of a builtin is requested, an equivalent function value is
+When the value of a built-in is requested, an equivalent function value is
 provided:
 
     > shell
     "$(shell $1)"
 
-Builtins may differ from ordinary functions in the way arguments are
+Built-ins may differ from ordinary functions in the way arguments are
 evaluated. Ordinarily, all arguments are evaluated in order *before* a
 function is called. In the case of `if`, `and`, `or`, and `foreach`,
 however, arguments may not be evaluated at all, and in the case of
@@ -1266,7 +1308,7 @@ however, arguments may not be evaluated at all, and in the case of
     > (if "" (error "unexpected") 1)
     1
 
-Some builtins accept variable *names*. These builtins -- `value` and `call`
+Some built-ins accept variable *names*. These built-ins -- `value` and `call`
 -- are potentially confusing because they cross layers of abstraction. Be
 aware that they use string values to refer to the variables, whereas in SCAM
 you ordinarily reference variables by symbols. Using an unquoted symbol
@@ -1285,11 +1327,11 @@ name can produce unexpected results. The following example demonstrates
     > (call f "x")
     "xx"
 
-The names [`foreach`](#foreach) and [`subst`](#subst) builtins are
-actually special forms that invoke the true builtins, which are available
+The names [`foreach`](#foreach) and [`subst`](#subst) built-ins are
+actually special forms that invoke the true built-ins, which are available
 in their raw forms by the names `.foreach` and `.subst`.
 
-Directly using the `.foreach` builtin can be awkward, because the referenced
+Directly using the `.foreach` built-in can be awkward, because the referenced
 variable name is unknown to SCAM and will trigger an error unless a declaration
 is used:
 
@@ -1308,7 +1350,7 @@ substitutions to be performed.
 
 ## Make Features
 
-Variables and builtin functions defined by Make are available to SCAM
+Variables and built-in functions defined by Make are available to SCAM
 programs.  See <http://www.gnu.org/software/make/manual/make.html#Name-Index>
 for a complete list.
 
@@ -1324,9 +1366,9 @@ the variable and then referencing its name:
     (declare MAKELEVEL &global)
     (print MAKELEVEL)
 
-### Make Builtin Functions
+### Make Built-In Functions
 
-Make builtin functions are directly usable by SCAM programs:
+Make built-in functions are directly usable by SCAM programs:
 
     abspath basename dir error eval firstword flavor foreach info lastword
     notdir origin realpath shell sort strip suffix value warning wildcard
@@ -1411,3 +1453,20 @@ following approach:
  * This second invocation should take longer to execute. Dividing the
   additional time by 10 will give the amount of time spent in that function
   during that use case.
+
+
+## Libraries
+
+SCAM contains several modules that can be used by SCAM programs or from the
+SCAM REPL.  Programs will need to `require` the appropriate module; these
+are by default included in the REPL environment.
+
+For documentation, refer to the corresponding `.scm` files in the SCAM
+project.  (Look for `&public` functions.)
+
+The following are general-purpose modules:
+
+ - `core`: generic, commonly-used functions.
+ - `num`: arbitrary-precision decimal floating point numbers.
+ - `io`: generic I/O functions.
+ - `trace`: functions for tracing, debugging, and profiling.

@@ -4,6 +4,7 @@
 
 (declare SCAM_DEBUG &global)
 
+;; Return 1 if A and B are equal, nil otherwise.
 (define (eq? a b)
   &public
   (define `aa (concat 1 a))
@@ -16,57 +17,52 @@
   &inline
   a)
 
-;; Return the parameter that is not nil (unless both or none are nil)
+;; Return the parameter that is not nil (unless both or none are nil).
 (define (xor a b)
   &public
   (if a (if b nil a) b))
 
-;; concatenate strings in VEC, separating them with DELIM
+;; Concatenate strings in VEC, separating them with DELIM.
 (define (concat-vec vec ?delim)
   &public
   (promote (subst " " (demote delim) vec)))
 
-;; add an item to the front of a vector
+;; Add ITEM to the front of vector VEC.
 (define (cons item vec)
   &public
   (concat (demote item) (if vec " ") vec))
 
-;; add `item` to end of a vector `vec`
+;; Add ITEM to end of vector VEC.
 (define (conj vec item)
   &public
   (concat vec (if vec " ") (demote item)))
 
-;; return last item in vector `vec`
+;; Return the last item in vector VEC.
 (define (last vec)
   &public
   &inline
   (promote (lastword vec)))
 
-;; Remove redundant spaces and tabs without removing "\n" characters.  Use
-;; this instead of `strip` when operating on vectors.  Word demotion does
-;; not encode newline characters.
-;;
+;; Collapse spaces and tabs, leaving "\n" alone.  This can be used to remove
+;; redundant spaces from a vector or dictionary without modifying its
+;; contents.  (The Make builtin `strip` will convert newlines to spaces.)
 (define (strip-vec vec)
   &public
   &inline
   (filter "%" vec))
 
-;; `butlast` is like `rest`, but from the end of the vector
+;; Return a vector of all items in VEC except for the last one.
 (define (butlast vec)
   &public
   (wordlist 2 (words vec) (concat "X " vec)))
 
-(define (map-call funcname vec)
-  &public
-  (for x vec (call funcname x)))
-
-;; `select-vec` = return vector of items for which (fn item) is true
+;; Return a vector of all members of VEC for which (FN member) is non-nil.
 (define (select-vec fn list)
   &public
   (filter-out "!" (foreach dx list
                            (if (fn (promote dx)) dx "!"))))
 
-;; `select-words` = return new list of words for which (fn word) is true
+;; Return a list of words for which (FN word) is non-nil.
 (define (select-words fn list)
   &public
   ;; wrap in outer 'foreach' to eliminate redundant spaces
@@ -74,24 +70,29 @@
            (foreach x list (if (fn x) x))
            a))
 
-
-;; first non-nil member of vec
+;; Return the first non-nil member of VEC.
 (define (vec-or vec)
   &public
   &inline
   (first (filter-out [""] vec)))
 
-(define (indices-x in out)
-  (if (word (words out) in)
-      (concat (words out) " " (indices-x in (concat "1 " out)))))
+(define (indices-b max len lst)
+  (if (filter max len)
+      len
+      (concat len " " (indices-b max (words lst) (concat ". " lst)))))
 
-;; return list of indices, one for each word in list
-(define `(indices list)
+(define (indices-a max)
+  (if (filter-out 0 max)
+      (indices-b max 1 ". .")))
+
+;; Return a list/vector of the indices (1, 2, ...) of words in LST.
+(define `(indices lst)
   &public
-  (indices-x list 1))
+  (indices-a (words lst)))
 
 
-;; Reverse a list in groups sized by powers of ten.
+;; Reverse a list in groups sized by powers of ten.  Simpler implementations
+;; are O(n^2) because (rest VEC) is an O(n) operation.
 ;;
 ;; z=""    -->      10       9   ...     2       1
 ;; z="0"   ->    91-100   81-90  ...  11-20   01-10
@@ -122,14 +123,13 @@
       (rev-zeroes list (concat 0 z))
       z))
 
-;; Simpler implementations of `reverse` are O(n^2) because `rest` is
-;; an O(n) operation.
+;; Reverse word list (or vector) LIST.
 (define (reverse list)
   &public
   (nth-rest 1 (rev-by-10s list (rev-zeroes list nil))))
 
 
-;; Keep applying `fn` to `value` while `(pred value)` is true.
+;; Recursively apply FN to VALUE until (PRED result) is nil.
 ;;
 ;; while: This implementation limits recursion depth to log(N).  A very
 ;;   simple implementation yields O(N) recursion depth, which can degrade
@@ -199,6 +199,7 @@
         initial)))
 
 
+;; Return S if S is a valid numeric literal in SCAM, nil otherwise.
 (define (numeric? s)
   &public
   ;; reduce all digits to '0' and (E|e)[-]<digit> to 'e'
@@ -213,23 +214,22 @@
       (if c "" s)))
 
 
-;; Is N what a number theorist would call a "natural number"?  (A positive
-;; integer, and therefore not going to cause an exception as the first
-;; argument to `word` or `wordlist`.)
+;; Return 1 if N is safe to pass to WORD or WORDLIST.  This means it
+;; consists only of decimal digits and is non-zero.
 ;;
-(define (natural? n)
+(define (word-index? n)
   &public
   (numeric? (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
 
 
-;; Equivalent to (patsubst pat repl (filter pat str)).
+;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
 ;;
 (define `(filtersub pat repl str)
   &public
   (patsubst pat repl (filter pat str)))
 
 
-;; concatenate one or more (potentially empty) vectors, word lists, or
+;; Join one or more (potentially empty) vectors, word lists, or
 ;; dictionaries.
 ;;
 (define (append ?a ?b ?c ?d ?e ?f ?g ?h ...others)
@@ -317,7 +317,8 @@
                 (findstring "!=" str)))
        str))
 
-;; Convert h to dictionary syntax, or return nil.
+;; Convert H to dictionary syntax; return nil if dictionary syntax
+;; cannot represent H.
 ;;
 (define (format-dict h)
   (define `pairs
@@ -338,8 +339,8 @@
           (concat "{" (concat-vec pairs ", ") "}"))))
 
 
-;; Extract members from a record, applying `func` to them, appending the
-;; result to `accum` (with a single space separator for each).
+;; Extract members from a record, applying FUNC to them, appending the
+;; result to ACCUM (with a single space separator for each).
 ;;
 (define (data-foreach func encodings values accum)
   (define `e (word 1 encodings))
@@ -386,6 +387,7 @@
 
 (define *format-funcs* nil)
 
+;; Register a formatting function that will be used by `format`.
 (define (format-add func)
   &public
   (set *format-funcs* (cons func *format-funcs*)))
@@ -395,8 +397,7 @@
       (or ((first funcs) str)
           (format-custom str (rest funcs)))))
 
-;; Return a readable and parse-able representation of STR.
-;;
+;; Return the most readable SCAM source representation of STR.
 (define (format str)
   &public
   (define `(format-vector str)
@@ -416,15 +417,13 @@
                           str) "\"")))
 
 
-;;----  printf  ----
+;; Expand FMT, replacing escape sequences with values from vector VALUES,
+;; returning the resulting string.
 ;;
-;; Usage:
-;;   (printf FMT VALUE...)
+;; The following escape sequenaces are supported:
+;;   %s  ->  value
+;;   %q  ->  (format value)
 ;;
-;; Format expressions:
-;;   %s  ->  argument as-is
-;;   %q  ->  describe argument with `format`
-
 (define (vsprintf fmt values)
   &public
 
@@ -443,12 +442,14 @@
               ;; "!%x" => bad format string
               (subst "!%" "[unknown % escape]%" w))))))
 
-
-(define (sprintf format ...values)
+;; Like `vsprintf`, but values follow as arguments following FMT.
+(define (sprintf fmt ...values)
   &public
-  (vsprintf format values))
+  (vsprintf fmt values))
 
 
+;; Like `sprintf`, but the result is written to stdout using `info` (note
+;; that this will unavoidably append an additional newline.)
 (define (printf format ...values)
   &public
   (info (vsprintf format values)))
@@ -469,21 +470,23 @@
         (if (not (findstring "K" SCAM_DEBUG))
             (error "")))))
 
+;; Compare A to B; if they are not equal, display diagnostics and terminate
+;; execution.
 (define `(expect a b)
   &public
   (expect-x a b (current-file-line)))
 
-;; Compare only the formatted results.  This accommodates only minor
-;; differences in the concrete layout that do not affect the meaning.  For
-;; example, a record ending in a &list member (that is empty) will have a
-;; trailing space when constructed, but not after being retrieved from
-;; another record (when stored as a trailing &list parameter).
-;;
+;; Like `expect, but only the formatted versions of A and B are compared.
+;; This accommodates only minor differences in the concrete layout that do
+;; not affect the meaning in some contexts.  For example, a record ending in
+;; a &list member (that is empty) will have a trailing space when
+;; constructed, but not after being retrieved from another record (when
+;; stored as a trailing &list parameter).
 (define `(fexpect a b)
   &public
   (expect-x (format a) (format b) (current-file-line)))
 
-;; Return 1 if substr appears within str.  Print diagnostic otherwise.
+;; Return 1 if SUBSTR appears within STR.  Print a diagnostic otherwise.
 (define (see substr str)
   &public
   (if (findstring substr str)
@@ -493,7 +496,9 @@
 
 
 ;; Return a vector/wordlist of the unique members of a vector/wordlist.
-;; Order is preserved; the first occurrence of each member is retained.
+;; Order is preserved; the first occurrence of each member is retained.  The
+;; Make builtin `sort` returns unique items and is much faster, but it does
+;; not preserve ordering.
 (declare (uniq vec)
          &public)
 
@@ -509,7 +514,6 @@
 
 ;; Split STR at each occurrence of DELIM.  Returns vector whose length is one
 ;; more than the number of occurrences of DELIM.
-;;
 (define (split delim str)
   &public
   ;; Ensure that the end or start of delim cannot overlap part of an escape
@@ -524,7 +528,7 @@
            [(dec w)]))
 
 
-;; (1+ NUM) : add one to a non-negative integer
+;; Add one to N.  N must contain only decimal digits.
 (define (1+ n)
   &public
   (cond
@@ -555,8 +559,7 @@
       (concat "~~" (subst "~" "~0" a) (memoenc b c))))
 
 
-;; memoize a function with up to three arguments
-;;
+;; Memoize a function with up to three arguments.
 (define (memoize funcname)
   &public
   (if (not (bound? funcname))
@@ -569,6 +572,7 @@
                        (mcache (concat varbase (memoenc a b c)) func a b c
                                (or d e f g h)))))))
 
+;; Sort a vector VALUES in order of increading (KEY-FUNC i) for each item i.
 (define (sort-by key-func values)
   &public
   (define `keyed
@@ -578,8 +582,7 @@
   (filter-out "%!!" (subst "!!" "!! " (sort keyed))))
 
 
-;; Return items that match prefix or begin with 'prefix %'.
-;;
+;; Return items that match prefix or begin with 'PREFIX %'.
 (define (assoc-initial prefix vec)
   &public
   (define `assoc-pct
@@ -594,16 +597,13 @@
         (filter (concat prefix " " prefix [" %"]) vec)))))
 
 
-;; Return the first vector whose initial items match those in key-vec.
-;;
+;; Return the first vector in VEC whose initial items match those in KEY-VEC.
 (define `(assoc-vec key-vec vec)
   &public
   (assoc-initial [key-vec] vec))
 
 
-;; Return the first vector whose first item is `key`, given a vector of
-;; vectors.
-;;
+;; Return the first vector in VEC whose first item is KEY.
 (define `(assoc key vec)
   &public
   ;; double-demote requires just one subst more than single demote
@@ -611,7 +611,6 @@
 
 
 ;; Return the index of ITEM in VEC, or 0 if ITEM is not found.
-;;
 (define (index-of vec item)
   &public
   (define `(wrap str) (concat "!_" str "!_"))
@@ -627,7 +626,6 @@
 ;; Apply two-argument function F to all elements of V, starting at the left
 ;; with (F Z <first>).  If there is only one element, return it.  If V is
 ;; empty, return Z.
-;;
 (define (foldl f z v)
   &public
   (if (firstword v)
@@ -636,15 +634,15 @@
 
 
 ;; Like foldl, but starting from the right with (F <last> Z).
-;;
 (define (foldr f z v)
   &public
   (if (firstword v)
       (f (first v) (foldr f z (rest v)))
       z))
 
-;; Insert VALUE between items of VEC.
-;;
+;; Insert VALUE into VEC between every two adjacent items.  If VEC is empty
+;; the result, is empty.  Otherwise, the result has one less than twice as
+;; many elements as VEC.
 (define (intersperse value vec)
   &public
   (subst " " (concat " " [value] " ")

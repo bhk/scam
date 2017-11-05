@@ -483,7 +483,7 @@
                       "line "))
             (msg (get-error-msg desc))
             (pos pos))
-        (if (natural? pos)
+        (if (word-index? pos)
             (sprintf "%s%s: %s\nat: %s\n"
                      file (describe-lnum pos subj) msg
                      (concat-vec (describe-line pos subj) "*"))

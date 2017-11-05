@@ -16,31 +16,28 @@
   (logshell (concat-vec all)))
 
 
-;; quote argument for POSIX shells
-;;
+;; Quote argument ARG for POSIX shells.
 (define (quote-sh-arg arg)
   &public
   (concat "'" (subst "'" "'\''" arg) "'"))
 
 
-;; Construct a command line to echo STR
-;;
+;; Construct a command line to echo STR.
 (define (echo-command str)
   &public
   (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str))))
 
 
-;; Write to console without a trailing newline.  We redirect to stderr
-;; because `shell` captures stdout, and writing to stdin fails on Cygwin.
-;;
+;; Write STRINGS to the console without a trailing newline.  This function
+;; redirects its output to stderr because `shell` captures stdout, and
+;; because writing to stdin fails on Cygwin.
 (define (printn ...strings)
   &public
   (shellc (echo-command (concat-vec strings)) " >&2"))
 
 
-;; Execute command, returning data written to stdout.  (Unlike `shell`,
+;; Execute command CMD, returning data written to stdout.  (Unlike `shell`,
 ;; which trims trailing newlines and then converts newlines to spaces.)
-;;
 (define (shell! cmd)
   &public
   (subst " " "" "!n" "\n" "!0" " " "!1" "!"
@@ -60,9 +57,12 @@
   (shell! "head -1"))
 
 
-;; write-file creates a temporary file and, on success, copies it to the
-;; destination.  If interrupted in the middle of processing, the temporary
-;; file might be partially constructed.
+;; Write DATA to file FILENAME.
+;;
+;; In order to handle large values, the data is written line-by-line, using
+;; multiple shell invocations, to a temporary file that is moved to FILENAME
+;; only on success, so that if the operation is interrupted (e.g. our
+;; process is terminated) then FILENAME will not be left with partial data.
 ;;
 (define (write-file filename data)
   &public
@@ -80,32 +80,33 @@
       (print "error: write-file: nil filename")))
 
 
-(define (read-file fname)
+;; Read the contents of file FILENAME and return it as a string.
+(define (read-file filename)
   &public
-  (if fname
-      (shell! (concat "cat < " (quote-sh-arg fname)))
+  (if filename
+      (shell! (concat "cat < " (quote-sh-arg filename)))
       (print "error: read-file: nil filename")))
 
 
-;; Read lines from a file into a vector.
-;;
-(define (read-lines fname ?start ?end)
+;; Read contents of file FILENAME and return a vector of lines.
+(define (read-lines filename ?start ?end)
   &public
   (define `command
     (concat "sed -E '"
             (if start
                 (concat start "," end "!d;"))
             "s/!/!1/g;s/\t/!+/g;s/ /!0/g;s/$/!n/g' "
-            fname))
-  (if fname
+            filename))
+  (if filename
       (subst " !n" " !." "!n" "" (logshell command))
       (print "error: read-lines: nil filename")))
 
 
-(define (file-exists? fname)
+;; Return 1 if file FILENAME exists.  The `wildcard` built-in function
+;; is a faster alternative, but it caches results and will not reflect
+;; files created/deleted when the program is running.
+(define (file-exists? filename)
   &public
-  ;; `wildcard` is cached by Make and will not reflect files created/deleted
-  ;; when the program is running.
   (if
-   (shellc "ls " (quote-sh-arg fname) " 2> /dev/null")
+   (shellc "ls " (quote-sh-arg filename) " 2> /dev/null")
    1))
