@@ -478,11 +478,12 @@ dictionaries, and other record types.  In fact, we could add a case for
 The type name that follows `data` has no significance except to distinguish
 its record values from those of other record types.  It will not appear
 elsewhere in your SCAM program.  For example, `(data A (Ctor a))` and `(data
-B (Ctor a))` define two different constructors that produce different types
-of records.  When a constructor is mentioned in an expression, the meaning
-of the constructor depends on the lexical scope in effect where it is
-referenced.  Here is an example that defines two different `Orange`
-constructors, one a member of `data Fruit` and one a member of `data Color`:
+B (Ctor a))` define two different constructors that have the same name
+(`Ctor`) but produce different types of records.  When a constructor is
+named in an expression, the meaning of the name depends on the lexical scope
+in effect where it is referenced.  Here is an example that defines two
+different `Orange` constructors, one a member of `data Fruit` and one a
+member of `data Color`:
 
     > (data Fruit (Apple) (Orange))
     > (define (is-fruit fr)
@@ -508,25 +509,32 @@ form is function value.
 
     > (define (f x y)
     +   (concat x y))
-    > (f 1 2)
-    12
+    > (f "a" "b")
+    "ab"
 
-Typically, functions are stored in global variables, as in the example
-above, but functions are first class values in SCAM, so they can be passed
-to functions and returned from them.
-
-You may wonder how functions are encoded as strings, given that all SCAM
-values are strings.  The encoding is designed to mesh nicely with Make.
-The above definition of `f` compiles to a line in a makefile:
+When writing entirely in SCAM, you will not need to examine or otherwise
+deal with the compiled form of functions.  For the sake of completeness,
+however, we now describe executable code and how it compiles to GNU make.
+The value of `f` as described above is the string `"$1$2"`.  This is GNU
+Make syntax for concatenating the first and second arguments.  The above
+definition of `f` will compile to the following line in a SCAM-generated
+executable:
 
     f = $1$2
 
-SCAM will report the value of `f` as such:
+Typically, functions are stored in global variables, as in the example
+above, but functions are first class values in SCAM, so they can be passed
+to functions, returned from functions, and constructed without assigning
+them a name:
 
     > f
     "$1$2"
+    > (lambda (a b) (concat a b))
+    "$1$2"
 
-An implication of this is the following behavior:
+Given these facts -- functions are first class values, and function values
+are in GNU Make syntax -- the logical (if somewhat surprising) implication
+is the following behavior:
 
     > ("$1$2" "a" "b")
     "ab"
@@ -900,7 +908,7 @@ expressions) is evaluated in an environment in which each NAME is bound
 to its corresponding value.  The `let` expression returns the value of
 the last form in BODY.
 
-`let` is implemented in terms of `lambda`, as such:
+`let` is implemented in terms of `lambda` in this manner:
 
     ((lambda (NAME...) BODY) (VALUE...))
 
@@ -1123,8 +1131,6 @@ of expressions) once for each word, and constructs a new word list from the
 results of each evaluation.
 
 Each word is bound to the name `VAR` while `BODY` is evaluated.
-
-SCAM provides a macro named `foreach` that is more intuitive:
 
     > (foreach x "1 2 3" (1+ x))
     "2 3 4"
