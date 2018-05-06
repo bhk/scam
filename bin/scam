@@ -6,7 +6,7 @@ define ///build.min
 # compiled from build.scm
 # Requires: core io parse compile gen runtime
 # Requires: scam-ct
-# Exports: build_3 exe-rules)5 mmap-rules)2 mmap-all-deps)2 mmap-all-requires)2 link-rule)6 test-rule)4 compile-rule)8 rule)4 scan-modules)2]or]3 scan-deps)2 if-bundled+if-bound+if-exists+mmap-okfiles)2 mmap-testmods)2 mmap-minfiles)2 mmap-objects)2 mmap-add&p;8;\.;\>;~cons`:IL6],1>|^d|@[}2}0],1'|}],1>|^d|@[}3}0],1'|}],1>|^d|@[}4}0],1'|}],1>|^d|@[}5}0],1'|}],1>|^d|@[}6}0],1'|}],1>|^d|@[}7}0],1'|}],1>|^d|@[}8}0`[]1]0 mod-deps&p;1;\.;\>;~promote`<]wordlist],1'|5],1'|6],1[|1|0 mod-is-boot&p;1;\.;\>;~nth`']7`[]1]0 mod-uses&p;1;\.;\>;~nth`']6`[]1]0 mod-requires&p;1;\.;\>;~nth`']5`[]1]0 mod-testmod&p;1;\.;\>;~nth`']4`[]1]0 mod-object&p;1;\.;\>;~nth`']3`[]1]0 mod-source&p;1;\.;\>;~nth`']2`[]1]0 mod-name&p;1;\.;\>;~nth`']1`[]1]0 scan-object+scan-source+echo-cmd)0]or]more *quiet*#0;~%;p *self*#0;~%;p link)5 epilogue)3 prologue#0;~%;p read-object+bundle-var&p;1;\.;\:IL6`']///`<]notdir],1[|1|0 bundled?&p;1;\.;\<;filter`']///!p`[]1]0 bundle-path&p;1;\.;\:IL6`']///`>]~modnames-of],1[|1|0`'].min bundle-dir#2;\.;p;\';/// modnames-of+strip-comments+skip-comments+traverse-graph)3 dbg-print)3 resolve-mod)2 clean-path)1
+# Exports: build_3 exe-rules)6 mmap-rules)3 mmap-rule)4 mmap-all-deps)2 test-rule-2)3 mmap-all-requires)2 link-rule)7 compile-rule)9 rule)4 scan-modules)2]or]3 scan-deps)2 if-bundled+if-bound+if-exists+mmap-okfiles)2 mmap-testmods)2 mmap-minfiles)2 mmap-objects)2 mmap-add&p;8;\.;\>;~cons`:IL6],1>|^d|@[}2}0],1'|}],1>|^d|@[}3}0],1'|}],1>|^d|@[}4}0],1'|}],1>|^d|@[}5}0],1'|}],1>|^d|@[}6}0],1'|}],1>|^d|@[}7}0],1'|}],1>|^d|@[}8}0`[]1]0 mod-deps&p;1;\.;\>;~promote`<]wordlist],1'|5],1'|6],1[|1|0 mod-is-boot&p;1;\.;\>;~nth`']7`[]1]0 mod-uses&p;1;\.;\>;~nth`']6`[]1]0 mod-requires&p;1;\.;\>;~nth`']5`[]1]0 mod-testmod&p;1;\.;\>;~nth`']4`[]1]0 mod-object&p;1;\.;\>;~nth`']3`[]1]0 mod-source&p;1;\.;\>;~nth`']2`[]1]0 mod-name&p;1;\.;\>;~nth`']1`[]1]0 scan-object+scan-source+echo-cmd)0]or]more *quiet*#0;~%;p *self*#0;~%;p link)5 epilogue)3 prologue#0;~%;p read-object+bundle-var&p;1;\.;\:IL6`']///`<]notdir],1[|1|0 bundled?&p;1;\.;\<;filter`']///!p`[]1]0 bundle-path&p;1;\.;\:IL6`']///`>]~modnames-of],1[|1|0`'].min bundle-dir#2;\.;p;\';/// modnames-of+strip-comments+skip-comments+traverse-graph)3 dbg-print)3 resolve-mod)2 clean-path)1
 $(call ^require,core)
 $(call ^require,io)
 $(call ^require,parse)
@@ -62,14 +62,15 @@ $1: $2$(if $3, | )$3$(call ~concat-vec,$(call ~cons,,$(foreach cmd,$4,$(call ^d,
 
 
 endef
-~compile-rule = $(call ~rule,$1,$(call ~append,$2,$3,$(~*self*)),$4,$(call ^d,@ true $(call ^Y,$2,$5,$6,$7,$8,,,,,$``(and $``(info => compiling $(call ^E,$1,`))1,$``(call ~compile-file,$`(call ^E,$`1),$(call ^E,$1,`),$`(call ^E,$`5),$`(call ^E,$`2),$`(call ^E,$`3),$`(call ^E,$`4))))))
-~test-rule = $(call ~rule,$1,$2,,$(call ^d,$(call ~echo-cmd,=> running ,$(basename $2))) $(call ^d,$(MAKE) -s -f $(if $(filter ///%,$3),$(call ~quote-sh-arg,$(~*self*)),$3) SCAM_MAIN='$(patsubst %.min,%,$2)' SCAM_MODS='$4') $(call ^d,touch $1))
-~link-rule = $(call ~rule,$1,$2,$3,$(call ^d,@ true $(call ^Y,$(call ~sort-by,$`(notdir $`1),$4),$(call ~modnames-of,$(call ^u,$(word 1,$4))),,,,,,,,$``(and $``(info => linking $(call ^E,$1,`))1,$``(call ~link,$(call ^E,$1,`),$`(call ^E,$`1),$`(call ^E,$`2),$(call ^E,$5,`),$(call ^E,$6,`))))))
+~compile-rule = $(call ~rule,$1,$(call ~append,$2,$3,$(~*self*)),$4,$(call ^d,@ true $(if $(if $(call ^n,1,$9),,1),$`(info => compiling $(call ^E,$1)))$`(call ~compile-file,$(call ^E,$2),$(call ^E,$1),$(call ^E,$8),$(call ^E,$5),$(call ^E,$6),$(call ^E,$7))))
+~link-rule = $(call ~rule,$1,$2,$3,$(call ^d,@ true $(if $(if $7,,1),$`(info => linking $(call ^E,$1)))$(call ^Y,$(call ~sort-by,$`(notdir $`1),$4),$(call ~modnames-of,$(call ^u,$(word 1,$4))),,,,,,,,$``(call ~link,$(call ^E,$1,`),$`(call ^E,$`1),$`(call ^E,$`2),$(call ^E,$5,`),$(call ^E,$6,`)))))
 ~mmap-all-requires = $(call ^set,~*mmap*,$(call ^set,~*mmap*,$1,$(~*mmap*)),$(call ~traverse-graph,$2,$`(call ~nth,5,$`(call ~assoc-initial,$`(subst !,!1,$`(call ^d,$`1)),$`(~*mmap*))),))
+~test-rule-2 = $(call ^Y,$(call ~mmap-minfiles,$1,$2),$(call ~mmap-objects,$1,$(call ~mmap-all-requires,$1,$(call ^d,$2))),,,,,,,,$`(call ~rule,$`(addsuffix .ok,$`1),$`1,,$`(call ^d,$`(call ~echo-cmd,=> running ,$`(basename $`1))$`(call ^Y,$`(call ~sort-by,$``(notdir $``1),$`2),$`(call ~modnames-of,$`(call ^u,$`(word 1,$`2))),$`(basename $`1),,,,,,,$```(call ~link,$``(call ^E,$``3),$``(call ^E,$``1),$``(call ^E,$``2),$(call ^E,$3,``),))) $`(call ^d,$`(MAKE) -s -f $`(basename $`1)) $`(call ^d,touch $`(addsuffix .ok,$`1))))
 ~mmap-all-deps = $(call ^set,~*mmap*,$(call ^set,~*mmap*,$1,$(~*mmap*)),$(call ~traverse-graph,$2,$`(call ~promote,$`(wordlist 5,6,$`(call ~assoc-initial,$`(subst !,!1,$`(call ^d,$`1)),$`(~*mmap*)))),))
-~mmap-rules = $(call ~concat-vec,$(filter-out !.,$(foreach mod,$1,$(call ^d,$(if $(call ~nth,2,$(call ^u,$(mod))),$(if $(filter %.min,$(call ~nth,3,$(call ^u,$(mod)))),$(call ~compile-rule,$(call ~nth,3,$(call ^u,$(mod))),$(call ~nth,2,$(call ^u,$(mod))),$(call ~mmap-minfiles,$1,$(call ~promote,$(wordlist 5,6,$(call ^u,$(mod))))),$(filter-out $(call ~nth,3,$(call ^u,$(mod))).ok,$(call ~mmap-okfiles,$1,$(call ~promote,$(wordlist 5,6,$(call ^u,$(mod)))))),$(call ~mmap-minfiles,$1,$(call ~mmap-all-deps,$1,$(call ~promote,$(wordlist 5,6,$(call ^u,$(mod)))))),$(call ~nth,5,$(call ^u,$(mod))),$(call ~nth,6,$(call ^u,$(mod))),$(call ~nth,7,$(call ^u,$(mod))))))$(if $(call ~nth,4,$(call ^u,$(mod))),$(call ~test-rule,$(addsuffix .ok,$(call ~mmap-minfiles,$1,$(call ~nth,4,$(call ^u,$(mod))))),$(call ~mmap-minfiles,$1,$(call ~nth,4,$(call ^u,$(mod)))),$2,$(call ~mmap-minfiles,$1,$(call ~mmap-all-requires,$1,$(call ^d,$(call ~nth,4,$(call ^u,$(mod))))))))))),)
-~exe-rules = $(call ^Y,$(call ~scan-modules,odir!=$(call ^d,$(dir $1)) rebundle!=$(call ^d,$(if $(call ~eq?,$(subst apply,,~apply),$(subst compile-file,,~compile-file)),1,$(if $4,,$(error Warning: must use --boot; bundles are unusable)))),$(call ~append,$2,$(if $(if $3,,1),$(subst %,trace,$(if $4,%.scm,///%.min))),$(if $4,$(subst %,scam-ct,$(if $4,%.scm,///%.min)))),$(call ~scan-modules,$(call ~append,boot!=1,odir!=$(call ^d,$(dir $1)) rebundle!=$(call ^d,$(if $(call ~eq?,$(subst apply,,~apply),$(subst compile-file,,~compile-file)),1,$(if $4,,$(error Warning: must use --boot; bundles are unusable))))),$(call ^d,$(subst %,runtime,$(if $4,%.scm,///%.min))) $(call ^d,$(subst %,scam-ct,$(if $4,%.scm,///%.min))))),$(notdir $(basename $(call ~append,$2,$(if $(if $3,,1),$(subst %,trace,$(if $4,%.scm,///%.min))),$(if $4,$(subst %,scam-ct,$(if $4,%.scm,///%.min)))))),,,,,,,,$`(call ~link-rule,$(call ^E,$1),$`(call ~mmap-minfiles,$`1,$`2),$`(call ~mmap-okfiles,$`1,$`2),$`(call ~mmap-objects,$`1,$`(call ~mmap-all-requires,$`1,$`2)),$`(call ~mmap-objects,$`1,runtime),$(call ^E,$5))$`(call ~mmap-rules,$`1,$`(call ~mmap-objects,$`1,runtime)))
-~build = $(eval $(call ~dbg-print,B,Eval: %s,$(call ~rule,.PHONY,,/exe /dir,)$(call ~rule,/exe,,/dir $(call ^d,$1),)$(call ~rule,/dir,,,$(call ^d,mkdir -p $`(dir $(call ^E,$1))))$(call ~exe-rules,$1,$2,$(call ~dict-get,no-trace,$3),$(call ~dict-get,boot,$3),$(call ~dict-get,symbols,$3))))
+~mmap-rule = $(if $(call ~nth,2,$2),$(if $(filter %.min,$(call ~nth,3,$2)),$(call ~compile-rule,$(call ~nth,3,$2),$(call ~nth,2,$2),$(call ~mmap-minfiles,$1,$(call ~promote,$(wordlist 5,6,$2))),$(filter-out $(call ~nth,3,$2).ok,$(call ~mmap-okfiles,$1,$(call ~promote,$(wordlist 5,6,$2)))),$(call ~mmap-minfiles,$1,$(call ~mmap-all-deps,$1,$(call ~promote,$(wordlist 5,6,$2)))),$(call ~nth,5,$2),$(call ~nth,6,$2),$(call ~nth,7,$2),$(call ^d,$4))))$(if $(call ~nth,4,$2),$(call ~test-rule-2,$1,$(call ~nth,4,$2),$3))
+~mmap-rules = $(subst |1,|,$(subst |0, ,$(subst $  ,,$(foreach mod,$1,$(subst $  ,|0,$(subst |,|1,$(call ~mmap-rule,$1,$(call ^u,$(mod)),$2,$3)))))))
+~exe-rules = $(and $(and $(if $4,,1),$(call ~eq?,mmap-rules,~mmap-rules),$(error compiler object code not compatible with its output; use --boot))1,$(call ^Y,$(call ~scan-modules,odir!=$(call ^d,$(dir $1)) rebundle!=$(call ^d,$(if $4,,1)),$(call ~append,$2,$(if $(if $3,,1),$(subst %,trace,$(if $4,%.scm,///%.min))),$(if $4,$(subst %,scam-ct,$(if $4,%.scm,///%.min)))),$(call ~scan-modules,$(call ~append,boot!=1,odir!=$(call ^d,$(dir $1)) rebundle!=$(call ^d,$(if $4,,1))),$(call ^d,$(subst %,runtime,$(if $4,%.scm,///%.min))) $(call ^d,$(subst %,scam-ct,$(if $4,%.scm,///%.min))))),$(notdir $(basename $(call ~append,$2,$(if $(if $3,,1),$(subst %,trace,$(if $4,%.scm,///%.min))),$(if $4,$(subst %,scam-ct,$(if $4,%.scm,///%.min)))))),,,,,,,,$`(call ~link-rule,$(call ^E,$1),$`(call ~mmap-minfiles,$`1,$`2),$`(call ~mmap-okfiles,$`1,$`2),$`(call ~mmap-objects,$`1,$`(call ~mmap-all-requires,$`1,$`2)),$`(call ~mmap-objects,$`1,runtime),$(call ^E,$6),$(call ^E,$5))$`(call ~mmap-rules,$`1,$`(call ~mmap-objects,$`1,runtime),$(call ^E,$5))))
+~build = $(eval $(call ~dbg-print,B,Eval: %s,$(call ~rule,.PHONY,<ALL> <DIR>,,)$(call ~rule,<ALL>,<DIR> $(call ^d,$1),,$(if $(call ~dict-get,run,$3),$(call ^d,SCAM_ARGS=$(call ~quote-sh-arg,$(call ~dict-get,run,$3)) $`(MAKE) -f $(call ~quote-sh-arg,$1))))$(call ~rule,<DIR>,,,$(call ^d,mkdir -p $`(dir $(call ^E,$1))))$(call ~exe-rules,$1,$2,$(call ~dict-get,no-trace,$3),$(call ~dict-get,boot,$3),$(call ~dict-get,quiet,$3),$(call ~dict-get,symbols,$3))))
 
 endef
  
@@ -77,7 +78,7 @@ define ///compile.min
 # compiled from compile.scm
 # Requires: core parse gen gen0 gen1 io macros runtime
 # Requires: scam-ct
-# Exports: compile-file_6 construct-file&p;5;\.;\:IL6`']!N|compiled|from|`[]1]0`']!n`<]if],1[|4|0],1:IL6|@'}!N@0Requires:@0|@[}4}0|@'}!n`<]if],1[|5|0],1:IL6|@'}!N@0Requires:@0|@[}5}0|@'}!n`>]~env-export-line],1[|2|0`[]3]0 compile-prelude_1 compile-text_4 ct-mod#2;\.;x;\';scam-ct rt-mod#2;\.;x;\';runtime
+# Exports: compile-file_6 trim-hashbang+construct-file&p;5;\.;\:IL6`']!N|compiled|from|`[]1]0`']!n`<]if],1[|4|0],1:IL6|@'}!N@0Requires:@0|@[}4}0|@'}!n`<]if],1[|5|0],1:IL6|@'}!N@0Requires:@0|@[}5}0|@'}!n`>]~env-export-line],1[|2|0`[]3]0 compile-prelude_1 compile-text_4 ct-mod#2;\.;x;\';scam-ct rt-mod#2;\.;x;\';runtime
 $(call ^require,core)
 $(call ^require,parse)
 $(call ^require,gen)
@@ -87,12 +88,18 @@ $(call ^require,io)
 $(call ^require,macros)
 ~compile-text = $(call ^set,~*compile-subject*,$(call ^set,~*compile-subject*,$(call ~penc,$1),$(~*compile-subject*)),$(call ^set,~*compile-file*,$(call ^set,~*compile-file*,$3,$(~*compile-file*)),$(call ~c0-block-cc,$2,$(call ~parse-subject,$(~*compile-subject*)),$`(call ~conj,$`(call ~gen1,$`2,$(call ^E,$4)),$`1))))
 ~compile-prelude = $(if $(if $1,,1),$(call ~append,$(call ~get-module-env,runtime,),$(call ~use-module,scam-ct)))
+define ~trim-hashbang
+$(if $(filter #%,$(word 1,$1)),
+$(call ~concat-vec,$(wordlist 2,99999999,$(call ~split,
+,$1)),
+),$1)
+endef
 define ~compile-file
 $(and $(if $(findstring B,$(SCAM_DEBUG)),$(call ~printf,compile-file: %s -> %s%s
  mod-files = %s
  reqs = %s
  uses = %s
-,$1,$2,$(if $3, [--boot]),$4,$5,$6))1,$(call ^set,~*compile-mods*,$(call ^set,~*compile-mods*,$4,$(~*compile-mods*)),$(call ^Y,$(call ~read-file,$1),$2,$(call ~compile-prelude,$3),,,,,,,$`(call ^Y,$`(call ~compile-text,$`1,$`3,$(call ^E,$1),$`2),$`1,$(call ^E,$1),$`2,,,,,,$``(if $``(call ^u,$``(word 1,$``1)),$``(and $``(foreach e,$``(call ^u,$``(word 1,$``1)),$``(call ^d,$``(info $``(call ~describe-error,$``(call ^u,$``e),$``2,$``3))))1,$``(error $``(subst %S,$``(if $``(call ~eq?,1,$``(words $``(call ^u,$``(word 1,$``1)))),,s),compilation error%S))),$``(call ~write-file,$``4,# compiled from $``3
+,$1,$2,$(if $3, [--boot]),$4,$5,$6))1,$(call ^set,~*compile-mods*,$(call ^set,~*compile-mods*,$4,$(~*compile-mods*)),$(call ^Y,$(call ~trim-hashbang,$(call ~read-file,$1)),$2,$(call ~compile-prelude,$3),,,,,,,$`(call ^Y,$`(call ~compile-text,$`1,$`3,$(call ^E,$1),$`2),$`1,$(call ^E,$1),$`2,,,,,,$``(if $``(call ^u,$``(word 1,$``1)),$``(and $``(foreach e,$``(call ^u,$``(word 1,$``1)),$``(call ^d,$``(info $``(call ~describe-error,$``(call ^u,$``e),$``2,$``3))))1,$``(error $``(subst %S,$``(if $``(call ~eq?,1,$``(words $``(call ^u,$``(word 1,$``1)))),,s),compilation error%S))),$``(call ~write-file,$``4,# compiled from $``3
 $``(if $(call ^E,$5,`),# Requires: $(call ^E,$5,`)
 )$``(if $(call ^E,$6,`),# Requires: $(call ^E,$6,`)
 )$``(call ~env-export-line,$``(call ~nth,3,$``1))$``(call ~nth,2,$``1)))))))
@@ -816,30 +823,32 @@ define ///scam.min
 # compiled from scam.scm
 # Requires: core repl build getopts gen runtime
 # Requires: scam-ct
-# Exports: main+opt-err+version#2;\.;p;\';1.2.2 usage)0]or]more
+# Exports: main+build-and-run+opt-err+default-bin-dir#2;\.;p;\';.scam version#2;\.;p;\';1.2.2 usage)0]or]more
 $(call ^require,core)
 $(call ^require,repl)
 $(call ^require,build)
 $(call ^require,getopts)
 $(call ^require,gen)
 define ~usage
-$(and $(if $1,$(info scam: $(call ~vsprintf,$1,$(foreach N,2,$(^v)))))1,$(info Usage:
+$(and $(if $1,$(info scam: $(call ~vsprintf,$1,$(foreach N,2,$(^v)))))1,$(info $(if ,,Usage:
 
-    scam [-i]              : enter interactive mode
-    scam -o EXE FILE...    : build an executable from SRC
-    scam -e EXPR           : eval and print value of expression
-    scam -r MAK            : load and execute executable file MAK
-    scam [-x] FILE ARG...  : compile and execute FILE
-    scam -v                : show version
+    scam [-i]                 : enter interactive mode
+    scam -o FILE [OPTS] FILE  : build an executable from SRC
+    scam -e EXPR              : eval and print value of expression
+    scam -x FILE ARGS...      : compile and execute FILE, passing ARGS
+    scam FILE                 : compile and execute FILE
+    scam -v                   : show version
+    scam -h                   : show this message
 
-Options:
+Options for compilation (scam -o EXE):
 
   --no-trace : Omit tracing functionality.  This will produce a slightly
                smaller executable.
-)1,$(if $1,1))
+))1,$(if $1,1))
 endef
 ~opt-err = $(call ~usage,Unrecognized command option '%s',$1)
-~main = $(call ^Y,$(call ~getopts,$1,-e= -h -i -r= -o= --symbols --boot --no-trace -x=... -v,$(value ~opt-err)),,,,,,,,,$`(if $`(call ~dict-get,v,$`(call ~nth,2,$`1)),$`(info SCAM version 1.2.2),$`(if $`(call ~dict-get,o,$`(call ~nth,2,$`1)),$`(call ~build,$`(call ~dict-get,o,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1),$`(call ~nth,2,$`1)),$`(if $`(call ~dict-get,h,$`(call ~nth,2,$`1)),$`(call ~usage),$`(if $`(call ~dict-get,e,$`(call ~nth,2,$`1)),$`(call ~repl-rep,$`(call ~dict-get,e,$`(call ~nth,2,$`1)),),$`(if $`(call ~dict-get,r,$`(call ~nth,2,$`1)),$`(eval include $`(call ~dict-get,r,$`(call ~nth,2,$`1))),$`(if $`(or $`(call ~dict-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)),$`(if $`(call ~eq?,$`(call ~gen-global-name,main,),~main),$`(and $`(info scam: -x not supported; namespace collision)1,1),$`(and $`(call ~repl-file,$`(call ^u,$`(word 1,$`(or $`(call ~dict-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)))))1,$`(call ~run-hooks,load)1,$`(call $`(call ~gen-global-name,main,),$`(wordlist 2,99999999,$`(or $`(call ~dict-get,x,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1)))))),$`(call ~repl))))))))
+~build-and-run = $(call ~build,$(patsubst %/,%,$(or $(SCAM_DIR),.scam))/$(basename $(notdir $(call ^u,$(word 1,$1)))),$(word 1,$1),run!=$(call ^d,$(wordlist 2,99999999,$1)) quiet!=1)
+~main = $(call ^Y,$(call ~getopts,$1,-o= -e= -v -h -x=... -i --no-trace --symbols --boot,$(value ~opt-err)),,,,,,,,,$`(if $`(call ~dict-get,o,$`(call ~nth,2,$`1)),$`(and $`(if $`(word 2,$`(call ~nth,1,$`1)),$`(error Yow))1,$`(call ~build,$`(call ~dict-get,o,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1),$`(call ~nth,2,$`1))),$`(if $`(call ~dict-get,e,$`(call ~nth,2,$`1)),$`(call ~repl-rep,$`(call ~dict-get,e,$`(call ~nth,2,$`1)),),$`(if $`(call ~dict-get,v,$`(call ~nth,2,$`1)),$`(info SCAM version 1.2.2),$`(if $`(call ~dict-get,h,$`(call ~nth,2,$`1)),$`(call ~usage),$`(if $`(call ~dict-get,x,$`(call ~nth,2,$`1)),$`(call ~build-and-run,$`(call ~dict-get,x,$`(call ~nth,2,$`1))),$`(if $`(if $`(call ~nth,1,$`1),,1),$`(call ~repl),$`(if $`(call ~dict-get,i,$`(call ~nth,2,$`1)),$`(call ~usage,scam: extra arguments with -i),$`(call ~build-and-run,$`(call ~nth,1,$`1))))))))))
 
 endef
  

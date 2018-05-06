@@ -26,4 +26,6 @@
   (define `omap (nth 2 o))
 
   (expect "B" (dict-get "b" omap))
-  (expect nil (dict-get "a" omap)))
+  (expect nil (dict-get "a" omap))
+  ;; `-x` consumes the rest of the command linea
+  (expect ["a b" "-a" "c"] (dict-get "x" omap)))

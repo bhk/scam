@@ -1,4 +1,4 @@
 (require "core")
-;(use "test-ct")
+(use "test-ct")
 
-;(expect "abc" (ut1 abc))
+(expect "abc" (ut1 abc))

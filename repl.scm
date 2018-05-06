@@ -75,9 +75,9 @@
   (let ((o (compile-text text env "[console]" ""))
         (env env)
         (text text))
-    (define `errors (nth 1 o))
-    (define `exe    (nth 2 o))
-    (define `newenv (nth 3 o))
+    (define `errors (dict-get "errors" o))
+    (define `exe    (dict-get "code" o))
+    (define `newenv (dict-get "env" o))
     (define `(is-error codes)
       (filter codes (case (first errors)
                       ((PError n desc) desc))))
@@ -135,7 +135,7 @@
 
 (define `initial-state
   (eval-and-print
-   (foreach lib LIBS (concat "(require \"" lib "\")\n"))
+   (foreach lib LIBS (concat "(require \"'" lib "\")\n"))
    (compile-prelude nil)))
 
 
@@ -154,8 +154,8 @@
   (define `env (nth 2 initial-state))
 
   (let ((o (compile-text text env (or filename "[commandline]") "")))
-    (define `errors (nth 1 o))
-    (define `exe    (nth 2 o))
+    (define `errors (dict-get "errors" o))
+    (define `exe    (dict-get "code" o))
 
     (if errors
         (begin
@@ -174,8 +174,8 @@
   (let ((text (read-file file)))
     (if text
         (let ((o (compile-text text (compile-prelude nil) file "///~")))
-          (define `errors (nth 1 o))
-          (define `exe    (nth 2 o))
+          (define `errors (dict-get "errors" o))
+          (define `exe    (dict-get "code" o))
 
           (if errors
               (begin

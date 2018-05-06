@@ -40,15 +40,20 @@ A = .out/a
 B = .out/b
 C = .out/c
 
-expect = grep $1 $2 > /dev/null && echo $2 ok || (echo '$2:1: looking for '"$1" && false)
+arg = $(subst ','\'',$1)# ' balanced for emacs
+qarg = '$(arg)'
+target-line = $(shell sed -n '/^$@:/=' makefile)
+
+# guard: drop stdout and print message on failure
+guard = ( $1 ) > /dev/null || (echo 'makefile:$(target-line): $@ failed:' && /bin/echo " $$ "$(qarg) && false)
 
 .PHONY: a b c aok bok cok promote install clean
 
 cok:
 
 $A/scam: *.scm bin/scam ; $(_@) bin/scam -o $@ scam.scm
-$B/scam: *.scm $A/scam  ; $(_@) SCAM_NS='~' $A/scam -o $@ --symbols scam.scm --boot
-$C/scam: *.scm $B/scam  ; $(_@) SCAM_NS='~' $B/scam -o $@ --symbols scam.scm
+$B/scam: *.scm $A/scam  ; $(_@) $A/scam -o $@ --symbols scam.scm --boot
+$C/scam: *.scm $B/scam  ; $(_@) $B/scam -o $@ --symbols scam.scm --boot
 
 
 a: $A/scam
@@ -60,7 +65,7 @@ c: bok $C/scam
 #  run: validates code generation
 #
 aok: $A/scam
-	$(_@) $A/scam -o .out/ta/run test/run.scm --boot
+	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot
 	$(_@) .out/ta/run
 
 # v2 tests:
@@ -68,18 +73,23 @@ aok: $A/scam
 #     Uses a bundled file, so $A/scam will not always work.
 #   dash-x: compile and execute source file, passing arguments
 
-bok: b
-	@echo bok...
+bok-o: b
 	$(_@) $B/scam -o .out/tb/using test/using.scm
 	$(_@) .out/tb/using
 	$(_@) $B/scam -o .out/tb/dash-o test/dash-o.scm
-	$(_@) $(call expect,'require.dup',.out/tb/dash-o.min)
+	$(_@) $(call guard,grep 'require.test/subdir/dup' .out/tb/.scam/test/dash-o.min)
 	$(_@) .out/tb/dash-o 1 2 > .out/tb/dash-o.out
-	$(_@) $(call expect,'result=11:2',.out/tb/dash-o.out)
-	$(_@) SCAM_TRACE='%conc:c' $B/scam -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
-	$(_@) $(call expect,'9:3:a b',.out/tb/dash-x.out)
-	$(_@) $(call expect,' 4 : .*conc',.out/tb/dash-x.out)
+	$(_@) $(call guard,grep 'result=11:2' .out/tb/dash-o.out)
 
+bok-x: b
+	$(_@) SCAM_TRACE='%conc:c' $B/scam --out-dir .out/tbx/ -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
+	$(_@) $(call guard,grep '9:3:a b' .out/tb/dash-x.out)
+	$(_@) $(call guard,grep ' 4 : .*conc' .out/tb/dash-x.out)
+
+bok-i: b
+	$(_@) $(call guard,$B/scam <<< $$'(^ 3 7)\n:q\n' 2>&1 | grep 2187)
+
+bok: bok-o bok-x bok-i
 
 # To verify the compiler, we ensure that $B/scam and $C/scam are identical.
 # $A/scam differs from bin/scam because it is built from newer source files.
@@ -103,7 +113,7 @@ install:
 	cp bin/scam `which scam`
 
 clean:
-	rm -rf .out
+	rm -rf .out .scam
 
 $$%:
 	@true $(info $$$* --> "$(call if,,,$$$*)")

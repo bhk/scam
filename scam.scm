@@ -6,6 +6,7 @@
 (require "repl")
 (require "build")
 (require "getopts")
+(require "compile")
 (require "gen")
 
 ;; Supported command-line options are documented in `usage` function, below.
@@ -15,22 +16,20 @@
 ;;              is used when building the interpreter/compiler.
 ;;  --boot    : Selects "bootstrap" mode, in which the run-time and compile-time
 ;;              implied dependencies are read from sources, not bundles.
-;;  --rt FILE : specifies a source file to be used as the runtime for the
-;;              generated executable.
-;;  --ct FILE : specifies a source file that defines compile-time macros.
 
 (define (usage ?fmt ...values)
   (if fmt
       (print "scam: " (vsprintf fmt values)))
   (print "Usage:\n
-    scam [-i]              : enter interactive mode
-    scam -o EXE FILE...    : build an executable from SRC
-    scam -e EXPR           : eval and print value of expression
-    scam -r MAK            : load and execute executable file MAK
-    scam [-x] FILE ARG...  : compile and execute FILE
-    scam -v                : show version
+    scam [-i]                 : enter interactive mode
+    scam -o FILE [OPTS] FILE  : build an executable from SRC
+    scam -e EXPR              : eval and print value of expression
+    scam -x FILE ARGS...      : compile and execute FILE, passing ARGS
+    scam FILE                 : compile and execute FILE
+    scam -v                   : show version
+    scam -h                   : show this message
 
-Options:
+Options for compilation (scam -o EXE):
 
   --no-trace : Omit tracing functionality.  This will produce a slightly
                smaller executable.
@@ -38,51 +37,63 @@ Options:
   (if fmt 1))
 
 
-(define `version
-  "1.2.2")
+(define `version "1.2.2")
 
+(define `default-out-dir ".scam/")
 
 (define (opt-err opt)
   (usage "Unrecognized command option '%s'" opt))
 
 
+;; Construct & eval rules that will build an execute a program.  These rules
+;; will be executed after `main` returns.
+;;
+(define (build-and-run file-and-args)
+  (define `file (first file-and-args))
+  (set *is-quiet* 1)
+  (build (concat *obj-dir* (basename (notdir file)))
+         (word 1 file-and-args)
+         { run: (rest file-and-args) }))
+
+
 (define (main argv)
   (define `opt-names
-    "-e= -h -i -r= -o= --symbols --boot --no-trace -x=... -v")
+    "-o= -e= -v -h -x=... -i --no-trace --symbols --boot --out-dir=")
 
   (let ((o (getopts argv opt-names opt-err)))
     (define `files (nth 1 o))
     (define `opts (nth 2 o))
     (define `(opt name) (dict-get name opts))
 
-    (define `(exec argv)
-      (define `user-main (gen-global-name "main" nil))
-      (if (eq? user-main (global-name main))
-          (begin
-            (print "scam: -x not supported; namespace collision")
-            1)
-          (begin
-            (repl-file (first argv))
-            (run-hooks "load")
-            (call user-main (rest argv)))))
+    (define `out-dir (or (opt "out-dir")
+                         (if (opt "o")
+                             (concat (dir (opt "o")) ".scam/")
+                             default-out-dir)))
+    (set *obj-dir* (subst "//" "/" (concat out-dir "/")))
 
     (cond
-     ((opt "v")
-      (print "SCAM version " version))
-
      ((opt "o")
+      (if (word 2 files)
+          (error "Yow"))
       (build (opt "o") files opts))
-
-     ((opt "h")
-      (usage))
 
      ((opt "e")
       (repl-rep (opt "e") nil))
 
-     ((opt "r")
-      (eval (concat "include " (opt "r"))))
+     ((opt "v")
+      (print "SCAM version " version))
 
-     ((or (opt "x") files)
-      (exec (or (opt "x") files)))
+     ((opt "h")
+      (usage))
 
-     (else       (repl)))))
+     ((opt "x")
+      (build-and-run (opt "x")))
+
+     ((not files) ;; handles valid `-i` case
+      (repl))
+
+     ((opt "i")
+      (usage "scam: extra arguments with -i"))
+
+     (else
+      (build-and-run files)))))

@@ -690,21 +690,20 @@
        (gen-error body "too many arguments to require"))
 
    (case module
-     ((PString pos name)
-      (let ((imports (get-module-env name read-priv))
-            (module module)
-            (env env)
-            (name name)
-            (inblock inblock))
-        (if imports
+     ((PString _ name)
+      (let ((origin (locate-module *compile-file* name))
+            (module module) (env env) (name name) (inblock inblock) (read-priv read-priv))
+        (define `id (module-id origin))
+        (or (if (not origin)
+                (gen-error module "require: Cannot find %q" name))
+            (if (not (module-has-binary? origin))
+                (gen-error module "interactive require not supported"))
+            ;; already compiled or bundled
             (block-result inblock
-                          (append imports env)
-                          (ICall "^require" [ (IString (notdir name)) ]))
-            (gen-error module "require: Cannot find module %q" name))))
-
+                          (append (env-import origin read-priv) env)
+                          (ICall "^require" [ (IString id) ])))))
      (else
       (err-expected "S" module sym "STRING" "(require STRING)")))))
-
 
 
 ;; c0-block-cc: Compile a vector of forms, calling `k` with results.

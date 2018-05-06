@@ -248,6 +248,9 @@
 ;;     only the first is returned.  If no pair is found, DEFAULT is
 ;;     returned.
 ;;
+;; (dict-set KEY VALUE DICT)
+;;     Bind KEY and VALUE in DICT, removing other entries for KEY.
+;;
 ;; (dict-find KEY DICT)
 ;;     Return the first pair matching KEY.  Unlike dict-get, this
 ;;     indicates whether a match was found (every pair is non-nil).
@@ -261,6 +264,10 @@
 ;; (dict-compact DICT)
 ;;     Remove pairs in a dictionary that are preceded by pairs that
 ;;     share the same KEY.
+;;
+;; (dict-collate DICT)
+;;     Create a new dictionary in which each key from DICT appears only
+;;     once, bound to a vector of all its values in DICT.
 ;;
 ;; (dict-keys DICT)
 ;;     Return a vector of KEYS from DICT.
@@ -285,6 +292,11 @@
   (nth 2 (concat (subst "!=" " " (dict-find key dict))
                  (if default (concat " x " (demote default))))))
 
+(define (dict-set key value map)
+  &public
+  (foreach p (concat (subst "%" "!8" [key]) "!=")
+           (concat p [value] " " (filter-out (concat p "%") map))))
+
 (define (dict-compact dict ?result)
   &public
   (if (not dict)
@@ -298,6 +310,12 @@
   &public
   (foreach e h
            (subst "!8" "%" (word 1 (subst "!=" " " e)))))
+
+(define (dict-collate pairs)
+  &public
+  (foreach p (word 1 (subst "!=" "!= " (word 1 pairs)))
+           (append (concat p [(filtersub (concat p "%") "%" pairs)])
+                   (dict-collate (filter-out (concat p "%") pairs)))))
 
 (declare (format value)
          &public)
@@ -420,7 +438,7 @@
 ;; Expand FMT, replacing escape sequences with values from vector VALUES,
 ;; returning the resulting string.
 ;;
-;; The following escape sequenaces are supported:
+;; The following escape sequences are supported:
 ;;   %s  ->  value
 ;;   %q  ->  (format value)
 ;;
@@ -441,6 +459,7 @@
              ((findstring "!%" w)
               ;; "!%x" => bad format string
               (subst "!%" "[unknown % escape]%" w))))))
+
 
 ;; Like `vsprintf`, but values follow as arguments following FMT.
 (define (sprintf fmt ...values)
@@ -470,11 +489,23 @@
         (if (not (findstring "K" SCAM_DEBUG))
             (error "")))))
 
+
 ;; Compare A to B; if they are not equal, display diagnostics and terminate
 ;; execution.
 (define `(expect a b)
   &public
   (expect-x a b (current-file-line)))
+
+
+(define (assert-x cond file-line)
+  (or cond
+      (error (print file-line ": error: assertion failed"))))
+
+;; If COND is nil, display diagnostics and terminate execution.
+(define `(assert cond)
+  &public
+  (assert-x cond (current-file-line)))
+
 
 ;; Like `expect, but only the formatted versions of A and B are compared.
 ;; This accommodates only minor differences in the concrete layout that do

@@ -111,13 +111,6 @@ TODO
      (value (nth 2 (subst "!=" "! " rec)))a
      (match (findstring "!=" rec)))
 
- * scam -x
-
-   Make `require` work with source files in `scam [-x] FILE ...` commands
-   when the module is not bundled.
-
-   Build with `scam -o .scam/NAME` & then run.
-
  * Integrate `strlen` with core.scm and use `strlen` to report column
    for errors.
 

@@ -1,4 +1,4 @@
-# SCAM Language Reference
+ SCAM Language Reference
 
 ## Index
 
@@ -14,10 +14,11 @@
  * [Variables](#variables)
  * [Macros](#macros)
  * [Special Forms](#special-forms)
- * [Manifest Symbols](#manifest-symbols)
- * [Make Features](#make-features)
- * [Debugging](#debugging)
+ * [Intrinsics](#intrinsics)
  * [Libraries](#libraries)
+ * [Make Features](#make-features)
+ * [Command Line Syntax](#command-line-syntax)
+ * [Debugging](#debugging)
 
 
 ## Overview
@@ -117,7 +118,7 @@ sub-expression values as its arguments.
 
 ### Vector Constructors
 
-Vector constructors are written as a pair of sqaure brackets enclosing zero
+Vector constructors are written as a pair of square brackets enclosing zero
 or more expressions.
 
     [ 1 2 "c" ]
@@ -151,20 +152,21 @@ below](#dictionaries).
 
 A "single quote" or "backtick" character can precede an expression,
 producing a *quoting* expression. No spaces may occur between these prefix
-characters and the expressions that follow them.
-
-Within a backtick-escaped expression, a comma prefix "un-escapes" an
-expression, and ``,@`` un-escapes and splices the results into the current
-list.
+characters and the expressions that follow them.  Within a backtick-escaped
+expression, a comma prefix "un-escapes" an expression, and ``,@`` un-escapes
+and splices the results into the current list.
 
     '(f 1 2)
     `(let ((,var ,value)) ,@body)
 
-Quoting expressions evaluate to the parse tree (AST) representation of the
-quoted expression, which is called a "form". Syntax quoting is not useful
-for quoting ordinary data structures (as in other Lisps) because ASTs are
-not represented by native data types. Use the vector constructor, instead,
-unless you are actually interested in manipulating source code.
+Unlike Lisps, SCAM does not use syntax quoting to represent
+non-syntax-specific data structures.  SCAM's vector or dictionary
+constructors address those purposes.  Quoting expressions evaluate to the
+parse tree (AST) representation of the quoted expression.  SCAM ASTs are
+represented as [records](#records), and contain additional syntax
+information, such as the original position in the source code, and typing
+information.  See `parse.scm` for complete details.
+
 
 ## Data Types
 
@@ -191,7 +193,7 @@ all numbers are strings.  Similarly, some strings can represent vectors of
 strings.  Not all strings are vectors, but all vectors are strings, so we
 can think of vectors as a subset of the set of strings.  At the same time, a
 vector can contain any number of any string values, so we can also think of
-is as a Cartesian product of the set of strings.
+it as a Cartesian product of the set of strings.
 
 In terms of these subordinate types, SCAM is not statically typed at all.
 SCAM is mostly oblivious to them.  It provides syntax for constructing some
@@ -211,7 +213,7 @@ disjoint.  This allows SCAM to display values in a more meaningful way.
 ### Booleans
 
 The empty string (written `""` or `nil`) is used to represent "false" when
-functions, macros, or special forms operate on or return boolean values.
+functions, macros, or special forms operate on or return Boolean values.
 Any non-nil value is considered "true"; the value "1" is often used to
 represent true.
 
@@ -236,9 +238,7 @@ SCAM's core library provides `not` and `xor` logical operators.
 
 ### Numbers
 
-Numbers are typically represented as a string of decimal digits. GNU Make
-built-in functions and the the `num` module supplied with SCAM expect numbers
-in this format.
+Numbers are typically represented as a string of decimal digits.
 
     > (word 2 "a b c")
     "b"
@@ -246,7 +246,7 @@ in this format.
     46
 
 The `numeric?` function test whether a string is a number, and `word-index?`
-tests whether a stirng is safe to pass as a word index to Make built-in
+tests whether a string is safe to pass as a word index to Make built-in
 functions (a positive integer represented with only digits -- no exponent or
 decimal).
 
@@ -514,11 +514,11 @@ form is function value.
 
 When writing entirely in SCAM, you will not need to examine or otherwise
 deal with the compiled form of functions.  For the sake of completeness,
-however, we now describe executable code and how it compiles to GNU make.
-The value of `f` as described above is the string `"$1$2"`.  This is GNU
-Make syntax for concatenating the first and second arguments.  The above
-definition of `f` will compile to the following line in a SCAM-generated
-executable:
+however, we now describe executable code and how it compiles to GNU make in
+the current implementation of SCAM.  The value of `f` as described above is
+the string `"$1$2"`.  This is GNU Make syntax for concatenating the first
+and second arguments.  The above definition of `f` will compile to the
+following line in a SCAM-generated executable:
 
     f = $1$2
 
@@ -533,8 +533,7 @@ them a name:
     "$1$2"
 
 Given these facts -- functions are first class values, and function values
-are in GNU Make syntax -- the logical (if somewhat surprising) implication
-is the following behavior:
+are in GNU Make syntax -- one logical implication is the following behavior:
 
     > ("$1$2" "a" "b")
     "ab"
@@ -613,77 +612,34 @@ source code. Refer to `parse.scm` for more information on forms.
 
 Variables are symbols that evaluate to values.
 
-There are three kids of variables in SCAM:
+There are three kinds of variables in SCAM:
 
  * local
  * global
  * automatic
 
 Local variables are created with `let` expressions, or as function
-parameters in a `lambda` expression or function definition. The visibility
-of a local variable is limited to the expression in which it is defined, and
-the lifetime of the local variable is limited to the execution of that
-expression. Local variables are immutable. They are assigned a value when
-when their containing expression is evaluated, and they cannot be assigned a
-different value during the evaluation of that expression.  See [`let`](#let).
+parameters in a `lambda` expression or function definition.  Local variables
+are immutable. They are assigned a value when initialized, and they cannot
+be assigned a different value.  The visibility and lifetime of a local
+variable is limited to the expression in which it is defined. See
+[`let`](#let).
 
-Global variables are ordinary GNU Make variables. Their lifetime is
-unlimited, and they are visible to other SCAM modules and Makefiles (SCAM
-globals are Make variables). However, to reference a global variable with a
-symbol in SCAM, you must first introduce the binding using the `declare` or
-`define` special forms.
+Global variables are mutable and have unlimited lifetime.  They are visible to
+other SCAM modules, which means that if two modules in your program declare
+a global of the same name, they will be using the same variable.  For
+readers comparing with other Lisp dialects, it is useful to note that
+globals are equivalent to "dynamic" or "special" variables in the parlance
+of Common Lisp. The following special forms deal with global variables:
+[`define`](#define), [`declare`](#declare), [`let-global`](#let-global),
+[`set`](#set), [`set-global`](#set-global), [`set-rglobal`](#set-rglobal).
 
-For readers comparing with other Lisp dialects, it is useful to note that
-globals are functionally equivalent to "dynamic" or "special" variables in
-the parlance of Common Lisp. The following special forms deal with global
-variables: [`define`](#define), [`declare`](#declare),
-[`let-global`](#let-global), [`set`](#set), [`set-global`](#set-global),
-[`set-rglobal`](#set-rglobal).
+SCAM functions are typically stored in global variables.
 
-Automatic variables are the variables created by GNU Make's `foreach`
-built-in or SCAM's `for` macro. Automatic variables are immutable (as are
-local variables) but they are visible to code in other modules, shadowing
-any global variables that are known to those other modules.
-
-The visibility of globals and automatic variables makes them less safe than
-locals, but globals provide an outlet when side effects are needed, and
-`foreach` provides a relatively performant mechanism for many operations, so
-avoiding them entirely is unrealistic for many real-world applications.
-Here are recommended naming conventions for limiting running into unintended
-behavior:
-
-  - Use long names for globals, and begin and end them with "`*`" (a Common
-    Lisp convention).
-
-  - Use very short variable names for automatic variables.
-
-  - Avoid very short variable names for local variables.
-
-
-### Variable Flavor
-
-One interesting aspect of GNU Make is the notion of flavor: global variables
-can be "recursive" or "simple".  See the [GNU Make
-manual](https://www.gnu.org/software/make/manual/html_node/Flavors.html#Flavors)
-for more details.
-
-When programming entirely in SCAM one does not need to be aware of variable
-flavor.  In SCAM, the distinction between "expand X" and "return the value
-of X" is explicitly expressed in syntax.  The expression `X` means "the
-value of X", and will not expand X (even if X is a recursive variable).  The
-expression `(X)` will expand X (even if X is a simple variable).
-
-In order to make interoperability with raw Make code more convenient, SCAM
-variables that are defined *as* functions will be stored in Make recursive
-variables, and other values will be stored in simple variables.
-
-    > (define (f) o1)
-    > (flavor "f")
-    "recursive"
-    > (define x 1)
-    > (flavor "x")
-    "simple"
-
+Automatic variables are the variables created by `for` and `foreach`.
+Automatic variables have the visibility of global variables, shadowing any
+other automatic or global variables of the same name, but they have limited
+lifetime and are immutable.
 
 ### Namespaces
 
@@ -691,15 +647,22 @@ Since Make supports only one variable namespace, combining different
 programs or libraries can result in errors when they contain variable names
 that conflict.  In order to avoid naming conflicts between SCAM itself and
 the code it is compiling, the SCAM compiler is built with a different
-namespace: a prefix is added to each global variable and function.  A
-namespace-prefixed name is called a "global" name.  The global names for
-functions obtained from a bundled library may differ from the name seen in
-SCAM source.  The following language features expose namespace
-functionality:
+namespace.  A namespace is a prefix that is applied to a SCAM global
+variable name in order to obtain the Make variable that will be used to hold
+its value.  The namespace-prefixed name is called the "global" name.
+
+User code is not run in a namespace, but be aware that compiler-provided
+functions -- for example, functions exported by the `core` module -- may
+have global names that differ from the names that appear in your source
+files.
+
+The following language features expose namespace functionality:
 
  - `(global-name SYMBOL)` evaluates to the global name for SYMBOL.  You can
    use this to obtain the string value of a name, suitable for passing to
-   (call NAME,...), (origin NAME,...), etc.
+   functions that accept a name expression rather than a name symbol, such
+   as (set-global NAME-EXPR ...), (call NAME-EXPR,...), (origin
+   NAME-EXPR,...), etc.
 
  - The `&global` flag can be used with a `declare` or `define` expression to
    avoid namespace prefixing.  In this case, the global name of the symbol
@@ -776,7 +739,7 @@ Examples:
 
     (declare foo)
 
-## Manifest Symbols
+## Intrinsics
 
 The following symbols are defined by the SCAM language.  They call into
 three different categories:
@@ -829,51 +792,52 @@ to the function.
 The `require` form provides access to functionality defined in other
 modules.  `MODULE` identifies either a SCAM source file, minus its `.scm`
 extension, relative to the directory containing the requiring file) or a
-bundled module.
+standard builtin module.  `MODULE` must be provided as a literal string.
 
-Ordinarily, only the `&public` declarations and definitions in MODULE will
-be visible in the requiring file.  The `&private` flag, when present changes
-this behavior, and makes every symbol visible in MODULE visible in the
-requiring module -- just as if the source text of MODULE were included in
-the requiring module.
+Symbols exported by the module (those declared "&public") are imported into
+the current environment, and are visible to all expressions that follow in
+the current block.  If the `require` call includes the `&private` flag, then
+non-exported symbols are *also* imported.
 
-`MODULE` must be a literal string value, because `require` is processed at
-build time and compile time in addition to run time.
+When the `require` expression is executed, the required module will be loaded
+and executed, unless it has already been required by the program.
 
-When a `require` directive is executed, the required module will be loaded
-and executed, unless it has already been required.
+#### Module Lookup
 
-**Dependency Resolution:**
+The specified `MODULE` refers to a source file, minus its `.scm` extension,
+or to a standard module.  First, it is interpreted as a path to a source
+file.  If it does not begin with `/`, it is treated as relative to the
+directory containing the file being compiled, or in interactive mode, the
+current directory.  If that lookup fails, directories listed in the
+`SCAM_LIBPATH` environment variable (colon-delimited) are tried, in order, as
+base directories to perform the lookup.  Finally, if no source file is found
+and if the name matches a standard builtin module (supplied by the
+compiler), then the builtin module will be used.  If `MODULE` begins with
+`'` this will prevent source file matches and select a builtin module
+explicitly.
 
-When compiling with the `scam -o EXE SOURCE` command, SCAM first discovers
-dependencies by scanning source files for `require` directives.  For each
-required module, SCAM looks for a file to satisfy the dependency, in the
-following order:
+#### Building and Testing
 
- 1. Source file: A source file name is constructed by appending the `.scm`
-    suffix to the module name and treating that as a path relative to the
-    requiring file.
+When `MODULE` identifies a source file, that source file will be compiled to
+determine its exports before compilation can continue.  In turn, modules
+required by `MODULE` will also have to be compiled in order to build
+`MODULE`, and so on.
 
- 2. Object file: An object file is constructed, just as for a source file,
-    but using the `.min` suffix instead of `.scm`.
+When a module source file is accompanied by a qualification test -- a module
+named `MODULE-q.scm` -- then the test will be compiled and run before the
+tested module is used in other requiring modules.
 
- 3. Bundle: An object file that has been bundled into the compiler itself
-    can be used to satisfy dependencies.  A matching bundle is one that has
-    the same module name (directory and suffix portions are ignored).
+SCAM will re-build object files (compilation results) and re-run tests only
+when necessary.  Subsequent invocations of `scam -o EXE SRC` or `scam -x
+SRC` will re-build only the source files that have changed, plus any source
+files that depend on them.
 
-SCAM must first compile each *required* module before it can compile the
-*requiring* module.  This is because the required module may define macros,
-functions, and variables that contribute to the environment of the requiring
-module and affect the way subsequent expressions are compiled.
+SCAM stores compilation results in an "output directory" which is determined
+by how SCAM is invoked:
 
-If a source file is found, SCAM will attempt to compile that file before
-compiling the requiring file.  The compilation step will output an object
-file (named `.min`) in the "object directory", which is the directory that
-contains the target executable.
-
-Outside of the context of a `scam -o` command, such as during `scam -e` or
-`scam -x`, dependency scanning is not performed.  Dependencies must be
-satisfied by bundled modules.
+  - `scam -o EXE SRC` will set the output directory to `(dir EXE)`.
+  - The option `--out-dir=DIR` will override the output directory.
+  - Otherwise, the output directory defaults to `".scam/"`.
 
 ### `use`
 
@@ -1401,6 +1365,113 @@ runs any "exit" hooks that have been registered by the program, and exits
 the process with the exit code that the program's `main` function has
 returned.  One such hook displays tracing results (see `trace.scm`).
 
+### Make Interoperability
+
+Global variables in SCAM are stored as Make variables of the same name.
+
+#### Variable Flavor
+
+One interesting aspect of GNU Make variables is "flavor": global variables
+can be "recursive" or "simple".  See the [GNU Make
+manual](https://www.gnu.org/software/make/manual/html_node/Flavors.html#Flavors)
+for more details.
+
+When programming entirely in SCAM one does not need to be aware of variable
+flavor.  In SCAM, the distinction between "expand X" and "return the value
+of X" is explicitly expressed in syntax.  The expression `X` means "the
+value of X", and will not expand X (even if X is a recursive variable).  The
+expression `(X)` will expand X (even if X is a simple variable).
+
+Those that are defined *as* functions will be stored in Make recursive
+variables, so that they can be called in the usual manner from Make code.
+
+    > (define (f x) (1+ x))
+    > (flavor "f")
+    "recursive"
+    > (f 4)
+    5
+    > (eval "$(info $(call f,4))")
+    5
+
+Global variables that are not defined as functions will be stored in simple
+variables:
+
+    > (define f (lambda (x) (subst 1 2 x)))
+    > (flavor "f")
+    "simple"
+    > (f 4)
+    5
+    > (eval "$(info $(call f,4))")
+    $(subst 1,2,$1)
+
+Interoperability only applies to functions that accept 8 or fewer parameters.
+
+No facilities are provided for using anonymous functions or data records in
+Make.  The internal format of anonymous functions and data records is not
+specified and subject to change.  Vectors and dictionaries have a stable,
+specified structure.
+
+
+## Libraries
+
+SCAM defines several standard modules that can be used by SCAM programs or
+from the SCAM REPL.  Programs will need to `require` the appropriate module
+before using the functions exported by that module.
+
+In the REPL environment, by default all the standard modules are implicitly
+required.
+
+For documentation, refer to the corresponding `.scm` files in the SCAM
+project.  (Look for `&public` functions.)
+
+The following are modules are of general interest:
+
+ - `core`: generic, commonly-used functions.
+ - `num`: arbitrary-precision decimal floating point numbers.
+ - `io`: generic I/O functions.
+ - `trace`: functions for tracing, debugging, and profiling.
+
+## Command-Line Syntax
+
+The `scam` command support four major modes of operation:
+
+1. Generate an executable from SCAM source.
+
+   Usage: `scam -o EXE-FILE SOURCE-FILE`
+
+   Any other source files required by `SOURCE-FILE`, directly or indirectly,
+   will also be compiled.
+
+   If, for any source file `SRC.scm`, there exists a file `SRC-q.scm`, that
+   file will be treated as a test program that validates `SRC.scm`, and the
+   test will be compiled and executed before any source files using
+   `SRC.scm` are compiled.
+
+   Temporary files used in compilation (object files for each source file,
+   and test programs) will be written into to the directory in which
+   EXE-FILE lives.
+
+2. Execute a SCAM source file.
+
+   Usage: `scam -x SOURCE-FILE ARGS...`
+
+   All remaining words on the command line following SOURCE-FILE are passed
+   to the program as arguments (the first parameter to `main`).
+
+   SCAM handles this request by first compiling the source to an executable
+   in the manner that `scam -o EXE` does, but without printing any progress
+   messages.  The generated executable and all temporary files are written
+   into the directory "./.scam".
+
+3. Enter an interactive "REPL" mode.
+
+   Usage: `scam` or `scam -i`
+
+4. Execute an expression provided on the command line.
+
+   Usage: `scam -e EXPR`
+
+
 ## Debugging
 
 ### Call Site Tracing
@@ -1419,9 +1490,9 @@ arguments and return value will displayed. For example, in the REPL:
 
 The `SCAM_TRACE` variable can be assigned to instrument functions at
 run-time, rather than compile-time.  For complete details, see `trace.scm`.
-The following command line counts function invocations within the SCAM
-compiler itself as it compiles a module, and then lists all called functions
-ranked by frequency:
+The following command counts function invocations within the SCAM compiler
+itself as it compiles a module, and then lists all called functions ranked
+by frequency:
 
     $ SCAM_TRACE=':c' bin/scam num.scm
 
@@ -1429,7 +1500,7 @@ The `SCAM_DEBUG` variable causes certain debug information to be written to
 stdout based on the presence or absence of certain substrings:
 
   * "O" ==> "OK: ..." when an `expect` macro succeeds. (See [the core library](core.scm).)
-  * "U" ==> display compile-time "warnings" for lambda captures
+  * "U" ==> compile-time "warnings" for lambda captures
   * "R" ==> "require: <filename>" when a file is included by `require`.
   * "Rx" ==> "R" + "exited: <filename>" after a required file exits.
   * "S" ==> "shell: <command>" when io.scm executes a shell command.
@@ -1459,20 +1530,3 @@ following approach:
  * This second invocation should take longer to execute. Dividing the
   additional time by 10 will give the amount of time spent in that function
   during that use case.
-
-
-## Libraries
-
-SCAM contains several modules that can be used by SCAM programs or from the
-SCAM REPL.  Programs will need to `require` the appropriate module; these
-are by default included in the REPL environment.
-
-For documentation, refer to the corresponding `.scm` files in the SCAM
-project.  (Look for `&public` functions.)
-
-The following are general-purpose modules:
-
- - `core`: generic, commonly-used functions.
- - `num`: arbitrary-precision decimal floating point numbers.
- - `io`: generic I/O functions.
- - `trace`: functions for tracing, debugging, and profiling.

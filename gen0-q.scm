@@ -477,56 +477,69 @@
 
 (define (canned-MIN name)
   (cond
-   ((eq? "D/M" name) "(declare X) (declare x &public)")
-   ((eq? "M" name) "(declare X) (declare x &public)")
-   ((eq? "F" name) "(define X 1) (define (f) &inline &public X)")
-   ((eq? "CM" name) "(define `(F) 3) (define `(G) &public (F))")
-   ((eq? "SM" name) "(define `A 7) (define `B &public A)")
+   ((eq? ".out/D/M.min" name) "(declare X) (declare x &public)")
+   ((eq? ".out/M.min" name) "(declare X) (declare x &public)")
+   ((eq? ".out/F.min" name) "(define X 1) (define (f) &inline &public X)")
+   ((eq? ".out/CM.min" name) "(define `(F) 3) (define `(G) &public (F))")
+   ((eq? ".out/SM.min" name) "(define `A 7) (define `B &public A)")
    (else (expect (concat "Bad module: " name) nil))))
 
 (define (canned-read-file name)
   (env-export-line (text-to-env (canned-MIN name) nil 1)))
 
-(declare (mod-find name))
-
+(define (harness-locate-module src name)
+  (concat (patsubst "./%" "%" (dir src)) name ".scm"))
 
 (let-global
- ;; This overrides (!) the function for looking up modules.
- ((mod-find (lambda (m f) m))
-  (read-file canned-read-file)
-  (read-lines (lambda (file a b) (wordlist a b (split "\n" (canned-read-file file))))))
- ;; (require MOD)
+    ;; This overrides (!) the function for looking up modules.
+    ((locate-module harness-locate-module)
+     (read-file canned-read-file)
+     (read-lines (lambda (file a b) (wordlist a b (split "\n" (canned-read-file file)))))
+     (*compile-file* "foo.scm")
+     (*file-mods* "D/M M F CM SM")
+     (*obj-dir* ".out/")
+     (*is-boot* nil))
 
- (expect (c0-ser "(require \"D/M\")")
-         "(^require M)")
+  ;; Test: (require MOD)
 
- (expect (text-to-env "(require \"M\")" nil 1)
-         {x: (EVar (gen-global-name "x" nil) "i")})
+  (expect (module-id (locate-module *compile-file* "D/M"))
+          "D/M")
 
- (expect (c0-ser "(require \"D/M\" \"xyz\")")
-         "!(PError 0 'too many arguments to require')")
+  (expect (c0-ser "(require \"D/M\")")
+          "(^require D/M)")
 
- ;; (require MOD &private)
+  (let-global ((*is-boot* 1)
+               (*file-mods* "'D/M"))
+    (expect (c0-ser "(require \"D/M\")")
+            "(^require 'D/M)"))
 
- (expect (text-to-env "(require \"M\" &private)" nil 1)
-         { x: (EVar (gen-global-name "x" nil) "x"),
-           X: (EVar (gen-global-name "X" nil) "p") })
+  (expect (text-to-env "(require \"M\")" nil 1)
+          {x: (EVar (gen-global-name "x" nil) "i")})
 
- ;; Verify that IMPORTED inline functions & macros are expanded in their
- ;; original environment (read from their MIN files' exports) so they can
- ;; see private members.
+  (expect (c0-ser "(require \"D/M\" \"xyz\")")
+          "!(PError 0 'too many arguments to require')")
 
- ;; IMPORTED inline function
- (expect (c0-ser "(require \"F\") (f)")
-         (xns "(IBlock (^require F),{~X})"))
+  ;; (require MOD &private)
 
- ;; IMPORTED compound macro
- (expect (c0-ser "(require \"CM\") (G)")
-         "(IBlock (^require CM),3)")
+  (expect (text-to-env "(require \"M\" &private)" nil 1)
+          { x: (EVar (gen-global-name "x" nil) "x"),
+               X: (EVar (gen-global-name "X" nil) "p") })
 
- ;; IMPORTED symbol macro
- (expect (c0-ser "(require \"SM\") B")
-         "(IBlock (^require SM),7)"))
+  ;; Verify that IMPORTED inline functions & macros are expanded in their
+  ;; original environment (read from their MIN files' exports) so they can
+  ;; see private members.
+
+  ;; IMPORTED inline function
+  (expect (c0-ser "(require \"F\") (f)")
+          (xns "(IBlock (^require F),{~X})"))
+
+  ;; IMPORTED compound macro
+  (expect (c0-ser "(require \"CM\") (G)")
+          "(IBlock (^require CM),3)")
+
+  ;; IMPORTED symbol macro
+  (expect (c0-ser "(require \"SM\") B")
+          "(IBlock (^require SM),7)"))
 
 ;; RECURSIVE INLINE FUNCTION: we should see one level of expansion where it
 ;; is used.

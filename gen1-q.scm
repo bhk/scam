@@ -6,26 +6,30 @@
 (require "escape")
 (require "gen1" &private)
 
+
+;; crumbs
+
+(expect { code: "a b c", errors: [1 2], x: ["!=%"] }
+        (crumb-extract (concat "a b"
+                               (crumb "errors" 1)
+                               " "
+                               (crumb "errors" 2)
+                               "c"
+                               (crumb "x" "!=%")
+                               )))
+
+(define `msg "), \n \t ~3 $- $(call $1,2)")
+(expect [msg] (dict-get "x" (crumb-extract (crumb "x" msg))))
+(expect [msg] (dict-get "x" (crumb-extract
+                             (c1-Lambda (protect-trim (crumb "x" msg))))))
+
+
 ;; make-list
 
 (expect "x" (make-list 1 1 "x"))
 (expect "" (make-list 2 1 "x"))
 (expect "xxxx" (make-list 1 4 "x"))
 
-;; gen-embed / gen-quote
-
-(let& ((msg "), \n \t ~3 $- $(call $1,2)"))
-      (expect msg (gen-decode (gen-encode msg)))
-      (expect msg (gen-decode (c1-Lambda (protect-trim (gen-encode msg))))))
-
-(let& ((msg "A B ! !0")
-       (msg2 " \t\n "))
-      (expect [msg] (gen-extract (concat (gen-embed msg) "$x")))
-      (expect [msg] (gen-extract (concat " " (gen-embed msg))))
-      (expect [msg "" msg2]
-              (gen-extract (concat " " (gen-embed msg)
-                                   (gen-embed "")
-                                   (gen-embed msg2)))))
 
 ;; IString: literal values
 
@@ -124,8 +128,9 @@
 ;; c1-E
 
 (expect [(PError 0 "message")]
-        (gen-extract (c1 (IBuiltin "wildcard"
-                                  [(PError 0 "message")]))))
+        (dict-get "errors"
+                  (crumb-extract (c1 (IBuiltin "wildcard"
+                                               [(PError 0 "message")])))))
 
 ;; c1-file-set and c1-file-fset
 
@@ -184,7 +189,7 @@
 ;; gen1
 
 (define (gen-out node is-file)
-  (nth 2 (gen1 [ node ] is-file)))
+  (dict-get "code" (gen1 [ node ] is-file)))
 
 (expect "x := 1\n"
         (gen-out (ICall "^set" [ (IString "x") (IString 1) ]) 1))
@@ -193,9 +198,9 @@
         (gen-out (ICall "^set" [ (IString "x") (IString 1) ]) nil))
 
 ;; Ensure markers are not confused with RHS literals in file syntax.
-(expect ["" "$(call ^fset,f,$`.{ERR)\n"]
+(expect {code: "$(call ^fset,f,$`.{ERR)\n"}
         (gen1 [ (ICall "^fset" [ (IString "f") (IString "$.{ERR") ]) ]
               1))
 
 (expect [(PError 1 "MSG")]
-        (nth 1 (gen1 [(PError 1 "MSG")] 1)))
+        (dict-get "errors" (gen1 [(PError 1 "MSG")] 1)))

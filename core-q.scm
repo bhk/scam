@@ -110,11 +110,17 @@
 (expect "default" (dict-get "x" {"": ""} "default"))
 (expect "val1" (dict-get "x%x" {"x%x": "val1", "x%x": "%"}))
 
+(expect {b:"!", a:1, c:3}
+        (dict-set "b" "!" {a:1, b:2, c:3}))
+
 (expect {" ":1, b:2, bb:9}
         (dict-compact {" ":1, b:2, b:7, " ":3, bb:9}))
 
 (expect ["%" "!8" "a b" ""]
         (dict-keys {"%": "", "!8": "x", "a b": "%1", "": "x"}))
+
+(expect { a: [1 2 3], b: ["%" "b c" "! " ""] }
+        (dict-collate {a: 1, a: 2, b: "%", b: "b c", b: "! ", a: 3, b: ""}))
 
 ;; symbol?
 

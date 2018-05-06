@@ -1,5 +1,12 @@
+(require "gen")
 (require "core")
+(require "io")
 (require "build" &private)
+
+;; strip-comments
+
+(expect "a\nb\n" (strip-comments "#Comment\n\n# comment 2\na\nb\n"))
+(expect "" (strip-comments ""))
 
 ;; traverse-graph
 
@@ -16,47 +23,68 @@
                         (lambda (node) (concat "{" node "}"))))
 
 
-;; scan-source, scan-object, scan-deps
+;; scan-source
 
-(expect [ ["test/req/a!1.txt" "test/req/b.txt"]
-          ["test/use/a.txt" "test/use/b.txt"] ]
+(expect [ ["req/a!1" "req/b"]
+          ["use/a" "use/b"] ]
         (scan-source "test/build-q.txt"))
 
-(expect [ ["test/a/!1b.txt" "test/c.txt"]
-          ["test/x/y.txt"] ]
-        (scan-object "test/build-q.txt"))
+;; scan-object
 
-(define ///build-test-mod.min
-  &global
-  "#Exports: ...\n# Requires: r s\n# Uses: u v\n")
-(expect ["///r.min ///s.min" "///u.min ///v.min"]
-        (scan-object "///build-test-mod.min"))
 
+(set-global "Mod['builtin-test]"
+            (concat "# comment\n"
+                    "# Requires: 'core 'io\n"
+                    "# Uses: 'a 'b\n"
+                    "# comment\n"))
+
+(expect [ ["'core" "'io"]
+          ["'a" "'b"] ]
+        (scan-builtin "'builtin-test"))
+
+
+;;----------------------------------------------------------------
+;; compile-rule
+;;----------------------------------------------------------------
+
+(set *is-boot* nil)
+
+(let ((rule (compile-rule "p"
+                          "p.src"
+                          ["p.obj"]
+                          ["a-q.ok"]
+                          ["m1" "m2"]
+                          ["req1.obj" "req2.obj"]
+                          ["ct1.obj" "ct2.obj"]
+                          nil)))
+  (let ((lines (split "\n" rule)))
+    (expect (subst "SELF" (firstword MAKEFILE_LIST)
+                   "p: p.src p.obj SELF | a-q.ok")
+            (first lines))
+    (expect 1 (see "\t@: $(call" (nth 2 lines)))))
 
 ;;----------------------------------------------------------------
 ;; scan-modules
 ;;----------------------------------------------------------------
 
-(define `(scan sources rebundle is-boot mmap-in)
-  (scan-modules { odir: "out/",
-                  rebundle: rebundle,
-                  boot: is-boot }
-                sources mmap-in))
+(define `(scan sources is-boot mmap-in ?env)
+  (set *is-boot* is-boot)
+  (set *obj-dir* "out/")
+  (scan-modules env sources mmap-in))
 
 (define `(sexpect a b)
   (expect-x (sort a) (sort b) (current-file-line)))
 
 
 (declare *files*)
-(define (test-scan-file file)  (rest (assoc file *files*)))
-(define (test-if-exists file)  (if (assoc file *files*) file))
-(define (test-if-bundled file) (test-if-exists (bundle-var (bundle-path file))))
+(define (test-scan-deps file)
+  (rest (assoc file *files*)))
 
+(define (test-file-exists? file)
+  (if (assoc file *files*) file))
 
-(let-global ((scan-source test-scan-file)
-             (scan-object test-scan-file)
-             (if-exists   test-if-exists)
-             (if-bundled  test-if-bundled))
+(let-global ((scan-deps test-scan-deps)
+             (file-exists?   test-file-exists?))
 
   ;; Assert: detects `-q` tests
   ;; Assert: follows dependencies (including paths)
@@ -64,42 +92,36 @@
   ;; Assert: MMAP records are correct for found sources & not-found files
 
   (set *files* [; filename     requires      uses
-                ["a.scm"       "x/b.scm"               ]
-                ["x/b.scm"     "x/r.scm"     "x/u.scm" ]
-                ["x/b-q.scm"                           ]
-                ["x/r.scm"                             ]
-                ["///u.scm"                            ] ])
+                ["a.scm"       "x/b.scm"             ]
+                ["x/b.scm"     "x/r.scm"     "'core" ]
+                ["x/b-q.scm"                         ]
+                ["x/r.scm"                           ]
+                ["'core"                             ] ])
 
-  (sexpect [ ["a"    "a.scm"      "out/a.min"    nil    "b"   nil  1]
-             ["b"    "x/b.scm"    "out/b.min"    "b-q"  "r"   "u"  1]
-             ["b-q"  "x/b-q.scm"  "out/b-q.min"  nil    nil   nil  1]
-             ["r"    "x/r.scm"    "out/r.min"    nil    nil   nil  1]
-             ["u"    nil          "x/u.scm"      nil    nil   nil  1] ]
-           (scan ["a.scm"] nil 1 nil))
+;;  (sexpect [ ["a"    "a.scm"      "out/a.min"    nil    "b"   nil  1]
+;;             ["b"    "x/b.scm"    "out/b.min"    "b-q"  "r"   "u"  1]
+;;             ["b-q"  "x/b-q.scm"  "out/b-q.min"  nil    nil   nil  1]
+;;             ["r"    "x/r.scm"    "out/r.min"    nil    nil   nil  1]
+;;             ["u"    nil          "x/u.scm"      nil    nil   nil  1] ]
+;;           (scan ["a.scm"] nil 1 nil))
+  (sexpect [ ["a.scm"      nil          "x/b.scm"  nil      "RC"]
+             ["x/b.scm"    "x/b-q.scm"  "x/r.scm"  "'core"  "RC"]
+             ["x/b-q.scm"  nil           nil       nil      "RC"]
+             ["x/r.scm"    nil           nil       nil      "RC"]
+             ["'core"      nil           nil       nil      "RC"] ]
+           (scan ["a.scm"] nil nil))
 
-  ;; Assert: use bundles when `rebundle` is 1
+  ;; Assert: `rt` and `ct` are heeded.
 
-  (set *files* [["///runtime.min"]
-                ["///scam-ct.min"] ])
+  (set *files* [["a.scm"]
+                ["b.scm"] ])
 
-  (define mm0 (scan ["runtime.scm" "scam-ct.scm"] 1 1 nil))
+  (set-global "Mod['xx]" "# nothing")
 
-  (sexpect [ ["runtime" nil "///runtime.min"  nil nil nil 1]
-             ["scam-ct" nil "///scam-ct.min"  nil nil nil 1] ]
+  (define mm0 (scan ["a.scm"] nil nil { rt: "'xx" }))
+  (sexpect [ ["a.scm" nil "'xx" nil "C"] ]
            mm0)
 
-  ;; Assert: MMAP records are correct for bundles and MIN files
-  ;; Assert: implicit `require` and `use` are added when is-boot=nil
-  ;; Assert: dependency satisfied by MIN file
-
-  (set *files* [; filename     requires      uses
-                ["a.scm"       "b.scm c.scm"         ]
-                ["///b.min"                          ]
-                ["c.min"                             ] ])
-
-  (sexpect
-   (append [["a"    "a.scm"   "out/a.min"  nil  "b c runtime" "scam-ct" nil]
-            ["b"    nil       "///b.min"   nil  "runtime"     "scam-ct" nil]
-            ["c"    nil       "c.min"      nil  "runtime"     "scam-ct" nil]]
-           mm0)
-   (scan ["a.scm"] 1 nil mm0)))
+  (define mm0 (scan ["b.scm"] nil nil { rt: "'rt", ct: "'ct" }))
+  (sexpect [ ["b.scm" nil "'rt" "'ct" ""] ]
+           mm0))

@@ -10,14 +10,18 @@
 ;;
 ;; (getopts args opts err)
 ;;   args = arguments array
-;;   opts = list of option specifiers:
-;;        -OPTIONNAME    => flag
-;;        -OPTIONNAME=   => option that takes an argument
+;;   opts = vector of option specifiers
 ;;   err = function to be called when an unrecognized option is found:
 ;;            (err option-string)
-;;
 ;;   result = [files omap]
 ;;      omap :: name -> value
+;;
+;; Option specifiers:
+;;   "-OPT"     => a flag; when given, the (dict-get "OPT" omap) will be 1
+;;   "-OPT="    => a flag that takes an argument; (dct-get "OPT" omap)
+;;                 will hold that argument value.
+;;   "-OUT=..." => a flag that consumes the rest of the command line as
+;;                 its argument.
 ;;
 ;; File names and options can appear in any order.  Option names may not
 ;; contain '%' or '!' characters or whitespace.  File names may contain any

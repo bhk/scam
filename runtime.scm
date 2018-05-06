@@ -12,13 +12,14 @@
 ;; those functions are defined.
 
 
-(declare SCAM_MODS &global &public)
 (declare SCAM_DEBUG &global &public)
 (eval "SCAM_DEBUG ?=")
 
+(define `(dbgmsg code label value)
+  (if (findstring code SCAM_DEBUG)
+    (print label value)))
 
-(if (findstring "R" SCAM_DEBUG)
-    (print "runtime: " (lastword MAKEFILE_LIST)))
+(dbgmsg "R" "runtime: " (lastword MAKEFILE_LIST))
 
 (eval "define \\n
 
@@ -285,51 +286,33 @@ endef
 ;; ^require
 
 
-(define ^required-files
-  "///runtime.min")
+(define *required* nil)
 
+(define `(mod-var id)
+  (concat "Mod[" id "]"))
 
-;; Include a module if it hasn't been included yet.
+;; This will be overridden by compiler modules when the compiler runs (or
+;; when a user program using compiler modules runs).
 ;;
-;; Note: `let-global` introduces a hidden dependency on `^set`.
+(define (require-ex mod-id)
+  nil)
+
+;; Execute a module if it hasn't been executed yet.
 ;;
-(define (^require name)
+(define (^require id)
   &global
 
-  (define `mod (notdir name))
-  (define `bundle (concat "///" mod ".min"))
-
-  ;; Load and execute PATH.
-  (define `(load path)
-    (if (filter "///%" path)
-        (eval (value path))
-        (eval (concat "include " path))))
-
-  ;; If a matching file is listed in SCAM_MODS, use that file.
-  (define `named-mod
-    (word 1 (foreach f SCAM_MODS
-                     (if (filter mod (notdir (basename f)))
-                         f))))
-
-  (define `new-file
-    (filter-out ^required-files
-                (or named-mod
-                   (if (bound? bundle)
-                       bundle
-                       (concat name ".min")))))
-
-  ;; Using `foreach` as a cheap binding mechanism...
-  (foreach
-      ^file new-file
+  (or (filter id *required*)
       (begin
-        (set ^required-files (concat ^required-files " " ^file))
-
-        (if (findstring "R" SCAM_DEBUG)
-            (info (concat "require: " ^file)))
-        (load ^file)
-        (run-hooks "load")
-        (if (findstring "Rx" SCAM_DEBUG)
-            (info (concat "exited: " ^file))))))
+        (set *required* (concat *required* " " id))
+        (dbgmsg "R" "require: " id)
+        (or (require-ex id)
+            (if (bound? (mod-var id))
+                (eval (value (mod-var id)))
+                (error (concat "module " id " not found!"))))
+        (dbgmsg "Rx" "exited: " id)
+        (run-hooks "load")))
+  nil)
 
 
 ;;----------------------------------------------------------------
@@ -347,10 +330,10 @@ endef
       (begin
         (set *started* 1)
 
-        (if (bound? "///trace.min")
-            (^require "trace"))
+        (if (bound? (mod-var "'trace"))
+            (^require "'trace"))
 
-        (^require (notdir main-mod))
+        (^require main-mod)
 
         (let ((exit-code (call main-func args)))
           ;; If `main` returns a bogus value then the "exit" command will display

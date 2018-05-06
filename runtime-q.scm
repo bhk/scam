@@ -1,6 +1,11 @@
-;; runtime-q runs in a special environment (same as the environment for
-;; runtime) in which the runtime is not an implicit requirement, so we
-;; have to require it explicitly (unlike in ordinary scam sources).
+;; runtime-q
+
+;; It is unusual to require "runtime", and not ordinarily supported, since
+;; it must be loaded before `require` can be called.  runtime-q needs
+;; private symbols, so it requires runtime explicitly.  We set *require* to
+;; prevent runtime from being eval'ed again.
+(declare *required*)
+(set *required* "'runtime")
 (require "runtime" &private)
 
 ;; runtime-test

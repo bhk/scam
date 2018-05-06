@@ -1,4 +1,4 @@
-;;--------------------------------------------------------------
+;--------------------------------------------------------------
 ;; gen : Environment, IL, and related utilities.
 ;;--------------------------------------------------------------
 
@@ -201,10 +201,18 @@
 ;; used to find modules when `require` expressions are encountered.
 (declare *compile-outfile* &public)
 
-;; *compile-mods* lists object files to be used to satisfy `require`
-;; statements encountered when compiling.  (Otherwise, bundled modules will
-;; be used.)
-(declare *compile-mods* &public)
+;; *file-mods* is a list of IDs of modules that should be read from files at
+;; run-time, rather than bundles.This enables interactive mode and
+;; executable macros, and simplifies unit-testing.
+(declare *file-mods* &public)
+
+;; When true, the compiler operates in boot mode: no builtin modules will be
+;; used, and globals in generated code will be prefixed with "~".
+(define *is-boot* &public nil)
+
+;; Root directory for compiled binaries.
+(define *obj-dir* &public ".scam/")
+
 
 (define `NoOp
   &public
@@ -269,13 +277,124 @@
 
 
 ;;--------------------------------------------------------------
+;; Module management
+;;--------------------------------------------------------------
+
+;; We have different ways of referring to modules in different contexts:
+;;
+;;  NAME: This is the string given as a literal argument to (require).
+;;
+;;  ORIGIN: If NAME identifies a source file, it will be the complete path to
+;;       the source file path.  If NAME identifies a builtin module, it will be
+;;       that module's ID (which begins with `'`).
+;;
+;;  ID: This is what will be passed to ^require at run-time.  Ordinarily it
+;;      identifies a bundle, but when modules execute in the context of the
+;;      compiler and ID is found in *file-mods*, the object code will be
+;;      loaded directly from the file.
+;;
+;;                  --boot           not --boot       not --boot
+;;                  Source File      Source File      Builtin
+;;                  ----------       ---------        -----------
+;;   ORIGIN         io.scm           io.scm           'io
+;;   ID             'io              io               'io
+;;   Load File      .scam/io.min     .scam/io.min
+;;   Load Bundle                                      Mod['io]
+;;   Bundle as      Mod['io]         Mod[io]          Mod['io]
+;;
+
+(define builtin-mods
+  "build compile core escape gen gen0 gen1 getopts io num parse repl runtime scam scam-ct trace")
+
+
+;; Return the file that holds (or will hold) the module's compiled code
+;; (valid only for modules compiled from source).
+;;
+(define (modid-file id)
+  &public
+  (concat *obj-dir* (patsubst "'%" "%" id) ".min"))
+
+
+;; Return the bundle variable that holds (or will hold) the modules's code.
+;;
+(define `(modid-var id)
+  &public
+  (concat "Mod[" id "]"))
+
+
+(define (module-opath origin)
+  &public
+  (escape-path (basename origin)))
+
+
+;; Construct the ID corresponding to a module origin.  When building the
+;; compiler (booting), we add a "'" prefix to allow them to coexist with
+;; user source modules of the same name.
+;;
+(define (module-id origin)
+  &public
+  (or (filter "'%" origin)
+      (concat (if *is-boot* "'") (module-opath origin))))
+
+
+(define (module-var origin)
+  &public
+  (modid-var (module-id origin)))
+
+
+(define `(module-is-source? origin)
+  &public
+  (filter-out "'%" origin))
+
+
+(define (module-has-binary? origin)
+  &public
+  (or (filter "'%" origin)
+      (filter (module-id origin) *file-mods*)))
+
+
+;; Get the "origin" of the module (a SCAM source file or a builtin bundle).
+;; Note that when source is found, a compiled version may not be present.
+;; Return nil on failure.
+;;
+;; SOURCE-FILE =  the source file calling `require`
+;; NAME = the literal string passed to "require"
+;;
+(define (locate-module source-file name)
+  &public
+  (define `srcname
+    (if *is-boot*
+        (patsubst "'%" "%" name)
+        name))
+
+  (or (firstword
+       (foreach dir (append (dir source-file)
+                            (subst ":" " " (value "SCAM_LIBPATH")))
+                (file-exists? (resolve-path dir (concat srcname ".scm")))))
+
+      ;; builtin?
+      (and (not *is-boot*)
+           ;; Either "name" or "'name" will match "'name"...
+           (filter (concat name " '" name)
+                   (addprefix "'" builtin-mods)))))
+
+
+;; Return the first 4 lines of a compiled module as an array of lines.
+;;
+(define (module-read-lines origin)
+  (if (filter "'%" origin)
+      (wordlist 1 4 (split "\n" (value (module-var origin))))
+      (read-lines (modid-file (module-id origin)) 1 4)))
+
+
+;;--------------------------------------------------------------
 ;; Environment functions
 ;;--------------------------------------------------------------
 
 ;; Namespacing
 ;; -----------
 ;;
-;; Namespaces help avoid conflicts between compiler sources and "target"
+;; Namespaces help avoid conflicts between compiler sources and "user"
 ;; code, which must coexist in the same Make instance in the following
 ;; scenarios:
 ;;
@@ -287,36 +406,34 @@
 ;;  - "use" statements specify modules to be executed by the compiler,
 ;;    perhaps after being compiled by the same compiler.
 ;;
-;; See reference.md for more on namespaces.
-;;
-;; The global variable SCAM_NS provides the namespace prefix during
-;; compilation.
+;; See reference.md for more on namespaces.  The compile flag "--boot"
+;; indicates that we are building the compiler, and *is-boot* will be true.
 ;;
 ;; (gen-global-name SCAM-NAME FLAGS)
 ;;
-;;     This function generates a global name using the run-time value of
-;;     SCAM_NS.  It is employed by the compiler itself.
+;;     This function generates a global name for the target code. It is
+;;     by the compiler when generating code.
 ;;
 ;; (global-name SYMBOL)
 ;;
 ;;    This special form retrieves the global name associated with the SYMBOL
-;;    in the current environment.  This can be used to convert a target
-;;    function/variable name to a string suitable for passing to `call`,
-;;    `value`, `origin`, etc..  Note: this reflects the value of SCAM_NS
-;;    when the module defining SYMBOL was compiled, which may or may not
-;;    match the NS used by the module invoking global-name -- for example,
-;;    the symbol might be from target code, or from a bundled module.
+;;    in the current environment.  This yields a string suitable for passing
+;;    to `call`, `value`, `origin`, etc..
 ;;
 ;; If FLAGS contains a word ending in "&global", the symbol name is returned
 ;; unmodified.
 ;;
 
+(define dummy-env
+  {"": (EIL "" "-" NoOp)})
+
+
 (define (gen-global-name local flags)
   &public
-  (declare SCAM_NS &global)
-  (if (filter "%&global" flags)
-      local
-      (concat SCAM_NS local)))
+  (concat (and *is-boot*
+               (not (filter "%&global" flags))
+               "~")
+          local))
 
 
 ;; Generate a unique symbol name derived from `base`.  Returns a symbol
@@ -481,7 +598,7 @@
 ;;    If true, return the final environment of the module.
 ;;    If false, return only public bindings from the final env.
 ;;
-(define (env-import env all)
+(define (env-strip-imports env all)
   (if all
       ;; Add all symbols, public and private.
       env
@@ -495,7 +612,7 @@
 ;;
 ;; ENV = the final environment of the module
 ;;
-(define `(env-export env)
+(define `(env-strip-exports env)
   (strip-vec
    (foreach b env
             (if (not (filter "i" (EDefn.scope (dict-value b))))
@@ -506,7 +623,7 @@
 ;;
 (define (env-export-line env)
   &public
-  (concat "# Exports: " (env-compress (env-export env)) "\n"))
+  (concat "# Exports: " (env-compress (env-strip-exports env)) "\n"))
 
 
 ;; Return all bindings exported from a MIN file.  The keys of non-public
@@ -520,59 +637,36 @@
 ;; Read a module from a file or a bundled variable and return its final
 ;; environment ("exports").
 ;;
-(define `(env-load filename)
-  (define `(read-module-lines filename)
-    (if (filter "///%" filename)
-        (split "\n" (value filename))
-        (read-lines filename 1 4)))
-
-  (env-parse (read-module-lines filename)))
+(define `(env-load origin)
+  (env-parse (module-read-lines origin)))
 
 
-(define *dummy-env*
-  {"": (EIL "" "-" NoOp)})
-
-
-;; Import symbols from FILENAME.  ALL means return all original environment
-;; entries, not just public ones.  Return `nil` on error (bad filename).
+;; Return the environment exported from a module, given its ID.
+;; Return nil on error, non-nil ENV on success.
 ;;
-(define (get-file-env filename all)
-  (if filename
-      (or (env-import (env-load filename) all)
-          *dummy-env*)))
+(define (env-import origin all)
+  &public
+  (or (env-strip-imports (env-load origin) all)
+      dummy-env))
 
 
-(memoize (global-name get-file-env))
-
-
-;; Return the location of the object file, given the module name.
-;; This is either a MIN file listed in *compile-mods*, or a
-;; bundled module ("///mod.min"), or nil if neither are found.
-;;
-(define (mod-find name)
-  (define `bundlevar (concat "///" (notdir name) ".min"))
-
-  (or (firstword (filter (concat "%" (notdir name) ".min") *compile-mods*))
-      ;; don't use bundles when the runtime is given as a module file
-      (if (and (not (filter "%/runtime.min" *compile-mods*))
-               (bound? bundlevar))
-          bundlevar
-          (print "warning: cannot find module " name))))
+(memoize (global-name env-import))
 
 
 ;; Read the environment exported from a module.
 ;;
-;; MOD : module name
+;; NAME : module name (string literal in source file)
 ;; ALL : True => return all environment entries that were visible at
 ;;               the end of MOD.
 ;;       False => return &public symbols defined/declared in MOD.
+;; Return: ENV on success  (non-nil)
+;;         nil on failure
 ;;
-;; Return: ENV on success
-;;         nil on failure  (module not found)
-;;
-(define (get-module-env mod all)
+(define (get-module-env name all)
   &public
-  (get-file-env (mod-find mod) all))
+  (let ((origin (locate-module *compile-file* name)))
+    (if origin
+        (env-import origin all))))
 
 
 ;; Perform a compile-time import of "mod", returning env entries to be added
@@ -581,16 +675,26 @@
 ;; Returns:  ENV  on success
 ;;           nil  on failure (module not found)
 ;;
-(define (use-module mod)
+(define (use-module name)
   &public
-  (let ((imports (get-module-env mod nil)))
-    (if imports
-        (let-global ((SCAM_MODS *compile-mods*))
-          (call "^require" mod)
-          (or (strip-vec (foreach e imports
+  (let ((origin (locate-module *compile-file* name)))
+    (if origin
+        (begin
+          (call "^require" (module-id origin))
+          (or (strip-vec (foreach e (env-import origin nil)
                                   (case (dict-value e)
                                     ((EXMacro _ _) e))))
-              *dummy-env*)))))
+              dummy-env)))))
+
+
+;; Extend the runtime's ^require to handle file-based modules during
+;; compilation.
+;;
+(define (require-ex id)
+  (if (filter id *file-mods*)
+      (begin
+        (eval (concat "include " (modid-file id)))
+        1)))
 
 
 (define builtins-1

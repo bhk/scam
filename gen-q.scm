@@ -49,7 +49,7 @@
         (PError 12 "Msg: hello error"))
 
 ;;--------------------------------
-;; env-export & env-import
+;; env-strip-exports & env-strip-imports
 ;;--------------------------------
 
 ;; A has no imported bindings
@@ -59,19 +59,19 @@
 
 (define (harness-get-module-env mod all)
   (expect mod "A")
-  (env-import (env-export mod-A-env) nil))
+  (env-strip-imports (env-strip-exports mod-A-env) nil))
 
 
 ;; no imports to trim
-(expect (env-export mod-A-env)
+(expect (env-strip-exports mod-A-env)
         mod-A-env)
 
 ;; reconstruct A (include)
-(expect (env-import mod-A-env 1)
+(expect (env-strip-imports mod-A-env 1)
         mod-A-env)
 
 ;; get public bindinds (import)
-(fexpect (env-import mod-A-env nil)
+(fexpect (env-strip-imports mod-A-env nil)
          {g: (EFunc "F" "i" 1 nil)})
 
 
@@ -91,8 +91,6 @@
 (expect 1 (tok-test {"%": "a%a!p!P!%"}))
 
 
-;; env-export & env-import
-
 ;; import only public members
 
 (fexpect (import-binding "f" (EFunc "F" "x" 2 nil))
@@ -103,7 +101,7 @@
 
 
 (define (export-round-trip env flag)
-  (env-import
+  (env-strip-imports
    (env-parse [ "# comment"
                 (subst "\n" "" (env-export-line env))
                 "# F F F F F F"])

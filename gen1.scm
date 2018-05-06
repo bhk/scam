@@ -18,7 +18,7 @@
 ;;
 ;;     SCAM source:     (set-global "x" 1)    (+ 1 2)
 ;;     Function Code:   $(call ^set,x,1)      $(call +,1,2)
-;;     File Code:       x = 1                 $(if ,,$(call +,1,2))
+;;     File Code:       x = 1                 $(if $(call +,1,2),)
 ;;
 ;; Most of the functions in this module compile to function syntax.  File
 ;; syntax is handled by `c1-file-xxx` functions.  A few constructs are
@@ -116,28 +116,31 @@
          code))
 
 
-(define `(gen-encode str)
+;; Crumbs are name/value pairs can be placed anywhere in generated code.
+;; They will survive lambda-escaping, protect-XXX, and other transformations
+;; performed during code generation.  Before `gen1` returns, all crumbs are
+;; removed from the generated code and collated into name/vector pairs.
+
+(define (crumb-encode str)
   (subst "~" "~1" "(" "~L" "," "~C" ")" "~R" "$" "~S" "\n" "~N" str))
 
-
-(define `(gen-decode str)
+(define (crumb-decode str)
   (subst "~N" "\n" "~S" "$" "~R" ")" "~C" "," "~L" "(" "~1" "~" str))
 
 
-;; Embed an arbitrary value into a generated code.  This string will
-;; survive the lambda-escaping, protect-XXX, and other transformations that
-;; may be performed on code before it is returned from `gen1`.
+;; Construct a crumb.
 ;;
-(define (gen-embed str)
-  (concat "$.{" (gen-encode str) "$.}"))
+(define (crumb key value)
+  (concat "$.{" (crumb-encode {=key: value}) "$.}"))
 
 
-;; Extract embedded strings.  Returns a vector.
+;; Extract crumbs.  Returns a vector.
 ;;
-(define (gen-extract code)
-  (if (findstring "$.{" code)
-      (for e (rest (split "$.{" code))
-           (gen-decode (first (split "$.}" e))))))
+(define (crumb-extract code)
+  (let ((dc (subst "$.{" " $.{" "$.}" " " [code])))
+    (append {code: (concat-vec (filter-out "$.{%" dc))}
+            (dict-collate (foreach w (filtersub "$.{%" "%" dc)
+                                   (crumb-decode (promote w)))))))
 
 
 ;; Construct a node that expands NODE but returns nil.
@@ -191,10 +194,10 @@
 
 
 (define (c1-Error node)
-  (gen-embed
-   (case node
-     ((PError pos msg) node)
-     (else (PError 0 (concat "internal:bad IL: " node))))))
+  (crumb "errors"
+         (case node
+           ((PError pos msg) node)
+           (else (PError 0 (concat "internal:bad IL: " node))))))
 
 
 ;; Construct an IL node that evaluates to a vector.  `nodes` is a vector of
@@ -373,7 +376,6 @@
 ;;
 (define (gen1 node-vec is-file)
   &public
-  (let ( (c1o (if is-file
-                  (c1-file* node-vec)
-                  (c1 (IBlock node-vec)))) )
-    [ (gen-extract c1o) c1o ]))
+  (crumb-extract (if is-file
+                     (c1-file* node-vec)
+                     (c1 (IBlock node-vec)))))
