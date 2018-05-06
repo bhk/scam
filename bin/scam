@@ -29,7 +29,7 @@ endef
 ~prologue := \#!/bin/bash$':; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -j $`{SCAM_JOBS:-9} -f"$`0"$'$'
 define ~epilogue
 $`(eval $`(value ///$(notdir $3)))
-$`(call ^start,///$(notdir $1),$2,$`(SCAM_ARGS))
+$`(call ^start,///$(notdir $1),$2,$`(value SCAM_ARGS))
 
 endef
 define ~link
@@ -871,4 +871,4 @@ $(if $(call ~add-hook,exit,~trace-dump),)
 
 endef
 $(eval $(value ///runtime.min))
-$(call ^start,///scam,~main,$(SCAM_ARGS))
+$(call ^start,///scam,~main,$(value SCAM_ARGS))

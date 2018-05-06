@@ -155,7 +155,7 @@
 
 (define (epilogue main-mod main-func rt)
   (concat "$(eval $(value " (bundle-var rt) "))\n"
-          "$(call ^start," (bundle-var main-mod) "," main-func ",$(SCAM_ARGS))\n"))
+          "$(call ^start," (bundle-var main-mod) "," main-func ",$(value SCAM_ARGS))\n"))
 
 
 ;; Construct a bundled executable.  This function is typically executed when
