@@ -1,5 +1,7 @@
+#!/usr/bin/env scam -x
 ;; "scam -x SOURCE" test file
 ;;
+;; - The initial "hashbang" line should be ignored.
 ;; - Requires bundled files.
 ;; - Is given "file" arguments properly in argv.
 ;; - When a number is returned, it is treated as the exit code.

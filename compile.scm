@@ -101,6 +101,14 @@
           exe))
 
 
+;; Remove the first line if it begins with "#".
+;;
+(define (trim-hashbang text)
+  (if (filter "#%" (word 1 text))
+      (concat "\n" (concat-vec (rest (split "\n" text)) "\n"))
+      text))
+
+
 ;; Compile a SCAM source file and write out a .min file.
 ;;
 ;; INFILE = source file name (to be read)
@@ -119,7 +127,7 @@
               mod-files reqs uses))
 
   (let-global ((*compile-mods* mod-files))
-    (let ((text (read-file infile))
+    (let ((text (trim-hashbang (read-file infile)))
           (outfile outfile)
           (imports (compile-prelude is-boot)))
       (let ((o (compile-text text imports infile outfile))
