@@ -518,8 +518,15 @@
                        (u-dec-norm (nth 2 (u-div ua ub)))
                        (u-mod ua (subst ":" "" ub)))))))
 
-(expect 1 (i-mod 1 7))
-(expect 0 (i-mod 0 7))
+
+;; Return [QUOTIENT REMAINDER] for a/b.
+;;
+(define (div-rem a b)
+  &public
+  (let ((dr (u-div (u-enc a) (u-enc b))))
+    (foreach w (wordlist 1 2 dr)
+             (or (u-dec (promote w)) 0))))
+
 
 ;;----------------------------------------------------------------
 ;; F encoding

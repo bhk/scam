@@ -8,7 +8,7 @@
 (require "gen" &private)
 (require "io")
 (require "num")
-(require "strlen")
+(require "string")
 
 
 ;; Single character values that can be used to replace longer strings.

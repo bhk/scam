@@ -306,6 +306,7 @@ Optimizations
     * support "+" prefix in numeric constants
     * (tail ...) to core.scm
     * num: multi-arg + and *
+    * num: eliminate dead code
     * Interleave compile with parsing of top-level expressions.
     * Improve void-node?  (void? (if c a b)) --> (and (void? a) (void? b))
     * Identify arguments using special IL record (vs. R)

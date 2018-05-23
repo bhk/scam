@@ -115,5 +115,9 @@ install:
 clean:
 	rm -rf .out .scam
 
+bench:
+	bin/scam --out-dir .out/ -x bench.scm
+
+
 $$%:
 	@true $(info $$$* --> "$(call if,,,$$$*)")
