@@ -120,30 +120,25 @@
 ;;--------------------------------------------------------------
 ;; Subject string encoding
 ;;
-;; GNU Make provides no way to index a string by character or byte offset,
-;; so we encode the string in a way that allows the `word` builtin to
-;; address lexemes -- we surround syntactically significant substrings with
-;; spaces.  The first step is a `demote` operation, so spaces and tabs will
-;; be preserved (so that error messages can display the location of an error
-;; in the context of the original line).  We call the encoded form the
-;; "subject" string.
+;; We encode the text to be parsed as a sequence of words so that Make's
+;; builtin `word` function can be used to address lexemes.  First we
+;; word-encode the text, and then we surround lexically-significant
+;; substrings with spaces.  The encoding is reversible so that we can
+;; precisely locate the lexeme in the original source in error messages.
 ;;
-;; This encoding is performed once, and parsing operations operate on
-;; the encoded string *many* times, so the encoding step is designed to
-;; minimize the word count and the overall size of the subject string.
+;; Aside from word-encoding and space insertion, a few other transformations
+;; are done:
 ;;
-;; Before `"` is surrounded by spaces, the \" sequence is converted to a
-;; special substring -- !Q -- in order to simplify parsing literal strings.
-;; This means that `\\` must be first be similarly processed so that `\\"`
-;; will not be misinterpreted.
+;;  - `\\` --> `!b`
+;;  - `'"` --> `!Q`
+;;  - `%`  --> `!p`
 ;;
-;; Spaces (`!0`) are normally tokens -- isolated as words -- but spaces that
-;; follow other spaces or newlines are collapsed into a single word, since
-;; these are syntactically equivalent.
-;;
-;; Consecutive spaces are then compressed ( !0!0 --> !2! ).  This
-;; compression must not change the initial character (e.g. "!0") since that
-;; is used to identify the type of the lexeme.
+;; Spaces (`!0`) are significant and therefore separated as words, but
+;; spaces that follow other spaces or newlines are collapsed into a single
+;; word, since these are syntactically equivalent.  Consecutive spaces are
+;; then compressed ( !0!0 --> !2 ).  This compression must not change the
+;; initial character (e.g. "!0") since that is used to identify the type of
+;; the lexeme.
 ;;
 
 ;; Collapse spaces following a ";" up to the next "\n" or "\""
@@ -172,8 +167,8 @@
     (subst "," " , " ", @" ",@ " "`" " ` " "'" " ' " "\\\\" "!b" "\\\"" "!Q"
            ";" " ; " "!0" " !0 " "\n" " \n " "\"" " \" " "]" " ] " "[" " [ "
            "{" " { " "}" " } " ")" " ) " "(" " ( " "$" " $ " ":" " : "
-           "%" " !p " "0  !" "0!" "  " " "
-           ["\t"] (concat " " [" \t"] " ")
+           "\\" " \\" "%" " !p " ["\t"] (concat " " ["\t"] " ") "  " " "
+           "!0 !0" "!0!0" "!0 !0" "!0!0"
            (if text (demote text))))))
 
 ;; Undo `penc`.
@@ -182,15 +177,14 @@
   &public
   (promote
    (expand-spaces
-    (subst [" \t"] ["\t"] " " "" "!Q" "\\\"" "!b" "\\\\" "!p" "%" text))))
+    (subst " " "" "!Q" "\\\"" "!b" "\\\\" "!p" "%" text))))
 
 
 ;; Undo `penc` and also process backslash sequences [e.g.: \" -> " ],
 ;; returning the demoted form of the string.
 ;;
 (define (pdec-str text)
-  (or (expand-spaces
-       (subst [" \t"] ["\t"] " " "" "\\t" "!+" "\\n" "\n" "!Q" "\"" "!b" "\\" "!p" "%" text))
+  (or (expand-spaces (subst "!Q" "\"" "!b" "\\" "!p" "%" text))
       "!."))
 
 
@@ -232,13 +226,65 @@
 (declare (parse-exp subj pos))
 
 
-;; Extract literal string value, or generate "unterminated quote" error.
+;; parse-Q: Parse literal string value.
+
+
+;; Convert two hex digits to a byte.  Return a string containing just
+;; that byte (demoted).
 ;;
-(define (new-Q str start end)
-  (concat end " "
-          (if (word end str)
-              (PString start (promote (pdec-str (subst "\"" "" (wordlist start end str)))))
-              (PError start "\""))))
+(define (xchar hh)
+  (or
+   (filtersub (concat hh "=%") "%" "20=!0 21=!1 09=!+ 0a=\n 0A=\n 0d= 0D=")
+   (shell (concat "echo $'\\x" hh "'"))))
+
+
+;; Remove PRE from the beginning of word W.  PRE must must be a word that
+;; does not contain `%` and does not end in `\`.
+;;
+(define `(peel pre w)
+  (patsubst (concat pre "%") "%" w))
+
+
+;; Return two hex digits that match the initial portion of W, or nil if W
+;; does not start with two hex digits.  W must be a single word.
+;;
+(define (match-hh w ?pre)
+  (word 1
+        (foreach digit "0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F"
+                 (if (filter (concat pre digit "%") w)
+                     (if pre
+                         (concat pre digit)
+                         (match-hh w digit))))))
+
+
+(declare (parse-Q subj start pos ?wstr))
+
+(define (parse-Q-esc subj start pos wstr w hh)
+  (if hh
+      (parse-Q subj start (1+ pos) (concat wstr
+                                           (xchar hh)
+                                           (peel (concat "\\x" hh) w)))
+      (PError pos "!B")))
+
+
+(define (parse-Q subj start pos ?wstr)
+  (or
+   (foreach
+    w (word pos subj)
+    (cond ((filter "\"" w)
+           (PString start (promote (pdec-str wstr))))
+
+          ((filter "\\x%" w)
+           (parse-Q-esc subj start pos wstr w (match-hh (peel "\\x" w))))
+
+          ((filter-out "\\n% \\t%" (filter "\\\\%" w))
+           (PError pos "!B"))
+
+          (else
+           (parse-Q subj start (1+ pos)
+                    (concat wstr (subst "\\n" "\n" "\\t" ["\t"] w))))))
+
+   (PError start "\"")))
 
 
 ;; parse-seq
@@ -292,7 +338,7 @@
 
 ;; Advance to next "significant" word in SUBJ.  Return (concat POS " " WORD).
 (define (parse-skip subj pos)
-  (if (filter "!0% \n% ;%" (word pos subj))
+  (if (filter "!0% !+% \n% ;%" (word pos subj))
       (parse-skip subj (1+ pos))
       (concat pos " " (word pos subj))))
 
@@ -382,7 +428,7 @@
 
 
 (define (parse-x w subj pos)
-  (if (filter "!0% \n% ;% ()" (or (word (1+ pos) subj) "()"))
+  (if (filter "!0% !+% \n% ;% ()" (or (word (1+ pos) subj) "()"))
       ;; quoting tokens must immediately precede an expression
       (POut pos (PError pos w))
     (parse-x2 w pos (parse-exp subj (1+ pos)))))
@@ -400,10 +446,11 @@
   (or
    (foreach
     w (word pos subj)
-    (cond ((filter "!0% \n%" w)  (parse-exp subj (1+ pos)))
+    (cond ((filter "!0% !+% \n%" w)  (parse-exp subj (1+ pos)))
           ((filter ") ] }" w)    (POut pos (PError pos w)))
           ((filter "(" w)        (parse-list subj pos))
-          ((filter "\"" w)       (new-Q subj pos (find-word subj (1+ pos) "\"")))
+          ((filter "\"" w)       (concat (find-word subj (1+ pos) "\"") " "
+                                         (parse-Q subj pos (1+ pos))))
           ((filter ";%" w)       (parse-exp subj (1+ (find-word subj pos "\n%"))))
           ((filter "[" w)        (parse-array subj pos))
           ((filter "{" w)        (parse-dict subj pos))
@@ -465,6 +512,9 @@
 
         ((filter "v?" code)
          "expected value following dictionary \"KEY:\"")
+
+        ((filter "!B" code)
+         "invalid backslash sequence in string")
 
         (else desc)))
 

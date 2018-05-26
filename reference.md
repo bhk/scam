@@ -50,12 +50,20 @@ values of these top-level expressions are discarded.
 
 String literals are enclosed in double quote characters (`"`).
 
-The sequences `\n` and `\t` represent newline and tab. Use a backslash
-`\` to escape another backslash or a double quote. String literals
-*may* contain embedded (unquoted) newlines (except in the REPL).
+A backslash introduces an escape sequence:
+
+* `\n` represents newline.
+* `\t` represents a tab character.
+* `\"` represents a double quote.
+* `\\` represents a single backslash.
+* `\xHH` represents the byte given by the hexadecimal value `HH`.
+
+String literals *may* contain embedded (unquoted) newlines (except in the
+REPL).
 
     "abc"
     "Hello, World!\nAnd one more line"
+    "a\x62c"
 
 String literals evaluate to the content of the string.
 

@@ -41,6 +41,7 @@
 (expect "!b \" "                (penc "\\\\\""))
 (expect "!b!Q"                  (penc "\\\\\\\""))
 (expect " , , ,@ , "            (penc ",,,@,"))
+(expect 1 (words (penc "                                ")))
 
 ;; pdec un-does penc
 
@@ -58,7 +59,7 @@
 ;; and returns a demoted string.
 
 (define (tdse o ?i)
-  (check-eq (demote o) (pdec-str (penc (or o i)))))
+  (check-eq (demote o) (pdec-str (subst " " "" (penc (or o i))))))
 
 (expect 1 (tdse ""))
 (expect 1 (tdse "\t\t"))
@@ -85,6 +86,27 @@
 ;; find-word
 (fexpect 3 (find-word "b a b c" 2 "b"))
 
+
+;; xchar
+
+(expect (xchar 20) "!0")
+(expect (xchar 21) "!1")
+(expect (xchar "0a") "\n")
+(expect (xchar "0A") "\n")
+(expect (xchar 41) "A")
+(expect (xchar "0c") "")
+(expect (xchar "0d") "")
+
+;; peel
+
+(expect "def" (peel "abc" "abcdef"))
+
+;; match-hh
+
+(expect "a9" (match-hh "a901"))
+(expect "A9" (match-hh "A901"))
+(expect nil (match-hh "A"))
+
 ;; parse-exp: un-terminated error
 (fexpect (POut 2 (PError 2 ")"))
         (parse-exp "!0 )" 1))
@@ -92,6 +114,9 @@
 ;; parse-exp: string
 (fexpect (cons 5 (PString 1 "abc def"))
          (parse-exp (penc "\"abc def\"") 1))
+
+;; invalid backslash sequence
+(fexpect (POut 4 (PError 3 "!B"))  (p1 "\"a\\.\""))
 
 ;; simple errors
 (fexpect (POut 2 (PError 2 "."))  (p1 " "))
@@ -104,6 +129,7 @@
 (fexpect (POut 1 (PError 1 "$")) (p1 "$b"))
 (fexpect (POut 1 (PError 1 ":")) (p1 ":b"))
 (fexpect (POut 1 (PError 1 "%")) (p1 "%b"))
+(fexpect (POut 2 (PError 2 "%")) (p1 " %"))
 
 ;; symbols
 (fexpect (POut 1 (PSymbol 1 "abc"))  (p1 "abc def"))
@@ -112,12 +138,17 @@
 (fexpect (POut 1 (PString 1 123))  (p1 "123 def"))
 
 ;; literal strings
-(fexpect (POut 5 (PString 1 "a b\nc"))  (p1 "\"a b\\nc\""))
+(fexpect (POut 6 (PString 1 "a b\nc"))  (p1 "\"a b\\nc\""))
 (fexpect (POut 5 (PString 1 "x bc"))    (p1 "\"x bc\" def"))
 (fexpect (POut 2 (PString 1 ""))        (p1 "\"\" abc"))
 (fexpect (POut 4 (PString 1 "y\"b;c"))  (p1 "\"y\\\"b;c\" def"))
 (fexpect (POut 4 (PString 1 "y\"b;c"))  (p1 "\"y\\\"b;c\" def"))
+(fexpect (POut 5 (PString 1 " \t "))    (p1 "\" \\t \""))
+(fexpect (POut 4 (PString 1 " \t"))     (p1 "\" \\x09\""))
+(fexpect (POut 3 (PString 1 "A"))       (p1 "\"\\x41\""))
+(fexpect (POut 5 (PString 1 "a\\tAb"))  (p1 "\"a\\x5ct\\x41b\""))
 (fexpect (POut 2 (PError 1 "\""))       (p1 "\""))
+
 
 ;; comments
 ;; (expect (POut 3 (PSymbol 3 "abc"))    (p1 ";comment\nabc def"))

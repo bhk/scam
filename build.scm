@@ -302,9 +302,12 @@
 ;; valid makefile.  When invoked by the shell, the script invokes `make` to
 ;; process the script as a makefile.
 ;;
+;; LC_ALL=C allows makefiles to contain non-UTF-8 byte sequences, which is
+;; needed to enable SCAM's UTF-8 support.
+;;
 (define prologue
 "#!/bin/bash
-:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\"
+:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\"
 
 ")
 

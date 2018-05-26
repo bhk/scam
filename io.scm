@@ -15,7 +15,7 @@
 ;; Quote argument ARG for POSIX shells.
 (define (quote-sh-arg arg)
   &public
-  (concat "'" (subst "'" "'\''" arg) "'"))
+  (concat "'" (subst "'" "'\\''" arg) "'"))
 
 
 ;; A sed command that converts text to a vector of lines as encoded by SCAM.
