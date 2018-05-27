@@ -29,10 +29,12 @@
     scam -v                   : show version
     scam -h                   : show this message
 
-Options for compilation (scam -o EXE):
+Options:
 
-  --no-trace : Omit tracing functionality.  This will produce a slightly
-               smaller executable.
+  --no-trace    : Omit tracing functionality from the executable.
+  --quiet       : Do not display progress messages.
+  --out-dir DIR : Specify directory for intermediate files.
+
 ")
   (if fmt 1))
 
@@ -50,7 +52,6 @@ Options for compilation (scam -o EXE):
 ;;
 (define (build-and-run file-and-args)
   (define `file (first file-and-args))
-  (set *is-quiet* 1)
   (build (concat *obj-dir* (basename (notdir file)))
          (word 1 file-and-args)
          { run: (rest file-and-args) }))
@@ -58,7 +59,7 @@ Options for compilation (scam -o EXE):
 
 (define (main argv)
   (define `opt-names
-    "-o= -e= -v -h -x=... -i --no-trace --symbols --boot --out-dir=")
+    "-o= -e= -v -h -x=... -i --no-trace --quiet --out-dir= --symbols --boot")
 
   (let ((o (getopts argv opt-names opt-err)))
     (define `files (nth 1 o))
@@ -70,6 +71,7 @@ Options for compilation (scam -o EXE):
                              (concat (dir (opt "o")) ".scam/")
                              default-out-dir)))
     (set *obj-dir* (subst "//" "/" (concat out-dir "/")))
+    (set *is-quiet* (opt "quiet"))
 
     (cond
      ((opt "o")
