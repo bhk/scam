@@ -3,6 +3,7 @@
 ;;--------------------------------------------------------------
 
 (require "core")
+(require "string")
 
 ;; These records, called "forms", describe the parse tree (AST):
 
@@ -141,10 +142,13 @@
 ;; the lexeme.
 ;;
 
-;; Collapse spaces following a ";" up to the next "\n" or "\""
+;; Collapse spaces following a ";" up to the next `\n` or `"` or `\`.  When
+;; a ";" occurs quotes, the rest of the line is ignored.  When inside
+;; nothing except `\` or `"` will have any special handling.
+;;
 (define (compact-comments str)
   (subst " " "" "!s" " " "; ;" ";;"
-         (foreach c (subst " " "!s" "\"" " \"" "\n" " \n" ";" " ;" str)
+         (foreach c (subst " " "!s" "\"" " \"" "\\" " \\" "\n" " \n" ";" " ;" str)
                   (if (filter ";%" c)
                       (concat (subst "!s" "" c) "!s")
                       c))))
@@ -226,71 +230,80 @@
 (declare (parse-exp subj pos))
 
 
-;; parse-Q: Parse literal string value.
-
-
-;; Convert two hex digits to a byte.  Return a string containing just
-;; that byte (demoted).
+;; parse-string: Parse string literals.
 ;;
-(define (xchar hh)
-  (or
-   (filtersub (concat hh "=%") "%" "20=!0 21=!1 09=!+ 0a=\n 0A=\n 0d= 0D=")
-   (shell (concat "echo $'\\x" hh "'"))))
+(declare (parse-string subj start pos ?wstr))
 
 
-;; Remove PRE from the beginning of word W.  PRE must must be a word that
-;; does not contain `%` and does not end in `\`.
+;; Convert a hex digit to a word list of that length.
+(define (hex-ticks h)
+  (define `tail (word 2 (subst h " " "xFf:Ee:Dd:Cc:Bb:Aa:9:8:7:6:5:4:3:2:1:")))
+  (filter ":" (subst ":" " : " tail)))
+
+
+;; This makeshift arithmetic works only with numbers of limited size, but is
+;; faster than the general-purpose algorithms in the num module.
 ;;
-(define `(peel pre w)
-  (patsubst (concat pre "%") "%" w))
-
-
-;; Return two hex digits that match the initial portion of W, or nil if W
-;; does not start with two hex digits.  W must be a single word.
+;; DIGITS = [H H], two hex digits (MSB-first)
 ;;
-(define (match-hh w ?pre)
-  (word 1
-        (foreach digit "0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F"
-                 (if (filter (concat pre digit "%") w)
-                     (if pre
-                         (concat pre digit)
-                         (match-hh w digit))))))
+(define (hh-to-dec digits)
+  (define `d1 (word 1 digits))
+  (define `d2 (word 2 digits))
+  (define `(tick+ a b) (concat a " " b))
+  (define `(tick*16 a) (subst ":" ": : : : : : : : : : : : : : : :" a))
+  (words (tick+ (tick*16 (hex-ticks d1)) (hex-ticks d2))))
 
 
-(declare (parse-Q subj start pos ?wstr))
-
-(define (parse-Q-esc subj start pos wstr w hh)
-  (if hh
-      (parse-Q subj start (1+ pos) (concat wstr
-                                           (xchar hh)
-                                           (peel (concat "\\x" hh) w)))
-      (PError pos "!B")))
+;; Scan to end of string before returning error
+(define (PQError subj pos desc)
+  (POut (find-word subj pos "\"") (PError pos desc)))
 
 
-(define (parse-Q subj start pos ?wstr)
-  (or
-   (foreach
-    w (word pos subj)
-    (cond ((filter "\"" w)
-           (PString start (promote (pdec-str wstr))))
-
-          ((filter "\\x%" w)
-           (parse-Q-esc subj start pos wstr w (match-hh (peel "\\x" w))))
-
-          ((filter-out "\\n% \\t%" (filter "\\\\%" w))
-           (PError pos "!B"))
-
-          (else
-           (parse-Q subj start (1+ pos)
-                    (concat wstr (subst "\\n" "\n" "\\t" ["\t"] w))))))
-
-   (PError start "\"")))
+(define hex-digits
+  "0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F")
 
 
-;; parse-seq
+(define (parse-string-bs subj start pos wstr w)
+  ;; If w matches "\xHH" this will contain one word: `H\nH`
+  (define `match-hh
+    (foreach d1 hex-digits
+             (if (filter (concat "\\x" d1 "%") w)
+                 (foreach d2 hex-digits
+                          (if (filter (concat "\\x" d1 d2 "%") w)
+                              (concat d1 "\n" d2))))))
+
+  (or (if (filter "\\n% \\t%" w)
+          (parse-string subj start (1+ pos)
+                        (concat wstr (subst "\\n" "\n" "\\t" ["\t"] w))))
+
+      ;; Match `\xHH`
+      (foreach hh match-hh
+               (define `hex (subst "\n" "" hh))
+               (define `byte (strings-from-bytes (hh-to-dec (strip hh))))
+               (parse-string subj start (1+ pos)
+                             (concat wstr (subst (concat "\\x" hex) byte w))))
+
+      (PQError subj pos "!B")))
+
+
+;; START = pos of intial `"`
+;; WSTR = accumulated string content so far (word-encoded)
 ;;
-;; Read a sequence of expressions, stopping at an "end token" --")" or "]"
-;; -- that matches the "(" or "[" that opened the sequence.
+(define (parse-string subj start pos ?wstr)
+  (or (foreach
+          w (word pos subj)
+          (if (filter "\"" w)
+              (POut pos (PString start (promote (pdec-str wstr))))
+              ;; Note the odd escaping required for `\%` with filter.
+              (if (filter "\\\\%" w)
+                  (parse-string-bs subj start pos wstr w)
+                  (parse-string subj start (1+ pos) (concat wstr w)))))
+
+      (POut pos (PError start "\""))))
+
+
+;; parse-seq : Read a sequence of expressions, stopping at an end token
+;;             that closes the "(" or "[" that opened the sequence.
 ;;
 ;; SUBJ = subject string
 ;; TERM = terminating token: "]" or ")"
@@ -449,8 +462,7 @@
     (cond ((filter "!0% !+% \n%" w)  (parse-exp subj (1+ pos)))
           ((filter ") ] }" w)    (POut pos (PError pos w)))
           ((filter "(" w)        (parse-list subj pos))
-          ((filter "\"" w)       (concat (find-word subj (1+ pos) "\"") " "
-                                         (parse-Q subj pos (1+ pos))))
+          ((filter "\"" w)       (parse-string subj pos (1+ pos)))
           ((filter ";%" w)       (parse-exp subj (1+ (find-word subj pos "\n%"))))
           ((filter "[" w)        (parse-array subj pos))
           ((filter "{" w)        (parse-dict subj pos))

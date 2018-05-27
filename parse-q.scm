@@ -41,6 +41,12 @@
 (expect "!b \" "                (penc "\\\\\""))
 (expect "!b!Q"                  (penc "\\\\\\\""))
 (expect " , , ,@ , "            (penc ",,,@,"))
+;; semicolones are combined with following text, but this must stop
+;; at `\n`, `\` or `"`
+(expect " ; \\t"                (penc ";\\t"))
+(expect " ;abc \" "             (penc ";abc\""))
+(expect " ;!0 \n "              (penc "; \n"))
+
 (expect 1 (words (penc "                                ")))
 
 ;; pdec un-does penc
@@ -86,27 +92,6 @@
 ;; find-word
 (fexpect 3 (find-word "b a b c" 2 "b"))
 
-
-;; xchar
-
-(expect (xchar 20) "!0")
-(expect (xchar 21) "!1")
-(expect (xchar "0a") "\n")
-(expect (xchar "0A") "\n")
-(expect (xchar 41) "A")
-(expect (xchar "0c") "")
-(expect (xchar "0d") "")
-
-;; peel
-
-(expect "def" (peel "abc" "abcdef"))
-
-;; match-hh
-
-(expect "a9" (match-hh "a901"))
-(expect "A9" (match-hh "A901"))
-(expect nil (match-hh "A"))
-
 ;; parse-exp: un-terminated error
 (fexpect (POut 2 (PError 2 ")"))
         (parse-exp "!0 )" 1))
@@ -114,9 +99,6 @@
 ;; parse-exp: string
 (fexpect (cons 5 (PString 1 "abc def"))
          (parse-exp (penc "\"abc def\"") 1))
-
-;; invalid backslash sequence
-(fexpect (POut 4 (PError 3 "!B"))  (p1 "\"a\\.\""))
 
 ;; simple errors
 (fexpect (POut 2 (PError 2 "."))  (p1 " "))
@@ -138,20 +120,22 @@
 (fexpect (POut 1 (PString 1 123))  (p1 "123 def"))
 
 ;; literal strings
+(fexpect (POut 2 (PString 1 ""))        (p1 "\"\" abc"))
 (fexpect (POut 6 (PString 1 "a b\nc"))  (p1 "\"a b\\nc\""))
 (fexpect (POut 5 (PString 1 "x bc"))    (p1 "\"x bc\" def"))
-(fexpect (POut 2 (PString 1 ""))        (p1 "\"\" abc"))
 (fexpect (POut 4 (PString 1 "y\"b;c"))  (p1 "\"y\\\"b;c\" def"))
 (fexpect (POut 4 (PString 1 "y\"b;c"))  (p1 "\"y\\\"b;c\" def"))
 (fexpect (POut 5 (PString 1 " \t "))    (p1 "\" \\t \""))
+(fexpect (POut 4 (PString 1 ";\t"))     (p1 "\";\\t\""))
 (fexpect (POut 4 (PString 1 " \t"))     (p1 "\" \\x09\""))
 (fexpect (POut 3 (PString 1 "A"))       (p1 "\"\\x41\""))
-(fexpect (POut 5 (PString 1 "a\\tAb"))  (p1 "\"a\\x5ct\\x41b\""))
-(fexpect (POut 2 (PError 1 "\""))       (p1 "\""))
-
+(fexpect (POut 6 (PString 1 "ab\\tAb")) (p1 "\"a\\x00b\\x5ct\\x41b\""))
+(fexpect (POut 3 (PString 1 ""))        (p1 "\"\\x00\""))
+(fexpect (POut 2 (PError 1 "\""))       (p1 "\""))         ; unterminated string
+(fexpect (POut 4 (PError 3 "!B"))       (p1 "\"a\\.\""))   ; invalid `\` sequence
 
 ;; comments
-;; (expect (POut 3 (PSymbol 3 "abc"))    (p1 ";comment\nabc def"))
+(expect (POut 3 (PSymbol 3 "abc"))    (p1 ";comment\nabc def"))
 
 ;; lists
 (fexpect (POut 3 (PList 1 [ (PSymbol 2 "pyt") ]))             (p1 "(pyt)"))

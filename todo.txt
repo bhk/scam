@@ -1,6 +1,10 @@
 TODO
 
- * Allow varargs in macros:
+* fix: (num-format 0.4 2 " ")                -> "  "
+       (num-format 868.8888888888858 6 " ")  ->  "??????"
+       (num-format 0.18 5 " " 3)             ->  "     .18000"
+
+* Allow varargs in macros:
       Maybe:  (ILocal "1+" ups)
       At macro expand time, evalutes to precisely-sized vector.
 

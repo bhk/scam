@@ -48,7 +48,9 @@ values of these top-level expressions are discarded.
 
 ### String Literals
 
-String literals are enclosed in double quote characters (`"`).
+String literals are enclosed in double quote characters (`"`).  An
+expressions consisting of a string literal evaluates to the content of the
+string.
 
 A backslash introduces an escape sequence:
 
@@ -65,8 +67,9 @@ REPL).
     "Hello, World!\nAnd one more line"
     "a\x62c"
 
-String literals evaluate to the content of the string.
-
+SCAM string values are sequences of non-NUL bytes.  Any `\x00` escape
+sequences in string literals are silently discarded.  Where character
+encoding is a factor, UTF-8 is assumed.
 
 ### Numbers
 
