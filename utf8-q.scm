@@ -12,19 +12,19 @@
 
 (expect 193 (bin-to-dec 11000001))
 
-;; bytes-to-chars
+;; utf8-decode
 
-(expect [32 127] (bytes-to-chars [32 127]))
+(expect [32 127] (utf8-decode [32 127]))
 ;; the result of (string-to-bytes "a¢€￦€¢a")
 (expect [97 162 8364 65510 8364 162 97]
-        (bytes-to-chars [97 194 162 226 130 172 239 191 166 226 130 172 194 162 97]))
+        (utf8-decode [97 194 162 226 130 172 239 191 166 226 130 172 194 162 97]))
 (expect [66376]
-        (bytes-to-chars [240 144 141 136]))
+        (utf8-decode [240 144 141 136]))
 
-;; chars-to-bytes
+;; utf8-encode
 
-(expect [32 127] (chars-to-bytes [32 127]))
+(expect [32 127] (utf8-encode [32 127]))
 (expect [97 194 162 226 130 172 239 191 166 226 130 172 194 162 97]
-        (chars-to-bytes [97 162 8364 65510 8364 162 97]))
+        (utf8-encode [97 162 8364 65510 8364 162 97]))
 (expect [240 144 141 136]
-        (chars-to-bytes [66376]))
+        (utf8-encode [66376]))

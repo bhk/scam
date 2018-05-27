@@ -1,37 +1,43 @@
 ;;----------------------------------------------------------------
-;; utf8: Convert between UTF-8-encodings and character values.
+;; utf8: Convert between UTF-8 encodings and code points.
 ;;----------------------------------------------------------------
+;;
+;;   utf8-encode
+;;   utf8-decode
+;;
 
 (require "core")
 (require "num")
 
 
-;; Emit a sequence of continuation bytes and a prefix byte.
+;; Construct a multi-byte UTF-8 sequence.
 ;;
-(define (emit-utf value offsets)
+(define (utf-seq code offsets)
   (if offsets
-      (let ((dr (div-rem value 64))
+      (let ((dr (div-rem code 64))
             (ro (rest offsets))
             (o1 (word 1 offsets)))
-        (append (emit-utf (word 1 dr) ro)
+        (append (utf-seq (word 1 dr) ro)
                 (+ o1 (word 2 dr))))))
 
 
 ;; Convert Unicode character indices to UTF-8 encoded bytes.
-;; CHARS = vector of Unicode character indices.
 ;;
-(define (chars-to-bytes chars)
+;; CODES = vector of Unicode code points
+;; Result = vector of code points
+;;
+(define (utf8-encode codes)
   &public
-  (foreach ch chars
+  (foreach c codes
            (cond
-            ((< ch 128) ch)
-            ((< ch 2048) (emit-utf ch [128 192]))
-            ((< ch 65536) (emit-utf ch [128 128 224]))
-            ((< ch 1114112) (emit-utf ch [128 128 128 240]))
+            ((< c 128) c)
+            ((< c 2048) (utf-seq c [128 192]))
+            ((< c 65536) (utf-seq c [128 128 224]))
+            ((< c 1114112) (utf-seq c [128 128 128 240]))
             (else "?"))))
 
 
-;; byte-to-bin: A quick decimal-to-binary for values 1...255
+;; byte-to-bin: A quick decimal-to-binary for numbers 1...255
 
 (define (plex2 strings)
   (foreach a strings
@@ -56,10 +62,12 @@
   (b2d-loop (subst 1 "1 " 0 "0 " str)))
 
 
-;; Convert UTF-8 encoded bytes to Unicode character indices.
-;; BYTES = vector of numeric byte values
+;; Convert UTF-8 encoded bytes to Unicode code points.
 ;;
-(define (bytes-to-chars bytes)
+;; BYTES = vector of numeric byte values
+;; Result = vector of code points
+;;
+(define (utf8-decode bytes)
   &public
 
   ;; chop-1s : Remove consecutive leading 1 bits

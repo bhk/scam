@@ -49,7 +49,7 @@
    (sort
     (for c subs
          (let ((n (count c env)))
-           [ (num-format (* n (- (strlen c) 1)) 5 0) ; bytes saved
+           [ (num-format (* n (- (string-len c) 1)) 5 0) ; bytes saved
              (num-format n 4 0)                      ; # occurrences
              c ])))))                                ; substring
 

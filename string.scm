@@ -1,9 +1,21 @@
 ;;----------------------------------------------------------------
 ;; string.scm
 ;;----------------------------------------------------------------
+;;
+;;   string-len
+;;   string-upper
+;;   string-lower
+;;   string-repeat
+;;   string-slice
+;;   string-to-chars
+;;   string-to-bytes
+;;   strings-from-bytes
+;;   string-from-bytes
+;;
 
 (require "core")
 
+;; This is a vector of all bytes 1...255.
 (define all-bytes
   (concat
         "\x01 \x02 \x03 \x04 \x05 \x06 \x07 "
@@ -61,9 +73,11 @@
   (subst [" "] " " [vec]))
 
 
-;; Convert a string of characters into a vector of characters.
+;; Get all characters in STR.  The result is a vector of strings, each
+;; containing one character.  UTF-8 encoding of STR is assumed.  Note that
+;; `concat-vec` reverses this function.
 ;;
-(declare (split-chars s) &public)
+(declare (string-to-chars str) &public)
 (begin
 
   (define (gen-split chars to-pattern)
@@ -91,15 +105,15 @@
         (subst " !." "" (split-utf8-cont s))
       s))
 
-  (define (split-chars s)
+  (define (string-to-chars s)
     (define `u8
       (utf8-group-if (split-utf8-esc (subst "!" "!1" " " "!0" "\t" "!+" s))))
     (filter "%" (split-ascii u8))))
 
 
-(define (strlen s)
+(define (string-len s)
   &public
-  (words (split-chars s)))
+  (words (string-to-chars s)))
 
 
 ;; Extract a substring specified by a range of character indices.  The range
@@ -109,29 +123,30 @@
 ;; FIRST = index of first character to include (1 or greater)
 ;; LAST = index of last character to include (0 or greater)
 ;;
-(define (substring first last str)
+(define (string-slice first last str)
   &public
-  (promote (subst " " "" (wordlist first last (split-chars str)))))
+  (promote (subst " " "" (wordlist first last (string-to-chars str)))))
 
 
-;; Convert letters in STR to upper case.
+;; Get the upper-cased version of STR.  Only ASCII letters are supported.
 ;;
-(declare (toupper str) &public)
+(declare (string-upper str) &public)
 
 
-;; Convert letters in STR to lower case.
+;; Get the lower-cased version of STR.  Only ASCII letters are supported.
 ;;
-(declare (tolower str) &public)
+(declare (string-lower str) &public)
 
 
 (begin
   (define `uppers (wordlist 65 90 all-bytes))
   (define `lowers (wordlist 97 122 all-bytes))
-  (set toupper (gen-polysub lowers uppers))
-  (set tolower (gen-polysub uppers lowers)))
+  (set string-upper (gen-polysub lowers uppers))
+  (set string-lower (gen-polysub uppers lowers)))
 
 
-;; Return a vector a byte values describing the content of STR.
+;; Get the numeric indices of all bytes in STR.  The results is a vector of
+;; numbers from 1 to 255.
 ;;
 (define (string-to-bytes str)
   &public
@@ -152,13 +167,24 @@
   (filter "%" (s2b-sub (num-enc [str]))))
 
 
-;; Construct a string from a vector of byte values.
+;; Get single-byte strings describe by numeric indices in BYTES.  The result
+;; is a vector of same length as BYTES.  Zero values are represented as the
+;; empty string in the resulting vector.
+;;
+(define (strings-from-bytes bytes)
+  &public
+  (foreach n bytes
+           (if (filter 0 n)
+               [""]
+               (word n all-bytes))))
+
+
+;; Construct a string from a vector of byte values.  This reverses
+;; `string-to-bytes`.
 ;;
 (define (string-from-bytes bytes)
   &public
-  (promote (subst " " ""
-                  (foreach n bytes
-                           (word n all-bytes)))))
+  (concat-vec (strings-from-bytes bytes)))
 
 
 (define (nwords num str)
