@@ -36,15 +36,17 @@
 ;; convey errors as well as successful results; c1 must output a separate
 ;; value for error information.
 
-;; This module doesn't use any lexical bindings from "macros" and therefore
-;; will compile without the following line, but we require it to load the
-;; module at run-time so that the macros will be known to the compiler.
 
 (begin
+  ;; Load macros. We don't directly call from this module, but it registers
+  ;; functions called from gen0.
   (require "macros"))
 
-(if nil
-  (require "scam-ct"))
+(and nil
+     ;; Do not load these modules, but treat them as dependencies and bundle
+     ;; them with the compiler.
+     (require "utf8")
+     (require "scam-ct"))
 
 
 ;; When non-nil, comile, link, and test operations emit messages.

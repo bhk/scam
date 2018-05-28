@@ -12,7 +12,7 @@
 
 ;; Override this on the command line to automatically include a different
 ;; set of libraries.  repl supplies *1 and *2.
-(define LIBS "core io parse escape gen0 gen1 compile num repl")
+(define LIBS "compile core io num string trace utf8")
 
 (define *1 &public nil)  ; most recent evaluation result
 (define *2 &public nil)  ; previous result

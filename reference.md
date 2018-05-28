@@ -1425,22 +1425,23 @@ specified structure.
 
 ## Libraries
 
-SCAM defines several standard modules that can be used by SCAM programs or
-from the SCAM REPL.  Programs will need to `require` the appropriate module
-before using the functions exported by that module.
+SCAM provides a "standard" set of modules that are available to SCAM
+programs.  Programs will need to `require` the appropriate module before
+using the functions exported by that module.  In the REPL environment, by
+default all the standard modules are implicitly required.  This is a list of
+the standard libraries:
 
-In the REPL environment, by default all the standard modules are implicitly
-required.
+ - `core`: generic, commonly-used functions
+ - `num`: an arbitrary-precision decimal floating point numeric library
+ - `io`: generic I/O functions
+ - `string`: string manipulation functions
+ - `compile`: functions for compiling SCAM sources
+ - `trace`: functions for tracing, debugging, and profiling
+ - `utf8`: functions for encoding and decoding UTF-8
 
 For documentation, refer to the corresponding `.scm` files in the SCAM
 project.  (Look for `&public` functions.)
 
-The following are modules are of general interest:
-
- - `core`: generic, commonly-used functions.
- - `num`: arbitrary-precision decimal floating point numbers.
- - `io`: generic I/O functions.
- - `trace`: functions for tracing, debugging, and profiling.
 
 ## Command-Line Syntax
 

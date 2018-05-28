@@ -303,9 +303,6 @@
 ;;   Bundle as      Mod['io]         Mod[io]          Mod['io]
 ;;
 
-(define builtin-mods
-  "build compile core escape gen gen0 gen1 getopts io num parse repl runtime scam scam-ct trace")
-
 
 ;; Return the file that holds (or will hold) the module's compiled code
 ;; (valid only for modules compiled from source).
@@ -375,8 +372,9 @@
       ;; builtin?
       (and (not *is-boot*)
            ;; Either "name" or "'name" will match "'name"...
-           (filter (concat name " '" name)
-                   (addprefix "'" builtin-mods)))))
+           (let ((id (subst "''" "'" (concat "'" name))))
+             (if (bound? (modid-var id))
+                 id)))))
 
 
 ;; Return the first 4 lines of a compiled module as an array of lines.
