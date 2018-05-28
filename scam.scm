@@ -39,7 +39,7 @@ Options:
   (if fmt 1))
 
 
-(define `version "1.2.2")
+(define `version "1.3")
 
 (define `default-out-dir ".scam/")
 

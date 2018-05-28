@@ -555,8 +555,9 @@ When a function is called by its name, as in the `(f 1 2)` example above,
 SCAM performs compile-time checking of the number of arguments being passed.
 
     > (f 1)
-    line 1: "f" accepts 2 arguments, not 1
-    at: (*f* 1)
+    at 1:2: "f" accepts 2 arguments, not 1
+    (f 1)
+     ^
 
 This checking does not apply when the function value is obtained some other
 way, as in `((or f) 1 2)`.  The computed result remains the same.  Any
@@ -573,8 +574,9 @@ function definition or declaration:
     > (g 1 2)
     2
     > (g 1 2 3)
-    line 1: "g" accepts 1 or 2 arguments, not 3
-    at: (*g* 1 2 3)
+    at 1:2: "g" accepts 1 or 2 arguments, not 3
+    (g 1 2 3)
+     ^
 
 In order to capture an arbitrary number of arguments in one variable, prefix
 the name of the last parameter with `...`.  The variable will evaluate to a
@@ -1317,8 +1319,10 @@ variable name is unknown to SCAM and will trigger an error unless a declaration
 is used:
 
     > (.foreach "x" "1 2 3" (1+ x))
-    line 1: undefined variable: x
-    at: (.foreach "x" "1 2 3" (1+ *x*))
+    at 1:27: undefined variable "x"
+    (.foreach "x" "1 2 3" (1+ x))
+                              ^
+
     > (.foreach "x" "1 2 3" (begin (declare x) (1+ x)))
     "2 3 4"
     > (foreach x "1 2 3" (1+ x))

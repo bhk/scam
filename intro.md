@@ -10,12 +10,13 @@ To enter interactive mode, run bin/scam:
 The `>` prompt indicates that it is waiting to accept a SCAM expression.
 Let's define a function.
 
-    > (define (hello name)
+    > (define (hello ?name)
     +    (print "Hello " (or name "world") "!"))
 
 The `+` prompt indicates that more input is required to complete the SCAM
 expression. The `print` function is a SCAM builtin that outputs its
-arguments to stdout. Now that we have defined a function, let's call it.
+arguments to stdout.  The `?` before `name` indicates that it is an optional
+argument.  Now that we have defined a function, let's call it.
 
     > (hello)
     Hello world!
@@ -46,23 +47,28 @@ provides:
 
         > (define (f a b)
         +    [a b)]
-        Line 2: unmatched ")"
-        at:     [a b*)*]
+        at 2:8: unmatched ")"
+           [a b)]
+               ^
 
 * undefined function/variable references
 
         > (infoo 1)
-        Line 1: Undefined symbol: infoo
-        at: (*infoo* 1)
+        at 1:2: undefined symbol: "infoo"
+        (infoo 1)
+         ^
+
         > (info xxx)
-        Line 1: Undefined variable: xxx
-        at: (info *xxx*)
+        at 1:7: undefined variable "xxx"
+        (info xxx)
+              ^
 
 * counting arguments to functions (at compile time)
 
         > (subst 1 2)
-        Line 1: Wrong number of arguments: 'subst' accepts 3
-        at: (*subst* 1 2)
+        at 1:2: (subst {FROM TO}+ STR) accepts 2n+1 arguments, not 2
+        (subst 1 2)
+         ^
 
 
 If you type an expression that returns a value (other than the empty string)
