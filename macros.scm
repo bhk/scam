@@ -38,11 +38,11 @@
 ;; (current-file-line)
 ;;--------------------------------
 
-;; "FILE:LINE" at which the macro containing this line is invoked.
+;; "FILE:LINE:COL" at which the macro containing this line is invoked.
 ;;
 (define (ml.special-current-file-line env sym args)
   (or (check-argc 0 args sym)
-      (IWhere (get-file-line (form-index sym)))))
+      (IWhere (get-where (form-index sym)))))
 
 
 ;;--------------------------------

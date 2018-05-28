@@ -478,27 +478,38 @@
 ;;--------------------------------
 
 
-;; Return the line number for the token at index POS in SUBJ.
+;; Get [LINE OFFSET] of POS in SUBJ.
 ;;
-(define (describe-lnum pos subj)
+(define (get-line-and-offset pos subj)
+  ;; pre is all of the subject preceding `pos`
+  (define `pre (wordlist 2 (or pos 1) (concat "W " subj)))
+
+  (let ((lines (split "\n" (pdec pre))))
+    (append (words lines)
+            (string-len (last lines)))))
+
+
+;; Get `LINE:COL` for POS in SUBJ
+;;
+(define (describe-where pos subj)
   &public
-  (define `pre (wordlist 2 (or pos 1) (concat "x" subj)))
-  (words (concat "1 " (filter "\n" (subst "\n" "\n " pre)))))
+  (let ((l.o (get-line-and-offset pos subj)))
+    (concat (word 1 l.o) ":" (1+ (word 2 l.o)))))
 
 
-;; Return the line containing the token at index POS as a vector:
-;; [PRE TOK POST]
-;;   TOK = the token at index POS
+;; Get description of source line and position of POS in it.
+;; Return a vector: [PRE TOK POST]
 ;;   PRE = text preceding tok on the line
+;;   TOK = the token at index POS
 ;;   POST = text following tok
 ;;
-(define (describe-line pos subj)
-  (define `ndx (or pos 1))
-  (let ((pre  (last (split "\n" (wordlist 2 ndx (concat "X " subj)))))
-        (post (first (split "\n" (nth-rest ndx subj)))))
-    [ (pdec pre)
-      (pdec (word 1 post))
-      (pdec (rest post)) ]))
+(define (describe-source pos subj)
+  (let ((l.o (get-line-and-offset pos subj))
+        (lines (split "\n" (pdec subj))))
+    (define `line (word 1 l.o))
+    (define `offset (word 2 l.o))
+    (concat (nth line lines) "\n"
+            (string-repeat " " offset) "^")))
 
 
 ;; Return description line, given error code or description string.
@@ -535,6 +546,7 @@
 ;;     FILE:LINE: DESCRIPTION
 ;;     at: PRE*TOK*POST
 ;;
+
 (define (describe-error form text filename)
   &public
   (case form
@@ -542,15 +554,16 @@
       (let ((subj (penc text))
             (file (if filename
                       (concat filename ":")
-                      "line "))
+                      "at "))
             (msg (get-error-msg desc))
             (pos pos))
         (if (word-index? pos)
-            (sprintf "%s%s: %s\nat: %s\n"
-                     file (describe-lnum pos subj) msg
-                     (concat-vec (describe-line pos subj) "*"))
+            (sprintf "%s%s: %s\n%s\n"
+                     file (describe-where pos subj) msg
+                     (describe-source pos subj))
             (sprintf "%s:?: %s\n"
                      file msg))))))
+
 
 ;; (parse-forms subj pos k) -->  (k form-list err)
 ;;    ERR = nil if sequence ended at EOF,  (PError ...) otherwise.

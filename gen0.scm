@@ -9,10 +9,12 @@
 (require "num")
 
 
-(define (get-file-line pos)
+;; Return `FILE:LINE:COL` as determined by POS and current file & subject.
+;;
+(define (get-where pos)
   &public
   (define `lnum
-    (describe-lnum pos *compile-subject*))
+    (describe-where pos *compile-subject*))
   (concat *compile-file* ":" lnum))
 
 
@@ -102,7 +104,7 @@
     (for n nodes (xlat-where n pos)))
 
   (case node
-    ((IWhere s) (IWhere (get-file-line pos)))
+    ((IWhere s) (IWhere (get-where pos)))
     ((IBuiltin name args) (IBuiltin name (x* args)))
     ((ICall name args) (ICall name (x* args)))
     ((IConcat nodes) (IConcat (x* nodes)))

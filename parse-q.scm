@@ -185,33 +185,39 @@
 (fexpect (POut 1 (PError 1 "`")) (p1 "`"))
 
 
-;; get-line-info
-
+;; describe-where
 
 (define test-lnum-subj
   (penc "A xxx x B\nC D\n\nE\n    \n\nF xx G"))
 
 (define (test-lnum ch)
   (define `ndx (words (concat "x " (first (split ch test-lnum-subj)))))
-  (describe-lnum ndx test-lnum-subj))
+  (describe-where ndx test-lnum-subj))
 
+(expect "1:1" (test-lnum "A"))
+(expect "1:9" (test-lnum "B"))
+(expect "2:1" (test-lnum "C"))
+(expect "2:3" (test-lnum "D"))
+(expect "4:1" (test-lnum "E"))
+(expect "7:1" (test-lnum "F"))
+(expect "7:6" (test-lnum "G"))
 
-(expect 1 (test-lnum "A"))
-(expect 1 (test-lnum "B"))
-(expect 2 (test-lnum "C"))
-(expect 2 (test-lnum "D"))
-(expect 4 (test-lnum "E"))
-(expect 7 (test-lnum "F"))
-(expect 7 (test-lnum "G"))
+;; describe-source
 
-(expect ["def ghi" "x" "jkl m"]
-        (describe-line 4 "abc \n def!0ghi x jkl!0m \n op"))
+(expect ["def ghixjkl m"
+         "       ^"]
+        (split "\n"
+               (describe-source 4 "abc \n def!0ghi x jkl!0m \n op")))
 
-(expect ["abc" "" ""]
-        (describe-line 2 "abc \n def"))
+(expect ["abc"
+         "   ^"]
+        (split "\n"
+               (describe-source 2 "abc \n def")))
 
-(expect ["    " "\\\"" "mnb vcx"]
-        (describe-line 3 "abc \n!0!2!0 \\\" mnb!0vcx"))
+(expect ["    \\\"mnb vcx"
+         "    ^"]
+        (split "\n"
+               (describe-source 3 "abc \n!0!2!0 \\\" mnb!0vcx")))
 
 ;; describe-error
 
@@ -225,14 +231,14 @@
 (define (tde form)
   (describe-error form "\"abc)\n(def)\n" "TFILE"))
 
-(expect 1 (see "TFILE:1: unterminated string\nat: *\"*abc"
+(expect 1 (see "TFILE:1:1: unterminated string\n\"abc)\n^\n"
                (tde (PError 1 "\""))))
 
-(expect 1 (see "TFILE:2: unmatched \"(\"\nat: *(*def)\n"
+(expect 1 (see "TFILE:2:1: unmatched \"(\"\n(def)\n^\n"
                (tde (PError 5 "( blahblah"))))
 
-(expect 1 (see "TFILE:1: unmatched \")\"\n"
-               (tde (PError 1 ")"))))
+(expect 1 (see "TFILE:1:5: unmatched \")\"\n"
+               (tde (PError 3 ")"))))
 
 (expect 1 (see "prefix \"'\" must immediately precede"
                (tde (PError 1 "'"))))
@@ -240,7 +246,7 @@
 (expect 1 (see "prefix \"`\" must"
                (tde (PError 1 "`"))))
 
-(expect 1 (see "TFILE:2: invalid frob\nat: *(*def)\n"
+(expect 1 (see "TFILE:2:1: invalid frob\n(def)\n^\n"
                (tde (PError 5 "invalid frob"))))
 
 ;; parse-text

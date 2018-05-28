@@ -101,9 +101,11 @@
 (define `(fl0)
   (current-file-line))
 
-(expect "run.scm:104" (notdir (current-file-line)))
-(expect "run.scm:105" (notdir (fl0)))
-
+;; WARNING: very fragile tests...
+(expect "run.scm:106:18"
+        (notdir (current-file-line)))
+(expect "run.scm:108:18"
+        (notdir (fl0)))
 
 
 ;; TODO: Reenable these tests.  Buring bootstrapping, the first-gen compiler
