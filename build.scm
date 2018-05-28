@@ -244,7 +244,7 @@
           (deps (scan-deps origin)))
 
       (define `test-origin (and (filter-out "'%" origin)
-                             (file-exists? (patsubst "%.scm" "%-q.scm" origin))))
+                             (file-exists? (filtersub "%.scm" "%-q.scm" origin))))
       (define `requires (append (nth 1 deps) (dict-get "rt" env)))
       (define `uses (append (nth 2 deps) (dict-get "ct" env)))
       (define `excludes
