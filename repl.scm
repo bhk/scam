@@ -12,7 +12,7 @@
 
 ;; Override this on the command line to automatically include a different
 ;; set of libraries.  repl supplies *1 and *2.
-(define LIBS "compile core io num string trace utf8")
+(define LIBS "compile core getopts io num string trace utf8")
 
 (define *1 &public nil)  ; most recent evaluation result
 (define *2 &public nil)  ; previous result
@@ -141,8 +141,6 @@
 
 (define (repl)
   &public
-  (print "SCAM interactive mode. Type '?' for help.")
-
   (while identity read-eval-print initial-state)
   (print))
 
@@ -164,7 +162,9 @@
           1)
 
         ;; execute & display result
-        (print (exe)))))
+        (let ((result (exe)))
+          (if result
+              (print (format result)))))))
 
 
 ;; Load and execute file 'file'

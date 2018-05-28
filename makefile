@@ -40,56 +40,74 @@ A = .out/a
 B = .out/b
 C = .out/c
 
-arg = $(subst ','\'',$1)# ' balanced for emacs
-qarg = '$(arg)'
-target-line = $(shell sed -n '/^$@:/=' makefile)
+qarg = '$(subst ','\'',$1)'# ' balanced for emacs
+target-line = $(shell sed -n '/guard,$1,/=' makefile)
 
-# guard: drop stdout and print message on failure
-guard = ( $1 ) > /dev/null || (echo 'makefile:$(target-line): $@ failed:' && /bin/echo " $$ "$(qarg) && false)
+# $(call guard,ID,COMMAND) : drop stdout and print message on failure
+#   ID should be distinct from all other callers of guard
+guard = ( $2 ) > /dev/null || (echo 'makefile:$(target-line): $@ failed:' && /bin/echo " $$ "$(call qarg,$2) && false)
+
+
 
 .PHONY: a b c aok bok cok promote install clean
 
-cok:
-
-$A/scam: *.scm bin/scam ; $(_@) bin/scam -o $@ scam.scm
-$B/scam: *.scm $A/scam  ; $(_@) $A/scam -o $@ --symbols scam.scm --boot
-$C/scam: *.scm $B/scam  ; $(_@) $B/scam -o $@ --symbols scam.scm --boot
-
+all: cok
 
 a: $A/scam
 b: aok $B/scam
 c: bok $C/scam
 
+aok: $A.ok
+bok: $B-o.ok $B-x.ok $B-i.ok $B-e.ok
+cok: $C.ok
+
+$A/scam: *.scm bin/scam ; bin/scam -o $@ scam.scm
+$B/scam: *.scm $A/scam  ; $A/scam -o $@ scam.scm --boot
+$C/scam: *.scm $B/scam  ; $B/scam -o $@ scam.scm --boot
+
 
 # v1 tests:
 #  run: validates code generation
 #
-aok: $A/scam
+$A.ok: $A/scam
+	@ echo '... test $A/scam'
 	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot
 	$(_@) .out/ta/run
+	$(_@) touch $@
 
 # v2 tests:
 #   dash-o: test program generated with "scam -o EXE"
 #     Uses a bundled file, so $A/scam will not always work.
 #   dash-x: compile and execute source file, passing arguments
 
-bok-o: b
+$B-o.ok: $B/scam
+	@ echo '... test scam -o EXE FILE'
 	$(_@) $B/scam -o .out/tb/using test/using.scm
 	$(_@) .out/tb/using
 	$(_@) $B/scam -o .out/tb/dash-o test/dash-o.scm
-	$(_@) $(call guard,grep 'require.test/subdir/dup' .out/tb/.scam/test/dash-o.min)
+	$(_@) $(call guard,BO1,grep 'require.test/subdir/dup' .out/tb/.scam/test/dash-o.min)
 	$(_@) .out/tb/dash-o 1 2 > .out/tb/dash-o.out
-	$(_@) $(call guard,grep 'result=11:2' .out/tb/dash-o.out)
+	$(_@) $(call guard,BO2,grep 'result=11:2' .out/tb/dash-o.out)
+	$(_@) touch $@
 
-bok-x: b
+$B-x.ok: $B/scam
+	@ echo '... test scam -x FILE ARGS...'
 	$(_@) SCAM_TRACE='%conc:c' $B/scam --out-dir .out/tbx/ -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
-	$(_@) $(call guard,grep '9:3:a b' .out/tb/dash-x.out)
-	$(_@) $(call guard,grep ' 4 : .*conc' .out/tb/dash-x.out)
+	$(_@) $(call guard,BX1,grep '9:3:a b' .out/tb/dash-x.out)
+	$(_@) $(call guard,BX2,grep ' 4 : .*conc' .out/tb/dash-x.out)
+	$(_@) touch $@
 
-bok-i: b
-	$(_@) $(call guard,$B/scam <<< $$'(^ 3 7)\n:q\n' 2>&1 | grep 2187)
+$B-e.ok: $B/scam
+	@ echo '... test scam -e EXPR'
+	$(_@) $B/scam --out-dir .out/tbx -e '(print [""])' -e '[""]' | tr '\n' '/' > .out/tb/dash-e.out
+	$(_@) $(call guard,BE1,grep '\!\./\[\"\"\]' .out/tb/dash-e.out)
+	$(_@) touch $@
 
-bok: bok-o bok-x bok-i
+$B-i.ok: $B/scam
+	@ echo '... test scam [-i]'
+	$(_@) $(call guard,BI1,$B/scam <<< $$'(^ 3 7)\n:q\n' 2>&1 | grep 2187)
+	$(_@) touch $@
+
 
 # To verify the compiler, we ensure that $B/scam and $C/scam are identical.
 # $A/scam differs from bin/scam because it is built from newer source files.
@@ -98,11 +116,12 @@ bok: bok-o bok-x bok-i
 # $C should be identical, unless there is a bug.  We exclude exports from
 # the comparison because they mention file paths, which always differ.
 #
-cok: c
-	@echo cok...
+$C.ok: $B/scam $C/scam
+	@echo '... compare B and C'
 	$(_@)grep -v Exports $B/scam > $B/scam.e
 	$(_@)grep -v Exports $C/scam > $C/scam.e
 	$(_@)diff -q $B/scam.e $C/scam.e
+	$(_@) touch $@
 
 # Replace the "golden" compiler with a newer one.
 #
@@ -116,7 +135,7 @@ clean:
 	rm -rf .out .scam
 
 bench:
-	bin/scam --out-dir .out/ -x bench.scm
+	bin/scam --out-dir .out/ -x bench.scm $(ARGS)
 
 
 $$%:

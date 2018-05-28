@@ -517,7 +517,7 @@
             (rule DIR [] nil [(lambda () (concat "mkdir -p " (dir exe)))])
             (exe-rules exe files
                        (dict-get "no-trace" opts)
-                       (dict-get "symbols" opts))))
+                       (not (dict-get "no-syms" opts)))))
 
   ;; Set SCAM_DEBUG=B to see rules.
   (eval (dbg-print "B" "Eval: %s" rules)))

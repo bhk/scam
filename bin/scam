@@ -64,7 +64,7 @@ endef
 ~mmap-rule = $(if $(filter-out '%,$(call ~nth,1,$2)),$(call ~compile-rule,$(call ~module-object-file,$(call ~nth,1,$2)),$(call ~nth,1,$2),$(call ~origins-to-obj-files,$(call ~append,$(call ~nth,3,$2),$(call ~nth,4,$2))),$(filter-out $(call ~module-object-file,$(call ~nth,1,$2)).ok,$(call ~mmap-okfiles,$1,$(call ~append,$(call ~nth,3,$2),$(call ~nth,4,$2)))),$(call ~mmap-all-deps,$1,$(call ~append,$(call ~nth,3,$2),$(call ~nth,4,$2))),$(call ~nth,3,$2),$(call ~nth,4,$2),$(call ~nth,5,$2)))$(if $(call ~nth,2,$2),$(call ~test-rule,$(call ~nth,2,$2),$(call ~mmap-all-requires,$1,$(call ^d,$(call ~nth,2,$2))),$3))
 ~mmap-rules = $(subst |1,|,$(subst |0, ,$(subst $  ,,$(foreach mod,$1,$(subst $  ,|0,$(subst |,|1,$(call ~mmap-rule,$1,$(call ^u,$(mod)),$2)))))))
 ~exe-rules = $(and $(and $(if $(~*is-boot*),,1),$(call ~eq?,mmap-rules,~mmap-rules),$(call ~fatal,compiler not compatible with its output; use --boot))1,$(call ^Y,$(call ~scan-modules,rt!=$(call ^d,$(if $(~*is-boot*),runtime.scm,'runtime)) ct!=$(call ^d,$(if $(~*is-boot*),scam-ct.scm,'scam-ct)),$(call ~append,$(foreach s,$2,$(call ^d,$(or $(call ~file-exists?,$(call ^u,$s)),$(call ~fatal,source file %s does not exist,$(call ^u,$s))))),$(if $(if $3,,1),$(if $(~*is-boot*),trace.scm,'trace))),$(call ~scan-modules,rt!=$(call ^d,$(if $(~*is-boot*),runtime.scm,'runtime)),$(call ^d,$(if $(~*is-boot*),scam-ct.scm,'scam-ct)),$(call ~scan-modules,,$(call ^d,$(if $(~*is-boot*),runtime.scm,'runtime))))),$(call ~append,$(foreach s,$2,$(call ^d,$(or $(call ~file-exists?,$(call ^u,$s)),$(call ~fatal,source file %s does not exist,$(call ^u,$s))))),$(if $(if $3,,1),$(if $(~*is-boot*),trace.scm,'trace))),$(call ^u,$(word 1,$2)),,,,,,,$`(call ~link-rule,$(call ^E,$1),$`(call ~mmap-all-requires,$`1,$`2),$`3,$`(call ~origins-to-obj-files,$`2),$`(call ~mmap-okfiles,$`1,$`2),$`(if $`(~*is-boot*),runtime.scm,'runtime),$(call ^E,$4))$`(call ~mmap-rules,$`1,$`(if $`(~*is-boot*),runtime.scm,'runtime))))
-~build = $(and $(call ^set,~*is-boot*,$(call ~dict-get,boot,$3))1,$(eval $(call ~dbg-print,B,Eval: %s,$(call ~rule,.PHONY,ALL DIR,,)$(call ~rule,ALL,DIR $(call ^d,$1),,$(if $(call ~dict-find,run,$3),$(call ^d,SCAM_ARGS=$(call ~quote-sh-arg,$(call ~dict-get,run,$3)) $`(MAKE) -f $(call ~quote-sh-arg,$1))))$(call ~rule,DIR,,,$(call ^d,mkdir -p $`(dir $(call ^E,$1))))$(call ~exe-rules,$1,$2,$(call ~dict-get,no-trace,$3),$(call ~dict-get,symbols,$3)))))
+~build = $(and $(call ^set,~*is-boot*,$(call ~dict-get,boot,$3))1,$(eval $(call ~dbg-print,B,Eval: %s,$(call ~rule,.PHONY,ALL DIR,,)$(call ~rule,ALL,DIR $(call ^d,$1),,$(if $(call ~dict-find,run,$3),$(call ^d,SCAM_ARGS=$(call ~quote-sh-arg,$(call ~dict-get,run,$3)) $`(MAKE) -f $(call ~quote-sh-arg,$1))))$(call ~rule,DIR,,,$(call ^d,mkdir -p $`(dir $(call ^E,$1))))$(call ~exe-rules,$1,$2,$(call ~dict-get,no-trace,$3),$(if $(call ~dict-get,no-syms,$3),,1)))))
 
 endef
  
@@ -440,10 +440,12 @@ define Mod['getopts]
 # compiled from getopts.scm
 # Requires: 'core 'runtime
 # Uses: 'scam-ct
-# Exports: getopts_3 getopts-loop)7
+# Exports: getopts_2 getopts-loop)3]or]4 opt-pair)2 MissingArg#4;S;x`:GetoptsError0 BadOption#4;S;x`:GetoptsError1
 $(call ^require,'core)
-~getopts-loop = $(and $(call ^set,~opt,$(word 1,$5))1,$(call ^set,~file,$(call ~nth,1,$5))1,$(if $(if $5,,1),$(call ^d,$6) $(call ^d,$7),$(if $(if $(filter -%,$(~opt)),,1),$(call ~getopts-loop,$1,$2,$3,$4,$(wordlist 2,99999999,$5),$(call ~conj,$6,$(~file)),$7),$(if $(filter $1,$(~opt)),$(call ~getopts-loop,$1,$2,$3,$4,$(wordlist 2,99999999,$5),$6,$(call ~append,$(call ^k,$(patsubst -%,%,$(patsubst -%,%,$(~opt))))!=$(call ^d,1),$7)),$(if $(filter $2,$(~opt)),$(call ~getopts-loop,$1,$2,$3,$4,$(wordlist 3,99999999,$5),$6,$(call ~append,$(call ^k,$(patsubst -%,%,$(patsubst -%,%,$(~opt))))!=$(call ^d,$(call ~nth,2,$5)),$7)),$(if $(filter $3,$(~opt)),$(call ~getopts-loop,$1,$2,$3,$4,,$6,$(call ~append,$(call ^k,$(patsubst -%,%,$(patsubst -%,%,$(~opt))))!=$(call ^d,$(wordlist 2,99999999,$5)),$7)),$(call ^Y,$(~opt),$(wordlist 2,99999999,$5),,,,,,,,$4)))))))
-~getopts = $(call ~getopts-loop,$(filter-out %= %=...,$2),$(patsubst %=,%,$(filter %=,$2)),$(patsubst %=...,%,$(filter %=...,$2)),$3,$1,,)
+$(if $(call ^add-tags,!1:GetoptsError0!=MissingArg!0S !1:GetoptsError1!=BadOption!0S),)
+~opt-pair = $(call ^k,$(patsubst -%,%,$(patsubst -%,%,$1)))!=$(call ^d,$2)
+~getopts-loop = $(if $(if $(word 1,$3),,1),$4,$(if $(filter --,$(word 1,$3)),$(call ~append,$4,$(foreach w,$(wordlist 2,99999999,$3),*!=$(call ^d,$(call ~promote,$w)))),$(if $(filter $1,$(word 1,$3)),$(call ~getopts-loop,$1,$2,$(wordlist $(or 2,2),99999999,$3),$(call ~append,$4,$(call ~opt-pair,$(word 1,$3),1))),$(if $(filter $2,$(word 1,$3)),$(if $(word 2,$3),$(call ~getopts-loop,$1,$2,$(wordlist $(or 3,2),99999999,$3),$(call ~append,$4,$(call ~opt-pair,$(word 1,$3),$(call ~nth,2,$3)))),$(call ~append,$4,!1!=$(call ^d,!:GetoptsError0 $(call ^d,$(word 1,$3))))),$(if $(filter -%,$(word 1,$3)),$(call ~getopts-loop,$1,$2,$(wordlist $(or 2,2),99999999,$3),$(call ~append,$4,!1!=$(call ^d,!:GetoptsError1 $(call ^d,$(word 1,$3))))),$(call ~getopts-loop,$1,$2,$(wordlist $(or 2,2),99999999,$3),$(call ~append,$4,*!=$(call ^d,$(call ~promote,$(word 1,$3))))))))))
+~getopts = $(call ~dict-collate,$(call ~getopts-loop,$(filter-out %=,$2),$(patsubst %=,%,$(filter %=,$2)),$1))
 
 endef
  
@@ -722,7 +724,7 @@ $(call ^require,'parse)
 $(call ^require,'compile)
 $(call ^require,'gen)
 $(call ^require,'num)
-~LIBS := compile core io num string trace utf8
+~LIBS := compile core getopts io num string trace utf8
 ~*1 := 
 ~*2 := 
 define ~help
@@ -751,12 +753,12 @@ $(call ^Y,$(call ~getline,$(if $(call ^u,$(word 1,$1)),+ ,> )),$(call ~nth,1,$1)
 ),$`(and $`(call ~describe-env,$`3,1)1,$`4),$`(call ~eval-and-print,$`2$`1,$`3))))))))
 endef
 define ~repl
-$(and $(info SCAM interactive mode. Type '?' for help.)1,$(call ~while,$(value ~identity),$(value ~read-eval-print),$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "'$(lib)")
+$(and $(call ~while,$(value ~identity),$(value ~read-eval-print),$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "'$(lib)")
 ),$(call ~compile-prelude,)))1,$(info ))
 endef
 define ~repl-rep
 $(call ^Y,$(call ~compile-text,$1,$(call ~nth,2,$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "'$(lib)")
-),$(call ~compile-prelude,))),$(or $2,[commandline]),),,,,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$(call ^E,$1),))))1,1),$`(info $`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)))))
+),$(call ~compile-prelude,))),$(or $2,[commandline]),),,,,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$(call ^E,$1),))))1,1),$`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)),,,,,,,,,$``(if $``1,$``(info $``(call ~format,$``1))))))
 endef
 ~repl-file = $(call ^Y,$(call ~read-file,$1),,,,,,,,,$`(if $`1,$`(call ^Y,$`(call ~compile-text,$`1,$`(call ~compile-prelude,),$(call ^E,$1),///~),,,,,,,,,$``(if $``(call ~dict-get,errors,$``1),$``(and $``(foreach err,$``(call ~dict-get,errors,$``1),$``(call ^d,$``(info $``(call ~describe-error,$``(call ^u,$``(err)),$`(call ^E,$`1),$(call ^E,$1,`)))))1,1),$``(eval $``(call ~dict-get,code,$``1)))),$`(and $`(call ~printf,error: empty/missing file %q,$(call ^E,$1))1,1)))
 
@@ -846,37 +848,24 @@ endef
  
 define Mod['scam]
 # compiled from scam.scm
-# Requires: 'core 'repl 'build 'getopts 'compile 'gen 'runtime
+# Requires: 'core 'repl 'build 'getopts 'compile 'gen 'io 'runtime
 # Uses: 'scam-ct
-# Exports: main+build-and-run+opt-err+default-out-dir#2;\.;p;\';.scam/ version#2;\.;p;\';1.3 usage)0]or]more
+# Exports: main+build-and-run)2 set-obj-dir)2 version#2;\.;p;\';1.3.1 perror)1]or]more usage-string#0;~%;p
 $(call ^require,'core)
 $(call ^require,'repl)
 $(call ^require,'build)
 $(call ^require,'getopts)
 $(call ^require,'compile)
 $(call ^require,'gen)
-define ~usage
-$(and $(if $1,$(info scam: $(call ~vsprintf,$1,$(foreach N,2,$(^v)))))1,$(info $(if ,,Usage:
-
-    scam [-i]                 : enter interactive mode
-    scam -o FILE [OPTS] FILE  : build an executable from SRC
-    scam -e EXPR              : eval and print value of expression
-    scam -x FILE ARGS...      : compile and execute FILE, passing ARGS
-    scam FILE                 : compile and execute FILE
-    scam -v                   : show version
-    scam -h                   : show this message
-
-Options:
-
-  --no-trace    : Omit tracing functionality from the executable.
-  --quiet       : Do not display progress messages.
-  --out-dir DIR : Specify directory for intermediate files.
-
-))1,$(if $1,1))
+$(call ^require,'io)
+~usage-string := Usage:$'$'    scam [-i]                  Enter interactive mode$'    scam -o FILE [OPTS] FILE   Build an executable from SRC$'    scam -e EXPR               Eval and print value of expression$'    scam [-x] FILE ARGS...     Compile and execute FILE$'    scam -v / --version        Show version$'    scam -h                    Show this message$'$'Options:$'$'  --no-trace      Omit tracing functionality from the executable$'  --quiet         Do not display progress messages$'  --out-dir DIR   Specify directory for intermediate files$'  --              Stop processing options$'
+define ~perror
+$(and $(call ~printn,scam: ,$(call ~vsprintf,$1
+,$(foreach N,2,$(^v))))1,1)
 endef
-~opt-err = $(call ~usage,Unrecognized command option '%s',$1)
-~build-and-run = $(call ~build,$(~*obj-dir*)$(basename $(notdir $(call ^u,$(word 1,$1)))),$(word 1,$1),run!=$(call ^d,$(wordlist 2,99999999,$1)))
-~main = $(call ^Y,$(call ~getopts,$1,-o= -e= -v -h -x=... -i --no-trace --quiet --out-dir= --symbols --boot,$(value ~opt-err)),,,,,,,,,$`(and $`(call ^set,~*obj-dir*,$`(subst //,/,$`(or $`(call ~dict-get,out-dir,$`(call ~nth,2,$`1)),$`(if $`(call ~dict-get,o,$`(call ~nth,2,$`1)),$`(dir $`(call ~dict-get,o,$`(call ~nth,2,$`1))).scam/,.scam/))/))1,$`(call ^set,~*is-quiet*,$`(call ~dict-get,quiet,$`(call ~nth,2,$`1)))1,$`(if $`(call ~dict-get,o,$`(call ~nth,2,$`1)),$`(and $`(if $`(word 2,$`(call ~nth,1,$`1)),$`(error Yow))1,$`(call ~build,$`(call ~dict-get,o,$`(call ~nth,2,$`1)),$`(call ~nth,1,$`1),$`(call ~nth,2,$`1))),$`(if $`(call ~dict-get,e,$`(call ~nth,2,$`1)),$`(call ~repl-rep,$`(call ~dict-get,e,$`(call ~nth,2,$`1)),),$`(if $`(call ~dict-get,v,$`(call ~nth,2,$`1)),$`(info SCAM version 1.3),$`(if $`(call ~dict-get,h,$`(call ~nth,2,$`1)),$`(call ~usage),$`(if $`(call ~dict-get,x,$`(call ~nth,2,$`1)),$`(call ~build-and-run,$`(call ~dict-get,x,$`(call ~nth,2,$`1))),$`(if $`(if $`(call ~nth,1,$`1),,1),$`(call ~repl),$`(if $`(call ~dict-get,i,$`(call ~nth,2,$`1)),$`(call ~usage,scam: extra arguments with -i),$`(call ~build-and-run,$`(call ~nth,1,$`1)))))))))))
+~set-obj-dir = $(call ^set,~*obj-dir*,$(patsubst %//,%/,$(or $1,$(if $2,$(dir $2).scam/,.scam/))/))
+~build-and-run = $(call ~build,$(~*obj-dir*)$(basename $(notdir $(call ^u,$(word 1,$1)))),$(call ^u,$(word 1,$1)),$(call ~append,run!=$(call ^d,$(wordlist 2,99999999,$1)),$2))
+~main = $(call ^Y,$(call ~getopts,$1,-o= -e= -v --version -h -x -i --no-trace --quiet --out-dir= --no-syms --boot),,,,,,,,,$`(and $`(call ^set,~*is-quiet*,$`(call ~dict-get,quiet,$`1))1,$`(call ~set-obj-dir,$`(call ~promote,$`(lastword $`(call ~dict-get,out-dir,$`1))),$`(call ~promote,$`(lastword $`(call ~dict-get,o,$`1))))1,$`(if $`(call ~dict-get,!,$`1),$`(and $`(foreach e,$`(call ~dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(firstword $`(call ^u,$`e))),$`(call ~perror,'%s' is missing an argument,$`(call ^n,2,$`(call ^u,$`e))),$`(if $`(filter !:GetoptsError1,$`(firstword $`(call ^u,$`e))),$`(call ~perror,'%s' is not a recognized option,$`(call ^n,2,$`(call ^u,$`e))),$`(call ~perror,[internal error])))))1,$`(call ~perror,try 'scam -h' for help)),$`(if $`(call ~dict-get,h,$`1),$`(info $`(~usage-string)),$`(if $`(call ~dict-get,o,$`1),$`(if $`(word 2,$`(call ~dict-get,*,$`1)),$`(call ~perror,to many input files were given with `-o`),$`(call ~build,$`(call ~promote,$`(lastword $`(call ~dict-get,o,$`1))),$`(call ~dict-get,*,$`1),$`1)),$`(if $`(call ~dict-get,e,$`1),$`(and $`(foreach expr,$`(call ~dict-get,e,$`1),$`(call ^d,$`(call ~repl-rep,$`(call ^u,$`(expr)),)))1,),$`(if $`(or $`(call ~dict-get,v,$`1),$`(call ~dict-get,version,$`1)),$`(info SCAM version 1.3.1),$`(if $`(call ~dict-get,x,$`1),$`(if $`(if $`(call ~dict-get,*,$`1),,1),$`(call ~perror,no FILE was given with '-x'),$`(call ~build-and-run,$`(call ~dict-get,*,$`1),$`1)),$`(if $`(if $`(call ~dict-get,*,$`1),,1),$`(and $`(info SCAM v1.3.1 interactive mode. Type '?' for help.)1,$`(call ~repl)),$`(if $`(call ~dict-get,i,$`1),$`(call ~perror,extraneous arguments were provided with -i),$`(call ~build-and-run,$`(call ~dict-get,*,$`1),$`1)))))))))))
 
 endef
  
@@ -887,7 +876,7 @@ define Mod['string]
 # Exports: string-repeat_2 nwords)2 string-from-bytes_1 strings-from-bytes_1 string-to-bytes_1 string-lower_1 string-upper_1 string-slice_3 string-len_1 string-to-chars_1 vdemote+gen-polysub)2]or]3 all-bytes#0;~%;p
 $(call ^require,'core)
 ~all-bytes :=           !+ $'                        !0   !1 " \# $` % & ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w x y z { | } ~  Ä Å Ç É Ñ Ö Ü á à â ä ã å ç é è ê ë í ì î ï ñ ó ò ô ö õ ú ù û ü † ° ¢ £ § • ¶ ß ® © ™ ´ ¨ ≠ Æ Ø ∞ ± ≤ ≥ ¥ µ ∂ ∑ ∏ π ∫ ª º Ω æ ø ¿ ¡ ¬ √ ƒ ≈ ∆ « » …   À Ã Õ Œ œ – — “ ” ‘ ’ ÷ ◊ ÿ Ÿ ⁄ € ‹ › ﬁ ﬂ ‡ · ‚ „ ‰ Â Ê Á Ë È Í Î Ï Ì Ó Ô  Ò Ú Û Ù ı ˆ ˜ ¯ ˘ ˙ ˚ ¸ ˝ ˛ ˇ
-~gen-polysub = $(if $1,$(call ~gen-polysub,$(wordlist 2,99999999,$1),$(wordlist 2,99999999,$2),$(and $(call ^fset,~enc,$`(subst $`(if ,,,),$``&,$`(subst $`],$``],$`(subst $`[,$``[,$`(subst $``,$``$``,$`1)))))1,$`(subst $(call ~enc,$(call ^u,$(word 1,$1))),$(call ~enc,$(call ^u,$(word 1,$2))),$(or $3,$`1)))),$3)
+~gen-polysub = $(if $1,$(call ~gen-polysub,$(wordlist 2,99999999,$1),$(wordlist 2,99999999,$2),$`(subst $(subst $(if ,,,),$`&,$(subst $],$`],$(subst $[,$`[,$(subst $`,$`$`,$(call ^u,$(word 1,$1)))))),$(subst $(if ,,,),$`&,$(subst $],$`],$(subst $[,$`[,$(subst $`,$`$`,$(call ^u,$(word 1,$2)))))),$(or $3,$`1))),$3)
 ~vdemote = $(subst !0, ,$(call ^d,$1))
 ~gen-split = $(call ~gen-polysub,$(call ~vdemote,$1),$(patsubst %,$2,$(call ~vdemote,$1)))
 $(call ^fset,~split-ascii,$(call ~gen-split,$(wordlist 1,127,$(~all-bytes)),%!0))

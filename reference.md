@@ -1439,6 +1439,7 @@ the standard libraries:
  - `num`: an arbitrary-precision decimal floating point numeric library
  - `io`: generic I/O functions
  - `string`: string manipulation functions
+ - `getopts`: command line option processing
  - `compile`: functions for compiling SCAM sources
  - `trace`: functions for tracing, debugging, and profiling
  - `utf8`: functions for encoding and decoding UTF-8
@@ -1447,37 +1448,30 @@ For documentation, refer to the corresponding `.scm` files in the SCAM
 project.  (Look for `&public` functions.)
 
 
-## Command-Line Syntax
+## Command Line Syntax
 
 The `scam` command support four major modes of operation:
 
 1. Generate an executable from SCAM source.
 
-   Usage: `scam -o EXE-FILE SOURCE-FILE`
+   Usage: `scam -o EXE SOURCE`
 
-   Any other source files required by `SOURCE-FILE`, directly or indirectly,
-   will also be compiled.
+   SCAM source file SOURCE will be compiled and linked with its dependencies
+   to create and executable file EXE.
 
-   If, for any source file `SRC.scm`, there exists a file `SRC-q.scm`, that
-   file will be treated as a test program that validates `SRC.scm`, and the
-   test will be compiled and executed before any source files using
-   `SRC.scm` are compiled.
-
-   Temporary files used in compilation (object files for each source file,
-   and test programs) will be written into to the directory in which
-   EXE-FILE lives.
+   When EXE is invoked, the SOURCE module will be loaded and then its `main`
+   function (if there is one) will be called with one argument: a vector
+   containing all of the command line arguments.
 
 2. Execute a SCAM source file.
 
-   Usage: `scam -x SOURCE-FILE ARGS...`
+   Usage: `scam -x SOURCE ARGS...`
 
-   All remaining words on the command line following SOURCE-FILE are passed
-   to the program as arguments (the first parameter to `main`).
-
-   SCAM handles this request by first compiling the source to an executable
-   in the manner that `scam -o EXE` does, but without printing any progress
-   messages.  The generated executable and all temporary files are written
-   into the directory "./.scam".
+   SCAM source file SOURCE will be compiled and immediately executed as in
+   `scam -o`.  Command-line arguments not processed by `scam` as options
+   will be passed to SOURCE's main function as arguments.  The `--` option
+   can be used to ensure that following words are delivered to the target
+   program.
 
 3. Enter an interactive "REPL" mode.
 
@@ -1486,6 +1480,9 @@ The `scam` command support four major modes of operation:
 4. Execute an expression provided on the command line.
 
    Usage: `scam -e EXPR`
+
+   Multiple `-e EXPR` options can appear on the command line.  When EXPR
+   evaluates to `nil`, scam does not print any results.
 
 
 ## Debugging

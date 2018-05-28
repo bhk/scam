@@ -57,9 +57,10 @@
 ;;
 (define (gen-polysub froms tos ?arg)
 
+  (define `(enc s)
+    (subst "$" "$$" "(" "$[" ")" "$]" "," "$&" s))
+
   (define `(gen-subst from to expr)
-    (define (enc s)
-      (subst "$" "$$" "(" "$[" ")" "$]" "," "$&" s))
     (concat "$(subst " (enc from) "," (enc to) "," expr ")"))
 
   (if froms

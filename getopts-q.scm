@@ -1,31 +1,17 @@
 (require "core")
 (require "getopts")
 
+(expect (getopts ["a" "b c"]
+                 nil)
+        { *: ["a" "b c"] })
 
-(let ((o (getopts ["--arg" "x y z" "a b" "-f" "c"]
-                  "--arg= -f"
-                  nil)))
-  (define `files (nth 1 o))
-  (define `omap (nth 2 o))
+(expect (getopts ["-x" "-g"]
+                 "-g=")
+        { !: [(BadOption "-x")
+              (MissingArg "-g")] })
 
-  (expect ["a b" "c"] files)
-  (expect "x y z" (dict-get "arg" omap))
-  (expect "1" (dict-get "f" (omap))))
-
-
-(let ((o (getopts ["--arg" "x y z" "a b" "-f" "c"]
-                  "--arg="
-                  (lambda (opt) (concat "ERR:" opt)))))
-  (expect "ERR:-f" o))
-
-
-(let ((o (getopts ["-b" "B" "-x" "a b" "-a" "c"]
-                  "-a= -b= -x=..."
-                  nil)))
-  (define `files (nth 1 o))
-  (define `omap (nth 2 o))
-
-  (expect "B" (dict-get "b" omap))
-  (expect nil (dict-get "a" omap))
-  ;; `-x` consumes the rest of the command linea
-  (expect ["a b" "-a" "c"] (dict-get "x" omap)))
+(expect (getopts ["a" "-f" "-g" "g 1!" "-f" "--" "-f" "x y"]
+                 "-f -g=")
+        { *: ["a" "-f" "x y"],
+          f: [1 1],
+          g: ["g 1!"] })
