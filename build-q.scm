@@ -32,7 +32,7 @@
 ;; scan-object
 
 
-(set-global "Mod['builtin-test]"
+(set-global "[mod-'builtin-test]"
             (concat "# comment\n"
                     "# Requires: 'core 'io\n"
                     "# Uses: 'a 'b\n"
@@ -116,7 +116,7 @@
   (set *files* [["a.scm"]
                 ["b.scm"] ])
 
-  (set-global "Mod['xx]" "# nothing")
+  (set-global "[mod-'xx]" "# nothing")
 
   (define mm0 (scan ["a.scm"] nil nil { rt: "'xx" }))
   (sexpect [ ["a.scm" nil "'xx" nil "C"] ]

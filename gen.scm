@@ -299,8 +299,8 @@
 ;;   ORIGIN         io.scm           io.scm           'io
 ;;   ID             'io              io               'io
 ;;   Load File      .scam/io.min     .scam/io.min
-;;   Load Bundle                                      Mod['io]
-;;   Bundle as      Mod['io]         Mod[io]          Mod['io]
+;;   Load Bundle                                      [mod-'io]
+;;   Bundle as      [mod-'io]         [mod-io]        [mod-'io]
 ;;
 
 
@@ -316,7 +316,7 @@
 ;;
 (define `(modid-var id)
   &public
-  (concat "Mod[" id "]"))
+  (concat "[mod-" id "]"))
 
 
 (define (module-opath origin)

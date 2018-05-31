@@ -289,7 +289,7 @@ endef
 (define *required* nil)
 
 (define `(mod-var id)
-  (concat "Mod[" id "]"))
+  (concat "[mod-" id "]"))
 
 ;; This will be overridden by compiler modules when the compiler runs (or
 ;; when a user program using compiler modules runs).
