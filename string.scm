@@ -198,4 +198,4 @@
 ;;
 (define (string-repeat str num)
   &public
-  (subst " " "" "." str (if (subst 0 "" num) (nwords num ". . ."))))
+  (subst " " "" "." str (if (filter-out "-%" (subst 0 "" num)) (nwords num ". . ."))))
