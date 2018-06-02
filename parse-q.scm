@@ -249,6 +249,9 @@
 (expect 1 (see "TFILE:2:1: invalid frob\n(def)\n^\n"
                (tde (PError 5 "invalid frob"))))
 
+(expect 1 (see "TFILE:1:1: invalid symbol character"
+               (tde (PError 1 "$"))))
+
 ;; parse-text
 
 (fexpect [ (PList 1 [ (PSymbol 2 "or") (PString 4 1) ])

@@ -205,6 +205,11 @@
         (c0-ser "(if a 1 (if 2 f))"))
 (expect (c0-ser "(cond (a v 1) (else f))")
         (c0-ser "(if a (begin v 1) f)"))
+(expect (c0-ser "(cond (nil))")
+        "!(PError 4 'missing BODY in (cond (TEST BODY)...)')")
+(expect (c0-ser "(cond ())")
+        "!(PError 4 'missing TEST in (cond (TEST BODY)...)')")
+
 
 ;;--------------------------------
 ;; (global-name SYM)

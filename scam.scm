@@ -50,7 +50,7 @@ Options:
   (define `given-dir
       (or out-dir
           (if out-file
-              (concat (dir out-file) ".scam/")
+              (dir out-file)
               ".scam/")))
   ;; ensure it ends with "/"
   (set *obj-dir* (patsubst "%//" "%/" (concat given-dir "/"))))

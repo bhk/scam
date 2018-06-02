@@ -539,6 +539,9 @@
         ((filter "!B" code)
          "invalid backslash sequence in string")
 
+        ((filter "$" code)
+         "invalid symbol character")
+
         (else desc)))
 
 

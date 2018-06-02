@@ -40,6 +40,35 @@ A = .out/a
 B = .out/b
 C = .out/c
 
+#----------------------------------------------------------------
+# Phony targets (the "UI")
+
+.PHONY: a b c aok bok cok promote install clean
+
+all: $C.ok
+
+a: $A/scam
+b: aok $B/scam
+c: bok $C/scam
+
+aok: $A.ok
+bok: $B.ok
+cok: $C.ok
+
+
+# Replace the "golden" compiler with a newer one.
+promote: cok ; $(_@)cp $B/scam bin/scam
+
+install: ; cp bin/scam `which scam`
+
+clean: ; rm -rf .out .scam
+
+bench: ; bin/scam --out-dir .out/ -x bench.scm $(ARGS)
+
+$$%: ; 	@true $(info $$$* --> "$(call if,,,$$$*)")
+
+#----------------------------------------------------------------
+
 qarg = '$(subst ','\'',$1)'# ' balanced for emacs
 target-line = $(shell sed -n '/guard,$1,/=' makefile)
 
@@ -47,24 +76,26 @@ target-line = $(shell sed -n '/guard,$1,/=' makefile)
 #   ID should be distinct from all other callers of guard
 guard = ( $2 ) > /dev/null || (echo 'makefile:$(target-line): $@ failed:' && /bin/echo " $$ "$(call qarg,$2) && false)
 
+build_message = @ printf '**\n** build $@\n**\n' 
 
+# Remember that $A/scam and $B/scam are files under test, so catch it if
+# they write nothing at all.
 
-.PHONY: a b c aok bok cok promote install clean
+$A/scam: *.scm bin/scam
+	$(build_message)
+	bin/scam -o $@ scam.scm
 
-all: cok
+$B/scam: *.scm $A.ok
+	$(build_message)
+	$(_@) rm -f $@
+	$A/scam -o $@ scam.scm --boot
+	$(_@) test -f $@
 
-a: $A/scam
-b: aok $B/scam
-c: bok $C/scam
-
-aok: $A.ok
-bok: $B-o.ok $B-x.ok $B-i.ok $B-e.ok
-cok: $C.ok
-
-$A/scam: *.scm bin/scam ; bin/scam -o $@ scam.scm
-$B/scam: *.scm $A/scam  ; rm -f $@ && $A/scam -o $@ scam.scm --boot
-$C/scam: *.scm $B/scam  ; rm -f $@ && $B/scam -o $@ scam.scm --boot
-
+$C/scam: *.scm $B.ok
+	$(build_message)
+	$(_@) rm -f $@
+	$B/scam -o $@ scam.scm --boot
+	$(_@) test -f $@
 
 # v1 tests:
 #  run: validates code generation
@@ -72,8 +103,13 @@ $C/scam: *.scm $B/scam  ; rm -f $@ && $B/scam -o $@ scam.scm --boot
 $A.ok: $A/scam
 	@ echo '... test $A/scam'
 	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot
-	$(_@) .out/ta/run
+	$(_@)    .out/ta/run
 	$(_@) touch $@
+
+
+$B.ok: $B-o.ok $B-x.ok $B-i.ok $B-e.ok
+	$(_@) touch $@
+
 
 # v2 tests:
 #   dash-o: test program generated with "scam -o EXE"
@@ -90,18 +126,21 @@ $B-o.ok: $B/scam
 	$(_@) $(call guard,BO2,grep 'result=11:2' .out/tb/dash-o.out)
 	$(_@) touch $@
 
+
 $B-x.ok: $B/scam
 	@ echo '... test scam -x FILE ARGS...'
 	$(_@) SCAM_TRACE='%conc:c' $B/scam --out-dir .out/tbx/ -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
 	$(_@) $(call guard,BX1,grep '9:3:a b' .out/tb/dash-x.out)
-	$(_@) $(call guard,BX2,grep ' 4 : .*conc' .out/tb/dash-x.out)
+	$(_@) $(call guard,BX2,grep ' 4 .*conc' .out/tb/dash-x.out)
 	$(_@) touch $@
+
 
 $B-e.ok: $B/scam
 	@ echo '... test scam -e EXPR'
 	$(_@) $B/scam --out-dir .out/tbx -e '(print [""])' -e '[""]' | tr '\n' '/' > .out/tb/dash-e.out
 	$(_@) $(call guard,BE1,grep '\!\./\[\"\"\]' .out/tb/dash-e.out)
 	$(_@) touch $@
+
 
 $B-i.ok: $B/scam
 	@ echo '... test scam [-i]'
@@ -116,27 +155,9 @@ $B-i.ok: $B/scam
 # $C should be identical, unless there is a bug.  We exclude exports from
 # the comparison because they mention file paths, which always differ.
 #
-$C.ok: $B/scam $C/scam
+$C.ok: $B.ok $C/scam
 	@echo '... compare B and C'
 	$(_@)grep -v Exports $B/scam > $B/scam.e
 	$(_@)grep -v Exports $C/scam > $C/scam.e
 	$(_@)diff -q $B/scam.e $C/scam.e
 	$(_@) touch $@
-
-# Replace the "golden" compiler with a newer one.
-#
-promote: cok
-	$(_@)cp $B/scam bin/scam
-
-install:
-	cp bin/scam `which scam`
-
-clean:
-	rm -rf .out .scam
-
-bench:
-	bin/scam --out-dir .out/ -x bench.scm $(ARGS)
-
-
-$$%:
-	@true $(info $$$* --> "$(call if,,,$$$*)")

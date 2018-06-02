@@ -33,7 +33,7 @@
 ;; will appear un-escaped.  When "$" is escaped, we use "$`", ensuring that
 ;; each "$" will be followed only by a restricted set of characters.  We
 ;; assign special meaning to a couple of character sequences that do not
-;; represent actual "code":
+;; appear in actual "code":
 ;;
 ;;    "$." is a marker.
 ;;    "$-" is a negative-escape sequence.
@@ -134,7 +134,7 @@
   (concat "$.{" (crumb-encode {=key: value}) "$.}"))
 
 
-;; Extract crumbs.  Returns a vector.
+;; Extract crumbs.  Returns { code: CODE, errors: ERRORS }.
 ;;
 (define (crumb-extract code)
   (let ((dc (subst "$.{" " $.{" "$.}" " " [code])))
@@ -371,8 +371,8 @@
    (concat (protect-expr (c1 (voidify node))) "\n")))
 
 
-;; Compile a vector of IL nodes to an executable string.
-;; Returns:  [ errors exe ]
+;; Compile a vector of IL nodes.
+;; Returns:  { code: CODE, errors: ERRORS }
 ;;
 (define (gen1 node-vec is-file)
   &public

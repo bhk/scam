@@ -418,8 +418,8 @@
                               (if else-form [else-form]))))
          ;; no BODY
          (if test
-             (err-expected "" body forms "BODY" cond-where)
-             (err-expected "" body forms "TEST" cond-where))))
+             (err-expected "" nil clause "BODY" cond-where)
+             (err-expected "" nil clause "TEST" cond-where))))
     (else
      (err-expected "L" clause nil "(TEST BODY)" cond-where))))
 
