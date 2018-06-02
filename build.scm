@@ -303,10 +303,14 @@
 ;; LC_ALL=C allows makefiles to contain non-UTF-8 byte sequences, which is
 ;; needed to enable SCAM's UTF-8 support.
 ;;
+;; Some make distros (Ubuntu) ignore the environment's SHELL and set it to
+;; /bin/sh.  We set it to bash rather than bothering to test `io` with
+;; others.
+;;
 (define prologue
 "#!/bin/bash
 :; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\"
-
+SHELL:=/bin/bash
 ")
 
 (define (epilogue main main-func rt)
