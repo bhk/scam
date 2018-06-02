@@ -72,10 +72,8 @@
 (define *self* (firstword MAKEFILE_LIST))
 
 
-(define (dbg-print code fmt str)
-  (if (findstring code (value "SCAM_DEBUG"))
-      (printf fmt str))
-  str)
+(define (build-eval str)
+  (eval str))
 
 
 ;; Traverse a graph from a set of starting nodes, and return a vector of
@@ -268,7 +266,7 @@
 ;;              to the shell.
 ;;
 (define (rule target deps oodeps commands)
-  (define `prefix (if (findstring "@" SCAM_DEBUG) nil "@"))
+  (define `prefix (if (findstring "@" (value "SCAM_DEBUG")) nil "@"))
 
   (concat target ": " deps (if oodeps " | ") oodeps
           (concat-vec (cons "" (addprefix prefix commands)) "\n\t")
@@ -520,4 +518,4 @@
                        (not (dict-get "no-syms" opts)))))
 
   ;; Set SCAM_DEBUG=B to see rules.
-  (eval (dbg-print "B" "Eval: %s" rules)))
+  (build-eval rules))

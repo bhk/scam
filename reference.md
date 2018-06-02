@@ -1517,18 +1517,17 @@ Tracing can be activated at run-time in two different ways:
  2. Set the `SCAM_TRACE` environment variable before running a SCAM program.
     Its value takes the same form as the SPEC argument to `trace`.
 
-    `SCAM_TRACE` will activate tracing before calling `main` but *after* the
-    main module has been loaded.  Typically, all modules will have been
-    loaded at that point, which is important because functions cannot be
-    instrumented until after they have been defined.  If you want to trace
-    execution prior to `main` -- e.g. in a `-q.scm` test -- use `trace` or
-    `tracing`, being sure to call it after the intended target functions
-    have been defined.
+    Functions cannot be instrumented until after they have been defined, so
+    `SCAM_TRACE` will activate tracing once before requiring the main module
+    (chiefly so the `^load` function can be traced), and again after the
+    main module is loaded, at which point all modules typically have been
+    loaded.  If you want to trace execution that happens during module
+    loading -- e.g. top-level expressions in a `-q.scm` test -- use `trace`
+    or `tracing`.
 
 The text string used to specify tracing is, in its simplest form, a list of
-function names.  These names may contain `%` as a wildcard.  Further, they
-may be suffixed with a `:` and then an "action" to select alternative
-instrumentation.  Possible actions include:
+function names.  Further, These may be suffixed with a `:` and then an
+"action" to select alternative instrumentation.  Possible actions include:
 
  - `t` : Print the function name and arguments when it is called and its
          return value on exit.  This is the default action.
@@ -1539,6 +1538,16 @@ instrumentation.  Possible actions include:
  - `x<N>` : Evaluate the function body N times each time the function is
          invoked.  <N> must be a positive number or the empty string (which
          is treated as 11).
+
+In place of a function name a pattern may be provided to match multiple
+functions.  In a pattern, the `%` character is a wildcard that will match
+any sequence of characters.  Some caution must be exercised in general with
+tracing, especially when using wildcards: Do not instrument any function
+while it is currently running.  SCAM prevents this from happening when you
+use `SCAM_TRACE`, or when you call `trace` or `tracing` at the top level of
+a source file, the REPL, or your `main` function.  However, if while nested
+in one or more other user-defined functions, you trace any of those
+functions, then undefined behavior will result.
 
 The intent of `x` instrumentation is to cause the function to consume more
 time by a factor of N (for profiling purposes).  If your code is purely
@@ -1555,7 +1564,6 @@ example:
      `func` ordinarily contributes to the program's execution.
 
 
-
 #### Tracing examples
 
 To count all function invocations in a SCAM program:
@@ -1569,7 +1577,6 @@ Or:
 To show details for all calls into functions beginning with "foo-":
 
     $ SCAM_TRACE='foo-%' scam -x myprogram.scm
-
 
 In the REPL:
 
@@ -1593,18 +1600,6 @@ In the REPL:
     TRACE:     1973 fib
     610
 
-
-### Diagnostic Messages
-
-The `SCAM_DEBUG` variable causes certain debug information to be written to
-stdout based on the presence or absence of certain substrings:
-
-  * "O" ==> "OK: ..." when an `expect` macro succeeds. (See [the core library](core.scm).)
-  * "U" ==> compile-time "warnings" for lambda captures
-  * "R" ==> "require: <filename>" when a file is included by `require`.
-  * "Rx" ==> "R" + "exited: <filename>" after a required file exits.
-  * "S" ==> "shell: <command>" when io.scm executes a shell command.
-  * "B" ==> "Eval: ..." when Make rules are eval'ed by build.scm.
 
 ### Profiling
 

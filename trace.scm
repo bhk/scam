@@ -12,9 +12,8 @@
 ;; - Function wildcards will not match names beginning with '~' and '^'
 ;;   UNLESS the pattern explicitly includes those characters.
 ;;
-;; - If the same function is instrumented a second time, `x` and `t` will
-;;   replace the previous instrumentation; `c` and `p` will be additive.
-
+;; - If a function is instrumented a second time, the previous
+;;   instrumentation will be replaced.
 
 (define (trace-info a ?b ?c ?d)
   (info (concat "TRACE: " a b c d)))
@@ -49,11 +48,11 @@
 
 
 (define `(save-var id)
-  (concat "[Ts]" id))
+  (concat "[S-" id "]"))
 
 
 (define `(count-var id)
-  (concat "[Tc]" id ))
+  (concat "[K-" id "]"))
 
 
 ;; Call the original definition
@@ -69,7 +68,7 @@
    ;; count invocations
    ((filter "c" action)
     (define `cv (count-var id))
-    (set-global cv zero)
+    (set-global cv (or (value cv) zero))
     (concat "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1))"
             defn))
 
@@ -105,7 +104,7 @@
 ;;
 (define (trace-match pat variables)
   (define `avoid-pats
-    (foreach p "^% ~%"
+    (foreach p "^% ~% ~trace%"
              (if (filter-out p pat)
                  p)))
   (filter-out avoid-pats (filter pat variables)))
@@ -165,17 +164,25 @@
                  v)))
 
   ;; Avoid modifying any function while it is currently being expanded,
-  ;; which could trigger a GNU Make user-after-free bug.  Also avoid
-  ;; save-var copies, and ^Y since it requires $(10).  Also avoid most of
-  ;; the functions along the way out of `trace` and into `untrace`.
-  ;; Omit MAKEFLAGS and SHELL because they show up as file recursive.
+  ;; which could trigger a GNU Make user-after-free bug.  In general we
+  ;; do not know what's being expanded, and users have to take care, but
+  ;; we can exclude what we know is on stack during REPL and in programs.
+  ;;
+  ;; The runtime contributes ignore-vars, which covers some file-recursive
+  ;; variables that are not functions.
+  ;;
+  ;; Also avoid corruption save-var copies, and ^Y since it requires $(10).
+  ;;
+  ;; Also avoid most of the functions along the way out of `trace` and into
+  ;; `untrace`.
+  ;;
+  (define `dangerous-vars
+    "[% ~trace ~untrace ~trace-ext ~untrace-ext ^start ^Y "
+    "~repl ~eval-and-print ~while ~while-0 ~while-N")
+
   (define `all-vars
     (declare .VARIABLES &global)
-    (filter-out (concat ignore-vars " [% ~trace ~untrace ~trace-ext "
-                        "~untrace-ext ^start ^require ^Y "
-                        ;; on stack during REPL...
-                        "~main ~repl ~eval-and-print ~while ~while-0 ~while-N")
-                .VARIABLES))
+    (filter-out (concat ignore-vars " " dangerous-vars) .VARIABLES))
 
   ;; Apply instrumentation to a function
   ;;
@@ -184,12 +191,12 @@
     (define `ename
       (subst "#" "$\"" name))
 
-    (define `body
-      (trace-body (trace-action action name) ename id (value name)))
-
     ;; don't overwrite original if it has already been saved
     (if (filter "u%" (origin (save-var id)))
         (set-rglobal (save-var id) (value name)))
+
+    (define `body
+      (trace-body (trace-action action name) ename id (value (save-var id))))
     (set-rglobal name body))
 
 

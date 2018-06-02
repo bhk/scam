@@ -8,6 +8,8 @@
 (require "gen")
 (require "num")
 
+(define *warn-upvals*
+  (findstring "U" (value "SCAM_DEBUG")))
 
 ;; Return `FILE:LINE:COL` as determined by POS and current file & subject.
 ;;
@@ -217,7 +219,7 @@
   (define `ndx
     (subst "." "" arg))
 
-  (if (and (findstring "U" SCAM_DEBUG)
+  (if (and *warn-upvals*
            (not (findstring depth arg)))
           (compile-warn sym "reference to upvalue %q" (symbol-name sym)))
   (ILocal ndx
@@ -392,8 +394,6 @@
 
       ;; none of the above
       (else
-       (if (findstring "Cu" SCAM_DEBUG)
-           (printf "env: %q" env))
        (gen-error sym "undefined symbol: %q" symname))))))
 
 
@@ -872,11 +872,6 @@
 ;; c0: compile an inline expression.  Return IL.  (see c0-block)
 (define (c0 form env ?inblock)
   &public
-  (if (findstring "c0" SCAM_DEBUG)
-      (begin
-        (printf "form: %q" form)
-        (if (findstring "c0e" SCAM_DEBUG)
-            (printf "env: %q" env))))
   (case form
     ((PSymbol n value) (c0-S env form value (resolve form env)))
     ((PString n value) (IString value))

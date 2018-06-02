@@ -62,8 +62,8 @@ bok: $B-o.ok $B-x.ok $B-i.ok $B-e.ok
 cok: $C.ok
 
 $A/scam: *.scm bin/scam ; bin/scam -o $@ scam.scm
-$B/scam: *.scm $A/scam  ; $A/scam -o $@ scam.scm --boot
-$C/scam: *.scm $B/scam  ; $B/scam -o $@ scam.scm --boot
+$B/scam: *.scm $A/scam  ; rm -f $@ && $A/scam -o $@ scam.scm --boot
+$C/scam: *.scm $B/scam  ; rm -f $@ && $B/scam -o $@ scam.scm --boot
 
 
 # v1 tests:

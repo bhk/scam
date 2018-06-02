@@ -688,7 +688,7 @@
 ;; Extend the runtime's ^require to handle file-based modules during
 ;; compilation.
 ;;
-(define (require-ex id)
+(define (load-ext id)
   (if (filter id *file-mods*)
       (begin
         (eval (concat "include " (modid-file id)))

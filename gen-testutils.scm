@@ -7,6 +7,7 @@
 (require "gen")
 (require "gen0")
 
+(declare SCAM_DEBUG &global)
 
 ;; Serialize IL to a compact, readable format.  This transformation is not
 ;; reliably reversible, but the output should be suitable for assertions

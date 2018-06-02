@@ -12,18 +12,9 @@
 ;; those functions are defined.
 
 
-;; Variables that were here before we got here.
-(define primordial-vars
+;; Variables not to be instrumented.
+(define *do-not-trace*
   (value ".VARIABLES"))
-
-(declare SCAM_DEBUG &global &public)
-(eval "SCAM_DEBUG ?=")
-
-(define `(dbgmsg code label value)
-  (if (findstring code SCAM_DEBUG)
-    (print label value)))
-
-(dbgmsg "R" "runtime: " (lastword MAKEFILE_LIST))
 
 (eval "define '
 
@@ -38,9 +29,7 @@ endef
 ")
 
 ;; Most runtime exports are declared as "global" so that the code generation
-;; phase does not have to take namespacing into account.  This should not
-;; cause problems with self-hosting unless we want to change the contracts
-;; or names of these very basic operations.
+;; phase does not have to take namespacing into account.
 
 ;; (^d string) => "down" = encode as word
 ;;
@@ -275,36 +264,50 @@ endef
 (define `(mod-var id)
   (concat "[mod-" id "]"))
 
-;; This will be overridden by compiler modules when the compiler runs (or
-;; when a user program using compiler modules runs).
+
+;; This will be overridden by compiler modules.
 ;;
-(define (require-ex mod-id)
+(define (load-ext mod-id)
   nil)
+
+
+;; Load the module identified by ID.
+;;
+(define (^load id)
+  &global
+  (or (load-ext id)
+      (if (bound? (mod-var id))
+          (eval (value (mod-var id)))
+          (error (concat "module " id " not found!"))))
+  ;; return value is useful when viewing trace of load sequence
+  id)
+
 
 ;; Execute a module if it hasn't been executed yet.
 ;;
 (define (^require id)
   &global
-
   (or (filter id *required*)
       (begin
         (set *required* (concat *required* " " id))
-        (dbgmsg "R" "require: " id)
-        (or (require-ex id)
-            (if (bound? (mod-var id))
-                (eval (value (mod-var id)))
-                (error (concat "module " id " not found!"))))
-        (dbgmsg "Rx" "exited: " id)))
+        (^load id)))
   nil)
 
 
 ;;----------------------------------------------------------------
-;; Tracing: The trace module is effectively part of the runtime, but it is
-;; included in a separate file in order to allow programs to omit it (to
-;; save about 2.5KB) (I don't know why I do the things I do).
+;; Tracing
+;;
+;; The trace module is effectively part of the runtime, but it is included
+;; in a separate file in order to allow programs to omit it (to save about
+;; 2.5KB) (Sometimes I don't know why I do the things I do).
+
+
+;; Add vars to the list of variables not to trace.
+(define (do-not-trace vars)
+  (set *do-not-trace* (concat *do-not-trace* " " vars)))
 
 ;; externalized depenencies
-(declare (trace-ext specs ignore-vars))
+(declare (trace-ext specs *do-not-trace*))
 (declare (untrace-ext names))
 
 (define (trace specs)
@@ -312,7 +315,7 @@ endef
   (if specs
       (begin
         (call "^require" "'trace")
-        (trace-ext specs primordial-vars))))
+        (trace-ext specs *do-not-trace*))))
 
 (define (untrace names ?retval)
   &public
@@ -348,48 +351,46 @@ endef
   nil)
 
 
-(define (start main-mod main-func args)
-  (define `env-prefix
-    (if (filter "'%" main-mod) "_"))
-
-  (declare *started* &global)
-
-  (if (not *started*)
-      ;; Avoid recursive of repeated calls to start, as when:
-      ;;   - `runtime` is required explicitly
-      ;;   - SCAM_MAIN runs a test and then ^start is called
-      (begin
-        (set *started* 1)
-        (^require main-mod)
-        (trace (value (concat env-prefix "SCAM_TRACE")))
-        (let ((exit-code (call main-func args)))
-          ;; If `main` returns a bogus value then the "exit" command will display
-          ;; an acceptable warning.
-          (define `exit-arg
-            (concat "'" (or (subst "'" "" (strip exit-code)) 0) "'"))
-
-          ;; Run exit hooks and return exit code after rule processing phase.
-          ;; If `main` has generated a rule, build it before exiting.
-          (eval (concat ".DEFAULT_GOAL :=\n"
-                        ".PHONY: .scam/-exit\n"
-                        ".scam/-exit: " .DEFAULT_GOAL "; @exit " exit-arg
-                        run-at-exits))))))
+(define (start-trace main-mod)
+  ;; Activate tracing if [_]SCAM_TRACE is set
+  (define `env-prefix (if (filter "'%" main-mod) "_"))
+  (trace (value (concat env-prefix "SCAM_TRACE"))))
 
 
-;; TODO: huh?
-(declare (^start main-mod main-func args)
-  &global)
-
-(if (not (bound? "^start"))
-    (set ^start start))
-
-
-;; If SCAM_MAIN is set, load that module and short-circuit ordinary program
-;; startup.  This allows executing modules in the following manner:
+;; Validate what was returned from main before it is passed to the bash
+;; `exit` builtin in the [exit] command.  Return nil if it isn't valid.
 ;;
-;;    make -f runtime.min SCAM_MAIN=<module>
-;;    make -f bin/scam SCAM_MAIN=<module>
-;;
-(declare SCAM_MAIN &global)
-(if SCAM_MAIN
-    (start SCAM_MAIN nil nil))
+(define (check-exit code)
+  (define `(non-integer? n)
+    (subst "1" "" "2" "" "3" "" "4" "" "5" "" "6" "" "7" "" "8" "" "9" "" "0" ""
+           (patsubst "-%" "%" (subst " " "x" "\t" "x" code))))
+
+  (if (non-integer? code)
+      (error (concat "scam: main returned '" code "'"))
+      (or code 0)))
+
+
+(define (^start main-mod main-func args)
+  &global
+
+  ;; Allow module loading to be traced.
+  (start-trace main-mod)
+  ;; Now it's dangerous...
+  (do-not-trace "^require ^load ^load-ext")
+
+  (^require main-mod)
+  (start-trace main-mod)
+
+  ;; Run main, *then* read .DEFAULT_GOAL, *then* re-assign it.  We call
+  ;; main's value as an anonymous function so tracing it will not cause
+  ;; problems (redefining a function while it's being expanded).
+  (define `rules
+    (let ((exit-arg (check-exit ((value main-func) args))))
+      ;; Read .DEFAULT_GOAL *after* running main.  Ensure [exit] will run
+      ;; last.  There we run exit hooks and deliver main's exit code.
+      (concat ".DEFAULT_GOAL :=\n"
+              ".PHONY: [exit]\n"
+              "[exit]: " .DEFAULT_GOAL ";"
+              "@exit " exit-arg (lambda () (run-at-exits)))))
+
+  (eval rules))
