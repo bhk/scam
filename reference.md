@@ -239,12 +239,12 @@ arguments are true.
 
 SCAM's core library provides `not` and `xor` logical operators.
 
-   > (xor "a" "b")
-   > (xor "a" nil)
-   a
-   > (not "x")
-   > (not nil)
-   1
+    > (xor "a" "b")
+    > (xor "a" nil)
+    a
+    > (not "x")
+    > (not nil)
+    1
 
 
 ### Numbers
@@ -1257,13 +1257,14 @@ Example:
     (apply nth [3 "a b c d"])    ;; --> c
 
 
-### `*file*`
+### `at-exit`
 
-[Manifest global]
+[Function]
 
-This symbol evaluates to the file currently being loaded via `require`.
-This is evaluated at run-time, not compile-time, so it does not necessarily
-return the name of the file in which it appears.
+    (at-exit FUNC)
+
+Add FUNC to a list of functions that will be run when the program exits.
+Functions will be run in the reverse of the order that they were registered.
 
 ### Built-Ins
 
@@ -1501,13 +1502,99 @@ arguments and return value will displayed. For example, in the REPL:
 
 ### Run-time Tracing
 
-The `SCAM_TRACE` variable can be assigned to instrument functions at
-run-time, rather than compile-time.  For complete details, see `trace.scm`.
-The following command counts function invocations within the SCAM compiler
-itself as it compiles a module, and then lists all called functions ranked
-by frequency:
+Tracing can be activated at run-time in two different ways:
 
-    $ SCAM_TRACE=':c' bin/scam num.scm
+ 1. In a SCAM program or in interactive mode, use the following:
+
+     - `(trace SPEC)` instruments functions immediately.
+     - `(untrace NAMES)` removes instrumentation from functions.
+     - `(tracing SPEC EXPR)` instruments functions only during
+       evaluation of EXPR.
+
+    SPEC is a string that specifies the kind of tracing to be done, as
+    described below.
+
+ 2. Set the `SCAM_TRACE` environment variable before running a SCAM program.
+    Its value takes the same form as the SPEC argument to `trace`.
+
+    `SCAM_TRACE` will activate tracing before calling `main` but *after* the
+    main module has been loaded.  Typically, all modules will have been
+    loaded at that point, which is important because functions cannot be
+    instrumented until after they have been defined.  If you want to trace
+    execution prior to `main` -- e.g. in a `-q.scm` test -- use `trace` or
+    `tracing`, being sure to call it after the intended target functions
+    have been defined.
+
+The text string used to specify tracing is, in its simplest form, a list of
+function names.  These names may contain `%` as a wildcard.  Further, they
+may be suffixed with a `:` and then an "action" to select alternative
+instrumentation.  Possible actions include:
+
+ - `t` : Print the function name and arguments when it is called and its
+         return value on exit.  This is the default action.
+
+ - `c` : Count the number of times that the function is invoked.  When the
+         program exits, this information will be written to stdout.
+
+ - `x<N>` : Evaluate the function body N times each time the function is
+         invoked.  <N> must be a positive number or the empty string (which
+         is treated as 11).
+
+The intent of `x` instrumentation is to cause the function to consume more
+time by a factor of N (for profiling purposes).  If your code is purely
+functional, or at least limits its side effects to idempotent operations,
+repetition of expressions should not alter the behavior of the program.
+This can be used to identify and quantify hotspots in a program.  For
+example:
+
+  1. Run `time SCAM_TRACE='func:x1' ./myprogram`.
+
+  2. Run `time SCAM_TRACE='func:x11' ./myprogram`.
+
+  3. Calculate (duration2 - duration1) / 10.  This gives the amount of time
+     `func` ordinarily contributes to the program's execution.
+
+
+
+#### Tracing examples
+
+To count all function invocations in a SCAM program:
+
+    $ SCAM_TRACE='%:c' ./myprogram
+
+Or:
+
+    $ SCAM_TRACE='%:c' scam -x myprogram.scm
+
+To show details for all calls into functions beginning with "foo-":
+
+    $ SCAM_TRACE='foo-%' scam -x myprogram.scm
+
+
+In the REPL:
+
+    > (define (fib n)
+    +    (if (> n 2)
+    +       (+ (fib (- n 1)) (fib (- n 2)))
+    +       (- n 1)))
+    > (tracing "%" (fib 4))
+    --> (fib "4")
+     --> (fib "3")
+      --> (fib "2")
+      <-- fib: "1"
+      --> (fib "1")
+      <-- fib: "0"
+     <-- fib: "1"
+     --> (fib "2")
+     <-- fib: "1"
+    <-- fib: "2"
+    2
+    > (tracing "%:c" (fib 16))
+    TRACE:     1973 fib
+    610
+
+
+### Diagnostic Messages
 
 The `SCAM_DEBUG` variable causes certain debug information to be written to
 stdout based on the presence or absence of certain substrings:

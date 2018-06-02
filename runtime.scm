@@ -12,6 +12,10 @@
 ;; those functions are defined.
 
 
+;; Variables that were here before we got here.
+(define primordial-vars
+  (value ".VARIABLES"))
+
 (declare SCAM_DEBUG &global &public)
 (eval "SCAM_DEBUG ?=")
 
@@ -21,14 +25,14 @@
 
 (dbgmsg "R" "runtime: " (lastword MAKEFILE_LIST))
 
-(eval "define \\n
+(eval "define '
 
 
 endef
  [ := (
  ] := )
 \" := \\#
-' := $(\\n)
+' := $'
 ` := $$
 & := ,
 ")
@@ -111,6 +115,7 @@ endef
 ;; Format a value as a quoted string.
 ;;
 (define (^f a)
+  &global
   (concat "\""
           (subst "\\" "\\\\" "\"" "\\\"" a)
           "\""))
@@ -125,7 +130,7 @@ endef
 
 ;; ^tc : call function named by $1, and shift all other args left
 ;;
-(declare (^tc fn ...args))
+(declare (^tc fn ...args) &global)
 (set ^tc (concat "$(call $1,$2,$3,$4,$5,$6,$7,$8,$(call ^n,1,$9),$(wordlist 2,9999,$9))"))
 
 
@@ -133,15 +138,13 @@ endef
 ;;
 (declare (^ta ...args) &global)
 
-(define `TC (global-name ^tc))
-(define `F (global-name ^f))
-(set ^ta (concat "$(if $(or $1,$2,$3,$4,$5,$6,$7,$8,$9), $(" F ")$(call " TC ",^ta,$2,$3,$4,$5,$6,$7,$8,$9))"))
+(set ^ta (concat "$(if $(or $1,$2,$3,$4,$5,$6,$7,$8,$9), $(^f)$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9))"))
 
 ;; ^t : trace function call with arguments and results.  Generated code will
 ;;      evaluate this as a variable -- `$(^t)` -- rather than via `call`.
 ;;
 (declare (^t) &global)
-(set ^t (concat "$(info --> ($1$(call " TC ",^ta,$2,$3,$4,$5,$6,$7,$8,$9)))$(call ^tp,<-- $1:,$(call " TC ",$1,$2,$3,$4,$5,$6,$7,$8,$9))"))
+(set ^t (concat "$(info --> ($1$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9)))$(call ^tp,<-- $1:,$(call ^tc,$1,$2,$3,$4,$5,$6,$7,$8,$9))"))
 
 
 ;;--------------------------------------------------------------
@@ -153,7 +156,6 @@ endef
          "\n" "$'" str))
 
 (define (esc-LHS str)
-  &public
   ;; $(if ,,...) protects ":", "=", *keywords*, and leading/trailing spaces
   (concat "$(if ,,"
           (subst "(" "$["
@@ -252,25 +254,8 @@ endef
   (if (filter-out "u%" (flavor var)) 1))
 
 
-;; word list of "event=func_name" entries
-
-;; We declare, and don't initialize *hooks* to empty string, because when
-;; building the compiler another copy of the runtime might be loaded into
-;; the compiler itself.  Currently, when stage A builds stage B, they both
-;; use a runtime with NS='~'...  (A's NS is '' but it uses the golden
-;; runtime).
-;;
-(declare *hooks*)
-
-(define (add-hook event funcname)
-  &public
-  (set *hooks* (concat *hooks* " " event "=" funcname)))
-
-(define (run-hooks event)
-  &public
-  (define `pat (concat event "=%"))
-  (foreach funcname (patsubst pat "%" (filter pat *hooks*))
-           (call funcname)))
+;;--------------------------------------------------------------
+;; tags track record types for dynamic typing purposes
 
 (define ^tags
   &global
@@ -284,7 +269,6 @@ endef
 
 ;;--------------------------------------------------------------
 ;; ^require
-
 
 (define *required* nil)
 
@@ -310,31 +294,74 @@ endef
             (if (bound? (mod-var id))
                 (eval (value (mod-var id)))
                 (error (concat "module " id " not found!"))))
-        (dbgmsg "Rx" "exited: " id)
-        (run-hooks "load")))
+        (dbgmsg "Rx" "exited: " id)))
   nil)
+
+
+;;----------------------------------------------------------------
+;; Tracing: The trace module is effectively part of the runtime, but it is
+;; included in a separate file in order to allow programs to omit it (to
+;; save about 2.5KB) (I don't know why I do the things I do).
+
+;; externalized depenencies
+(declare (trace-ext specs ignore-vars))
+(declare (untrace-ext names))
+
+(define (trace specs)
+  &public
+  (if specs
+      (begin
+        (call "^require" "'trace")
+        (trace-ext specs primordial-vars))))
+
+(define (untrace names ?retval)
+  &public
+  (if names
+      (begin
+        (call "^require" "'trace")
+        (untrace-ext names)))
+  retval)
+
+;; Activate tracing *only* during evaluation of EXPR.
+;;
+(define `(tracing spec expr)
+  &public
+  (untrace (trace spec) expr))
 
 
 ;;----------------------------------------------------------------
 ;; Program execution
 
-(declare *started*
-         &global)
+
+(define *atexits* nil)
+
+
+;; prepend new function so they are run in reverse order
+(define (at-exit fn)
+  &public
+  (set *atexits* (concat [fn] " " *atexits*)))
+
+
+(define (run-at-exits)
+  (for fn *atexits*
+       (fn))
+  nil)
 
 
 (define (start main-mod main-func args)
+  (define `env-prefix
+    (if (filter "'%" main-mod) "_"))
+
+  (declare *started* &global)
+
   (if (not *started*)
       ;; Avoid recursive of repeated calls to start, as when:
       ;;   - `runtime` is required explicitly
       ;;   - SCAM_MAIN runs a test and then ^start is called
       (begin
         (set *started* 1)
-
-        (if (bound? (mod-var "'trace"))
-            (^require "'trace"))
-
         (^require main-mod)
-
+        (trace (value (concat env-prefix "SCAM_TRACE")))
         (let ((exit-code (call main-func args)))
           ;; If `main` returns a bogus value then the "exit" command will display
           ;; an acceptable warning.
@@ -346,12 +373,10 @@ endef
           (eval (concat ".DEFAULT_GOAL :=\n"
                         ".PHONY: .scam/-exit\n"
                         ".scam/-exit: " .DEFAULT_GOAL "; @exit " exit-arg
-                        (lambda () (run-hooks "exit")) ))))))
+                        run-at-exits))))))
 
 
-;; &global functions can cause problems if redefined by a new runtime *while
-;; running*.
-
+;; TODO: huh?
 (declare (^start main-mod main-func args)
   &global)
 

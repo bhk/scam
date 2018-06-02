@@ -2,274 +2,246 @@
 ;; trace.scm: tracing and debugging facilities
 ;;----------------------------------------------------------------
 
-;; Usage:
+;; See reference.md for documentation.  Behavior not documented
+;; there includes:
 ;;
-;; This module instruments functions at run time to log and report
-;; tracing data.  It can be used in two ways:
+;; - `pPREFIX` action prepends a user-supplied string to the function body.
 ;;
-;;  * Assigning `SCAM_TRACE` on the make command line or in the environment
-;;    before running a SCAM program will enable tracing during the execution
-;;    of the program's `main` function.  The value of SCAM_TRACE is a "trace
-;;    specification" (described below).
+;; - `v...` prefix for actions details which functions were instrumented.
 ;;
-;;    Note that instrumentation of functions is not performed until after a
-;;    module is loaded.  Any code within a module that executes at load time
-;;    -- i.e. during the call to `require` -- will not be subject to the
-;;    tracing triggered by `SCAM_TRACE`.
+;; - Function wildcards will not match names beginning with '~' and '^'
+;;   UNLESS the pattern explicitly includes those characters.
 ;;
-;;  * Any SCAM program can require the "trace" module and call the `trace`
-;;    function to instrument functions.  `trace` accepts a trace
-;;    specification as an argument.  The function `trace-dump` can be
-;;    called to display function invocation counts (when that kind of
-;;    tracing has been requested).
-;;
-;; A trace specification is one or more space-delimited words, each of which
-;; has following format:
-;;
-;;      fnpat [ ":" action ]*
-;;
-;; `fnpat` is a string used to match defined functions (see "Function
-;; Matching", below).  If empty, it defaults to "%" (matching all
-;; functions).  For each matching function, every specified action is
-;; performed.
-;;
-;; Each `action` is one of the strings listed below.  If no actions are
-;; given, `t` is assumed.
-;;
-;;    "t" : print the function name and arguments on entry and its return
-;;          value on exit.
-;;    "c" : count the number of times that the function is invoked.
-;;    "p" : Prefix a user-defined string to the function body.  The
-;;          prefix is given in the `SCAM_PRE` variable.
-;;    "x<N>" or "X<N>: repeat the function <N> times every time it is
-;;          invoked.  <N> may be a positive integer, or the empty string
-;;          (which is treated as "11").  "x..." instruments the function in
-;;          a way that will fail if the function recurses.  "X..." supports
-;;          recursion but has slightly higher overhead.
-;;    "v" : output the name and value of the function as it is instrumented.
-;;
-;; Some example trace specifications:
-;;
-;;    "foo"  =>  log arguments and return values every time `foo` is invoked.
-;;    "%:c"  =>  count the number of invocations of every function.
-;;    "foo:t:c"  ==> log invocations of `foo` and count them.
-;;
-;; Function matching:
-;;
-;;    Function names can include the wildcard character ("%"), in which case
-;;    it will be matched with the set of functions that have been defined
-;;    *after* the trace module was loaded.  Explicitly named functions will
-;;    always be instrumented, even if the function was defined before the
-;;    trace module was loaded.
-;;
-;; Some example command lines:
-;;
-;;    This counts the number of times all functions are executed
-;;    when compiling num.scm:
-;;
-;;       % SCAM_TRACE=':c' bin/scam num.scm
-;;
-
-(declare SCAM_TRACE &global)
-(declare SCAM_PRE &global)
-(declare .VARIABLES &global)
+;; - If the same function is instrumented a second time, `x` and `t` will
+;;   replace the previous instrumentation; `c` and `p` will be additive.
 
 
-;; Variables to ignore when matching wildcards
-(define *trace-ignore-vars* "")
-
-(define `variables
-  (filter-out *trace-ignore-vars* (subst "%" "()" .VARIABLES)))
+(define (trace-info a ?b ?c ?d)
+  (info (concat "TRACE: " a b c d)))
 
 
-;; Current active trace specs
+;; Initialize count variables to this representation of 0.
+(define `zero "///////")
+
+;; Convert tally marks to decimal digits, padded with ":" on left.  The
+;; number of digits in the result is one more than the number of digit
+;; delimiters (/) in K.  A maximum of 8 digits is supported.
 ;;
-(define *traces* "")
-
-
-;; command-line values are recursive (!) and also they are evaluated
-;; by make after rules are processed, so SCAM_PRE will be executed
-;; an extra time after the program completes unless we do this...
-;;
-(eval "override SCAM_PRE := $(value SCAM_PRE)")
-
-
-;; ^K: increment the count of invocations of $0
-;;
-;; This counting system requires just patsubst+concat+subst for each increment.
-;; Base 4 is optimal for size: digit len = (4+1)/2 ; num digits = 1/Ln(4)
-;; Base 10 is easy to convert to decimal ASCII, however.
-;;
-(eval "^K = $(eval ^K_$0:=$(subst ioooooooooo,oi,$(^K_$0:o%=io%)o))")
-
-
 (define (trace-digits k)
   ;; normalize
-  (if (not (findstring "i" k))
-      (trace-digits (concat "i" k))
-      (if (findstring "ioooooooooo" k)
-          (trace-digits (subst "ioooooooooo" "oi" k))
+  (if (findstring "/1111111111" k)
+      (trace-digits (subst "/1111111111" "1/" k))
 
-          (let& ((digits (foreach d (subst "i" " i" k)
-                           (words (subst "o" " o" "i" "" d)))))
-            (subst " " ""
-                   (wordlist (words (subst "i" " i" k))
-                             99
-                             (concat ". . . . . . . . " digits)))))))
+      ;; convert to ASCII
+      (let& ((digits (foreach d (concat "/" (subst "/" " /" k))
+                              (words (subst "1" " 1" "/" "" d)))))
+        ;; Convert leading 0's to :'s, but leave 0 if in 1's place.
+        (subst " " "" ":0000" ":::::" ":00" ":::" ":0" "::" ":!:" "0" "!:" ""
+               (concat "!:" digits "!:")))))
 
 
-;; Convert numbers to sortable strings:  LOG10.DIGITS
-;; Lexicographical sort == numeric sort
-(define (trace-n2a count)
-  (if (not (filter "i%" count))
-      (trace-n2a (concat "i" count))
-      (if (findstring "ioooooooooo" count)
-          (trace-n2a (subst "ioooooooooo" "oi" count))
-          (concat
-           (subst 10 "A" (words (subst "i" " i" count)))
-           "!0"
-           (subst " " ""
-                  (foreach d (subst "i" " i" count)
-                           (words (subst "o" " o" "i" "" d))))))))
-
-
-(define (list-of n ?lst)
-  (if (word n lst)
-      lst
-      (list-of n (concat lst " x"))))
-
-
-;; Return a function body that invokes the named function multiple times,
-;; and returns the result of the last invocation.
+;; Construct a string with N words.
 ;;
-;;   FNAME = name of function to call <reps> times (the original definition).
-;;   REPS = number of repetitions.
-;;   RECUR = if true, recursion is expected.
+(define (trace-words n ?str)
+  (if (word n str)
+      str
+      (trace-words n (concat "1 " str))))
+
+
+(define `(save-var id)
+  (concat "[Ts]" id))
+
+
+(define `(count-var id)
+  (concat "[Tc]" id ))
+
+
+;; Call the original definition
 ;;
-(define (trace-repeater fname reps recur)
-  (subst "NAME" fname
-         (subst "N-1" (rest (list-of (or reps 11)))
-                (if recur
-                    ;; more complicated when recursion must be supported
-                    "$(if $(^X),$(call if,,,$(value NAME)),$(if $(foreach ^X,N-1,$(if $(NAME),)),)$(foreach ^X,0,$(NAME)))"
-
-                    ;; simpler when we assume it will not recurse
-                    "$(NAME)$(if $(foreach ^xx,N-1,$(NAME)),)"))))
+(define (trace-defer id)
+  (concat "$(call " (save-var id) ",$1,$2,$3,$4,$5,$6,$7,$8,$9)"))
 
 
-(define (trace-info str ?a ?b ?c ?d)
-  (print "TRACE: " str a b c d))
-
-;; Return functions identified by `pat`.  `pat` matches non-ignored
-;; variables if it contains '%' ... otherwise an exact match is required.
+;; ENAME = function name *encoded* for RHS of asssignment
 ;;
-;;
-(define (trace-match-funcs pat)
-  (foreach v (if (findstring "%" pat)
-                 (filter pat variables)
-                 pat)
-           (if (filter "recur%" (flavor v))
-               v)))
-
-
-;; Apply one type of instrumentation to one function.  Return new function
-;; body.
-;;
-(define (trace-instrument action name defn)
+(define (trace-body action ename id defn)
   (cond
-   ;; display matching names
-   ((filter "v" action)
-    (trace-info name " [" (flavor name) "] = " (value name))
-    defn)
-
    ;; count invocations
-   ((filter "c" action) (concat "$(^K)" defn))
-
-   ;; multiply invocations
-   ((filter "x% X%" action)
-    (set-rglobal (concat name "~0~") defn)
-    (trace-repeater (concat name "~0~")
-                    (patsubst "x%" "%" (subst "X" "x" action))
-                    (filter "X%" action)))
+   ((filter "c" action)
+    (define `cv (count-var id))
+    (set-global cv zero)
+    (concat "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1))"
+            defn))
 
    ;; prefix
-   ((filter "p" action)
-    (concat
-     (or SCAM_PRE
-         (trace-info "SCAM_PRE undefined; needed for " name ":p"))
-     defn))
+   ((filter "p%" action)
+    (concat (promote (patsubst "p%" "%" action)) defn))
 
    ;; trace invocations and arguments
-   ((filter "t" action)
-    (subst "CODE" defn
-           "$(info --> ($0$(^ta)))$(call ^tp,<-- $0:,CODE)"))
+   ((filter "t%" action)
+    (if (filter "^ta ^f ^tc ^tp ^n ^Y" ename)
+        (trace-info "skipping [t] " ename)
+        (concat "$(info $(^TI)--> (" ename "$(^ta)))"
+                "$(call ^tp,$(^TI)<-- " ename ":,"
+                "$(eval ^TI:=$$(^TI) )"                ;; increase indentation
+                (trace-defer id)
+                "$(eval ^TI:=$$(subst x ,,x$$(^TI)))"  ;; decrease indentation
+                ")")))
 
-   (else (begin
-           (trace-info "Unknown action: '" action "'")
-           defn))))
+   ;; multiply invocations
+   ((filter "x%" action)
+    (define `reps (or (patsubst "x%" "%" action) 11))
+    (define `ws (rest (trace-words reps "1")))
+    (subst "DO" (trace-defer id)
+           (concat "$(foreach ^X,1,DO)"
+                   "$(if $(^X),,$(if $(foreach ^X," ws ",$(if DO,)),))")))
+
+   (else
+    (error (concat "TRACE: Unknown action: '" action "'")))))
 
 
-(define *traces-active* "")
-
-;; Instrument all functions that are not already instrumented.
+;; Get function names that match a name or pattern.  We avoid certain
+;; subsets unless the specified pattern explicitly requests those names.
 ;;
-(define (trace-check)
-  (define `(check name action)
-    (define `id (concat name ":" (patsubst "x%" "x" (subst "X" "x" action))))
-    (if (not (filter id *traces-active*))
-        (begin
-          (set-rglobal name (trace-instrument action name (value name)))
-          id)))
+(define (trace-match pat variables)
+  (define `avoid-pats
+    (foreach p "^% ~%"
+             (if (filter-out p pat)
+                 p)))
+  (filter-out avoid-pats (filter pat variables)))
 
-  (define `new-ids
-    (foreach w *traces*
-             (foreach name (trace-match-funcs (firstword (subst ":" " % " w)))
-                      (foreach action (or (rest (subst ":" " " (concat "." w))) "t")
-                               (check name action)))))
 
-  (set *traces-active* (strip (concat *traces-active* " " new-ids))))
+;; List of NAME:ID pairs.
+;;
+(define *trace-ids* nil)
+
+
+;; Get the ID for NAME.  If no ID has been assigned and create is non-nil,
+;; assign one; otherwise return nil.
+;;
+(define (trace-id name ?create)
+  (define `(filtersub pat-match pat-repl list)
+    (patsubst pat-match pat-repl (filter pat-match list)))
+
+  (or (filtersub (concat name ":%") "%" *trace-ids*)
+      (if create
+          (set *trace-ids*
+               (concat *trace-ids* " " (concat name ":" (words *trace-ids*)))
+               (words *trace-ids*)))))
+
+
+;; Get list of names with assigned IDs.
+;;
+(define `known-names
+  (filter-out ":%" (subst ":" " :" *trace-ids*)))
+
+
+;; Provide a default and log if requested.  Return the action to be performed.
+;;
+(define (trace-action action name)
+  (if (filter "v%" action)
+      (foreach a (trace-action (patsubst "v%" "%" action) name)
+               (trace-info "[" a "] " name)
+               a)
+      ;; default to "t" if not given
+      (or action "t")))
+
+
+;; Instrument functions as described in SPECS.  Return list of instrumented
+;; function names.
+;;
+(define (trace-ext specs ignore-vars)
+
+  ;; Break SPEC into name and action...
+  (define `(spec-name spec)
+    (filter-out ":%" (subst ":" " :" spec)))
+  (define `(spec-action spec)
+    (subst " " "" (wordlist 2 999 (subst ":" ": " spec))))
+
+  ;; Filter out non-function variables
+  (define `(only-funcs vars)
+    (foreach v vars
+             (if (filter "filerec%" (concat (origin v) (flavor v)))
+                 v)))
+
+  ;; Avoid modifying any function while it is currently being expanded,
+  ;; which could trigger a GNU Make user-after-free bug.  Also avoid
+  ;; save-var copies, and ^Y since it requires $(10).  Also avoid most of
+  ;; the functions along the way out of `trace` and into `untrace`.
+  ;; Omit MAKEFLAGS and SHELL because they show up as file recursive.
+  (define `all-vars
+    (declare .VARIABLES &global)
+    (filter-out (concat ignore-vars " [% ~trace ~untrace ~trace-ext "
+                        "~untrace-ext ^start ^require ^Y "
+                        ;; on stack during REPL...
+                        "~main ~repl ~eval-and-print ~while ~while-0 ~while-N")
+                .VARIABLES))
+
+  ;; Apply instrumentation to a function
+  ;;
+  (define `(instrument action name id)
+    ;; SCAM variables can contain `#` and `=`. `=` is ok on the RHS.
+    (define `ename
+      (subst "#" "$\"" name))
+
+    (define `body
+      (trace-body (trace-action action name) ename id (value name)))
+
+    ;; don't overwrite original if it has already been saved
+    (if (filter "u%" (origin (save-var id)))
+        (set-rglobal (save-var id) (value name)))
+    (set-rglobal name body))
+
+
+  ;; Choose automatic vars extremely unlikely to shadow `(value NAME)`
+  (define `instrumented-names
+    (foreach
+        _-spec specs
+        (foreach
+            _-name (only-funcs (trace-match (spec-name _-spec) all-vars))
+            (foreach id (trace-id _-name 1)
+                     (instrument (spec-action _-spec) _-name id)
+                     _-name))))
+
+  (filter "%" instrumented-names))
 
 
 (define (trace-rev lst)
   (if lst
-      (concat (trace-rev (rest lst)) " " (firstword lst))))
+      (concat (trace-rev (wordlist 2 99999 lst)) " " (word 1 lst))))
 
 
-(define (trace-dump)
-  ;; warn of non-matched patterns
-  (define `(extract-names specs)
-    (foreach s specs (word 1 (subst ":" " " s))))
-
-  (foreach s (extract-names *traces*)
-           (if (not (filter s (extract-names *traces-active*)))
-               (trace-info "spec '" s "' did not match any functions.")))
-
-  (if (filter "%c" *traces-active*)
-      (begin
-        (trace-info "function invocations")
-        (foreach r
-                 (trace-rev (sort
-                             (foreach V (filter "^K_%" .VARIABLES)
-                                      (concat (trace-digits (value V))
-                                              (patsubst "^K_%" "::%" V)))))
-                 (let& ((lst (subst "::" " " r))
-                        (count (subst "." " " (word 1 lst)))
-                        (name (word 2 lst)))
-                   (trace-info count " : " name))))))
-
-
-;; Add a trace spec to the active set or traces.
+;; Print function counts and reset them.
 ;;
-(define (trace spec)
-  &public
-  (set *traces* (concat *traces* " " spec))
-  (trace-check))
+(define (trace-dump names)
+  (define `lines
+    (foreach name names
+             (foreach k (value (count-var (trace-id name)))
+                      (if (findstring 1 k)
+                          (begin
+                            (set-global (count-var (trace-id name)) zero)
+                            [(concat (subst ":" " " (trace-digits k)) " " name)])))))
+
+  (for line (sort lines)
+           (trace-info line)))
 
 
-;; Ignore all variables defined in this module and earlier.
-(set *trace-ignore-vars* variables)
+;; Remove instrumentation from functions listed in NAMES, or functions
+;; matched by patterns in NAMES.
+;;
+(define (untrace-ext names)
+  (define `matched-names
+    (foreach name names
+             (trace-match name known-names)))
 
-;; Establish environment-specified traces.
-(trace SCAM_TRACE)
-(add-hook "load" (global-name trace-check))
-(add-hook "exit" (global-name trace-dump))
+  (define `untraced-names
+    (foreach name matched-names
+             (foreach id (trace-id name)
+                      ;; restore original definition
+                      (set-rglobal name (value (save-var id)))
+                      name)))
+
+  (trace-dump untraced-names))
+
+
+(at-exit (lambda () (trace-dump known-names)))

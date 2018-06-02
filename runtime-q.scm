@@ -130,11 +130,19 @@
 
 (expect "3 4" (rrest "1 2 3 4"))
 
-;; hooks
+;; trace bootstrap
 
-(define (test) "X")
-(add-hook "foo" (global-name test))
-(expect "X" (run-hooks "foo"))
+(set *required* (concat *required* " " "'trace"))
+(define (trace-ext spec)
+  (concat "traced: " spec))
 
+(expect "traced: x" (trace "x"))
+
+;; atexits
+
+(define at-exit-worked nil)
+(at-exit (lambda () (set at-exit-worked 1)))
+(run-at-exits)
+(expect 1 at-exit-worked)
 
 (info "runtime ok")
