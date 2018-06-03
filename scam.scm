@@ -43,7 +43,7 @@ Options:
   1)
 
 
-(define `version "1.3.2")
+(define `version "1.3.3")
 
 
 (define (set-obj-dir out-dir out-file)

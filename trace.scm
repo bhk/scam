@@ -5,9 +5,9 @@
 ;; See reference.md for documentation.  Behavior not documented
 ;; there includes:
 ;;
-;; - `pPREFIX` action prepends a user-supplied string to the function body.
+;; - `pPREFIX` mode prepends a user-supplied string to the function body.
 ;;
-;; - `v...` prefix for actions details which functions were instrumented.
+;; - An entry with `:v` suffix enables verbose mode.
 ;;
 ;; - Function wildcards will not match names beginning with '~' and '^'
 ;;   UNLESS the pattern explicitly includes those characters.
@@ -15,8 +15,13 @@
 ;; - If a function is instrumented a second time, the previous
 ;;   instrumentation will be replaced.
 
+
 (define (trace-info a ?b ?c ?d)
   (info (concat "TRACE: " a b c d)))
+
+
+(define `(filtersub pat-match pat-repl list)
+  (patsubst pat-match pat-repl (filter pat-match list)))
 
 
 ;; Initialize count variables to this representation of 0.
@@ -35,7 +40,7 @@
       (let& ((digits (foreach d (concat "/" (subst "/" " /" k))
                               (words (subst "1" " 1" "/" "" d)))))
         ;; Convert leading 0's to :'s, but leave 0 if in 1's place.
-        (subst " " "" ":0000" ":::::" ":00" ":::" ":0" "::" ":!:" "0" "!:" ""
+        (subst " " "" ":0000" ":::::" ":00" ":::" ":0" "::" ":!" "0!" "!:" ""
                (concat "!:" digits "!:")))))
 
 
@@ -55,48 +60,50 @@
   (concat "[K-" id "]"))
 
 
-;; Call the original definition
-;;
-(define (trace-defer id)
-  (concat "$(call " (save-var id) ",$1,$2,$3,$4,$5,$6,$7,$8,$9)"))
-
-
 ;; ENAME = function name *encoded* for RHS of asssignment
 ;;
-(define (trace-body action ename id defn)
-  (cond
-   ;; count invocations
-   ((filter "c" action)
-    (define `cv (count-var id))
-    (set-global cv (or (value cv) zero))
-    (concat "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1))"
-            defn))
+(define (trace-body mode ename id defn)
+  (define `template
+    (cond
+     ;; count invocations
+     ((filter "c" mode)
+      (define `cv (count-var id))
+      (set-global cv (or (value cv) zero))
+      (concat "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1)):D"))
 
-   ;; prefix
-   ((filter "p%" action)
-    (concat (promote (patsubst "p%" "%" action)) defn))
+     ;; prefix
+     ((filter "p%" mode)
+      ;; prevent unintential processing of template code
+      (concat (subst ":" ":$ " (promote (patsubst "p%" "%" mode))) ":D"))
 
-   ;; trace invocations and arguments
-   ((filter "t%" action)
-    (if (filter "^ta ^f ^tc ^tp ^n ^Y" ename)
-        (trace-info "skipping [t] " ename)
-        (concat "$(info $(^TI)--> (" ename "$(^ta)))"
-                "$(call ^tp,$(^TI)<-- " ename ":,"
-                "$(eval ^TI:=$$(^TI) )"                ;; increase indentation
-                (trace-defer id)
-                "$(eval ^TI:=$$(subst x ,,x$$(^TI)))"  ;; decrease indentation
-                ")")))
+     ;; trace invocations and arguments
+     ((filter "t f" mode)
+      (if (or (filter "f" mode)
+              ;; avoid infinite recursion
+              (filter "^ta ^f ^tc ^tp ^n" ename))
+          ;; fast, function name only
+          "$(:I--> :N):E$(:I<-- :N)"
+          ;; function, args, and return value
+          "$(:I--> (:N$(^ta)))$(call ^tp,$(^TI)<-- :N:,:E)"))
 
-   ;; multiply invocations
-   ((filter "x%" action)
-    (define `reps (or (patsubst "x%" "%" action) 11))
-    (define `ws (rest (trace-words reps "1")))
-    (subst "DO" (trace-defer id)
-           (concat "$(foreach ^X,1,DO)"
-                   "$(if $(^X),,$(if $(foreach ^X," ws ",$(if DO,)),))")))
+     ;; multiply invocations
+     ((filter "x%" mode)
+      (define `reps (or (patsubst "x%" "%" mode) 11))
+      (define `ws (rest (trace-words reps "1")))
+      (concat "$(foreach ^X,1,:C)"
+              "$(if $(^X),,$(if $(foreach ^X," ws ",$(if :C,)),))"))
 
-   (else
-    (error (concat "TRACE: Unknown action: '" action "'")))))
+     (else
+      (error (concat "TRACE: Unknown mode: '" mode "'")))))
+
+  ;; Expand an instrumentation template.
+  (subst
+   ":I" "info $(^TI)"
+   ":E" "$(eval ^TI:=$$(^TI) ):C$(eval ^TI:=$$(subst x ,,x$$(^TI)))"
+   ":C" (concat "$(call " (save-var id) ",$1,$2,$3,$4,$5,$6,$7,$8,$9)")
+   ":N" ename
+   ":D" defn ;; do this last, because we don't know what it contains
+   template))
 
 
 ;; Get function names that match a name or pattern.  We avoid certain
@@ -119,9 +126,6 @@
 ;; assign one; otherwise return nil.
 ;;
 (define (trace-id name ?create)
-  (define `(filtersub pat-match pat-repl list)
-    (patsubst pat-match pat-repl (filter pat-match list)))
-
   (or (filtersub (concat name ":%") "%" *trace-ids*)
       (if create
           (set *trace-ids*
@@ -135,58 +139,45 @@
   (filter-out ":%" (subst ":" " :" *trace-ids*)))
 
 
-;; Provide a default and log if requested.  Return the action to be performed.
-;;
-(define (trace-action action name)
-  (if (filter "v%" action)
-      (foreach a (trace-action (patsubst "v%" "%" action) name)
-               (trace-info "[" a "] " name)
-               a)
-      ;; default to "t" if not given
-      (or action "t")))
-
-
 ;; Instrument functions as described in SPECS.  Return list of instrumented
 ;; function names.
 ;;
 (define (trace-ext specs ignore-vars)
 
-  ;; Break SPEC into name and action...
+  ;; Break SPEC into name and mode...
   (define `(spec-name spec)
     (filter-out ":%" (subst ":" " :" spec)))
-  (define `(spec-action spec)
+  (define `(spec-mode spec)
     (subst " " "" (wordlist 2 999 (subst ":" ": " spec))))
 
-  ;; Filter out non-function variables
-  (define `(only-funcs vars)
-    (foreach v vars
-             (if (filter "filerec%" (concat (origin v) (flavor v)))
-                 v)))
-
   ;; Avoid modifying any function while it is currently being expanded,
-  ;; which could trigger a GNU Make user-after-free bug.  In general we
-  ;; do not know what's being expanded, and users have to take care, but
-  ;; we can exclude what we know is on stack during REPL and in programs.
-  ;;
-  ;; The runtime contributes ignore-vars, which covers some file-recursive
-  ;; variables that are not functions.
+  ;; which could trigger a GNU Make user-after-free bug.  In general we do
+  ;; not know what's being expanded, and users have to take care, but we can
+  ;; exclude what we know is problematic.  The runtime contributes
+  ;; IGNORE-VARS, which covers some file-recursive variables that are not
+  ;; functions.
   ;;
   ;; Also avoid corruption save-var copies, and ^Y since it requires $(10).
   ;;
-  ;; Also avoid most of the functions along the way out of `trace` and into
-  ;; `untrace`.
-  ;;
   (define `dangerous-vars
-    "[% ~trace ~untrace ~trace-ext ~untrace-ext ^start ^Y "
-    "~repl ~eval-and-print ~while ~while-0 ~while-N")
+    "[% ~trace ~untrace ~trace-ext ~untrace-ext ^Y ")
 
-  (define `all-vars
+  ;; Find names matching pattern PAT, remove those that match "PAT:-" specs,
+  ;; and remove non-function names.
+  (define `(match-funcs pat)
     (declare .VARIABLES &global)
-    (filter-out (concat ignore-vars " " dangerous-vars) .VARIABLES))
+    (define `eligible-vars
+      (filter-out (concat ignore-vars " " dangerous-vars " "
+                          (filtersub "%:-" "%" specs))
+                  .VARIABLES))
+
+    (foreach v (trace-match pat eligible-vars)
+             (if (filter "filerec%" (concat (origin v) (flavor v)))
+                 v)))
 
   ;; Apply instrumentation to a function
   ;;
-  (define `(instrument action name id)
+  (define `(instrument mode name id)
     ;; SCAM variables can contain `#` and `=`. `=` is ok on the RHS.
     (define `ename
       (subst "#" "$\"" name))
@@ -196,18 +187,19 @@
         (set-rglobal (save-var id) (value name)))
 
     (define `body
-      (trace-body (trace-action action name) ename id (value (save-var id))))
+      (trace-body (or mode "t") ename id (value (save-var id))))
+    (if (filter "%:v" specs)
+        (trace-info "[" mode "] " name))
     (set-rglobal name body))
-
 
   ;; Choose automatic vars extremely unlikely to shadow `(value NAME)`
   (define `instrumented-names
     (foreach
-        _-spec specs
+        _-spec (filter-out "%:v %:-" specs)
         (foreach
-            _-name (only-funcs (trace-match (spec-name _-spec) all-vars))
+            _-name (match-funcs (spec-name _-spec))
             (foreach id (trace-id _-name 1)
-                     (instrument (spec-action _-spec) _-name id)
+                     (instrument (spec-mode _-spec) _-name id)
                      _-name))))
 
   (filter "%" instrumented-names))
@@ -238,8 +230,7 @@
 ;;
 (define (untrace-ext names)
   (define `matched-names
-    (foreach name names
-             (trace-match name known-names)))
+    (filter names known-names))
 
   (define `untraced-names
     (foreach name matched-names

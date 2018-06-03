@@ -241,7 +241,7 @@ SCAM's core library provides `not` and `xor` logical operators.
 
     > (xor "a" "b")
     > (xor "a" nil)
-    a
+    "a"
     > (not "x")
     > (not nil)
     1
@@ -356,37 +356,54 @@ In dictionaries, `!=` delimits word-encoded keys from values.
 
 ### Dictionaries
 
-Dictionaries are associative arrays, similar to "a-lists" in Lisp,
-"dictionaries" in Python, "hashes" in Perl, "tables" in Lua, and so on.
-Each dictionary is a list of key-value pairs.
+A dictionary is an ordered list of pairs.  These can be used to represent
+unordered associations of keys and values, filling the role of
+"dictionaries" in Python, "hashes" in Perl, or "tables" in Lua, and so on.
 
-A number of functions are provided for working with dictionaries:
+The `core` library provides the following functions operate on pairs:
 
  - `(dict-get KEY DICT)` retrieves the VALUE element of the first pair
    matching KEY.
 
+ - `(dict-set KEY VALUE DICT)` returns a new dictionary in which KEY is
+   associated with VALUE, and no other pairs have a key equal to KEY.
+
  - `(dict-find KEY DICT)` returns the first pair matching KEY.
 
- - `(dict-key PAIR)` extract the "key" element from PAIR.
+ - `(dict-key PAIR)` extracts the "key" element from PAIR.
 
- - `(dict-value PAIR)` extract the "value" element from PAIR.
+ - `(dict-value PAIR)` extracts the "value" element from PAIR.
 
- - `(dict-compact DICT)` removes pairs from DICT that are preceded by
-   another pair sharing the same KEY.
+ - `(dict-compact DICT)` returns a new dictionary in which each key occurs
+   only once, bound to the first value associated with it in DICT.
+
+ - `(dict-collate DICT)` creates a new dictionary in which each key from
+   DICT appears only once, bound to a vector of *all* its values in DICT.
 
  - `(dict-keys DICT)` returns a vector of all keys in DICT.
 
+
 An empty dictionary, `{}`, is equivalent to `nil`.
 
-A dictionary with one item is equivalent to a single pair.  Pairs can be
-combined using `append`.
+Since dictionaries are word lists, the word-based functions -- `firstword`,
+`word`, `wordlist`, `rest`, ... -- can be used to obtain pairs or sequences
+of pairs.  Pairs or dictionaries can be combined using `append`.  Use
+`foreach`, not `for`, to iterate over a dictionary or construct a
+dictionary.
 
+    > (word 2 {a: "A", b: "B", c: "C"})
+    {b: "B"}
     > (append { a: nil }
     +         { b: (range 1 3) } )
     {a: "", b: [1 2 3]}
     > (dict-get "b" *1)
     [1 2 3]
-
+    > (foreach pair { a: 17, b: 76 } (dict-value pair))
+    [17 76]
+    > (foreach n (range 4 6) {=n: (^ n 2)})
+    {4: 16, 5: 25, 6: 36}
+    > (dict-collate {a:" ", b:1, b:2})
+    {a: [" "], b: [1 2]}
 
 ### Records
 
@@ -1526,18 +1543,29 @@ Tracing can be activated at run-time in two different ways:
     or `tracing`.
 
 The text string used to specify tracing is, in its simplest form, a list of
-function names.  Further, These may be suffixed with a `:` and then an
-"action" to select alternative instrumentation.  Possible actions include:
+function names.  Further, these may be suffixed with a `:` and then an
+"mode" to select alternative instrumentation.  Possible modes include:
 
  - `t` : Print the function name and arguments when it is called and its
-         return value on exit.  This is the default action.
+         name and return value on exit.  This is the default mode.
 
- - `c` : Count the number of times that the function is invoked.  When the
-         program exits, this information will be written to stdout.
+ - `f` : Print just the function name on entry and exit.
+
+ - `c` : Count the number of times that the function is invoked.  Function
+         counts will be written to stdout when tracing is removed.  This can
+         occur when `(tracing ...)` completes, or when `(untrace ...)` is
+         called, or after `main` returns otherwise.
 
  - `x<N>` : Evaluate the function body N times each time the function is
          invoked.  <N> must be a positive number or the empty string (which
          is treated as 11).
+
+ - `-` : Exclude the function(s) from instrumentation.  Any functions
+         matched by this entry will be skipped even when they match other
+         entries in the specification string.  This does not depend on the
+         ordering of entries.  For example, `(trace "a% %z:-")` will
+         instrument all functions whose names begin with `a` except for
+         those whose names end in `z`.
 
 In place of a function name a pattern may be provided to match multiple
 functions.  In a pattern, the `%` character is a wildcard that will match
@@ -1617,7 +1645,7 @@ following approach:
    or it can invoke your program directly, assuming you have compiled it
    using `scam -o ...`.
 
- * Use an `x11` trace action to multiply the time spent in an individual
+ * Use an `x11` trace mode to multiply the time spent in an individual
    function, and run the same use case:
 
        $ SCAM_TRACE='function-name:x11' time ...command...

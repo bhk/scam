@@ -142,6 +142,9 @@
 
 (define (repl)
   &public
+  ;; These functions will be "on the stack" in the REPL and should not be
+  ;; instrumented from the REPL.
+  (do-not-trace "~repl ~eval-and-print ~while ~while-0 ~while-N")
   (while identity read-eval-print initial-state)
   (print))
 

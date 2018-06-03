@@ -56,11 +56,10 @@ bok: $B.ok
 cok: $C.ok
 
 
-# Skip building A; build B with bin/scam.  This will work as long as the
-# `boot` conventions have not changed since bin/scam was built.
+# Skip A and build B-s with bin/scam.  This works unless there has been a
+# change to runtime exports, module bundling, or numerous other things. :-)
 shortcut:
-	bin/scam -o $B/scam scam.scm --boot
-	if [ -f $A/scam ] ; then touch $A/scam ; fi
+	bin/scam -o $B/scam-s scam.scm --boot
 
 
 # Replace the "golden" compiler with a newer one.

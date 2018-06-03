@@ -106,7 +106,7 @@ endef
 (define (^f a)
   &global
   (concat "\""
-          (subst "\\" "\\\\" "\"" "\\\"" a)
+          (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" a)
           "\""))
 
 ;; Display a value to stdout and return it.  [also used by trace.scm]
@@ -304,6 +304,7 @@ endef
 
 ;; Add vars to the list of variables not to trace.
 (define (do-not-trace vars)
+  &public
   (set *do-not-trace* (concat *do-not-trace* " " vars)))
 
 ;; externalized depenencies
@@ -394,3 +395,6 @@ endef
               "@exit " exit-arg (lambda () (run-at-exits)))))
 
   (eval rules))
+
+;; these will be on the stack
+(do-not-trace (concat (global-name ^start) " " (global-name start-trace)))
