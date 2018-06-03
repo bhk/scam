@@ -12,7 +12,7 @@
 
 ;; Override this on the command line to automatically include a different
 ;; set of libraries.  repl supplies *1 and *2.
-(define LIBS "compile core getopts io num string trace utf8")
+(define LIBS "compile core getopts io num string utf8")
 
 (define *1 &global nil)  ; most recent evaluation result
 (define *2 &global nil)  ; previous result

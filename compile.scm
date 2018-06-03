@@ -90,6 +90,8 @@
 ;; EXCLUDES = string of characters that disable implicit dependencies:
 ;;            "" = default; "R" avoids runtime; "C" avoids scam-ct, "RC" both.
 ;;
+;; On error, the result wil contain {=ErrorMarkerKey:...} pair.
+;;
 (define (compile-prelude excludes)
   &public
   (append (if (not (findstring "R" excludes))

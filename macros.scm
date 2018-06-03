@@ -491,9 +491,13 @@
          (let ((imports (use-module mod-name))
                (mod-name mod-name)
                (env env))
-           (if imports
-               (block-result inblock (append imports env) NoOp)
-               (gen-error "use: Cannot find module %q" mod-name))))
+           (case (dict-get ErrorMarkerKey imports)
+             ;; error loading module
+             ((EMarker desc)
+              (gen-error "use: module %q %s" mod-name desc))
+             ;; success
+             (else
+              (block-result inblock (append imports env) NoOp)))))
         (else (err-expected "Q" module sym "MODULE" "(use MODULE)")))))
 
 

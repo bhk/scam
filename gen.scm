@@ -134,10 +134,12 @@
 ;; EMarker values embed contextual data other than variable bindings.  They
 ;; use keys that begin with ":" to distinguish them from variable names.
 
+
 ;; The current function nesting level: ".", "..", "...", and so on.
-(define `LambdaMarkerKey
-  &public
-  ":")
+(define `LambdaMarkerKey &public ":")
+
+;; Indication of error in loading environment.
+(define `ErrorMarkerKey &public ":E")
 
 
 ;; Exports and Imports
@@ -422,10 +424,6 @@
 ;; unmodified.
 ;;
 
-(define dummy-env
-  {"": (EIL "" "-" NoOp)})
-
-
 (define (gen-global-name local flags)
   &public
   (concat (and *is-boot*
@@ -586,8 +584,6 @@
       {=key: (EDefn.set-scope defn "i")}))
 
 
-(declare (get-module-env mod all))
-
 
 ;; Import bindings from another module. Return an environment.
 ;;
@@ -640,49 +636,46 @@
 
 
 ;; Return the environment exported from a module, given its ID.
-;; Return nil on error, non-nil ENV on success.
 ;;
 (define (env-import origin all)
   &public
-  (or (env-strip-imports (env-load origin) all)
-      dummy-env))
+  (env-strip-imports (env-load origin) all))
 
 
 (memoize (global-name env-import))
 
 
-;; Read the environment exported from a module.
+;; Get the environment exported from a module.  On error, this will contain
+;; {=ErrorMarkerKey:...}.
 ;;
-;; NAME : module name (string literal in source file)
-;; ALL : True => return all environment entries that were visible at
+;; NAME = module name (string literal in source file)
+;; ALL = True => return all environment entries that were visible at
 ;;               the end of MOD.
 ;;       False => return &public symbols defined/declared in MOD.
-;; Return: ENV on success  (non-nil)
-;;         nil on failure
 ;;
 (define (get-module-env name all)
   &public
   (let ((origin (locate-module *compile-file* name)))
     (if origin
-        (env-import origin all))))
+        (env-import origin all)
+        {=ErrorMarkerKey: (EMarker "not found")})))
 
 
-;; Perform a compile-time import of "mod", returning env entries to be added
-;; to the using module.
-;;
-;; Returns:  ENV  on success
-;;           nil  on failure (module not found)
+;; Perform a compile-time import of "mod", returning env entries exported to
+;; the using module.  On error, this will contain {=ErrorMarkerKey:...}.
 ;;
 (define (use-module name)
   &public
   (let ((origin (locate-module *compile-file* name)))
     (if origin
         (begin
+          ;; load the module now (into the compiler)
+          (assert (not *is-boot*))
           (call "^require" (module-id origin))
-          (or (strip-vec (foreach e (env-import origin nil)
-                                  (case (dict-value e)
-                                    ((EXMacro _ _) e))))
-              dummy-env)))))
+          (strip-vec (foreach e (env-import origin nil)
+                              (case (dict-value e)
+                                ((EXMacro _ _) e)))))
+        {=ErrorMarkerKey: (EMarker "not found")})))
 
 
 ;; Extend the runtime's ^require to handle file-based modules during
