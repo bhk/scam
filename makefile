@@ -56,6 +56,13 @@ bok: $B.ok
 cok: $C.ok
 
 
+# Skip building A; build B with bin/scam.  This will work as long as the
+# `boot` conventions have not changed since bin/scam was built.
+shortcut:
+	bin/scam -o $B/scam scam.scm --boot
+	if [ -f $A/scam ] ; then touch $A/scam ; fi
+
+
 # Replace the "golden" compiler with a newer one.
 promote: cok ; $(_@)cp $B/scam bin/scam
 

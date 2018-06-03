@@ -14,8 +14,8 @@
 ;; set of libraries.  repl supplies *1 and *2.
 (define LIBS "compile core getopts io num string trace utf8")
 
-(define *1 &public nil)  ; most recent evaluation result
-(define *2 &public nil)  ; previous result
+(define *1 &global nil)  ; most recent evaluation result
+(define *2 &global nil)  ; previous result
 
 (define (help)
   (print "Commands:\n"
@@ -135,8 +135,9 @@
 
 (define `initial-state
   (eval-and-print
-   (foreach lib LIBS (concat "(require \"'" lib "\")\n"))
-   (compile-prelude nil)))
+   (concat (foreach lib LIBS (concat "(require \"'" lib "\")"))
+           "(declare *1)(declare *2)")
+   (append (compile-prelude nil))))
 
 
 (define (repl)
