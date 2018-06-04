@@ -16,7 +16,7 @@
 (define (get-where pos)
   &public
   (define `lnum
-    (describe-where pos *compile-subject*))
+    (get-subject-line pos *compile-subject*))
   (concat *compile-file* ":" lnum))
 
 

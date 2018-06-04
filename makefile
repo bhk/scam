@@ -56,10 +56,10 @@ bok: $B.ok
 cok: $C.ok
 
 
-# Skip A and build B-s with bin/scam.  This works unless there has been a
-# change to runtime exports, module bundling, or numerous other things. :-)
+# Skip A and boot with bin/scam.  This works unless there has been a change
+# to runtime exports, module bundling, or numerous other things. :-)
 shortcut:
-	bin/scam -o $B/scam-s scam.scm --boot
+	bin/scam -o .out/shortcut/scam scam.scm --boot
 
 
 # Replace the "golden" compiler with a newer one.
@@ -127,7 +127,7 @@ $B-o.ok: $B/scam
 	$(_@) $B/scam -o .out/tb/using test/using.scm
 	$(_@) .out/tb/using
 	$(_@) $B/scam -o .out/tb/dash-o test/dash-o.scm
-	$(_@) $(call guard,BO1,grep 'require.test/subdir/dup' .out/tb/.scam/test/dash-o.min)
+	$(_@) $(call guard,BO1,grep 'require.test/subdir/dup' .out/tb/test/dash-o.min)
 	$(_@) .out/tb/dash-o 1 2 > .out/tb/dash-o.out
 	$(_@) $(call guard,BO2,grep 'result=11:2' .out/tb/dash-o.out)
 	$(_@) touch $@

@@ -102,9 +102,9 @@
   (current-file-line))
 
 ;; WARNING: very fragile tests...
-(expect "run.scm:106:18"
+(expect "run.scm:106"
         (notdir (current-file-line)))
-(expect "run.scm:108:18"
+(expect "run.scm:108"
         (notdir (fl0)))
 
 

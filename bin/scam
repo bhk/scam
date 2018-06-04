@@ -31,7 +31,7 @@ endef
 ~scan-source = $(call ^Y,$(shell sed -E 's/ //g;s/^\$[(require|use)"([^"]*)".*|.*/\1\2/g;/../!d' $(call ~quote-sh-arg,$1)),,,,,,,,,$`(foreach symbol,require% use%,$`(call ^d,$`(foreach f,$`(patsubst $`(call ^u,$`(symbol)),%,$`(filter $`(call ^u,$`(symbol)),$`1)),$`(call ^d,$`f)))))
 define ~scan-builtin
 $(call ^Y,$(wordlist 1,4,$(call ~split,
-,$(value $(call ~module-var,$1)))),,,,,,,,,$`(and $`(call ~assert-x,$`1,build.scm:153:6)1,$`(foreach key,Requires Uses,$`(call ^d,$`(call ~promote,$`(patsubst $`(call ^d,# $`(key): %),%,$`(filter $`(call ^d,# $`(key): %),$`1)))))))
+,$(value $(call ~module-var,$1)))),,,,,,,,,$`(and $`(call ~assert-x,$`1,build.scm:153)1,$`(foreach key,Requires Uses,$`(call ^d,$`(call ~promote,$`(patsubst $`(call ^d,# $`(key): %),%,$`(filter $`(call ^d,# $`(key): %),$`1)))))))
 endef
 ~scan-deps = $(if $(filter-out '%,$1),$(foreach v,$(call ~scan-source,$1),$(call ^d,$(foreach name,$(call ^u,$v),$(call ^d,$(or $(call ~locate-module,$1,$(call ^u,$(name))),$(info Could not find module: $(call ^u,$(name)))))))),$(call ~scan-builtin,$1))
 ~mmap-testmods = $(filter-out !.,$(foreach s,$2,$(call ^d,$(call ~nth,2,$(call ~assoc-initial,$(subst !,!1,$(call ^d,$(call ^u,$s))),$1)))))
@@ -103,7 +103,7 @@ define [mod-'core]
 # compiled from core.scm
 # Requires: 'runtime
 # Uses: 'scam-ct
-# Exports: intersperse_2 foldr_3 foldl_3 index-of_2 assoc&x;2;\.;\>;~%-initial`<]subst],1'|@],1'|@1],1>|^d|@[}1}0`[]2]0 assoc-vec&x;2;\.;\>;~assoc-initial`>]^d],1[|1|0`[]2]0 assoc-initial_2 sort-by_2 memoize_1 memoenc)1]or]2]or]3 mcache)6 1!S_1 split_2 uniq_1 see_2 fexpect&x;2;\.;\>;~expect-x`>]~format],1[|1|0`>]~format],1[|2|0`:IL9]core.scm:518:36 assert&x;1;\.;\>;~%-x`[]1]0`:IL9]core.scm:507:19 assert-x)2 expect&x;2;\.;\>;~%-x`[]1]0`[]2]0`:IL9]core.scm:497:18 expect-x_3 printf_1]or]more sprintf_1]or]more vsprintf_2 format_1 format-custom)2 format-add_1 *format-funcs*#0;~%;p format-record+data-foreach)4 format-dict+symbol?+format_1 dict-collate_1 dict-keys_1 dict-compact_1]or]2 dict-set_3 dict-get_2]or]3 dict-find_2 dict-value_1;\.;\>;~nth`']2`<]subst],1'|@=],1'|}],1[|1|0 dict-key_1;\.;\>;~promote`<]subst],1'|@8],1'|!p],1<|word|@'}1|@<}subst}@1'@0@11=}@1'@0@10}@1[@01@00 append_0]or]more filtersub&x;3;\.;\<;patsubst`[]1]0`[]2]0`<]filter],1[|1|0],1[|3|0 word-index?_1 numeric?_1 while_3 reverse_1 rev-zeroes)2 rev-by-10s)2 indices&x;1;\.;\>;~%-a`<]words],1[|1|0 indices-a+indices-b)3 vec-or_1;\.;\>;^u`<]word],1'|1],1<|filter-out|@'}@1.|@[}1}0 select-words_2 select-vec_2 butlast_1 strip-vec_1;\.;\<;filter`']!p`[]1]0 last_1;\.;\>;~promote`<]%word],1[|1|0 conj_2 cons_2 concat-vec_1]or]2 xor_2 identity_1;\.;\[;1;0 eq?_2 SCAM!TDEBUG#0;%;p
+# Exports: intersperse_2 foldr_3 foldl_3 index-of_2 assoc&x;2;\.;\>;~%-initial`<]subst],1'|@],1'|@1],1>|^d|@[}1}0`[]2]0 assoc-vec&x;2;\.;\>;~assoc-initial`>]^d],1[|1|0`[]2]0 assoc-initial_2 sort-by_2 memoize_1 memoenc)1]or]2]or]3 mcache)6 1!S_1 split_2 uniq_1 see_2 fexpect&x;2;\.;\>;~expect-x`>]~format],1[|1|0`>]~format],1[|2|0`:IL9]core.scm:518 assert&x;1;\.;\>;~%-x`[]1]0`:IL9]core.scm:507 assert-x)2 expect&x;2;\.;\>;~%-x`[]1]0`[]2]0`:IL9]core.scm:497 expect-x_3 printf_1]or]more sprintf_1]or]more vsprintf_2 format_1 format-custom)2 format-add_1 *format-funcs*#0;~%;p format-record+data-foreach)4 format-dict+symbol?+format_1 dict-collate_1 dict-keys_1 dict-compact_1]or]2 dict-set_3 dict-get_2]or]3 dict-find_2 dict-value_1;\.;\>;~nth`']2`<]subst],1'|@=],1'|}],1[|1|0 dict-key_1;\.;\>;~promote`<]subst],1'|@8],1'|!p],1<|word|@'}1|@<}subst}@1'@0@11=}@1'@0@10}@1[@01@00 append_0]or]more filtersub&x;3;\.;\<;patsubst`[]1]0`[]2]0`<]filter],1[|1|0],1[|3|0 word-index?_1 numeric?_1 while_3 reverse_1 rev-zeroes)2 rev-by-10s)2 indices&x;1;\.;\>;~%-a`<]words],1[|1|0 indices-a+indices-b)3 vec-or_1;\.;\>;^u`<]word],1'|1],1<|filter-out|@'}@1.|@[}1}0 select-words_2 select-vec_2 butlast_1 strip-vec_1;\.;\<;filter`']!p`[]1]0 last_1;\.;\>;~promote`<]%word],1[|1|0 conj_2 cons_2 concat-vec_1]or]2 xor_2 identity_1;\.;\[;1;0 eq?_2 SCAM!TDEBUG#0;%;p
 ~eq? = $(if $(findstring 1$1,$(findstring 1$2,1$1)),1)
 ~identity = $1
 ~xor = $(if $1,$(if $2,,$1),$2)
@@ -306,7 +306,7 @@ $(call ~env-strip-imports,$(subst !n,
 endef
 $(if $(call ~memoize,~env-import),)
 ~get-module-env = $(call ^Y,$(call ~locate-module,$(~*compile-file*),$1),,,,,,,,,$`(if $`1,$`(call ~env-import,$`1,$(call ^E,$2)),:E!=$`(call ^d,!:EDefn7 not found)))
-~use-module = $(call ^Y,$(call ~locate-module,$(~*compile-file*),$1),,,,,,,,,$`(if $`1,$`(and $`(call ~assert-x,$`(if $`(~*is-boot*),,1),gen.scm:673:12)1,$`(call ^require,$`(call ~module-id,$`1))1,$`(filter %,$`(foreach e,$`(call ~env-import,$`1,),$`(if $`(filter !:EDefn3,$`(firstword $`(call ~nth,2,$`(subst !=, ,$`e)))),$`e)))),:E!=$`(call ^d,!:EDefn7 not found)))
+~use-module = $(call ^Y,$(call ~locate-module,$(~*compile-file*),$1),,,,,,,,,$`(if $`1,$`(and $`(call ~assert-x,$`(if $`(~*is-boot*),,1),gen.scm:673)1,$`(call ^require,$`(call ~module-id,$`1))1,$`(filter %,$`(foreach e,$`(call ~env-import,$`1,),$`(if $`(filter !:EDefn3,$`(firstword $`(call ~nth,2,$`(subst !=, ,$`e)))),$`e)))),:E!=$`(call ^d,!:EDefn7 not found)))
 ~load-ext = $(if $(filter $1,$(~*file-mods*)),$(and $(eval include $(call ~modid-file,$1))1,1))
 ~builtins-1 := abspath basename dir error eval firstword flavor info lastword notdir origin realpath shell sort strip suffix value warning wildcard words
 ~builtins-2 := addprefix addsuffix filter filter-out findstring join word
@@ -329,7 +329,7 @@ $(call ^require,'escape)
 $(call ^require,'gen)
 $(call ^require,'num)
 ~*warn-upvals* := $(findstring U,$(value SCAM_DEBUG))
-~get-where = $(~*compile-file*):$(call ~describe-where,$1,$(~*compile-subject*))
+~get-where = $(~*compile-file*):$(call ~get-subject-line,$1,$(~*compile-subject*))
 ~env-strip = $(if $1,$2,$(if $(filter !:IL10,$(firstword $2)),$(wordlist 3,99999999,$2),$2))
 ~scan-flags-x = $(or $(if $(filter !:P2,$(firstword $(call ~nth,$2,$1))),$(if $(filter &private &public &inline &global,$(call ^n,3,$(call ~nth,$2,$1))),$(call ~scan-flags-x,$1,$(call ~1+,$2),$2))),$3)
 ~get-flags = $(filter %,$(foreach form,$(wordlist $(call ~1+,$2),$(call ~scan-flags-x,$1,$(call ~1+,$2),$2),$1),$(if $(filter !:P2,$(firstword $(call ^u,$(form)))),$(call ^n,3,$(call ^u,$(form))))))
@@ -622,7 +622,7 @@ define [mod-'parse]
 # compiled from parse.scm
 # Requires: 'core 'string 'runtime
 # Uses: 'scam-ct
-# Exports: parse-text_1 parse-subject_1 parse-forms&p;3;\.;\>;~%-r`[]1]0`[]3]0`>]~parse-exp],1[|1|0],1[|2|0`'],. parse-forms-r)4 describe-error_3 get-error-msg+describe-source)2 describe-where_2 get-line-and-offset)2 parse-exp)2 parse-x)3 parse-x2)3 parse-dict-4)4 parse-dict-3)5 parse-dict-2)5 parse-dict-1)4 parse-dict-error)3 parse-dict)2 parse-dict-4)4 parse-dict-3)5 parse-dict-2)5 parse-dict-1)4 parse-skip)2 parse-array)2 parse-list&p;2;\.;\>;~parse-seq`[]1]0`']!R`[]2]0`>]~parse-exp],1[|1|0],1>|~1!S|@[}2}0`'],. parse-seq)5 parse-seq-err)4 parse-string)3]or]4 parse-string-bs)5 hex-digits#0;~%;p PQError)3 hh-to-dec+hex-ticks+parse-string)3]or]4 parse-exp)2 POut-format+POut-form&p;1;\.;\<;wordlist`']2`']99999999`[]1]0 POut-pos&p;1;\.;\<;word`']1`[]1]0 POut&p;2;\.;\:IL6`[]1]0`']|`[]2]0 find-word)3 pdec-str+pdec_1 penc_1 expand-spaces+compress-spaces+compact-comments+format-form_1 form-set-indices_2 form-typename_1 form-index_1 PList-is-empty?_1 string-value_1 symbol-to-string_1 symbol-name_1 PList#4;W]L;x`:P0 PString#4;W]S;x`:P1 PSymbol#4;W]S;x`:P2 PDict#4;W]L;x`:P3 PQuote#4;W]L;x`:P4 PQQuote#4;W]L;x`:P5 PUnquote#4;W]L;x`:P6 PSplice#4;W]L;x`:P7 PError#4;W]S;x`:P8
+# Exports: parse-text_1 parse-subject_1 parse-forms&p;3;\.;\>;~%-r`[]1]0`[]3]0`>]~parse-exp],1[|1|0],1[|2|0`'],. parse-forms-r)4 describe-error_3 get-error-msg+get-subject-line-col_2 get-subject-line_2 parse-exp)2 parse-x)3 parse-x2)3 parse-dict-4)4 parse-dict-3)5 parse-dict-2)5 parse-dict-1)4 parse-dict-error)3 parse-dict)2 parse-dict-4)4 parse-dict-3)5 parse-dict-2)5 parse-dict-1)4 parse-skip)2 parse-array)2 parse-list&p;2;\.;\>;~parse-seq`[]1]0`']!R`[]2]0`>]~parse-exp],1[|1|0],1>|~1!S|@[}2}0`'],. parse-seq)5 parse-seq-err)4 parse-string)3]or]4 parse-string-bs)5 hex-digits#0;~%;p PQError)3 hh-to-dec+hex-ticks+parse-string)3]or]4 parse-exp)2 POut-format+POut-form&p;1;\.;\<;wordlist`']2`']99999999`[]1]0 POut-pos&p;1;\.;\<;word`']1`[]1]0 POut&p;2;\.;\:IL6`[]1]0`']|`[]2]0 find-word)3 pdec-str+pdec_1 penc_1 expand-spaces+compress-spaces+compact-comments+format-form_1 form-set-indices_2 form-typename_1 form-index_1 PList-is-empty?_1 string-value_1 symbol-to-string_1 symbol-name_1 PList#4;W]L;x`:P0 PString#4;W]S;x`:P1 PSymbol#4;W]S;x`:P2 PDict#4;W]L;x`:P3 PQuote#4;W]L;x`:P4 PQQuote#4;W]L;x`:P5 PUnquote#4;W]L;x`:P6 PSplice#4;W]L;x`:P7 PError#4;W]S;x`:P8
 $(call ^require,'core)
 $(call ^require,'string)
 $(if $(call ^add-tags,!1:P0!=PList!0W!0L !1:P1!=PString!0W!0S !1:P2!=PSymbol!0W!0S !1:P3!=PDict!0W!0L !1:P4!=PQuote!0W!0L !1:P5!=PQQuote!0W!0L !1:P6!=PUnquote!0W!0L !1:P7!=PSplice!0W!0L !1:P8!=PError!0W!0S),)
@@ -690,22 +690,25 @@ $(or $(foreach w,$(word $2,$1),$(if $(filter !0% !+%
 %,$w),$(call ~parse-exp,$1,$(call ~1+,$2)),$(if $(filter $] ] },$w),$2 !:P8 $2 $(call ^d,$w),$(if $(filter $[,$w),$(call ~parse-seq,$1,$],$2,$(call ~parse-exp,$1,$(call ~1+,$2)),),$(if $(filter ",$w),$(call ~parse-string,$1,$2,$(call ~1+,$2)),$(if $(filter ;%,$w),$(call ~parse-exp,$1,$(call ~1+,$(call ~find-word,$1,$2,
 %))),$(if $(filter [,$w),$(call ~parse-array,$1,$2),$(if $(filter {,$w),$(call ~parse-dict,$1,$2),$(if $(filter $(if ,,' ` , ,@),$w),$(call ~parse-x,$w,$1,$2),$(if $(call ~numeric?,$w),$2 !:P1 $2 $(call ^d,$w),$(if $(filter $` : !p,$w),$2 !:P8 $2 $(call ^d,$(call ~pdec,$w)),$2 !:P2 $2 $(call ^d,$(call ~promote,$w))))))))))))),$2 !:P8 $2 .)
 endef
-define ~get-line-and-offset
-$(call ^Y,$(call ~split,
-,$(call ~pdec,$(wordlist 2,$(or $1,1),W $2))),,,,,,,,,$`(call ~append,$`(words $`1),$`(call ~string-len,$`(call ~promote,$`(lastword $`1)))))
+define ~get-subject-line
+$(words $(filter 
+%,$(wordlist 1,$(or $1,1),
+ $2)))
 endef
-~describe-where = $(call ^Y,$(call ~get-line-and-offset,$1,$2),,,,,,,,,$`(word 1,$`1):$`(call ~1+,$`(word 2,$`1)))
-define ~describe-source
-$(call ^Y,$(call ~get-line-and-offset,$1,$2),$(call ~split,
-,$(call ~pdec,$2)),,,,,,,,$`(call ~nth,$`(word 1,$`1),$`2)
-$`(call ~string-repeat, ,$`(word 2,$`1))^)
+define ~get-subject-line-col
+$(call ^Y,$(subst 
+, 
+,$(subst $  ,,$(wordlist 1,$(or $1,1),
+ $2))),,,,,,,,,$`(words $`1):$`(call ~string-len,$`(call ~pdec,$`(lastword $`1))))
 endef
-~get-error-msg = $(if $(filter ` ',$(word 1,$1)),prefix "$(word 1,$1)" must immediately precede expression,$(if $(filter ( ) [ ] { },$(word 1,$1)),unmatched "$(word 1,$1)",$(if $(filter ",$(word 1,$1)),unterminated string,$(if $(filter :,$(word 1,$1)),saw ":" where not expected,$(if $(filter :?,$(word 1,$1)),expected ": VALUE" following dictionary key,$(if $(filter v?,$(word 1,$1)),expected value following dictionary "KEY:",$(if $(filter !B,$(word 1,$1)),invalid backslash sequence in string,$(if $(filter $`,$(word 1,$1)),invalid symbol character,$1))))))))
+~get-error-msg = $(if $(filter ` ',$(word 1,$1)),prefix "$(word 1,$1)" must immediately precede expression,$(if $(filter ( ) [ ] { },$(word 1,$1)),unmatched "$(word 1,$1)",$(if $(filter ",$(word 1,$1)),unterminated string,$(if $(filter $(if ,,: ,),$(word 1,$1)),saw ":" where not expected,$(if $(filter :?,$(word 1,$1)),expected ": VALUE" following dictionary key,$(if $(filter v?,$(word 1,$1)),expected value following dictionary "KEY:",$(if $(filter !B,$(word 1,$1)),invalid backslash sequence in string,$(if $(filter $(word 1,$1),$`),invalid symbol character "$(word 1,$1)",$1))))))))
 define ~describe-error
-$(if $(filter !:P8,$(firstword $1)),$(call ^Y,$(call ~penc,$2),$(if $3,$3:,at ),$(call ~get-error-msg,$(call ^n,3,$1)),$(word 2,$1),,,,,,$`(if $`(call ~word-index?,$`4),$`(call ~sprintf,%s%s: %s
+$(if $(filter !:P8,$(firstword $1)),$(call ^Y,$(call ~get-subject-line-col,$(word 2,$1),$(call ~penc,$2)),$2,$3,$(call ~get-error-msg,$(call ^n,3,$1)),,,,,,$`(if $`(call ~word-index?,$`(word 2,$(call ^E,$1))),$`(call ~sprintf,%s:%s: %s
 %s
-,$`2,$`(call ~describe-where,$`4,$`1),$`3,$`(call ~describe-source,$`4,$`1)),$`(call ~sprintf,%s:?: %s
-,$`2,$`3))))
+%s
+,$`3,$`1,$`4,$`(call ~nth,$`(word 1,$`(subst :, ,$`1)),$`(call ~split,
+,$`2)),$`(subst $`  ^,^,$`(call ~string-repeat, ,$`(word 2,$`(subst :, ,$`1)))^)),$`(call ~sprintf,%s: %s
+,$`3,$`(call ^n,3,$(call ^E,$1))))))
 endef
 ~parse-forms-r = $(if $(filter !:P8,$(firstword $(wordlist 2,99999999,$3))),$(call ^Y,$4,$(if $(call ~eq?,$(call ^n,3,$(wordlist 2,99999999,$3)),.),,$(wordlist 2,99999999,$3)),,,,,,,,$2),$(call ~parse-forms-r,$1,$2,$(call ~parse-exp,$1,$(call ~1+,$(word 1,$3))),$(call ~conj,$4,$(wordlist 2,99999999,$3))))
 ~parse-subject = $(call ~parse-forms-r,$1,$`(if $`2,$`(call ~conj,$`1,$`2),$`1),$(call ~parse-exp,$1,1),)
@@ -743,7 +746,7 @@ Global variables in REPL:
 endef
 ~describe-binding = $(if $(or $3,$(if $(filter i%,$(word 3,$2)),,1)),$(if $(filter !:EDefn5,$(firstword $2)),built-in function,$(if $(filter !:EDefn1,$(firstword $2)),$(if $(call ~eq?,$(call ^n,2,$2),:),compound macro,function)$(if $(wordlist 5,99999999,$2),$(call ~sprintf, (%s arguments),$(call ^n,4,$2))),$(if $(filter !:EDefn0,$(firstword $2)),variable,$(if $(filter !:EDefn2,$(firstword $2)),symbol macro: $(call ~format,$(wordlist 4,99999999,$2)),$(if $(filter !:EDefn3,$(firstword $2)),executable macro,$(if $(filter !:EDefn4,$(firstword $2)),constructor,)))))))
 ~describe-env = $(foreach w,$(call ~reverse,$(call ~dict-compact,$1)),$(call ^Y,$(call ~promote,$(subst !8,%,$(word 1,$(subst !=, ,$w)))),$(call ~describe-binding,$(call ~promote,$(subst !8,%,$(word 1,$(subst !=, ,$w)))),$(call ~nth,2,$(subst !=, ,$w)),$2),,,,,,,,$`(if $`2,$`(call ~printf,  %s : %s,$`1,$`2))))
-~eval-and-print = $(call ^Y,$(call ~compile-text,$1,$2,[console],),$2,$1,,,,,,,$`(if $`(filter $`[ [ {,$`(if $`(filter !:P8,$`(firstword $`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))),$`(call ^n,3,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1)))))),$`(call ^d,$`3) $`(call ^d,$`2),$`(if $`(filter .,$`(if $`(filter !:P8,$`(firstword $`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))),$`(call ^n,3,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1)))))),!. $`(call ^d,$`2),$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$`3,))))1,!. $`(call ^d,$`2)),$`(and $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)),,,,,,,,,$``(if $``1,$``(and $``(call ^set,*2,$``(*1))1,$``(call ^set,*1,$``1)1,$``(info $``(call ~format,$``1)))))1,!. $`(call ^d,$`(call ~dict-get,env,$`1)))))))
+~eval-and-print = $(call ^Y,$(call ~compile-text,$1,$2,[console],),$2,$1,,,,,,,$`(if $`(filter $`[ [ {,$`(if $`(filter !:P8,$`(firstword $`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))),$`(call ^n,3,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1)))))),$`(call ^d,$`3) $`(call ^d,$`2),$`(if $`(filter .,$`(if $`(filter !:P8,$`(firstword $`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))),$`(call ^n,3,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1)))))),!. $`(call ^d,$`2),$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$`3,[stdin]))))1,!. $`(call ^d,$`2)),$`(and $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)),,,,,,,,,$``(if $``1,$``(and $``(call ^set,*2,$``(*1))1,$``(call ^set,*1,$``1)1,$``(info $``(call ~format,$``1)))))1,!. $`(call ^d,$`(call ~dict-get,env,$`1)))))))
 define ~read-eval-print
 $(call ^Y,$(call ~getline,$(if $(call ^u,$(word 1,$1)),+ ,> )),$(call ~nth,1,$1),$(call ~nth,2,$1),$1,,,,,,$`(if $`(call ~eq?,$`1,?
 ),$`(and $`(call ~help)1,$`4),$`(if $`(call ~eq?,$`1,:

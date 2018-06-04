@@ -92,7 +92,7 @@
      ;; error?
      (errors (begin
                (for err errors
-                    (info (describe-error err text nil)))
+                    (info (describe-error err text "[stdin]")))
                ["" env]))
 
      ;; execute & display result

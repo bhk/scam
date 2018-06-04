@@ -185,14 +185,14 @@
 (fexpect (POut 1 (PError 1 "`")) (p1 "`"))
 
 
-;; describe-where
+;; get-subject-line-col
 
 (define test-lnum-subj
   (penc "A xxx x B\nC D\n\nE\n    \n\nF xx G"))
 
 (define (test-lnum ch)
   (define `ndx (words (concat "x " (first (split ch test-lnum-subj)))))
-  (describe-where ndx test-lnum-subj))
+  (get-subject-line-col ndx test-lnum-subj))
 
 (expect "1:1" (test-lnum "A"))
 (expect "1:9" (test-lnum "B"))
@@ -202,31 +202,23 @@
 (expect "7:1" (test-lnum "F"))
 (expect "7:6" (test-lnum "G"))
 
-;; describe-source
+;; describe-error: location
 
-(expect ["def ghixjkl m"
-         "       ^"]
-        (split "\n"
-               (describe-source 4 "abc \n def!0ghi x jkl!0m \n op")))
+(expect (concat "FILE:2:5: MESSAGE\n"
+                " def\n"
+                "    ^\n")
+        (describe-error (PError 4 "MESSAGE")
+                        "abc\n def\njkl"
+                        "FILE"))
 
-(expect ["abc"
-         "   ^"]
-        (split "\n"
-               (describe-source 2 "abc \n def")))
-
-(expect ["    \\\"mnb vcx"
-         "    ^"]
-        (split "\n"
-               (describe-source 3 "abc \n!0!2!0 \\\" mnb!0vcx")))
+(expect (concat "FILE:3:1: MESSAGE\n"
+                ": def\n"
+                "^\n")
+        (describe-error (PError 4 "MESSAGE")
+                        "a\n\n: def"
+                        "FILE"))
 
 ;; describe-error
-
-(expect 1 (word-index? 1))
-(expect "" (word-index? 1.0))
-(expect "" (word-index? 1e5))
-(expect "" (word-index? -1))
-(expect "" (word-index? 0))
-
 
 (define (tde form)
   (describe-error form "\"abc)\n(def)\n" "TFILE"))
@@ -257,5 +249,3 @@
 (fexpect [ (PList 1 [ (PSymbol 2 "or") (PString 4 1) ])
           (PSymbol 7 "a") ]
         (parse-text "(or 1) a"))
-
-(print "parse ok")

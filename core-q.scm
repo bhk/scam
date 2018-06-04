@@ -69,6 +69,12 @@
 (expect "" (numeric? "1e-"))
 (expect "" (numeric? " 2 "))
 
+(expect 1 (word-index? 1))
+(expect "" (word-index? 1.0))
+(expect "" (word-index? 1e5))
+(expect "" (word-index? -1))
+(expect "" (word-index? 0))
+
 (expect "[1 \"a b\"] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
 (expect "nada" (sprintf "nada" "ignored"))
 (expect "!P!. a !\t !0 x" (sprintf "!P!.%s!0%sx" " a !\t " " " "ignored"))

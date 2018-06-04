@@ -135,16 +135,16 @@
   (*compile-file* "F2"))
 
  (expect (xlat-where (IWhere "F1:9") 1)
-         (IWhere "F2:1:1"))
+         (IWhere "F2:1"))
 
  ;; Expand compound macro with IWhere record.
  (define `inln-f-where (cons "." (IWhere "FM:99")))
  (expect (c0-ser "(f)" {f: (EFunc NoGlobalName "." 0 inln-f-where)})
-         "!(IWhere 'F2:1:2')")
+         "!(IWhere 'F2:1')")
 
  ;; Expand symbol macro with IWhere record.
  (expect (c0-ser "S" {S: (EIL "" "p" (IWhere "FM:9"))})
-         "!(IWhere 'F2:1:1')"))
+         "!(IWhere 'F2:1')"))
 
 
 ;; PList: (datavar ...)

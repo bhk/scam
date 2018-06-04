@@ -478,38 +478,22 @@
 ;;--------------------------------
 
 
-;; Get [LINE OFFSET] of POS in SUBJ.
+;; Get line number on which POS occurs in SUBJ.
+;; If POS = 0 or nil, return 0.
 ;;
-(define (get-line-and-offset pos subj)
-  ;; pre is all of the subject preceding `pos`
-  (define `pre (wordlist 2 (or pos 1) (concat "W " subj)))
-
-  (let ((lines (split "\n" (pdec pre))))
-    (append (words lines)
-            (string-len (last lines)))))
-
-
-;; Get `LINE:COL` for POS in SUBJ
-;;
-(define (describe-where pos subj)
+(define (get-subject-line pos subj)
   &public
-  (let ((l.o (get-line-and-offset pos subj)))
-    (concat (word 1 l.o) ":" (1+ (word 2 l.o)))))
+  (words (filter "\n%" (wordlist 1 (or pos 1) (concat "\n " subj)))))
 
 
-;; Get description of source line and position of POS in it.
-;; Return a vector: [PRE TOK POST]
-;;   PRE = text preceding tok on the line
-;;   TOK = the token at index POS
-;;   POST = text following tok
+;; Get "LINE:COL" or POS in SUBJ.
 ;;
-(define (describe-source pos subj)
-  (let ((l.o (get-line-and-offset pos subj))
-        (lines (split "\n" (pdec subj))))
-    (define `line (word 1 l.o))
-    (define `offset (word 2 l.o))
-    (concat (nth line lines) "\n"
-            (string-repeat " " offset) "^")))
+(define (get-subject-line-col pos subj)
+  &public
+  ;; prefix lines with "\n" to handle POS when at start of line
+  (let ((lines (subst " " "" "\n" " \n"
+                      (wordlist 1 (or pos 1) (concat "\n " subj)))))
+    (concat (words lines) ":" (string-len (pdec (lastword lines))))))
 
 
 ;; Return description line, given error code or description string.
@@ -546,27 +530,23 @@
         (else desc)))
 
 
-;; Construct error message, given error form and source text
-;;     FILE:LINE: DESCRIPTION
-;;     at: PRE*TOK*POST
+;; Construct an error message, given error FORM and source TEXT.
 ;;
-
 (define (describe-error form text filename)
   &public
   (case form
     ((PError pos desc)
-      (let ((subj (penc text))
-            (file (if filename
-                      (concat filename ":")
-                      "at "))
-            (msg (get-error-msg desc))
-            (pos pos))
-        (if (word-index? pos)
-            (sprintf "%s%s: %s\n%s\n"
-                     file (describe-where pos subj) msg
-                     (describe-source pos subj))
-            (sprintf "%s:?: %s\n"
-                     file msg))))))
+     (let ((lc (get-subject-line-col pos (penc text)))
+           (text text)
+           (filename filename)
+           (msg (get-error-msg desc)))
+       (define `lnum (word 1 (subst ":" " " lc)))
+       (define `col (word 2 (subst ":" " " lc)))
+       (define `line-text (nth lnum (split "\n" text)))
+       (define `ptr (subst " ^" "^" (concat (string-repeat " " col) "^")))
+       (if (word-index? pos)
+           (sprintf "%s:%s: %s\n%s\n%s\n" filename lc msg line-text ptr)
+           (sprintf "%s: %s\n" filename desc))))))
 
 
 ;; (parse-forms subj pos k) -->  (k form-list err)
