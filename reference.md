@@ -89,7 +89,7 @@ equivalent to writing `"1.0"`.
 ### Symbols
 
 Symbols are sequences of non-whitespace characters, except for any of the
-following: ``()[]{},;:%$\`'"``.
+following: ``()[]{},;:%$`'"``.
 
     a
     this-is-a-long-symbol-with/perhaps/*unusual*-characters!

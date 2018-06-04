@@ -527,7 +527,7 @@
         ((filter "\"" code)
          "unterminated string")
 
-        ((filter ":" code)
+        ((filter ": ," code)
          "saw \":\" where not expected")
 
         ((filter ":?" code)
@@ -539,8 +539,9 @@
         ((filter "!B" code)
          "invalid backslash sequence in string")
 
-        ((filter "$" code)
-         "invalid symbol character")
+        ;; match "%" and "$"
+        ((filter code "$")
+         (concat "invalid symbol character \"" code "\""))
 
         (else desc)))
 
