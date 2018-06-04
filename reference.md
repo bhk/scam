@@ -16,32 +16,44 @@
  * [Special Forms](#special-forms)
  * [Intrinsics](#intrinsics)
  * [Libraries](#libraries)
- * [Make Features](#make-features)
+ * [Compilation](#compilation)
  * [Command Line Syntax](#command-line-syntax)
  * [Debugging](#debugging)
 
 
 ## Overview
 
-A SCAM program consists of *expressions*. Some examples of expressions are
-constants, variable definitions, and function calls.
+A SCAM program consists of a **main** module.  When the program is run, that
+module will be loaded.  This module may, in turn, load other modules.  After
+the main module finishes loading, if a "main" function has been defined, it
+will be called with a vector that contains the command-line arguments.  The
+value returned by `main` will be treated as the exit status for the program
+(with `nil` being treated as `0`).  If `main` is not defined, the program
+will exit with a `0` status.
 
-Expressions are *evaluated* when the program is executed. Evaluation
-computes a data value that is said to be "returned" from the expression.
-Some expressions, like function invocations, can contain sub-expressions,
-and evaluation of those may be performed as part of evaluating the parent
-expression.
+SCAM modules (source files) contain sequences of **expressions**.  These
+expressions are **evaluated** when the module is **loaded**.  Evaluation
+computes a **value** described by the expression.  The following section,
+[Syntax](#syntax), describes the different kinds of expressions in SCAM.  As
+in other Lisp-family languages, everything in SCAM is an expression.
+Control flow and variable "binding" and "assignment" operations are handled
+in expressions.  Many expressions include sub-expressions that may be
+evaluated in the course of evaluating the parent.
 
-Expressions can occur in *block* or non-block contexts. A block is a
-sequence of expressions that are evaluated in order. The return value of
-each expression is discarded, except for the last expression, whose return
-value serves as the value for the entire block. Expressions in a block
-context may *declare* symbols that are meaningful within expressions that
-follow (up to the end of the block).
+Expressions may occur in **block** or non-block contexts.  A block is a
+sequence of expressions that are evaluated in order.  The values of these
+expressions are discarded except for the last expression, which supplies the
+value for the entire block.  The sequence of top-level expressions in a
+module are a block.  Expressions such as the `begin` special form can
+contain blocks.
 
-A SCAM module is a source file that contains a sequence of expressions that
-are treated as members of a block. When a module is executed, the return
-values of these top-level expressions are discarded.
+Blocks are important in SCAM because expressions that occur in a block may
+define or declare symbols that are visible to expressions that follow them
+within the block.  These lexically scoped definitions do not require deeper
+nesting.  This enables a programming style that flows down the page
+vertically as new definitions are introduced, rather than down and to the
+right.
+
 
 ## Syntax
 
@@ -100,9 +112,6 @@ Symbols can identify:
 - [macros](#macros)
 - [special forms](#special-forms)
 - [record constructors](#records)
-- [GNU Make built-in functions](#built-ins)
-
-In a few cases they designate keywords, like `define` or `let`.
 
 
 ### Compound Expressions
@@ -171,12 +180,12 @@ and splices the results into the current list.
     `(let ((,var ,value)) ,@body)
 
 Unlike Lisps, SCAM does not use syntax quoting to represent
-non-syntax-specific data structures.  SCAM's vector or dictionary
-constructors address those purposes.  Quoting expressions evaluate to the
-parse tree (AST) representation of the quoted expression.  SCAM ASTs are
-represented as [records](#records), and contain additional syntax
-information, such as the original position in the source code, and typing
-information.  See `parse.scm` for complete details.
+non-syntax-specific data structures.  SCAM's vectors and dictionaries
+address those needs.  Quoting expressions evaluate to the parse tree (AST)
+representation of the quoted expression.  SCAM ASTs are represented as
+[records](#records), and contain additional syntax information, such as the
+original position in the source code, and typing information.  See
+`parse.scm` for complete details.
 
 
 ## Data Types
@@ -223,135 +232,96 @@ disjoint.  This allows SCAM to display values in a more meaningful way.
 
 ### Booleans
 
-The empty string (written `""` or `nil`) is used to represent "false" when
-functions, macros, or special forms operate on or return Boolean values.
-Any non-nil value is considered "true"; the value "1" is often used to
-represent true.
+The empty string (written `""` or `nil`) is used to represent "false" in
+control flow expressions.  Any non-nil value is considered "true"; the value
+"1" is often used to represent true when no other value is an obvious
+candidate.
 
     > (if nil 1 2)
     2
     > (if "false" 1 2)   ; not false...
     1
 
-Make built-ins `and` and `or` interpret strings in this manner.  `or` returns
-the first non-nil argument, and `and` returns the last argument if all
-arguments are true.
-
-SCAM's core library provides `not` and `xor` logical operators.
-
-    > (xor "a" "b")
-    > (xor "a" nil)
-    "a"
-    > (not "x")
-    > (not nil)
-    1
-
 
 ### Numbers
 
-Numbers are typically represented as a string of decimal digits.
+Numbers are written as one or more decimal digits, optionally preceded by a
+`-` character, and optionally followed by a fractional portion and a
+E-notation suffix.  The E-notation suffix consists of `e` or `E`, optionally
+followed by `+` or `-`, followed by an integer.
+
+There are no limits on the size of numbers in SCAM.  The `num` library
+implements arbitrary precision decimal floating point arithmetic.
 
     > (word 2 "a b c")
     "b"
     > (+ 12 34)
     46
-
-The `numeric?` function test whether a string is a number, and `word-index?`
-tests whether a string is safe to pass as a word index to Make built-in
-functions (a positive integer represented with only digits -- no exponent or
-decimal).
-
-    > (numeric? "1e20")
-    1e20
-    > (if (word-index? "1e20") "yes" "no")
-    no
-    > (if (word-index? 0) "yes" "no")
-    no
-    > (if (word-index? 1) "yes" "no")
-    yes
+    > (^ -1.2e2000 7)
+    -3.5831808e+14000
 
 
-### Vectors
+### Word Lists and Vectors
 
-A vector is a sequence of *word-encoded* values delimited by space
-characters.  Word-encoding is a reversible transformation that replaces
-space and tab characters with non-whitespace characters.  By encoding
-vectors in this manner we can employ Make built-in functions that provide
-random access into a word list, such as `word`, `wordlist`, and `lastword`.
+A word list (or simply "list") is a sequence of "words" separated by the
+following two characters: space (` `, ASCII 32) and tab (`\t`, ASCII 9).  A
+**word** is defined, in turn, as a contiguous sequence of non-separator
+characters.  Any number of separators can appear before, between, or after
+words.  Constructing a word list is as simple as concatenating words and
+spaces.
 
-The function `demote` word-encodes a string, and `promote` reverses the
-effects of `demote`. Word encoding leaves strings unchanged unless they
-contain a space, a tab, or "`!`", so for many common data sets SCAM vectors
-are identical to Make word lists.
+Word lists are simple and often convenient, but somewhat specialized because
+the elements they contain cannot include space or tab characters, and they
+exclude the empty string as an element.
 
-`(vector A B C ...)` creates a vector. This is equivalent to `(concat
-(demote A) " " (demote B) " " (demote C) ... )`.
+A vector is SCAM's general purpose data structure for storing a sequence of
+values.  A vector contains an arbitrarily-long sequence of arbitrary
+strings.  Of course, a vector is itself a string (as are all SCAM value), so
+*bang-encoding* is employed.  Bang-encoding is a reversible transformation
+that replaces space and tab characters with non-whitespace characters.
+Bang-encoding preserves sort order, unless an element contains control
+characters.
 
-`(nth INDEX VEC)` extracts an item from a vector. This is shorthand for
-`(promote (word INDEX VEC))`.
+In normalized form, a vector consists of some number of bang-encoded
+elements separated by a single space character.  Non-normalized forms (with
+additional space or tab characters before, after, or between characters) are
+also accepted by all vector manipulation functions.
 
-Here is an overview of operations on vectors. The last column shows SCAM
-syntax for the analogous operation on ordinary word lists (in which items
-are not word-encoded).
+Vector constructor syntax is provided for constructing vectors.  Enclose any
+number of expressions in square brackets to construct a vector of that size.
+Functions `first` and `nth` extract values from vectors.
+
+For example:
+
+    > (word 3 "a b c d")
+    "c"
+    > (nth 3 ["a" "" "c d"])
+    "c d"
+
+Here is an overview of ways to manipulate vectors, and the analogous
+operations on word lists:
 
     +--------------------+------------------------+-----------------------------+
     | Operation          | Vectors                | Word Lists                  |
     +====================+========================+=============================+
     | Create             | `[A B C]`              | `(concat A " " B " " C)`    |
     +--------------------+------------------------+-----------------------------+
-    | Extract one item   | `(nth NDX VEC)`        | `(word NDX LIST)`           |
+    | Get item N         | `(nth N VEC)`          | `(word N LIST)`             |
     +--------------------+------------------------+-----------------------------+
-    | Extract first item | `(first VEC)`          | `(firstword LIST)`          |
+    | Get first item     | `(first VEC)`          | `(firstword LIST)`          |
     +--------------------+------------------------+-----------------------------+
-    | Extract last item  | `(last VEC)`           | `(lastword LIST)`           |
+    | Get last item      | `(last VEC)`           | `(lastword LIST)`           |
     +--------------------+------------------------+-----------------------------+
-    | Prepend item       | `(cons ITEM VEC)`      | `(concat WORD " " LIST)`    |
+    | Add item to front  | `(cons ITEM VEC)`      | `(concat WORD " " LIST)`    |
     +--------------------+------------------------+-----------------------------+
-    | Append item        | `(conj VEC ITEM)`      | `(concat LIST " " WORD)`    |
+    | Add item to back   | `(conj VEC ITEM)`      | `(concat LIST " " WORD)`    |
     +--------------------+------------------------+-----------------------------+
-    | Append vectors     | `(append V1 V2...)`    | `(concat LIST1 " " LIST2)`  |
+    | Append sequences   | `(append V1 V2...)`    | `(append LIST1 " " LIST2)`  |
     +--------------------+------------------------+-----------------------------+
     | Count items        | `(words VEC)`          | `(words LIST)`              |
     +--------------------+------------------------+-----------------------------+
     | Get range          | `(wordlist A B VEC)`   | `(wordlist A B LIST)`       |
     +--------------------+------------------------+-----------------------------+
-
-
-Square brackets provide a shorthand syntax for vector construction. `[X Y Z
-...]` is equivalent to `(vector X Y Z)`. Some examples from the interactive
-prompt:
-
-    > (print ["a" "b" "c"])
-    a b c
-    > (print ["a" "b c"])
-    a b!0c
-    > (print (nth 2 ["a" "b c"]))
-    b c
-
-#### Word-Encoding Details
-
-The following details are implementation-specific.  This is not to say that
-these details are anything to be afraid of -- after all, there is only one
-implementation of SCAM -- but just that this knowledge is not necessary for
-writing SCAM programs.  It may be helpful, however, when deciphering values
-while debugging.
-
-SCAM's current implementation of word-encoding might be called bang-encoding:
-
-    `!1` encodes `!`
-    `!0` encodes ` `
-    `!+` encodes TAB
-    `!.` represents the empty string
-
-One nice property of this encoding is that lexicographical sorting order is
-preserved for all printable characters and TAB.  This is because ` ` and `!`
-are the first two printable characters (code points 0x20 and 0x21) in ASCII
-and ASCII-derived encodings (such as Unicode).
-
-Note that in a word-encoded value -- and therefore, in a vector -- `!` is
-always followed by one of four characters.  Other two-character sequences
-can be combined with word-encoded values to designate separators or markers.
-In dictionaries, `!=` delimits word-encoded keys from values.
 
 
 ### Dictionaries
@@ -405,12 +375,13 @@ dictionary.
     > (dict-collate {a:" ", b:1, b:2})
     {a: [" "], b: [1 2]}
 
+
 ### Records
 
 The `data` special form introduces a new "data type" (see the [above
 discussion](#data-types)) that takes the form of a union of record types.
 This is similar to the "algebraic data types" in some other languages.  Each
-record can contain zero or more values.
+record can contain zero or more member values.
 
     > (data Shape
     +    (Square a)
@@ -424,15 +395,8 @@ This example defines three constructors -- `Square`, `Rect`, and `Triangle`
     > s
     (Rect 3 5)
 
-The interactive REPL displays values using `format`, which recognizes record
-types and displays them readably.  We can use `print` to show the "raw"
-string value, but we would normally never have to see this.
-
-    > (print s)
-    !:Shape1 3 5
-
-The `case` statement performs pattern matching.  It allows us to use
-construction expressions on the receiving end of an assignment.
+The `case` statement matches records and deconstructs them allowing us to
+access their members in a type-safe manner.
 
     > (case s
     +   ((Square a) (+ a a))
@@ -540,32 +504,6 @@ form is function value.
     > (f "a" "b")
     "ab"
 
-When writing entirely in SCAM, you will not need to examine or otherwise
-deal with the compiled form of functions.  For the sake of completeness,
-however, we now describe executable code and how it compiles to GNU make in
-the current implementation of SCAM.  The value of `f` as described above is
-the string `"$1$2"`.  This is GNU Make syntax for concatenating the first
-and second arguments.  The above definition of `f` will compile to the
-following line in a SCAM-generated executable:
-
-    f = $1$2
-
-Typically, functions are stored in global variables, as in the example
-above, but functions are first class values in SCAM, so they can be passed
-to functions, returned from functions, and constructed without assigning
-them a name:
-
-    > f
-    "$1$2"
-    > (lambda (a b) (concat a b))
-    "$1$2"
-
-Given these facts -- functions are first class values, and function values
-are in GNU Make syntax -- one logical implication is the following behavior:
-
-    > ("$1$2" "a" "b")
-    "ab"
-
 #### Arity Checking
 
 When a function is called by its name, as in the `(f 1 2)` example above,
@@ -576,13 +514,13 @@ SCAM performs compile-time checking of the number of arguments being passed.
     (f 1)
      ^
 
-This checking does not apply when the function value is obtained some other
-way, as in `((or f) 1 2)`.  The computed result remains the same.  Any
-arguments not supplied will take the value `nil`.
+This checking does not apply when the function value is obtained some less
+direct manner, as in `((or f) 1 2)`.  The computed result remains the same.
+Any arguments not supplied will take the value `nil`.
 
 #### Optional Parameters
 
-In order to declare an optional parameter, prefix its name with `?` in the
+We can declare an optional parameter by prefixing its name with `?` in the
 function definition or declaration:
 
     > (define (g a ?b) (or b a))
@@ -595,10 +533,9 @@ function definition or declaration:
     (g 1 2 3)
      ^
 
-In order to capture an arbitrary number of arguments in one variable, prefix
-the name of the last parameter with `...`.  The variable will evaluate to a
-vector containing the rest of the arguments passed to the function.  For
-example:
+Functions can also deal with a variable number of arguments.  When the last
+parameter name is prefixed with `...`, that parameter will capture in a
+vector zero the rest of the arguments passed to the function.  For example:
 
     > (define (f a b ...others)
     +   others)
@@ -612,41 +549,16 @@ value.
     [3 4]
 
 "Rest" parameters (`...NAME`) may appear only as the last of the formal
-parameter.  Optional parameters may not be followed by other optional
-parameters or a rest parameter.
+parameter.  Optional `?NAME` parameters may not be followed by non-optional,
+non-rest parameters.
 
 Rest parameters may not be used with macros or inline functions.
 
-#### Function Variables
-
-When a function value is defined
-
-Since functions are values, `(f a b)` is equivalent to `(let ((g f)) (g a
-b))`.
-
-
-### Syntax Trees
-
-The result of parsing an expression is a SCAM syntax tree. Each node in the
-syntax tree is called a "form".
-
-In ordinary Lisps, various syntactic constructs (symbol, string, number,
-list) correspond to distinct primitive types. In SCAM, there is only one
-primitive type (string), so the different syntactic constructs are
-represented as vectors.
-
-Forms are not ordinarily manipulated by SCAM code, except in the compiler
-source code. Refer to `parse.scm` for more information on forms.
 
 ## Variables
 
-Variables are symbols that evaluate to values.
-
-There are three kinds of variables in SCAM:
-
- * local
- * global
- * automatic
+Variables are symbols that name already-computed values.  Variables can be
+either local or global.
 
 Local variables are created with `let` expressions, or as function
 parameters in a `lambda` expression or function definition.  Local variables
@@ -662,41 +574,15 @@ readers comparing with other Lisp dialects, it is useful to note that
 globals are equivalent to "dynamic" or "special" variables in the parlance
 of Common Lisp. The following special forms deal with global variables:
 [`define`](#define), [`declare`](#declare), [`let-global`](#let-global),
-[`set`](#set), [`set-global`](#set-global), [`set-rglobal`](#set-rglobal).
+[`set`](#set).
 
-SCAM functions are typically stored in global variables.
+Global variables occur in two "flavors": data variables and function
+variables.  This flavor is established when the variable is defined or
+declared.  Function variables can only store function values, and data
+variables can store any value.  At the same time, calling functions stored
+in function values is somewhat more efficient than calling functions stored
+in data variables.
 
-Automatic variables are the variables created by `for` and `foreach`.
-Automatic variables have the visibility of global variables, shadowing any
-other automatic or global variables of the same name, but they have limited
-lifetime and are immutable.
-
-### Namespaces
-
-Since Make supports only one variable namespace, combining different
-programs or libraries can result in errors when they contain variable names
-that conflict.  In order to avoid naming conflicts between SCAM itself and
-the code it is compiling, the SCAM compiler is built with a different
-namespace.  A namespace is a prefix that is applied to a SCAM global
-variable name in order to obtain the Make variable that will be used to hold
-its value.  The namespace-prefixed name is called the "global" name.
-
-User code is not run in a namespace, but be aware that compiler-provided
-functions -- for example, functions exported by the `core` module -- may
-have global names that differ from the names that appear in your source
-files.
-
-The following language features expose namespace functionality:
-
- - `(global-name SYMBOL)` evaluates to the global name for SYMBOL.  You can
-   use this to obtain the string value of a name, suitable for passing to
-   functions that accept a name expression rather than a name symbol, such
-   as (set-global NAME-EXPR ...), (call NAME-EXPR,...), (origin
-   NAME-EXPR,...), etc.
-
- - The `&global` flag can be used with a `declare` or `define` expression to
-   avoid namespace prefixing.  In this case, the global name of the symbol
-   will be equal to the local name.
 
 ## Macros
 
@@ -783,46 +669,58 @@ provided by the language itself.  Special forms, built-ins, and macros are
 not functions, so they do not have values and cannot be passed to other
 functions; they can only be invoked like a function.
 
-### `begin`
+### Control Flow
 
-[Special form]
+#### `(if COND THEN-EXPR [ELSE-EXPR])`
 
-    (begin EXPR...)
+First, COND is evaluated.  If non-nil, THEN-EXPR will be evaluated and used
+are the value for the `if` expression.  Otherwise, if ELSE-EXPR is present
+it is evaluated and used, and if not `nil` is used.
+
+#### `(cond (CONDITION BODY)... [(else BODY)] )`
+
+`cond` expresses conditional execution of an arbitrary number of possible
+blocks of code.
+
+Example:
+
+    (cond ((filter "foo" a)  "Found FOO")
+          ((filter "bar" a)  "Found BAR")
+          ((filter "baz" a)  (print "BAZ") "Found BAZ")
+          (else              "Found NOTHING"))
+
+#### `(and EXPR...)
+
+Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
+encountered.  The value of the `and` expression is that of the last
+sub-expression evaluated, or `nil` if no expressions were evaluated.
+
+#### `(or EXPR...)
+
+Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
+is encountered.  The value of the `and` expression is that of the last
+sub-expression evaluated, or `nil` if no expressions were evaluated.
+
+#### `(error MESSAGE)`
+
+Terminate execution of the program with a non-zero status code, writing
+`MESSAGE` to stderr.
+
+#### `(begin EXPR...)
 
 Encloses a *block* of expressions.  A block is a sequence of expressions
 that are evaluated in order.  The result of that last expression is
 returned (or nil if no expressions are given).
 
-`begin` can be used to contain multiple expressions in a single expression.
-It can also be used to limit the scope of symbols.  The end of the block
-terminates the scope of any definitions and declarations made within the
-block.
 
-### `lambda`
 
-[Special form]
+### Declarations and Definitions
 
-    (lambda (ARG...) BODY)
+#### `(require MODULE &private?)`
 
-A `lambda` expression evaluates to a function value.
-
-`ARG...` is zero or more symbols that name the formal arguments.
-
-`BODY` is a block of one or more expressions (see [`begin`](#begin) )
-that will be executed when the function is called. The initial environment
-of `BODY` contains bindings for the arguments names to the values passed
-to the function.
-
-### `require`
-
-[Special form]
-
-    (require MODULE &private?)
-
-The `require` form provides access to functionality defined in other
-modules.  `MODULE` identifies either a SCAM source file, minus its `.scm`
-extension, relative to the directory containing the requiring file) or a
-standard builtin module.  `MODULE` must be provided as a literal string.
+The `require` special form provides access to functionality defined in other
+modules.  `MODULE` must be provided as a literal string.  Module lookup and
+compilation is described [below](#compilation).
 
 Symbols exported by the module (those declared "&public") are imported into
 the current environment, and are visible to all expressions that follow in
@@ -832,48 +730,7 @@ non-exported symbols are *also* imported.
 When the `require` expression is executed, the required module will be loaded
 and executed, unless it has already been required by the program.
 
-#### Module Lookup
-
-The specified `MODULE` refers to a source file, minus its `.scm` extension,
-or to a standard module.  First, it is interpreted as a path to a source
-file.  If it does not begin with `/`, it is treated as relative to the
-directory containing the file being compiled, or in interactive mode, the
-current directory.  If that lookup fails, directories listed in the
-`SCAM_LIBPATH` environment variable (colon-delimited) are tried, in order, as
-base directories to perform the lookup.  Finally, if no source file is found
-and if the name matches a standard builtin module (supplied by the
-compiler), then the builtin module will be used.  If `MODULE` begins with
-`'` this will prevent source file matches and select a builtin module
-explicitly.
-
-#### Building and Testing
-
-When `MODULE` identifies a source file, that source file will be compiled to
-determine its exports before compilation can continue.  In turn, modules
-required by `MODULE` will also have to be compiled in order to build
-`MODULE`, and so on.
-
-When a module source file is accompanied by a qualification test -- a module
-named `MODULE-q.scm` -- then the test will be compiled and run before the
-tested module is used in other requiring modules.
-
-SCAM will re-build object files (compilation results) and re-run tests only
-when necessary.  Subsequent invocations of `scam -o EXE SRC` or `scam -x
-SRC` will re-build only the source files that have changed, plus any source
-files that depend on them.
-
-SCAM stores compilation results in an "output directory" which is determined
-by how SCAM is invoked:
-
-  - `scam -o EXE SRC` will set the output directory to `(dir EXE)`.
-  - The option `--out-dir=DIR` will override the output directory.
-  - Otherwise, the output directory defaults to `".scam/"`.
-
-### `use`
-
-[Special form]
-
-    (use MODULE)
+#### `(use MODULE)`
 
 The `use` form specifies a module that defines "executable macros".
 Executable macros are functions written in scam that define syntax
@@ -881,36 +738,57 @@ extensions.  When such a macro is encountered in the "using" source file,
 the executable macro is given the syntax tree as an argument, and it has the
 opportunity to transform it.
 
-`MODULE` must be a literal string value, because `require` is processed at
-build time and compile time in addition to run time.
-
-Dependencies are discovered just as with the `require` directive.
+`MODULE` must be a literal string value.  Dependencies are discovered just
+as with the `require` directive.
 
 Unlike the `require` directive, `use` does not introduce any run-time
 dependencies.  The specified module is instead loaded by the compiler, at
 compile-time.
 
-### `let`
+#### `define`
 
-[Special form]
+    (define NAME FLAG... VALUE)            ; global data variable
+    (define (NAME ARG...) FLAG... BODY)    ; global function variable
+    (define `NAME EXPR)                    ; symbol macro
+    (define `(NAME ARG...) FLAG... BODY)   ; compound macro
 
-    (let ( (NAME VALUE)... ) BODY)
+The `define` special form adds a name to the environment and associates
+it with a definition.  The defined name will be visible to subsequent
+expressions in the same block, and the definition supersedes any
+previous definitions associated with the same name.
 
-The `let` special form assigns values to a number of local variables.
-The VALUE expressions are evaluated, in order.  Then BODY (a block of
-expressions) is evaluated in an environment in which each NAME is bound
-to its corresponding value.  The `let` expression returns the value of
-the last form in BODY.
+The `&public` flag may be included in `FLAG...`.  This indicates that the
+symbol should be visible outside of the file in which it is declared.
+
+
+#### `declare`
+
+    (declare NAME FLAG...)             ; global data variable
+    (declare (NAME ARG...) FLAG...)    ; global function variable
+
+The `declare` special form declares a global variable without assigning
+a value.  This is usually used to access non-SCAM functions, or when
+mutually recursive functions are defined.
+
+
+#### `(defmacro (NAME ARGNAME) BODY)`
+
+`defmacro` declares an *executable macro*.  An executable macro is a
+function that transforms syntax.  It takes one argument, a form, and returns
+a different form.
+
+#### `(let ( (NAME VALUE)... ) BODY)`
+
+The `let` special form assigns names to values.  The VALUE expressions are
+evaluated, in order.  Then BODY (a block of expressions) is evaluated in an
+environment in which each NAME is bound to its corresponding value.  The
+`let` expression returns the value of the last form in BODY.
 
 `let` is implemented in terms of `lambda` in this manner:
 
     ((lambda (NAME...) BODY) (VALUE...))
 
-### `let&`
-
-[Special form]
-
-    (let& ( (NAME EXPR)... ) BODY)
+#### `(let& ( (NAME EXPR)... ) BODY)`
 
 `let&` is a "lazy" let.  It binds the names to symbol macros instead of
 local variables.  It also differs from `let` in that each expression is
@@ -926,111 +804,18 @@ always evaluated exactly once, as with `let`.  Instead, each expression
 is evaluated once each time its associated name is evaluated within
 `BODY` -- perhaps zero times, perhaps many more.
 
-Aside from the potential for multiple re-evaluations of expressions,
-`let&` generally has lower overhead than `let`, since it does not involve
-a Make function call (as does `let`).
+Aside from the potential for multiple re-evaluations of expressions, `let&`
+generally has lower overhead than `let`, since it does not involve an
+anonymous function call (as does `let`).
 
-### `define`
+#### `(let-global ( (NAME VALUE)... ) BODY)`
 
-[Special form]
+This form modifies the value of some number of global variables *during
+the execution of BODY*. Afterwards, the original values are restored.
 
-    (define NAME FLAG... VALUE)             ; global variable
-    (define (NAME ARG...) FLAG... BODY)     ; global function
-    (define `NAME EXPR)                     ; symbol macro
-    (define `(NAME ARG...) FLAG... BODY)    ; compound macro
+This expression evaluates to the value of the last expression in BODY.
 
-The `define` special form adds a name to the environment and associates
-it with a definition.  The defined name will be visible to subsequent
-expressions in the same block, and the definition supersedes any
-previous definitions associated with the same name.
-
-`FLAGS` consists of zero or more of the symbols `&public` and `&inline`.
-
-  * `&public` indicates that the symbol should be visible outside of the
-    file in which it is declared.
-
-  * `&inline` indicates that the function is an inline function.  This flag
-    can be used only with `define` (not with `declare`) and only for
-    function definitions.
-
-    An inline function definition defines both a function variable and a
-    macro associated with the same symbol.  When the name is used in a
-    function call expression, the macro will be expanded in place.  Unlike a
-    compound macro, however, an inline function can be recursive (the first
-    invocation will be as a macro, recursive invocations will be via the
-    function).
-
-    Beware that macro invocations (and inline function invocations) can
-    differ semantically from ordinary function invocations in that arguments
-    may be evaluated more than once or not at all.
-
-Some examples:
-
-    (define foo (wildcard "*"))
-
-... expands to:
-
-    (declare foo)
-    (set foo (wildcard "*"))
-
-... which compiles to the following Make syntax:
-
-    foo := $(wildcard *)
-
-A function definition:
-
-    (define (func pat) (wildcard pat))
-
-... expands to:
-
-    (declare (func pat))
-    (set func (lambda (pat) (wildcard pat)))
-
-... and compiles to:
-
-    func = $(wildcard $1)
-
-An inline definition being used as a function and a macro:
-
-    > (define (f a) &inline (concat "!" a))
-    > f
-    "!$1"
-    > (lambda (x) (f x x))
-    "!$1"                    ;; versus: "$(call f,$1)" for non-inline
-
-### `declare`
-
-[Special form]
-
-    (declare NAME FLAG...)             ; declare global variable
-    (declare (NAME ARG...) FLAG...)    ; declare global function variable
-
-The `declare` special form declares a global variable without assigning
-a value.  This is usually used to access non-SCAM functions, or when
-mutually recursive functions are defined.
-
-In GNU Make terms, these forms do not actually *create* a variable since
-they perform no assignment. They do however cause SCAM to *assume* a
-flavor of "simple" (in the first case) or "recursive" (in the function
-form). This assumption will affect subsequent references and assignments
-performed within SCAM.
-
-### `defmacro`
-
-[Special form]
-
-    (defmacro (NAME ARGNAME) BODY)
-
-`defmacro` declares an *executable macro*.  An executable macro is a
-function that transforms syntax.  It takes one argument, a form, and returns
-a different form.
-
-
-### `set`
-
-[Special form]
-
-    (set NAME VALUE RETVAL)
+#### `(set NAME VALUE RETVAL)`
 
 The `set` special form assigns a value to a previously declared global
 variable.
@@ -1042,83 +827,52 @@ NAME is given as a symbol, not a string. For example:
 The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
 
 
-### `let-global`
+### Constructing and Using Functions
 
-[Special form]
+#### `(lambda (ARG...) BODY)`
 
-    (let-global ( (NAME VALUE)... ) BODY)
+A `lambda` expression evaluates to a function value.
 
-This form modifies the value of some number of global variables *during
-the execution of BODY*. Afterwards, the original values are restored.
+`ARG...` is zero or more symbols that name the formal arguments.
 
-This expression evaluates to the value of the last expression in BODY.
+`BODY` is a block of one or more expressions (see [`begin`](#begin) )
+that will be executed when the function is called. The initial environment
+of `BODY` contains bindings for the arguments names to the values passed
+to the function.
 
+#### `(apply LAMBDA VEC)`
 
-### `set-global`
+Call LAMBDA, passing as arguments the members of the vector VEC.
 
-[Manifest function]
+Example:
 
-    (set-global NAME-EXPR VALUE)
-
-This executes a "simple" global variable assignment.  The variable name
-is given by the value of NAME-EXPR.  The assigned value is given by
-VALUE. REPL example:
-
-    > (set-global "V" "abc")
-    > (flavor "V")
-    simple
-    > (value "V")
-    "abc"
-
-Note: using an empty string for the variable name will cause Make to exit
-with an error.
-
-### `set-rglobal`
-
-[Manifest function]
-
-    (set-rglobal NAME-EXPR VALUE)
-
-This is equivalent to [`set-global`](#set-global), except that is executes
-a "recursive" global variable assignment.  REPL example:
-
-    > (set-rglobal "V" "abc")
-    > (flavor "V")
-    recursive
-    > (value "V")
-    "abc"
+    (apply nth [3 "a b c d"])    ;; --> c
 
 
-### `concat`
 
-[Special form]
+### Generic String Manipulation
 
-    (concat VALUE...)
+#### `(concat VALUE...)`
 
 This special form concatenates all of its arguments.
 
-
-### `subst`
-
-[Special form]
-
-    (subst FROM TO {FROM TO}... VALUE)
+#### `(subst FROM TO {FROM TO}... VALUE)`
 
 This special form replaces substrings with replacement strings within the
-given VALUE.  It is equivalent to the GNU Make built-in `subst` except that
-it accepts multiple pairs of replacement strings.  For example:
+given VALUE.  For example:
 
     > (subst 2 3 1 2 12)
     23
-    > (lambda () (subst 2 3 1 2 12))
-    "$(subst 1,2,$(subst 2,3,12))"
+
+#### `(findstring SUB STR)`
+
+If SUB occurs within STR, return SUB.  Otherwise return the empty string.
 
 
-### `foreach`
 
-[Special form]
+### Word List and Vector Manipulation
 
-    (foreach VAR LIST BODY)
+#### `(foreach VAR LIST BODY)`
 
 The `foreach` special form iterates over a list, evaluates BODY (a sequence
 of expressions) once for each word, and constructs a new word list from the
@@ -1129,11 +883,7 @@ Each word is bound to the name `VAR` while `BODY` is evaluated.
     > (foreach x "1 2 3" (1+ x))
     "2 3 4"
 
-### `for`
-
-[Special form]
-
-    (for VAR VECTOR BODY)
+#### `(for VAR VECTOR BODY)`
 
 `for` iterates over items in a vector, evaluating BODY for with VAR bound to
 an item, constructing a new vector with the results of BODY. Example:
@@ -1142,12 +892,7 @@ an item, constructing a new vector with the results of BODY. Example:
     +     (reverse x))
     [[2 1] [4 3]]
 
-
-### `append-for`
-
-[Special form]
-
-    (append-for VAR VECTOR BODY)
+#### `(append-for VAR VECTOR BODY)`
 
 `append-for` is similar to `for` but it appends together all of the (vector)
 values of BODY.  This is functionally similar to what is called `concat-map`
@@ -1160,289 +905,63 @@ in some other languages.
     +    (if (> x 3) [x]))
     "7 5"
 
-
-### `concat-for`
-
-[Special form]
-
-    (concat-for VAR VECTOR DELIM BODY)
+#### `(concat-for VAR VECTOR DELIM BODY)`
 
 `concat-for` is similar to `for` but it concatenates the values of BODY.
 
     > (concat-for x [1 2 3] ";" (wordlist 1 x "a b c"))
     "a;a b;a b c"
 
-
-### `demote`
-
-[Manifest function]
-
-    (demote VALUE)
+#### `(demote VALUE)`
 
 `demote` encodes any value as a word so that it may be embedded in a word
 list.  It is used internally to construct vectors.
 
-### `promote`
-
-[Manifest function]
-
-    (promote VALUE)
+#### `(promote VALUE)`
 
 `promote` reverses the encoding done by `demote`.
 
-### `nth`
-
-[Manifest function]
-
-    (nth INDEX VEC)
+#### `(nth INDEX VEC)`
 
 Returns the value stored at index INDEX (1-based) in vector VEC.
 
-### `print`
+#### `(vector A B C ...)`
 
-[Special form]
+This constructs a vector.  It is equivalent to `[A B C ...]`.
 
-    (print VALUE...)
+### Other List Functions
 
-Concatenates all values and write them to stdout.
+The following functions are equivalent to the GNU Make builtins by the same
+name: `addprefix`, `addsuffix`, `basename`, `dir`, `filter`, `filter-out`,
+`firstword`, `join`, `lastword`, `notdir`, `patsubst`, `sort`, `suffix`,
+`word`, `word`, `wordlist`, `words`.
 
+### Others
 
-### `current-env`
+#### `(print VALUE...)`
 
-[Special form]
+Concatenate all values and write them to stdout.
 
-    (current-env)
+#### `(? FUNCNAME ARG...)`
+
+This performs call-site tracing of `FUNCNAME`, described below in the
+[Debugging](#debugging) section.
+
+#### `(at-exit FUNC)`
+
+Add FUNC to a list of functions that will be run when the program exits.
+Functions will be run in the reverse of the order that they were registered.
+
+#### `(current-env)`
 
 This special form evaluates to the data structure that describes the lexical
 environment at the point where it is invoked.  (See `gen.scm` for details of
 this structure.)
 
-### `current-file-line`
-
-[Special form]
-
-    (current-file-line)
+#### `(current-file-line)`
 
 This special form evaluates to the file name and line number of where it was
 invoked, in this format:  `FILENAME:LINE`
-
-
-### `vector`
-
-[Special form]
-
-    (vector A B C ...)
-
-This constructs a vector.  It is equivalent to `[A B C ...]`.
-
-
-### `?`
-
-[Special form]
-
-    (? FUNCNAME ...)
-
-This performs call-site tracing, describe above under "Debugging".
-
-
-### `cond`
-
-[Special form]
-
-    (cond (CONDITION BODY)... [(else BODY)] )
-
-`cond` expresses conditional execution of an arbitrary number of possible
-blocks of code.
-
-Example:
-
-    (cond ((filter "foo" a)  "Found FOO")
-          ((filter "bar" a)  "Found BAR")
-          ((filter "baz" a)  (print "BAZ") "Found BAZ")
-          (else              "Found NOTHING"))
-
-### `apply`
-
-[Manifest function]
-
-    (apply LAMBDA VEC)
-
-Call LAMBDA, passing as arguments the members of the vector VEC.
-
-Example:
-
-    (apply nth [3 "a b c d"])    ;; --> c
-
-
-### `at-exit`
-
-[Function]
-
-    (at-exit FUNC)
-
-Add FUNC to a list of functions that will be run when the program exits.
-Functions will be run in the reverse of the order that they were registered.
-
-### Built-Ins
-
-Every Make [built-in
-function](http://www.gnu.org/software/make/manual/make.html#Functions) is
-available from SCAM as a special form. For example:
-
-    > (word 2 "a b c")
-    "b"
-    > (addsuffix ".c" "x")
-    "x.c"
-
-When the value of a built-in is requested, an equivalent function value is
-provided:
-
-    > shell
-    "$(shell $1)"
-
-Built-ins may differ from ordinary functions in the way arguments are
-evaluated. Ordinarily, all arguments are evaluated in order *before* a
-function is called. In the case of `if`, `and`, `or`, and `foreach`,
-however, arguments may not be evaluated at all, and in the case of
-`foreach`, they may be evaluated more than once.
-
-    > (if "" (error "unexpected") 1)
-    1
-
-Some built-ins accept variable *names*. These built-ins -- `value` and `call`
--- are potentially confusing because they cross layers of abstraction. Be
-aware that they use string values to refer to the variables, whereas in SCAM
-you ordinarily reference variables by symbols. Using an unquoted symbol
-name can produce unexpected results. The following example demonstrates
-`value` and `call`:
-
-    > (define (g x) (concat x x))
-    > (define name-of-g "g")
-    > (value name-of-g)    ; NOT (value g)
-    "$1$1"
-    > (call name-of-g "x") ; NOT (call g "x")
-    "xx"
-    > (define f name-of-g)
-    > (value f)
-    "$1$1"
-    > (call f "x")
-    "xx"
-
-The names [`foreach`](#foreach) and [`subst`](#subst) built-ins are
-actually special forms that invoke the true built-ins, which are available
-in their raw forms by the names `.foreach` and `.subst`.
-
-Directly using the `.foreach` built-in can be awkward, because the referenced
-variable name is unknown to SCAM and will trigger an error unless a declaration
-is used:
-
-    > (.foreach "x" "1 2 3" (1+ x))
-    at 1:27: undefined variable "x"
-    (.foreach "x" "1 2 3" (1+ x))
-                              ^
-
-    > (.foreach "x" "1 2 3" (begin (declare x) (1+ x)))
-    "2 3 4"
-    > (foreach x "1 2 3" (1+ x))
-    "2 3 4"
-
-The [`foreach`](#foreach) special form avoids this problem.  The
-[`subst`](#subst) special form enhances `.subst` by allowing multiple
-substitutions to be performed.
-
-
-## Make Features
-
-Variables and built-in functions defined by Make are available to SCAM
-programs.  See <http://www.gnu.org/software/make/manual/make.html#Name-Index>
-for a complete list.
-
-### Make Variables
-
-The following Make-defined variables are pre-declared for SCAM programs:
-
-    .DEFAULT_GOAL MAKEFILE_LIST
-
-Other variables can be accessed using the `value` function, or by declaring
-the variable and then referencing its name:
-
-    (declare MAKELEVEL &global)
-    (print MAKELEVEL)
-
-### Make Built-In Functions
-
-Make built-in functions are directly usable by SCAM programs:
-
-    abspath basename dir error eval firstword flavor foreach info lastword
-    notdir origin realpath shell sort strip suffix value warning wildcard
-    words addprefix addsuffix filter filter-out findstring join word
-    patsubst subst wordlist if and or call
-
-In the case of [`foreach`](#foreach) and [`subst`](#subst), those
-names are bound to equivalent, but more friendly wrappers.
-
-### Rule Processing
-
-After a SCAM program's `main` executes, make will proceed to perform rule
-processing.  During execution of `main`, the program can create rules using
-`eval`.  For example:
-
-    (eval "foo.o: foo.c ; cc -o $@ $<")
-
-If the program defines rules, then Make will proceed to process them as
-usual, treating the first-defined rule as the default goal.
-
-After the program-defined rules complete successfully (or if no rules were
-specified by the program) a SCAM-defined "exit" rule will execute.  This
-runs any "exit" hooks that have been registered by the program, and exits
-the process with the exit code that the program's `main` function has
-returned.  One such hook displays tracing results (see `trace.scm`).
-
-### Make Interoperability
-
-Global variables in SCAM are stored as Make variables of the same name.
-
-#### Variable Flavor
-
-One interesting aspect of GNU Make variables is "flavor": global variables
-can be "recursive" or "simple".  See the [GNU Make
-manual](https://www.gnu.org/software/make/manual/html_node/Flavors.html#Flavors)
-for more details.
-
-When programming entirely in SCAM one does not need to be aware of variable
-flavor.  In SCAM, the distinction between "expand X" and "return the value
-of X" is explicitly expressed in syntax.  The expression `X` means "the
-value of X", and will not expand X (even if X is a recursive variable).  The
-expression `(X)` will expand X (even if X is a simple variable).
-
-Those that are defined *as* functions will be stored in Make recursive
-variables, so that they can be called in the usual manner from Make code.
-
-    > (define (f x) (1+ x))
-    > (flavor "f")
-    "recursive"
-    > (f 4)
-    5
-    > (eval "$(info $(call f,4))")
-    5
-
-Global variables that are not defined as functions will be stored in simple
-variables:
-
-    > (define f (lambda (x) (subst 1 2 x)))
-    > (flavor "f")
-    "simple"
-    > (f 4)
-    5
-    > (eval "$(info $(call f,4))")
-    $(subst 1,2,$1)
-
-Interoperability only applies to functions that accept 8 or fewer parameters.
-
-No facilities are provided for using anonymous functions or data records in
-Make.  The internal format of anonymous functions and data records is not
-specified and subject to change.  Vectors and dictionaries have a stable,
-specified structure.
 
 
 ## Libraries
@@ -1464,6 +983,44 @@ the standard libraries:
 
 For documentation, refer to the corresponding `.scm` files in the SCAM
 project.  (Look for `&public` functions.)
+
+
+## Compilation
+
+When SCAM encounters a `require` directive, the specified `MODULE` refers to
+a source file, minus its `.scm` extension, or to a standard module.  First,
+it is interpreted as a path to a source file.  If it does not begin with
+`/`, it is treated as relative to the directory containing the file being
+compiled, or in interactive mode, the current directory.  If that lookup
+fails, directories listed in the `SCAM_LIBPATH` environment variable
+(colon-delimited) are tried, in order, as base directories to perform the
+lookup.  Finally, if no source file is found and if the name matches a
+standard builtin module (supplied by the compiler), then the builtin module
+will be used.  If `MODULE` begins with `'` this will prevent source file
+matches and select a builtin module explicitly.
+
+### Building and Testing
+
+When `MODULE` identifies a source file, that source file will be compiled to
+determine its exports before compilation can continue.  In turn, modules
+required by `MODULE` will also have to be compiled in order to build
+`MODULE`, and so on.
+
+When a module source file is accompanied by a qualification test -- a module
+named `MODULE-q.scm` -- then the test will be compiled and run before the
+tested module is used in other requiring modules.
+
+SCAM will re-build object files (compilation results) and re-run tests only
+when necessary.  Subsequent invocations of `scam -o EXE SRC` or `scam -x
+SRC` will re-build only the source files that have changed, plus any source
+files that depend on them.
+
+SCAM stores compilation results in an "output directory" which is determined
+by how SCAM is invoked:
+
+  - `scam -o EXE SRC` will set the output directory to `(dir EXE)`.
+  - The option `--out-dir=DIR` will override the output directory.
+  - Otherwise, the output directory defaults to `".scam/"`.
 
 
 ## Command Line Syntax
