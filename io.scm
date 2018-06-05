@@ -74,6 +74,17 @@
   (shell! "head -1"))
 
 
+;; Concatenate elements in VEC in groups of SIZE.
+;;
+(define (concat-groups vec size)
+  (let ((group-dots (patsubst "%" "!." (wordlist 1 size vec)))
+        (all-dots (patsubst "%" "!." vec))
+        (vec vec))
+    (define `groups
+      (subst group-dots (concat group-dots "!.") all-dots))
+    (subst "!. " "" "!." " " (join vec groups))))
+
+
 ;; Write DATA to file FILENAME.
 ;;
 ;; In order to handle large values, the data is written line-by-line, using
@@ -91,7 +102,7 @@
        (not (logshell (concat "2>&1 >" prefile)))
        ;; initial write succeeded
        (begin
-         (for line (subst "\n" "\n " [data])
+         (for line (concat-groups (subst "\n" "\n " [data]) 50)
               (logshell (concat (echo-command line) " >> " prefile)))
          (logshell (concat "mv " prefile " " (quote-sh-arg filename)))
          "OK")))

@@ -453,7 +453,7 @@ define [mod-'io]
 # compiled from io.scm
 # Requires: 'core 'runtime
 # Uses: 'scam-ct
-# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 clean-path-x)1]or]2 mkdir-p_1 file-exists?_1 read-file_1 read-lines_1]or]2]or]3 write-file_2 getline_1 printn_0]or]more echo-command_1 shell\#1;~%1;x;1 unwrap-text+wrap-filter&p;0]or]1]or]2;\.;\:IL6`']sed|-e|!E`<]if],1[|1|0],1:IL6|@[}1}0|@'}!C|@[}2}0|@'}@1d!A`']s/,1/@/g!As/|/}/g!As/,!S/,1!S/g!As/^$/,1./!E quote-sh-arg_1 logshell+SCAM!TDEBUG#0;%;p
+# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 clean-path-x)1]or]2 mkdir-p_1 file-exists?_1 read-file_1 read-lines_1]or]2]or]3 write-file_2 concat-groups)2 getline_1 printn_0]or]more echo-command_1 shell\#1;~%1;x;1 unwrap-text+wrap-filter&p;0]or]1]or]2;\.;\:IL6`']sed|-e|!E`<]if],1[|1|0],1:IL6|@[}1}0|@'}!C|@[}2}0|@'}@1d!A`']s/,1/@/g!As/|/}/g!As/,!S/,1!S/g!As/^$/,1./!E quote-sh-arg_1 logshell+SCAM!TDEBUG#0;%;p
 $(call ^require,'core)
 ~logshell = $(and $(if $(filter S,$(SCAM_DEBUG)),$(info shell: $1))1,$(shell $1))
 ~quote-sh-arg = '$(subst ','\'',$1)'
@@ -469,10 +469,11 @@ printf '%b' $(call ~quote-sh-arg,$(subst
 endef
 ~printn = $(call ~logshell,$(call ~echo-command,$(call ~concat-vec,$(foreach N,1,$(^v)))) >&2)
 ~getline = $(and $(if $1,$(call ~printn,$1))1,$(call ~shell!,head -1))
+~concat-groups = $(call ^Y,$(patsubst %,!.,$(wordlist 1,$2,$1)),$(patsubst %,!.,$1),$1,,,,,,,$`(subst !., ,$`(subst !. ,,$`(join $`3,$`(subst $`1,$`1!.,$`2)))))
 define ~write-file
-$(and $1,$(if $(call ~logshell,2>&1 >$(call ~quote-sh-arg,$1.pre)),,1),$(and $(foreach line,$(subst 
+$(and $1,$(if $(call ~logshell,2>&1 >$(call ~quote-sh-arg,$1.pre)),,1),$(and $(foreach line,$(call ~concat-groups,$(subst 
 ,
- ,$(call ^d,$2)),$(call ^d,$(call ~logshell,$(call ~echo-command,$(call ^u,$(line))) >> $(call ~quote-sh-arg,$1.pre))))1,$(call ~logshell,mv $(call ~quote-sh-arg,$1.pre) $(call ~quote-sh-arg,$1))1,OK))
+ ,$(call ^d,$2)),50),$(call ^d,$(call ~logshell,$(call ~echo-command,$(call ^u,$(line))) >> $(call ~quote-sh-arg,$1.pre))))1,$(call ~logshell,mv $(call ~quote-sh-arg,$1.pre) $(call ~quote-sh-arg,$1))1,OK))
 endef
 ~read-lines = $(if $1,$(call ~logshell,sed -e '$(if $2,$(if ,,$2,$3!d;))s/!/!1/g;s/ /!0/g;s/	/!+/g;s/^$`/!./' $(call ~quote-sh-arg,$1) 2>/dev/null),$(info error: read-lines: nil filename))
 ~read-file = $(if $1,$(call ~unwrap-text,$(call ~read-lines,$1)),$(info error: read-file: nil filename))

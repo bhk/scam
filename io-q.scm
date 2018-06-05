@@ -7,8 +7,13 @@
 (expect "  \t \n \n"
         (shell! "echo $'  \\t \\n '"))
 
+;; concat-groups
 
-;; File I/O
+(expect "abc def ghi j"
+        (filter "%"
+                (concat-groups "a b c d e f g h i j" 3)))
+
+;; write-file & read-file
 
 (define `thisfile (lastword MAKEFILE_LIST))
 
@@ -17,7 +22,6 @@
           (expect "OK" (write-file tmpfile " a\\b\n\t c"))
           (shell (concat "echo X >> " tmpfile))
           (read-file tmpfile)))
-
 
 ;; read-file
 
@@ -81,6 +85,3 @@
 
 (escape-rt "/../..a$*!#//x")
 (escape-rt "+ !#\\$:;=%~*?|\t\n")
-
-
-(print "io ok")
