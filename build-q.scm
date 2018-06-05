@@ -61,7 +61,8 @@
     (expect (subst "SELF" (firstword MAKEFILE_LIST)
                    "p: p.src p.obj SELF | a-q.ok")
             (first lines))
-    (expect 1 (see "\t@: $(call" (nth 2 lines)))))
+    (expect 1 (see "\t@: " (nth 2 lines)))
+    (expect 1 (see "compile" (nth 2 lines)))))
 
 ;;----------------------------------------------------------------
 ;; scan-modules

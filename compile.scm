@@ -49,11 +49,6 @@
      (require "scam-ct"))
 
 
-;; When non-nil, comile, link, and test operations emit messages.
-;;
-(define *is-quiet* &public nil)
-
-
 ;; Compile SCAM source to executable code.
 ;;
 ;; Returns:
@@ -138,8 +133,6 @@
 ;;
 (define (compile-file infile outfile file-mods reqs uses excludes)
   &public
-
-  (or *is-quiet* (print "=> compiling " infile))
 
   (let-global ((*file-mods* (for m file-mods
                                  (if (module-is-source? m)

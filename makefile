@@ -82,7 +82,7 @@ target-line = $(shell sed -n '/guard,$1,/=' makefile)
 #   ID should be distinct from all other callers of guard
 guard = ( $2 ) > /dev/null || (echo 'makefile:$(target-line): $@ failed:' && /bin/echo " $$ "$(call qarg,$2) && false)
 
-build_message = @ printf '**\n** build $@\n**\n' 
+build_message = @ printf '*** build $@\n' 
 
 # Remember that $A/scam and $B/scam are files under test, so catch it if
 # they write nothing at all.

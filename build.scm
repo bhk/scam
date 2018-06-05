@@ -63,6 +63,12 @@
 ;;
 ;;--------------------------------------------------------------
 
+
+;; When non-nil, comile, link, and test operations emit messages.
+;;
+(define *is-quiet* &public nil)
+
+
 (define (fatal fmt ...args)
   (print (vsprintf (concat "scam: " fmt) args))
   (error "fatal error"))
@@ -285,6 +291,7 @@
 (define (compile-rule object source deps oodeps file-mods reqs uses excludes)
   (define `compile-lambda
     (lambda ()
+      (or *is-quiet* (print "... compiling " object))
       (compile-file source object file-mods reqs uses excludes)))
 
   (rule object (append source deps *self*) oodeps
@@ -335,7 +342,7 @@ SHELL:=/bin/bash
     (concat "\ndefine " var "\n" text "\nendef\n"))
 
   (or *is-quiet*
-      (print "=> linking " outfile))
+      (print "... linking " outfile))
 
   (write-file outfile
               (concat prologue
@@ -384,7 +391,7 @@ SHELL:=/bin/bash
 
     (rule ok-file obj-file nil
           [ (concat (if (not *is-quiet*)
-                        (concat "echo '=> running '" (subst "$" "$$" (quote-sh-arg exe))))
+                        (concat "echo '... running '" (subst "$" "$$" (quote-sh-arg exe))))
                     link-lambda)
             (concat MAKE " -s -f " exe)
             (concat "touch " ok-file) ])))
