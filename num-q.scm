@@ -166,8 +166,8 @@
   (let ((o (u-divx (u-enc a) (reverse (u-enc afrac)) (u-enc b) prec)))
     (for u o (u-dec u))))
 
-;; Return PREC digits
-(expect [0200 nil nil] (n-divx 12 nil 60 4))
+;; Return PREC siginificant digits
+(expect [02000 nil nil] (n-divx 12 nil 60 4))
 (expect [5000 nil nil] (n-divx 60 nil 12 4))
 (expect [12 340 nil] (n-divx 1234 nil 1000 2))
 ;; Use AFRAC
@@ -220,6 +220,9 @@
 (expect 0.3333 (/ 1 3 4))
 ;; Default precision
 (expect 0.3333333333333333 (/ 1 3))
+(expect 10 (/ 1 0.1))
+(expect 50 (/ 100 2))
+(expect 99 (/ 198 2))
 
 
 ;; <, >
@@ -228,7 +231,9 @@
 (expect nil (< 2 1))
 (expect 1 (< -2 1))
 (expect 1 (< -2 -1))
-;;TODO(expect nil (< -0 0))
+(expect nil (< -0 0))
+(expect 1 (>= -0 0))
+(expect nil (< -0.0 0.0))
 
 (expect 1 (> 2 1))
 

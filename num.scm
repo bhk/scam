@@ -197,7 +197,7 @@
 
 ;; Propagate value from digits greater than 10 to the next higher digit.
 ;;
-(define `(u-carry x)
+(define (u-carry x)
   (u-carry-loop (subst "iiiiiiiiii :" " :i" x)))
 
 ;; Combine respective digits without performing carry or extending digits.
@@ -231,10 +231,10 @@
 ;;   2 if b > a
 ;;   nil otherwise
 (define (u-cmp a b)
-  (if (or a b)
-      (or (u-cmp (rest a) (rest b))
-          (if (findstring (concat (word 1 b) "i") (word 1 a)) 1)
-          (if (findstring (concat (word 1 a) "i") (word 1 b)) 2))))
+  (lastword
+   (subst "iiii2222" "" "ii22" "" "ii22" "" "i2" "" ":" " " "i" "1 " "2" "2 "
+          (subst "i:" "i"
+                 (join a (subst "i" "2" b))))))
 
 (define `(u< a b)
   (filter 2 (u-cmp a b)))
@@ -421,7 +421,7 @@
     (ticks (nth-rest (words b) (concat ": " u))))
 
   (foreach
-   guess (concat ":" (tick-div (top a) (concat (top b) "i")))
+  guess (concat ":" (tick-div (top a) (concat (top b) "i")))
    (let ((rem (su-sub a (u* guess b)))
          (b b))
      (if (u< rem b)
@@ -436,12 +436,12 @@
 ;;
 ;;    A = AWHOLE + (reverse(AFRAC) / 10^words(AFRAC))
 ;;
-;; Q is an integer with PREC digits that represents the quotient in
-;; fixed-point form: the most significant digit is in the one's place.
-;; RWHOLE and RFRAC are the integral and fractional portions of the
+;; Q is an integer with PREC *significant* digits that represents the
+;; quotient in fixed-point form: the most significant digit is in the one's
+;; place.  RWHOLE and RFRAC are the integral and fractional portions of the
 ;; remainder.
 ;;
-;;    Quotient = Q / 10^(PREC-1)                    0 <= Quotient < 10
+;;    Quotient = Q / 10^((words Q)-1)               0 <= Quotient < 10
 ;;    Remainder = RWHOLE + RFRAC/10^words(RFRAC)    0 <= Remainder < B
 ;;    A = (Q*B + Remainder) / 10^(PREC-1)           0 <= A < B*10
 ;;
@@ -454,7 +454,7 @@
   (define `q (append qdigit q-prev))
   (define `whole (concat (or frac1 ":") " " rem))
 
-  (if (word prec (concat ": " q-prev))
+  (if (word prec (concat ": " (u-norm q-prev)))
       [ q rem (append (numreverse frac) frac1) ]
       (u-divx-loop (u-div1 whole b) (word 1 frac) (rest frac) b prec q)))
 
@@ -463,6 +463,7 @@
 
 
 ;; Divide A by B, returning [QUOTIENT REMAINDER].
+;; A and B must be normalized u-encoded numbers.
 ;;
 (define (u-div a b)
   (or
@@ -488,6 +489,7 @@
       (subst bi "" (concat (subst ":" "" (word 1 a))
                            (if 10-mod-b
                                (subst "i" 10-mod-b a/10-mod-b))))))
+
 
 ;; A mod B in ticks, where BI = ticks in B.  For B in {1, 2, 4, 5, 8} not
 ;; all digits will need to be examined.
@@ -523,7 +525,7 @@
 ;;
 (define (div-rem a b)
   &public
-  (let ((dr (u-div (u-enc a) (u-enc b))))
+  (let ((dr (u-div (u-norm (u-enc a)) (u-norm (u-enc b)))))
     (foreach w (wordlist 1 2 dr)
              (or (u-dec (promote w)) 0))))
 
@@ -637,11 +639,13 @@
           (u* (f-mul a) (f-mul b))))
 
 
+;; AMUL and MUL must be normalized.
+;;
 (define (f-div3 aexp asign amul bexp bsign bmul prec)
   (define `amag (words amul))
   (define `bmag (words bmul))
 
-  ;; Aim for B <= AWHOLE < B*10
+  ;; Aim for BMUL <= AWHOLE < BMUL*10
   (define `awhole
     (if (word bmag amul)
         ;; shift BMUL; take BMAG top digits of AMUL
@@ -663,11 +667,6 @@
        ;; zero
        "0 + :")
 
-   (if (filter 2 (u-cmp awhole bmul))
-       ;; AWHOLE < B : add a "0" digit so next time through AWHOLE >= B,
-       ;; so that all PREC digits of Q will be significant.
-       (f-div3 aexp asign amul bexp bsign (append bmul ":") prec))
-
    (let ((drr (u-divx awhole afrac bmul prec)))
      (define `q (first drr))
      (define `rwhole (nth 2 drr))
@@ -681,7 +680,7 @@
 
      (f-ctor (i- (i+ (i+ amag aexp) 1)
                  (i+ (i+ bmag bexp)
-                     prec))
+                     (words q)))
              (if (filter asign bsign)
                  "+"
                  "-")
@@ -689,12 +688,14 @@
                  (u-carry-loop (join q "i"))
                  q)))))
 
+
 ;; Divide A by B, returning rounded quotient with PREC significant digits.
 ;;
 ;; PREC = number of digits of precision; simple integer >= 1.
 ;;
 (define (f/ a b prec)
-  (f-div3 (f-exp a) (f-sign a) (f-mul a) (f-exp b) (f-sign b) (f-mul b)
+  (f-div3 (f-exp a) (f-sign a) (u-norm (f-mul a))
+          (f-exp b) (f-sign b) (u-norm (f-mul b))
           (or prec 16)))
 
 (define (f-cmp a b)
