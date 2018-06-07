@@ -253,22 +253,23 @@
 (define *use-test* nil)
 (let-global
  ;; harness
- ((use-module
-   (lambda (mod-name)
-     (set *use-test* mod-name)
-     { name: (EXMacro "name" "i") })))
+   ((locate-module (lambda (f name) (concat name ".scm")))
+     (use-module-env
+      (lambda (mod-name)
+        (set *use-test* mod-name)
+        { name: (EXMacro "name" "i") })))
 
- (expect (c0-ser "(use \"x\" \"y\")")
-         "!(PError 2 '\\'use\\' accepts 1 argument, not 2')")
- (expect (c0-ser "(use a)")
-         "!(PError 4 'invalid MODULE in (use MODULE); expected a literal string')")
+  (expect (c0-ser "(use \"x\" \"y\")")
+          "!(PError 2 '\\'use\\' accepts 1 argument, not 2')")
+  (expect (c0-ser "(use a)")
+          "!(PError 4 'invalid MODULE in (use MODULE); expected a literal string')")
 
- (p1-block-cc
-  "(use \"MOD\")"
-  (lambda (env sil)
-    (expect env { name: (EXMacro "name" "i") })
-    (expect sil "")
-    (expect *use-test* "MOD"))))
+  (p1-block-cc
+   "(use \"MOD\")"
+   (lambda (env sil)
+     (expect env { name: (EXMacro "name" "i") })
+     (expect sil "!(ICrumb 'use' 'MOD.scm')")
+     (expect *use-test* "MOD"))))
 
 
 ;;--------------------------------

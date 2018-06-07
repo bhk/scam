@@ -480,8 +480,8 @@
    ((eq? ".out/D/M.min" name) "(declare X) (declare x &public)")
    ((eq? ".out/M.min" name) "(declare X) (declare x &public)")
    ((eq? ".out/F.min" name) "(define X 1) (define (f) &inline &public X)")
-   ((eq? ".out/CM.min" name) "(define `(F) 3) (define `(G) &public (F))")
-   ((eq? ".out/SM.min" name) "(define `A 7) (define `B &public A)")
+   ((eq? ".out/CM.min" name) "(define `(F) 1337) (define `(G) &public (F))")
+   ((eq? ".out/SM.min" name) "(define `A 7331) (define `B &public A)")
    (else (expect (concat "Bad module: " name) nil))))
 
 (define (canned-read-file name)
@@ -506,12 +506,12 @@
           "D/M")
 
   (expect (c0-ser "(require \"D/M\")")
-          "(^require D/M)")
+          "(IBlock (^require D/M),!(ICrumb 'require' 'D/M.scm'))")
 
   (let-global ((*is-boot* 1)
                (*file-mods* "'D/M"))
     (expect (c0-ser "(require \"D/M\")")
-            "(^require 'D/M)"))
+            "(IBlock (^require 'D/M),!(ICrumb 'require' 'D/M.scm'))"))
 
   (expect (text-to-env "(require \"M\")" nil 1)
           {x: (EVar (gen-global-name "x" nil) "i")})
@@ -530,16 +530,16 @@
   ;; see private members.
 
   ;; IMPORTED inline function
-  (expect (c0-ser "(require \"F\") (f)")
-          (xns "(IBlock (^require F),{~X})"))
+  (expect 1 (see (xns "{~X}")
+                 (c0-ser "(require \"F\") (f)")))
 
   ;; IMPORTED compound macro
-  (expect (c0-ser "(require \"CM\") (G)")
-          "(IBlock (^require CM),3)")
+  (expect 1 (see 1337
+                 (c0-ser "(require \"CM\") (G)")))
 
   ;; IMPORTED symbol macro
-  (expect (c0-ser "(require \"SM\") B")
-          "(IBlock (^require SM),7)"))
+  (expect 1 (see 7331
+                 (c0-ser "(require \"SM\") B"))))
 
 ;; RECURSIVE INLINE FUNCTION: we should see one level of expansion where it
 ;; is used.

@@ -148,7 +148,8 @@
 (define `(voidify node)
   (if (case node
         ((IBuiltin name args) (filter "error eval info" name))
-        ((ICall name args) (filter "^require" name)))
+        ((ICall name args) (filter "^require" name))
+        ((ICrumb _ _) 1))
       node
       (IBuiltin "if" [node (IString "")])))
 
@@ -293,6 +294,7 @@
     ((IFuncall nodes) (c1-Funcall nodes))
     ((IBuiltin name args) (c1-Builtin name args))
     ((IWhere value) (escape value))
+    ((ICrumb key value) (crumb key value))
     (else (c1-Error node))))
 
 

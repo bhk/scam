@@ -288,11 +288,11 @@
 ;; FILE-MODS = list of module locations that have been freshly compiled
 ;; REQS, USES, EXCLUDES = see compile.scm
 ;;
-(define (compile-rule object source deps oodeps file-mods reqs uses excludes)
+(define (compile-rule object source deps oodeps file-mods excludes)
   (define `compile-lambda
     (lambda ()
       (or *is-quiet* (print "... compiling " object))
-      (compile-file source object file-mods reqs uses excludes)))
+      (compile-file source object file-mods excludes)))
 
   (rule object (append source deps *self*) oodeps
         [ (concat ": " compile-lambda) ]))
@@ -426,8 +426,7 @@ SHELL:=/bin/bash
   (define `obj-rule
     (if (module-is-source? origin)
         (compile-rule object origin depfiles oodepfiles
-                      file-mods (mod-requires mod) (mod-uses mod)
-                      (mod-excludes mod))))
+                      file-mods (mod-excludes mod))))
 
   ;; rule to test this module
   (define `ok-rule

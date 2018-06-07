@@ -703,7 +703,8 @@
             ;; already compiled or bundled
             (block-result inblock
                           (append (env-import origin read-priv) env)
-                          (ICall "^require" [ (IString id) ])))))
+                          (IBlock [ (ICall "^require" [ (IString id) ])
+                                    (ICrumb "require" origin) ])))))
      (else
       (err-expected "S" module sym "STRING" "(require STRING)")))))
 

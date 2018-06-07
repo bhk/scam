@@ -488,7 +488,8 @@
   (or (check-argc 1 args sym)
       (case module
         ((PString _ mod-name)
-         (let ((imports (use-module mod-name))
+         (let ((origin (locate-module *compile-file* mod-name))
+               (imports (use-module-env mod-name))
                (mod-name mod-name)
                (env env))
            (case (dict-get ErrorMarkerKey imports)
@@ -497,7 +498,8 @@
               (gen-error "use: module %q %s" mod-name desc))
              ;; success
              (else
-              (block-result inblock (append imports env) NoOp)))))
+              (block-result inblock (append imports env)
+                            (ICrumb "use" origin))))))
         (else (err-expected "Q" module sym "MODULE" "(use MODULE)")))))
 
 

@@ -31,6 +31,20 @@
                                 "" "(test)" "test.tmp")))
 
 
+;; require & use
+(declare ^require &global)
+
+(let-global ((locate-module (lambda (f name) (concat "'" name)))
+             (^require (lambda () nil))
+             (env-import (lambda () nil)))
+  (let ((o (compile-text "(require \"r\")(use \"u\")(use \"v\")" "" "(test)" "test.tmp")))
+    (expect "" (dict-get "errors" o))
+    (expect "'r" (dict-get "require" o))
+    (expect "'u 'v" (dict-get "use" o))
+    (expect 1 (see "$(call ^require,'r)\n"
+                   (dict-get "code" o)))))
+
+
 (define *written* "")
 (define `wname (first *written*))
 (define `wtext (nth 2 *written*))
@@ -52,9 +66,7 @@
              (read-file harness-read-file)
              (read-lines harness-read-lines))
 
-  (compile-file "foo.scm" ".out/foo.min" "rt" nil nil "C")
+  (compile-file "foo.scm" ".out/foo.min" "rt" "C")
   (expect ".out/foo.min" wname)
   (expect 1 (see "# Exports: x" wtext))
   (expect 1 (see "x := 1" wtext)))
-
-(print "compile ok")

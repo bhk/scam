@@ -26,6 +26,7 @@
       (IBlock   &list nodes)                ; "$(if NODES,,)"
       (ILambda  node)                       ; (lambda-quote (c1 node))
       (IWhere   value)                      ; "value"
+      (ICrumb   &word key value)            ; <crumb>
       (IEnv     env &list node))            ; used during phase 0
 
 ;; Blocks
@@ -40,6 +41,12 @@
 ;;    position formatted as "FILE:LINE".  When IWhere occurs within a macro,
 ;;    its contents will be rewritten when the macro is expanded to reflect
 ;;    where the macro was invoked.
+;;
+;;  ICrumb
+;;
+;;    An ICrumb holds a name/value pair that will be passed through to the
+;;    `compile-text` output without affecting the behavior of the generated
+;;    code.
 ;;
 ;; IEnv
 ;;
@@ -664,13 +671,12 @@
 ;; Perform a compile-time import of "mod", returning env entries exported to
 ;; the using module.  On error, this will contain {=ErrorMarkerKey:...}.
 ;;
-(define (use-module name)
+(define (use-module-env name)
   &public
   (let ((origin (locate-module *compile-file* name)))
     (if origin
         (begin
           ;; load the module now (into the compiler)
-          (assert (not *is-boot*))
           (call "^require" (module-id origin))
           (strip-vec (foreach e (env-import origin nil)
                               (case (dict-value e)

@@ -54,8 +54,6 @@
                           ["p.obj"]
                           ["a-q.ok"]
                           ["m1" "m2"]
-                          ["req1.obj" "req2.obj"]
-                          ["ct1.obj" "ct2.obj"]
                           nil)))
   (let ((lines (split "\n" rule)))
     (expect (subst "SELF" (firstword MAKEFILE_LIST)
