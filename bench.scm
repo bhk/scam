@@ -28,7 +28,8 @@
   (print (myformat n 6 6)))
 
 (define (time fn reps label)
-  (printn (pad-for label 20) label " (ms) : ")
+  (assert (numeric? reps))
+  (fprintf 1 (pad-for label 28) label " (ms) : ")
   (let ((rep-words (rep-words reps "1 1 1 1"))
         (fn fn)
         (label label)

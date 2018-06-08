@@ -53,13 +53,25 @@
   (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str))))
 
 
-;; Write STRINGS to the console without a trailing newline.  This function
-;; redirects its output to stderr because `shell` captures stdout, and
-;; because writing to stdin fails on Cygwin.
+;; Write data to a file descriptor.  Since `shell` captures stdout for the
+;; command it invokes, we replace 1 with 10, which has been redirected to
+;; *actual* stdout (see the prologue in build.scm).
 ;;
-(define (printn ...strings)
+;; Returns `nil` on success; non-nil if the file descriptor is bad.
+;;
+(define (write fd data)
   &public
-  (logshell (concat (echo-command (concat-vec strings)) " >&2")))
+  (rest
+   (logshell (concat (echo-command data)
+                     " 2>&1 >&" (patsubst 1 10 fd)))))
+
+
+;; Format string and write to a file.  Unlike printf: (A) no trailing
+;; newline is appended, and (B) a file descriptor is specified.
+;;
+(define (fprintf fd format ...values)
+  &public
+  (write fd (vsprintf format values)))
 
 
 ;; Read one line from stdin.
@@ -70,7 +82,7 @@
 (define (getline prompt)
   &public
   (if prompt
-      (printn prompt))
+      (write 1 prompt))
   (shell! "head -1"))
 
 

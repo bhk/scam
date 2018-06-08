@@ -7,6 +7,10 @@
 (expect "  \t \n \n"
         (shell! "echo $'  \\t \\n '"))
 
+;; write
+
+(expect 1 (see "Bad file descriptor" (write 543 "hi")))
+
 ;; concat-groups
 
 (expect "abc def ghi j"

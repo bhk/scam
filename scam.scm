@@ -37,8 +37,7 @@ Options:
 
 
 (define (perror fmt ...values)
-  ;; printn goes to stderr
-  (printn "scam: " (vsprintf (concat fmt "\n") values))
+  (fprintf 2 (concat "scam: " fmt "\n") values)
   ;; this value can be returned from main to indicate error
   1)
 
