@@ -1,5 +1,5 @@
 #!/bin/bash
-:; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f"$0"
+:; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f"$0" 10>&1
 SHELL:=/bin/bash
 
 define [mod-'build]
@@ -51,7 +51,7 @@ $1: $2$(if $3, | )$3$(call ~concat-vec,$(call ~cons,,$(addprefix $(if $(findstri
 
 endef
 ~compile-rule = $(call ~rule,$1,$(call ~append,$2,$3,$(~*self*)),$4,$(call ^d,: $`(and $`(or $`(~*is-quiet*),$`(info ... compiling $(call ^E,$1)))1,$`(call ~compile-file,$(call ^E,$2),$(call ^E,$1),$(call ^E,$5),$(call ^E,$6)))))
-~prologue := \#!/bin/bash$':; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -j $`{SCAM_JOBS:-9} -f"$`0"$'SHELL:=/bin/bash$'
+~prologue := \#!/bin/bash$':; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -j $`{SCAM_JOBS:-9} -f"$`0" 10>&1$'SHELL:=/bin/bash$'
 define ~epilogue
 $`(eval $`(value $(call ~module-var,$3)))
 $`(call ^start,$(call ~module-id,$1),$2,$`(value SCAM_ARGS))
@@ -481,7 +481,7 @@ define [mod-'io]
 # compiled from io.scm
 # Requires: 'core 'runtime
 # Uses: 'scam-ct
-# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 clean-path-x)1]or]2 mkdir-p_1 file-exists?_1 read-file_1 read-lines_1]or]2]or]3 write-file_2 concat-groups)2 getline_1 printn_0]or]more echo-command_1 shell\#1;~%1;x;1 unwrap-text+wrap-filter&p;0]or]1]or]2;\.;\:IL6`']sed|-e|!E`<]if],1[|1|0],1:IL6|@[}1}0|@'}!C|@[}2}0|@'}@1d!A`']s/,1/@/g!As/|/}/g!As/,!S/,1!S/g!As/^$/,1./!E quote-sh-arg_1 logshell+SCAM!TDEBUG#0;%;p
+# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 clean-path-x)1]or]2 mkdir-p_1 file-exists?_1 read-file_1 read-lines_1]or]2]or]3 write-file_2 concat-groups)2 getline_1 fprintf_2]or]more write_2 echo-command_1 shell\#1;~%1;x;1 unwrap-text+wrap-filter&p;0]or]1]or]2;\.;\:IL6`']sed|-e|!E`<]if],1[|1|0],1:IL6|@[}1}0|@'}!C|@[}2}0|@'}@1d!A`']s/,1/@/g!As/|/}/g!As/,!S/,1!S/g!As/^$/,1./!E quote-sh-arg_1 logshell+SCAM!TDEBUG#0;%;p
 $(call ^require,'core)
 
 ~logshell = $(and $(if $(filter S,$(SCAM_DEBUG)),$(info shell: $1))1,$(shell $1))
@@ -496,8 +496,9 @@ define ~echo-command
 printf '%b' $(call ~quote-sh-arg,$(subst 
 ,\n,$(subst \,\\,$1)))
 endef
-~printn = $(call ~logshell,$(call ~echo-command,$(call ~concat-vec,$(foreach N,1,$(^v)))) >&2)
-~getline = $(and $(if $1,$(call ~printn,$1))1,$(call ~shell!,head -1))
+~write = $(wordlist 2,99999999,$(call ~logshell,$(call ~echo-command,$2) 2>&1 >&$(patsubst 1,10,$1)))
+~fprintf = $(call ~write,$1,$(call ~vsprintf,$2,$(foreach N,3,$(^v))))
+~getline = $(and $(if $1,$(call ~write,1,$1))1,$(call ~shell!,head -1))
 ~concat-groups = $(call ^Y,$(patsubst %,!.,$(wordlist 1,$2,$1)),$(patsubst %,!.,$1),$1,,,,,,,$`(subst !., ,$`(subst !. ,,$`(join $`3,$`(subst $`1,$`1!.,$`2)))))
 define ~write-file
 $(and $1,$(if $(call ~logshell,2>&1 >$(call ~quote-sh-arg,$1.pre)),,1),$(and $(foreach line,$(call ~concat-groups,$(subst 
@@ -918,8 +919,8 @@ $(call ^require,'io)
 
 ~usage-string := Usage:$'$'    scam [-i]                  Enter interactive mode$'    scam -o FILE [OPTS] FILE   Build an executable from SRC$'    scam -e EXPR               Eval and print value of expression$'    scam [-x] FILE ARGS...     Compile and execute FILE$'    scam -v / --version        Show version$'    scam -h                    Show this message$'$'Options:$'$'  --no-trace      Omit tracing functionality from the executable$'  --quiet         Do not display progress messages$'  --out-dir DIR   Specify directory for intermediate files$'  --              Stop processing options$'
 define ~perror
-$(and $(call ~printn,scam: ,$(call ~vsprintf,$1
-,$(foreach N,2,$(^v))))1,1)
+$(and $(call ~fprintf,2,scam: $1
+,$(foreach N,2,$(^v)))1,1)
 endef
 ~set-obj-dir = $(call ^set,~*obj-dir*,$(patsubst %//,%/,$(or $1,$(if $2,$(dir $2),.scam/))/))
 ~build-and-run = $(call ~build,$(~*obj-dir*)$(basename $(notdir $(call ^u,$(word 1,$1)))),$(call ^u,$(word 1,$1)),$(call ~append,run!=$(call ^d,$(wordlist 2,99999999,$1)),$2))

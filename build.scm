@@ -291,7 +291,7 @@
 (define (compile-rule object source deps oodeps file-mods excludes)
   (define `compile-lambda
     (lambda ()
-      (or *is-quiet* (print "... compiling " object))
+      (or *is-quiet* (fprintf 2 "... compiling %s" object))
       (compile-file source object file-mods excludes)))
 
   (rule object (append source deps *self*) oodeps
@@ -342,7 +342,7 @@ SHELL:=/bin/bash
     (concat "\ndefine " var "\n" text "\nendef\n"))
 
   (or *is-quiet*
-      (print "... linking " outfile))
+      (fprintf 2 "... linking %s" outfile))
 
   (write-file outfile
               (concat prologue
@@ -391,7 +391,9 @@ SHELL:=/bin/bash
 
     (rule ok-file obj-file nil
           [ (concat (if (not *is-quiet*)
-                        (concat "echo '... running '" (subst "$" "$$" (quote-sh-arg exe))))
+                        (concat "echo '... running '"
+                                (subst "$" "$$" (quote-sh-arg exe))
+                                " >&2"))
                     link-lambda)
             (concat MAKE " -s -f " exe)
             (concat "touch " ok-file) ])))
