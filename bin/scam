@@ -1,12 +1,12 @@
 #!/bin/bash
-:; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f"$0" 10>&1
+:; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f"$0" 9>&1
 SHELL:=/bin/bash
 
 define [mod-'build]
 # compiled from build.scm
 # Requires: 'core 'io 'parse 'compile 'gen 'runtime
 # Uses: 'scam-ct
-# Exports: build_3 exe-rules)4 mmap-rules)2 mmap-rule)3 mmap-all-deps)2 test-rule)3 link-rule)7 link)5 epilogue)3 prologue#0;~%;p compile-rule)6 rule)4 scan-modules)2]or]3 mmap-all-requires)2 mmap-okfiles)2 mmap-testmods)2 mod-new&p;5;\.;\:IL6`>]^d],1[|1|0`']|`>]^d],1[|2|0`']|`>]^d],1[|3|0`']|`>]^d],1[|4|0`']|`>]^d],1[|5|0 mod-obj&p;1;\.;\>;~module-object-file`>]~nth],1'|1],1[|1|0 mod-deps&p;1;\.;\>;~append`>]~nth],1'|3],1[|1|0`>]~nth],1'|4],1[|1|0 mod-excludes&p;1;\.;\>;~nth`']5`[]1]0 mod-uses&p;1;\.;\>;~nth`']4`[]1]0 mod-requires&p;1;\.;\>;~nth`']3`[]1]0 mod-testmod&p;1;\.;\>;~nth`']2`[]1]0 mod-origin&p;1;\.;\>;~nth`']1`[]1]0 scan-deps+scan-builtin+scan-source+module-read-obj+origins-to-obj-files+origins-to-objs+module-object-file+strip-comments+skip-comments+traverse-graph)3 build-eval+*self*#0;~%;p fatal)1]or]more *is-quiet*#0;~%;x
+# Exports: build_3 exe-rules)4 mmap-rules)2 mmap-rule)3 mmap-all-deps)2 test-rule)3 link-rule)7 link)5 epilogue)3 prologue#0;~%;p compile-rule)6 rule)4 build-message)2 scan-modules)2]or]3 mmap-all-requires)2 mmap-okfiles)2 mmap-testmods)2 mod-new&p;5;\.;\:IL6`>]^d],1[|1|0`']|`>]^d],1[|2|0`']|`>]^d],1[|3|0`']|`>]^d],1[|4|0`']|`>]^d],1[|5|0 mod-obj&p;1;\.;\>;~module-object-file`>]~nth],1'|1],1[|1|0 mod-deps&p;1;\.;\>;~append`>]~nth],1'|3],1[|1|0`>]~nth],1'|4],1[|1|0 mod-excludes&p;1;\.;\>;~nth`']5`[]1]0 mod-uses&p;1;\.;\>;~nth`']4`[]1]0 mod-requires&p;1;\.;\>;~nth`']3`[]1]0 mod-testmod&p;1;\.;\>;~nth`']2`[]1]0 mod-origin&p;1;\.;\>;~nth`']1`[]1]0 scan-deps+scan-builtin+scan-source+module-read-obj+origins-to-obj-files+origins-to-objs+module-object-file+strip-comments+skip-comments+traverse-graph)3 build-eval+*self*#0;~%;p fatal)1]or]more *is-quiet*#0;~%;x
 $(call ^require,'core)
 
 $(call ^require,'io)
@@ -44,21 +44,25 @@ endef
 ~mmap-okfiles = $(addsuffix .ok,$(call ~origins-to-objs,$(call ~mmap-testmods,$1,$2)))
 ~mmap-all-requires = $(call ^set,~*mmap*,$(call ^set,~*mmap*,$1,$(~*mmap*)),$(call ~traverse-graph,$2,$`(call ~nth,3,$`(call ~assoc-initial,$`(subst !,!1,$`(call ^d,$`1)),$`(~*mmap*))),))
 ~scan-modules = $(if $(if $(call ^u,$(word 1,$2)),,1),$3,$(if $(call ~assoc-initial,$(subst !,!1,$(call ^d,$(call ^u,$(word 1,$2)))),$3),$(call ~scan-modules,$1,$(wordlist 2,99999999,$2),$3),$(call ^Y,$1,$(wordlist 2,99999999,$2),$3,$(call ^u,$(word 1,$2)),$(call ~scan-deps,$(call ^u,$(word 1,$2))),,,,,$`(call ~scan-modules,$`1,$`(call ~append,$`2,$`(call ~promote,$`5),$`(and $`(filter-out '%,$`4),$`(call ~file-exists?,$`(patsubst %.scm,%-q.scm,$`(filter %.scm,$`4))))),$`(call ~cons,$`(call ^d,$`4) $`(call ^d,$`(and $`(filter-out '%,$`4),$`(call ~file-exists?,$`(patsubst %.scm,%-q.scm,$`(filter %.scm,$`4))))) $`(call ^d,$`(call ~append,$`(call ~nth,1,$`5),$`(call ~dict-get,rt,$`1))) $`(call ^d,$`(call ~append,$`(call ~nth,2,$`5),$`(call ~dict-get,ct,$`1))) $`(call ^d,$`(if $`(call ~dict-get,rt,$`1),,R)$`(if $`(call ~dict-get,ct,$`1),,C)),$`3)))))
+define ~build-message
+$(or $(~*is-quiet*),$(call ~write,2,... $1 $2
+))
+endef
 define ~rule
 $1: $2$(if $3, | )$3$(call ~concat-vec,$(call ~cons,,$(addprefix $(if $(findstring @,$(value SCAM_DEBUG)),,@),$4)),
 	)
 
 
 endef
-~compile-rule = $(call ~rule,$1,$(call ~append,$2,$3,$(~*self*)),$4,$(call ^d,: $`(and $`(or $`(~*is-quiet*),$`(call ~fprintf,2,... compiling %s,$(call ^E,$1)))1,$`(call ~compile-file,$(call ^E,$2),$(call ^E,$1),$(call ^E,$5),$(call ^E,$6)))))
-~prologue := \#!/bin/bash$':; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -j $`{SCAM_JOBS:-9} -f"$`0" 10>&1$'SHELL:=/bin/bash$'
+~compile-rule = $(call ~rule,$1,$(call ~append,$2,$3,$(~*self*)),$4,$(call ^d,: $`(and $`(call ~build-message,compiling,$(call ^E,$1))1,$`(call ~compile-file,$(call ^E,$2),$(call ^E,$1),$(call ^E,$5),$(call ^E,$6)))))
+~prologue := \#!/bin/bash$':; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -j $`{SCAM_JOBS:-9} -f"$`0" 9>&1$'SHELL:=/bin/bash$'
 define ~epilogue
 $`(eval $`(value $(call ~module-var,$3)))
 $`(call ^start,$(call ~module-id,$1),$2,$`(value SCAM_ARGS))
 
 endef
 define ~link
-$(and $(or $(~*is-quiet*),$(call ~fprintf,2,... linking %s,$1))1,$(call ~write-file,$1,$(~prologue)$(foreach mod,$2,
+$(and $(call ~build-message,linking,$1)1,$(call ~write-file,$1,$(~prologue)$(foreach mod,$2,
 $ define $(call ~module-var,$(call ^u,$(mod)))
 $(call ^Y,$(call ~module-read-obj,$(call ^u,$(mod))),,,,,,,,,$(if $5,$(value ~identity),$(value ~strip-comments)))
 $ endef
@@ -496,7 +500,7 @@ define ~echo-command
 printf '%b' $(call ~quote-sh-arg,$(subst 
 ,\n,$(subst \,\\,$1)))
 endef
-~write = $(wordlist 2,99999999,$(call ~logshell,$(call ~echo-command,$2) 2>&1 >&$(patsubst 1,10,$1)))
+~write = $(wordlist 2,99999999,$(call ~logshell,$(call ~echo-command,$2)$(if $(filter 2,$1), 3>&2 2>&1 1>&3 3>&-, 2>&1 >&$(patsubst 1,9,$1))))
 ~fprintf = $(call ~write,$1,$(call ~vsprintf,$2,$(foreach N,3,$(^v))))
 ~getline = $(and $(if $1,$(call ~write,1,$1))1,$(call ~shell!,head -1))
 ~concat-groups = $(call ^Y,$(patsubst %,!.,$(wordlist 1,$2,$1)),$(patsubst %,!.,$1),$1,,,,,,,$`(subst !., ,$`(subst !. ,,$`(join $`3,$`(subst $`1,$`1!.,$`2)))))

@@ -54,8 +54,11 @@
 
 
 ;; Write data to a file descriptor.  Since `shell` captures stdout for the
-;; command it invokes, we replace 1 with 10, which has been redirected to
+;; command it invokes, we replace 1 with 9, which has been redirected to
 ;; *actual* stdout (see the prologue in build.scm).
+;;
+;; We redirect stderr to stdout, so that `shell` will capture error
+;; messages. Special care must be taken when fd is 2.
 ;;
 ;; Returns `nil` on success; non-nil if the file descriptor is bad.
 ;;
@@ -63,7 +66,11 @@
   &public
   (rest
    (logshell (concat (echo-command data)
-                     " 2>&1 >&" (patsubst 1 10 fd)))))
+                     (if (filter 2 fd)
+                         ;; swap 1 and 2
+                         " 3>&2 2>&1 1>&3 3>&-"
+                         ;; swap 1 and 2
+                         (concat " 2>&1 >&" (patsubst 1 9 fd)))))))
 
 
 ;; Format string and write to a file.  Unlike printf: (A) no trailing

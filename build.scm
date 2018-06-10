@@ -263,6 +263,14 @@
 
 ;;======================== Rule Construction ========================
 
+
+;; Display a progress message.
+;;
+(define (build-message action file)
+  (or *is-quiet*
+      (write 2 (concat "... " action " " file "\n"))))
+
+
 ;; Construct a Make "rule"
 ;;
 ;;   target = file name
@@ -291,7 +299,7 @@
 (define (compile-rule object source deps oodeps file-mods excludes)
   (define `compile-lambda
     (lambda ()
-      (or *is-quiet* (fprintf 2 "... compiling %s" object))
+      (build-message "compiling" object)
       (compile-file source object file-mods excludes)))
 
   (rule object (append source deps *self*) oodeps
@@ -316,7 +324,7 @@
 ;;
 (define prologue
 "#!/bin/bash
-:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\" 10>&1
+:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\" 9>&1
 SHELL:=/bin/bash
 ")
 
@@ -341,8 +349,7 @@ SHELL:=/bin/bash
                    (module-read-obj mod)))
     (concat "\ndefine " var "\n" text "\nendef\n"))
 
-  (or *is-quiet*
-      (fprintf 2 "... linking %s" outfile))
+  (build-message "linking" outfile)
 
   (write-file outfile
               (concat prologue

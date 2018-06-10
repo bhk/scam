@@ -113,7 +113,7 @@ $A.ok: $A/scam
 	$(_@) touch $@
 
 
-$B.ok: $B-o.ok $B-x.ok $B-i.ok $B-e.ok
+$B.ok: $B-o.ok $B-x.ok $B-e.ok $B-i.ok $B-io.ok
 	$(_@) touch $@
 
 
@@ -151,6 +151,13 @@ $B-e.ok: $B/scam
 $B-i.ok: $B/scam
 	@ echo '... test scam [-i]'
 	$(_@) $(call guard,BI1,$B/scam <<< $$'(^ 3 7)\n:q\n' 2>&1 | grep 2187)
+	$(_@) touch $@
+
+
+$B-io.ok: $B/scam
+	@ echo '... test io redirection'
+	$(_@) $(call guard,BIO1,$B/scam -e '(write 1 "null")(write 7 "stdout\n")' 7>&1 >/dev/null | grep ^stdout)
+	$(_@) $(call guard,BIO1,$B/scam -e '(write 2 "stderr")' 2>&1 >/dev/null | grep stderr)
 	$(_@) touch $@
 
 
