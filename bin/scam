@@ -50,7 +50,7 @@ $1: $2$(if $3, | )$3$(call ~concat-vec,$(call ~cons,,$(addprefix $(if $(findstri
 
 
 endef
-~compile-rule = $(call ~rule,$1,$(call ~append,$2,$3,$(~*self*)),$4,$(call ^d,: $`(and $`(or $`(~*is-quiet*),$`(info ... compiling $(call ^E,$1)))1,$`(call ~compile-file,$(call ^E,$2),$(call ^E,$1),$(call ^E,$5),$(call ^E,$6)))))
+~compile-rule = $(call ~rule,$1,$(call ~append,$2,$3,$(~*self*)),$4,$(call ^d,: $`(and $`(or $`(~*is-quiet*),$`(call ~fprintf,2,... compiling %s,$(call ^E,$1)))1,$`(call ~compile-file,$(call ^E,$2),$(call ^E,$1),$(call ^E,$5),$(call ^E,$6)))))
 ~prologue := \#!/bin/bash$':; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -j $`{SCAM_JOBS:-9} -f"$`0" 10>&1$'SHELL:=/bin/bash$'
 define ~epilogue
 $`(eval $`(value $(call ~module-var,$3)))
@@ -58,14 +58,14 @@ $`(call ^start,$(call ~module-id,$1),$2,$`(value SCAM_ARGS))
 
 endef
 define ~link
-$(and $(or $(~*is-quiet*),$(info ... linking $1))1,$(call ~write-file,$1,$(~prologue)$(foreach mod,$2,
+$(and $(or $(~*is-quiet*),$(call ~fprintf,2,... linking %s,$1))1,$(call ~write-file,$1,$(~prologue)$(foreach mod,$2,
 $ define $(call ~module-var,$(call ^u,$(mod)))
 $(call ^Y,$(call ~module-read-obj,$(call ^u,$(mod))),,,,,,,,,$(if $5,$(value ~identity),$(value ~strip-comments)))
 $ endef
 )$(call ~epilogue,$3,$(call ~gen-global-name,main,),$4))1,$(shell chmod +x $(call ~quote-sh-arg,$1)))
 endef
 ~link-rule = $(call ~rule,$1,$4,$5,$(call ^d,: $(call ^Y,$(call ~sort-by,$`(notdir $`1),$2),,,,,,,,,$``(call ~link,$(call ^E,$1,`),$`(call ^E,$`1),$(call ^E,$3,`),$(call ^E,$6,`),$(call ^E,$7,`)))))
-~test-rule = $(call ^Y,$(call ~module-object-file,$1),,,,,,,,,$`(call ~rule,$`1.ok,$`1,,$`(call ^d,$`(if $`(if $`(~*is-quiet*),,1),echo '... running '$`(subst $``,$``$``,$`(call ~quote-sh-arg,$`(basename $`1))))$`(call ^Y,$`(call ~sort-by,$``(notdir $``1),$(call ^E,$2)),$`(basename $`1),,,,,,,,$```(call ~link,$``(call ^E,$``2),$``(call ^E,$``1),$(call ^E,$1,``),$(call ^E,$3,``),))) $`(call ^d,$`(MAKE) -s -f $`(basename $`1)) $`(call ^d,touch $`1.ok)))
+~test-rule = $(call ^Y,$(call ~module-object-file,$1),,,,,,,,,$`(call ~rule,$`1.ok,$`1,,$`(call ^d,$`(if $`(if $`(~*is-quiet*),,1),echo '... running '$`(subst $``,$``$``,$`(call ~quote-sh-arg,$`(basename $`1))) >&2)$`(call ^Y,$`(call ~sort-by,$``(notdir $``1),$(call ^E,$2)),$`(basename $`1),,,,,,,,$```(call ~link,$``(call ^E,$``2),$``(call ^E,$``1),$(call ^E,$1,``),$(call ^E,$3,``),))) $`(call ^d,$`(MAKE) -s -f $`(basename $`1)) $`(call ^d,touch $`1.ok)))
 ~mmap-all-deps = $(call ^set,~*mmap*,$(call ^set,~*mmap*,$1,$(~*mmap*)),$(call ~traverse-graph,$2,$`(call ~append,$`(call ~nth,3,$`(call ~assoc-initial,$`(subst !,!1,$`(call ^d,$`1)),$`(~*mmap*))),$`(call ~nth,4,$`(call ~assoc-initial,$`(subst !,!1,$`(call ^d,$`1)),$`(~*mmap*)))),))
 ~mmap-rule = $(if $(filter-out '%,$(call ~nth,1,$2)),$(call ~compile-rule,$(call ~module-object-file,$(call ~nth,1,$2)),$(call ~nth,1,$2),$(call ~origins-to-obj-files,$(call ~append,$(call ~nth,3,$2),$(call ~nth,4,$2))),$(filter-out $(call ~module-object-file,$(call ~nth,1,$2)).ok,$(call ~mmap-okfiles,$1,$(call ~append,$(call ~nth,3,$2),$(call ~nth,4,$2)))),$(call ~mmap-all-deps,$1,$(call ~append,$(call ~nth,3,$2),$(call ~nth,4,$2))),$(call ~nth,5,$2)))$(if $(call ~nth,2,$2),$(call ~test-rule,$(call ~nth,2,$2),$(call ~mmap-all-requires,$1,$(call ^d,$(call ~nth,2,$2))),$3))
 ~mmap-rules = $(subst |1,|,$(subst |0, ,$(subst $  ,,$(foreach mod,$1,$(subst $  ,|0,$(subst |,|1,$(call ~mmap-rule,$1,$(call ^u,$(mod)),$2)))))))
@@ -711,14 +711,14 @@ endef
 ~parse-array = $(call ~parse-seq,$1,],$2,$(call ~parse-exp,$1,$(call ~1+,$2)),$(call ^d,!:P2 0 vector))
 define ~parse-skip
 $(if $(filter !0% !+% 
-% ;%,$(word $2,$1)),$(call ~parse-skip,$1,$(call ~1+,$2)),$2 $(word $2,$1))
+% ;%,$(word $2,$1)),$(call ~parse-skip,$1,$(call ~1+,$2)),$2)
 endef
 ~parse-dict = $(call ~parse-dict-1,$1,$2,,$(call ~parse-exp,$1,$(call ~1+,$2)))
 ~parse-dict-error = $(if $(filter !:P8,$(firstword $(wordlist 2,99999999,$1))),$(if $(call ~eq?,.,$(call ^n,3,$(wordlist 2,99999999,$1))),$(word 2,$(wordlist 2,99999999,$1)) !:P8 $3 {,$(if $(if $(filter $2,$(call ^d,$(call ^n,3,$(wordlist 2,99999999,$1)))),,1),$(word 2,$(wordlist 2,99999999,$1)) !:P8 $(word 2,$(wordlist 2,99999999,$1)) $(call ^d,$(call ^n,3,$(wordlist 2,99999999,$1)) }))))
-~parse-dict-1 = $(or $(call ~parse-dict-error,$4,},$2),$(if $(filter !:P8,$(firstword $(wordlist 2,99999999,$4))),$(word 1,$4) !:P3 $2 $3,$(call ~parse-dict-2,$1,$2,$3,$(wordlist 2,99999999,$4),$(call ~parse-exp,$1,$(call ~1+,$(word 1,$4))))))
-~parse-dict-2 = $(or $(call ~parse-dict-error,$5,: },$2),$(if $(filter !:P8,$(firstword $(wordlist 2,99999999,$5))),$(if $(call ~eq?,$(call ^n,3,$(wordlist 2,99999999,$5)),:),$(call ~parse-dict-3,$1,$2,$3,$4,$(call ~parse-exp,$1,$(call ~1+,$(word 1,$5)))))),$(word 1,$5) !:P8 $(word 1,$5) :?)
+~parse-dict-1 = $(or $(call ~parse-dict-error,$4,},$2),$(if $(filter !:P8,$(firstword $(wordlist 2,99999999,$4))),$(word 1,$4) !:P3 $2 $3,$(call ~parse-dict-2,$1,$2,$3,$(wordlist 2,99999999,$4),$(call ~parse-skip,$1,$(call ~1+,$(word 1,$4))))))
+~parse-dict-2 = $(if $(filter :,$(word $5,$1)),$(call ~parse-dict-3,$1,$2,$3,$4,$(call ~parse-exp,$1,$(call ~1+,$5))),$5 !:P8 $5 :?)
 ~parse-dict-3 = $(or $(call ~parse-dict-error,$5,},$2),$(if $(filter !:P8,$(firstword $(wordlist 2,99999999,$5))),$(if $(call ~eq?,$(call ^n,3,$(wordlist 2,99999999,$5)),}),$(word 2,$(wordlist 2,99999999,$5)) !:P8 $(word 2,$(wordlist 2,99999999,$5)) v?)),$(call ~parse-dict-4,$1,$2,$(call ~append,$3,$(call ^k,$4)!=$(call ^d,$(wordlist 2,99999999,$5))),$(call ~parse-skip,$1,$(call ~1+,$(word 1,$5)))))
-~parse-dict-4 = $(call ~parse-dict-1,$1,$2,$3,$(call ~parse-exp,$1,$(if $(filter $(if ,,,),$(word 2,$4)),$(call ~1+,$(word 1,$4)),$(word 1,$4))))
+~parse-dict-4 = $(call ~parse-dict-1,$1,$2,$3,$(call ~parse-exp,$1,$(if $(filter $(if ,,,),$(word $4,$1)),$(call ~1+,$4),$4)))
 ~parse-x2 = $(if $(filter !:P8,$(firstword $(wordlist 2,99999999,$3))),$3,$(word 1,$3) $(call ^Y,$2,$(wordlist 2,99999999,$3),,,,,,,,$(if $(filter ',$1),!:P4 $`1 $`2,$(if $(filter `,$1),!:P5 $`1 $`2,$(if $(filter $(if ,,,),$1),!:P6 $`1 $`2,$(if $(filter $(if ,,,@),$1),!:P7 $`1 $`2,!:P8 $(call ^E,$2) $`(call ^d,internal:parse-x2:$(call ^E,$1))))))))
 define ~parse-x
 $(if $(filter !0% !+% 

@@ -353,7 +353,7 @@
 (define (parse-skip subj pos)
   (if (filter "!0% !+% \n% ;%" (word pos subj))
       (parse-skip subj (1+ pos))
-      (concat pos " " (word pos subj))))
+      pos))
 
 
 (declare (parse-dict-1 subj start-pos pairs out))
@@ -385,17 +385,12 @@
         ((PError n desc)
          (POut pos (PDict start-pos pairs)))
         (else
-         (parse-dict-2 subj start-pos pairs form (parse-exp subj (1+ pos)))))))
+         (parse-dict-2 subj start-pos pairs form (parse-skip subj (1+ pos)))))))
 
 ;; expect ":"
-(define (parse-dict-2 subj start-pos pairs key out)
-  (define `pos (POut-pos out))
-  (define `form (POut-form out))
-  (or (parse-dict-error out ": }" start-pos)
-      (case form
-        ((PError n desc)
-         (if (eq? desc ":")
-             (parse-dict-3 subj start-pos pairs key (parse-exp subj (1+ pos))))))
+(define (parse-dict-2 subj start-pos pairs key pos)
+  (if (filter ":" (word pos subj))
+      (parse-dict-3 subj start-pos pairs key (parse-exp subj (1+ pos)))
       (POut pos (PError pos ":?"))))
 
 ;; expect VALUE
@@ -411,9 +406,8 @@
                     (parse-skip subj (1+ pos)))))
 
 ;; expect "," or "}"
-(define (parse-dict-4 subj start-pos pairs out)
-  (define `pos (word 1 out))
-  (define `w (word 2 out))
+(define (parse-dict-4 subj start-pos pairs pos)
+  (define `w (word pos subj))
   (parse-dict-1 subj start-pos pairs
                 (parse-exp subj (if (filter "," w)
                                     (1+ pos)

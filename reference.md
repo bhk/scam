@@ -157,12 +157,14 @@ Dictionary constructors contain a list of key-value pairs between `{` and
     { a: 1, b: 3, "a b c": "d e f" }
     {}
 
-Keys can be specified as a symbol, a symbol prefixed with `=`, or any
-expression.  A symbol not beginning with `=` is treated literally; the name
-of the symbol becomes the key.  When a symbol is prefixed with `=` the value
-of the symbol will be used as the key.  For example, `{ a: 1 }` is
-equivalent to `{ "a": 1 }`, and `{ =a: 1 }` is equivalent to `{ (if 1 a): 1
-}`.
+Any kind of expression can be used for keys and values.  In general, the
+expressions evaluated when constructing the dictionary, but symbols used as
+keys are treated differently.  A symbol not beginning with `=` is treated
+literally; the name of the symbol becomes the key.  When a symbol begins
+with `=`, another symbol is constructed from the characters that follow the
+initial `=`, and that symbol is evaulated to determine the key.  For
+example, `{ a: 1 }` is equivalent to `{ "a": 1 }`, and `{ =a: 1 }` is
+equivalent to `{ (or a): 1 }`.
 
 Dictionary values and functions that operate on them are [described
 below](#dictionaries).
