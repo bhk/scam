@@ -681,6 +681,11 @@
 ;; current environment.
 ;;
 (define (ml.special-require env sym args inblock)
+  ;; These are supplied later by other modules.  We avoid circular build
+  ;; dependencies this way.
+  (declare (compile-module infile outfile flags))
+  (declare *is-quiet*)
+
   (define `module (first args))
   (define `flags (get-flags args 1))
   (define `body (skip-flags args 1))
@@ -699,7 +704,13 @@
         (or (if (not origin)
                 (gen-error module "require: Cannot find %q" name))
             (if (not (module-has-binary? origin))
-                (gen-error module "interactive require not supported"))
+                (begin
+                  (or *is-quiet*
+                      (print "... compiling " origin))
+                  (if (compile-module origin (modid-file id) nil)
+                      (gen-error module "require: compilation of %q failed" origin)
+                      ;; success => nil => proceed to ordinary result
+                      (set *file-mods* (append *file-mods* id)))))
             ;; already compiled or bundled
             (block-result inblock
                           (append (env-import origin read-priv) env)
