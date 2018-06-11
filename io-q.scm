@@ -23,9 +23,13 @@
 
 (expect " a\\b\n\t cX\n"
         (let ((tmpfile (concat thisfile "-rwtest")))
-          (expect "OK" (write-file tmpfile " a\\b\n\t c"))
+          (expect nil (write-file tmpfile " a\\b\n\t c"))
           (shell (concat "echo X >> " tmpfile))
           (read-file tmpfile)))
+
+(expect 1 (see "directory" (write-file ".out/a" "xyz")))
+;; ensure it cleaned up the temp file
+(expect nil (file-exists? ".out/a_[tmp]"))
 
 ;; read-file
 

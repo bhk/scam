@@ -62,7 +62,7 @@
 (define (harness-read-lines name)
   (split "\n" (harness-read-file name)))
 
-(let-global ((write-file (lambda (name data) (set *written* [name data]) "OK"))
+(let-global ((write-file (lambda (name data) (set *written* [name data]) nil))
              (read-file harness-read-file)
              (read-lines harness-read-lines))
 

@@ -13,9 +13,17 @@
 
 
 ;; Quote argument ARG for POSIX shells.
+;;
 (define (quote-sh-arg arg)
   &public
   (concat "'" (subst "'" "'\\''" arg) "'"))
+
+
+;; Quote FILENAME for POSIX shells and ensure it does not begin with '-'
+;;
+(define (quote-sh-file filename)
+  &public
+  (quote-sh-arg (concat (if (filter "-%" [filename]) "./") filename)))
 
 
 ;; A sed command that converts text to a vector of lines as encoded by SCAM.
@@ -111,20 +119,23 @@
 ;; only on success, so that if the operation is interrupted (e.g. our
 ;; process is terminated) then FILENAME will not be left with partial data.
 ;;
-;; On success, "OK" is returned.
+;; On success, nil is returned.  Otherwise, an error description is returned.
 ;;
 (define (write-file filename data)
   &public
-  (define `prefile (quote-sh-arg (concat filename ".pre")))
+  (define `file-arg (quote-sh-file filename))
+  (define `temp-arg (quote-sh-file (concat filename "_[tmp]")))
 
-  (and filename
-       (not (logshell (concat "2>&1 >" prefile)))
-       ;; initial write succeeded
-       (begin
-         (for line (concat-groups (subst "\n" "\n " [data]) 50)
-              (logshell (concat (echo-command line) " >> " prefile)))
-         (logshell (concat "mv " prefile " " (quote-sh-arg filename)))
-         "OK")))
+  (or
+   ;; ensure filename is not a directory and create empty tmpfile
+   (rest (logshell (concat "rm -f " file-arg " 2>&1 && 2>&1 > " temp-arg)))
+
+   ;; initial write succeeded
+   (begin
+     (for line (concat-groups (subst "\n" "\n " [data]) 50)
+          (logshell (concat (echo-command line) " >> " temp-arg)))
+     (rest (logshell (concat "mv " temp-arg " " file-arg " 2>&1"
+                             " || rm " temp-arg " 2>&1"))))))
 
 
 ;; Read contents of file FILENAME and return a vector of lines.
@@ -133,7 +144,7 @@
   &public
   (if filename
       (logshell (concat (wrap-filter start end) " "
-                        (quote-sh-arg filename) " 2>/dev/null"))
+                        (quote-sh-file filename) " 2>/dev/null"))
       (print "error: read-lines: nil filename")))
 
 
@@ -152,13 +163,13 @@
 ;;
 (define (file-exists? filename)
   &public
-  (if (logshell (concat "[[ -f " (quote-sh-arg filename) " ]] && echo t"))
+  (if (logshell (concat "[[ -f " (quote-sh-file filename) " ]] && echo t"))
       filename))
 
 
 (define (mkdir-p dir)
   &public
-  (logshell (concat "mkdir -p " (quote-sh-arg dir))))
+  (logshell (concat "mkdir -p " (quote-sh-file dir))))
 
 
 ;; clean-path-x: Helper for clean-path

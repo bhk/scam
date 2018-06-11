@@ -108,7 +108,7 @@
           exe))
 
 
-;; Remove the first line if it begins with "#".
+;; Replace the first line with a blank line if it begins with "#".
 ;;
 (define (trim-hashbang text)
   (if (filter "#%" (word 1 text))
@@ -123,55 +123,64 @@
           (concat "'" name))))
 
 
-;; Compile a SCAM source file and write out a .min file.
+;; Compile a SCAM source file and write out a .min file.  On failure,
+;; display errors.
+;;
+;; INFILE = source file name (to be read)
+;; OUTFILE = object file name (to be written)
+;; EXCLUDES = see compile-prelude
+;;
+;; Returns: nil on success, error description on failure.
+;;
+(define (compile-module infile outfile excludes)
+  &public
+  (define `text (trim-hashbang (read-file infile)))
+
+  (define `imports
+    (let-global ((*compile-file* infile))
+      (compile-prelude excludes)))
+
+  (let ((o (compile-text text imports infile outfile))
+        (ireq (implicit-mod "runtime" excludes "R"))
+        (iuse (implicit-mod "scam-ct" excludes "C"))
+        (infile infile)
+        (outfile outfile))
+    (define `errors (dict-get "errors" o))
+    (define `exe (dict-get "code" o))
+    (define `env-out (dict-get "env" o))
+    (define `reqs (append (dict-get "require" o) ireq))
+    (define `uses (append (dict-get "use" o) iuse))
+
+    (if errors
+        ;; Error
+        (begin
+          (for e errors
+               (info (describe-error e text infile)))
+          (subst "S" (if (word 2 errors) "s" "")
+                 "compilation errorS"))
+        ;; Success
+        (begin
+          (mkdir-p (dir outfile))
+          (write-file outfile
+                      (construct-file infile env-out exe reqs uses))))))
+
+
+(define (error-if desc)
+  (if desc
+      (error desc)))
+
+
+;; Compile a SCAM source file and write out a .min file.  On failure,
+;; display errors and terminate execution.
 ;;
 ;; INFILE = source file name (to be read)
 ;; OUTFILE = object file name (to be written)
 ;; FILE-MODS = module origins that have been compiled
-;; REQS = IDs `require`d by this module (output in "Requires: ...")
-;; USES = IDs `use`d by this module (output in "Uses: ...")
 ;; EXCLUDES = see compile-prelude
-;;
-;;    Note: "Requires: ..." and "Uses: ..." comments are used only when
-;;    pulled from builtin modules (otherwise we use sources to determine
-;;    dependencies).  Bultin modules can only reference other builtins, and
-;;    builtins are compiler-provided, so ID and ORIGIN values are identical.
-;;
-;; Returns: "OK" on success.
 ;;
 (define (compile-file infile outfile file-mods excludes)
   &public
-
   (let-global ((*file-mods* (for m file-mods
                                  (if (module-is-source? m)
-                                     (module-id m))))
-               (*compile-file* infile))
-    (let ((text (trim-hashbang (read-file infile)))
-          (outfile outfile)
-          (imports (compile-prelude excludes)))
-      (let ((o (compile-text text imports infile outfile))
-            (ireq (implicit-mod "runtime" excludes "R"))
-            (iuse (implicit-mod "scam-ct" excludes "C"))
-            (text text)
-            (infile infile)
-            (outfile outfile))
-        (begin
-          (define `errors (dict-get "errors" o))
-          (define `exe (dict-get "code" o))
-          (define `env-out (dict-get "env" o))
-          (define `reqs (append (dict-get "require" o) ireq))
-          (define `uses (append (dict-get "use" o) iuse))
-
-          (if errors
-              ;; Error
-              (begin
-                (for e errors
-                     (info (describe-error e text infile)))
-                (error (subst "%S" (if (eq? 1 (words errors)) "" "s")
-                              "compilation error%S")))
-
-              ;; Success
-              (begin
-                (mkdir-p (dir outfile))
-                (write-file outfile
-                            (construct-file infile env-out exe reqs uses)))))))))
+                                     (module-id m)))))
+    (error-if (compile-module infile outfile excludes))))
