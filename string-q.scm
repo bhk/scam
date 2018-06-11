@@ -16,6 +16,8 @@
 
 (expect [" " "!" "\t" "!" " " "\x0d" "\n"] (string-to-chars " !\t! \x0d\n"))
 (expect ["a" "¢" "€" "￦" "€" "¢" "a"] (string-to-chars "a¢€￦€¢a"))
+;; for non-UTF8, each word should still be composed of byte sequences in the original string
+(expect ["\x80\x81 " "\xA1"] (string-to-chars "\x80\x81 \xA1"))
 
 ;; string-len
 

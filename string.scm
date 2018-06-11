@@ -75,8 +75,12 @@
 
 
 ;; Get all characters in STR.  The result is a vector of strings, each
-;; containing one character.  UTF-8 encoding of STR is assumed.  Note that
-;; `concat-vec` reverses this function.
+;; containing one character. `concat-vec` reverses this operation.
+;;
+;; UTF-8 encoding of STR is assumed; if STR is not a well-formed UTF8
+;; string, the result will contain all *bytes* in STR (so `concat-vec` will
+;; still reverse the operation) but grouping into vector elements will be
+;; undefined.
 ;;
 (declare (string-to-chars str) &public)
 (begin
@@ -99,11 +103,12 @@
   (set split-utf8-cont (gen-split utf8-cont ["!.% "]))
 
   ;; Group UTF-8 continuation characters with UTF-8 initial bytes *if* the
-  ;; string contains any initial bytes.
+  ;; string contains any initial bytes.  Just in case we have non-UTF8,
+  ;; don't leave any "!." strings behind.
   ;;
   (define (utf8-group-if s)
     (if (word 2 s)
-        (subst " !." "" (split-utf8-cont s))
+        (subst " !." "" "!." " " (split-utf8-cont s))
       s))
 
   (define (string-to-chars s)
