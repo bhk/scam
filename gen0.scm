@@ -20,27 +20,6 @@
   (concat *compile-file* ":" lnum))
 
 
-;; Env-modifying functions can return an environment when `inblock` is true.
-;; Use this macro to generate the return value.
-;;
-(define `(block-result inblock env node)
-  &public
-  (if inblock
-      (IEnv env node)
-      node))
-
-
-;; Extract sub-node from (IEnv ...) if INBLOCK is nil.
-;;
-(define (env-strip inblock node)
-  &public
-  (if inblock
-      node
-      (case node
-        ((IEnv e subnode) subnode)
-        (else node))))
-
-
 ;; scan-flags: find index of last flag (or 0 if no flags), after
 ;; skipping the first SKIP entries.
 
@@ -198,7 +177,7 @@
 ;; c0 compilation
 ;;================================
 
-(declare (c0 form env ?inblock))
+(declare (c0 form env))
 (declare (c0-block forms env))
 (declare (c0-lambda env args body))
 
@@ -316,7 +295,7 @@
           (expand-macro macro-il
                         depth-from
                         (current-depth env)
-                        (for a args (c0 a env nil))
+                        (for a args (c0 a env))
                         (form-index sym))
 
           ;; non-inline
@@ -355,11 +334,8 @@
 ;;              a) "-" if op is not a symbol
 ;;              b) nil if op is an unbound symbol)
 ;;              b) an env record if op is a defined symbol
-;;    inblock = if true, return: (IEnv new-env <node>)
-;;              if nil, return:  <node>
 ;;
-;(define (c0-L form env defn inblock)
-(define (c0-L env pos sym args defn inblock)
+(define (c0-L env pos sym args defn)
   (define `symname (symbol-name sym))
 
   (case defn
@@ -373,7 +349,7 @@
     ((EXMacro name scope)
      (if (eq? scope "x")
          (gen-error sym "cannot use xmacro in its own file")
-         (c0 (call name args) env inblock)))
+         (c0 (call name args) env)))
 
     ((ERecord encodings _ tag)
      (c0-record env sym args encodings tag))
@@ -390,7 +366,7 @@
 
       ;; Macro/special form.
       ((bound? (special-form-func symname))
-       (call (special-form-func symname) env sym args inblock))
+       (call (special-form-func symname) env sym args))
 
       ;; none of the above
       (else
@@ -467,7 +443,7 @@
 
 
 ;; special form: (lambda ARGS BODY)
-(define (ml.special-lambda env sym args inblock)  ;;form env)
+(define (ml.special-lambda env sym args)
   (define `arglist (first args))
   (define `body (rest args))
 
@@ -547,13 +523,12 @@
       (let ((value (c0-block body env))
             (scope (if (filter "&public" flags) "x" "p"))
             (gname (gen-global-name name flags))
-            (env env))
+            (depth (current-depth env)))
 
         (define `env-out
-          (append { =name: (if is-macro
-                               (EIL (current-depth env) scope value)
-                               (EVar gname scope)) }
-                  env))
+          { =name: (if is-macro
+                       (EIL depth scope value)
+                       (EVar gname scope)) })
 
         (or (il-error-node value)
             (IEnv env-out
@@ -605,19 +580,19 @@
 
       ;; compile function/macro body
       (let ((macro-il (c0-lambda env-in args body))
-            (env env))
+            (depth (current-depth env)))
 
         (define `defn
           (EFunc (if is-macro NoGlobalName gname)
                  scope
                  argc
                  (if (or is-macro has-inline)
-                     (cons (current-depth env)
+                     (cons depth
                            (case macro-il
                              ((ILambda body) body))))))
 
         (or (il-error-node macro-il)
-            (IEnv (append {=name: defn} env)
+            (IEnv {=name: defn}
                   (and is-define
                        (not is-macro)
                        (ICall "^fset" [(IString gname) macro-il])))))))
@@ -661,18 +636,16 @@
 
 ;; Break args into WHAT, FLAGS, and BODY.  Handle INBLOCK.
 ;;
-(define `(c0-def env sym args inblock is-define)
-  (env-strip
-   inblock
-   (c0-def2 env (form-index sym) (first args)
-            (get-flags args 1) (skip-flags args 1)
-            is-define nil)))
+(define `(c0-def env sym args is-define)
+  (c0-def2 env (form-index sym) (first args)
+           (get-flags args 1) (skip-flags args 1)
+           is-define nil))
 
-(define (ml.special-define env sym args inblock)
-  (c0-def env sym args inblock 1))
+(define (ml.special-define env sym args)
+  (c0-def env sym args 1))
 
-(define (ml.special-declare env sym args inblock)
-  (c0-def env sym args inblock nil))
+(define (ml.special-declare env sym args)
+  (c0-def env sym args nil))
 
 
 ;; (require STRING [&private])
@@ -680,7 +653,7 @@
 ;; Emit code to call REQUIRE, and add the module's exported symbols to the
 ;; current environment.
 ;;
-(define (ml.special-require env sym args inblock)
+(define (ml.special-require env sym args)
   ;; These are supplied later by other modules.  We avoid circular build
   ;; dependencies this way.
   (declare (compile-module infile outfile flags))
@@ -699,7 +672,7 @@
    (case module
      ((PString _ name)
       (let ((origin (locate-module *compile-file* name))
-            (module module) (env env) (name name) (inblock inblock) (read-priv read-priv))
+            (module module) (env env) (name name) (read-priv read-priv))
         (define `id (module-id origin))
         (or (if (not origin)
                 (gen-error module "require: Cannot find %q" name))
@@ -712,10 +685,9 @@
                       ;; success => nil => proceed to ordinary result
                       (set *file-mods* (append *file-mods* id)))))
             ;; already compiled or bundled
-            (block-result inblock
-                          (append (env-import origin read-priv) env)
-                          (IBlock [ (ICall "^require" [ (IString id) ])
-                                    (ICrumb "require" origin) ])))))
+            (IEnv (env-import origin read-priv)
+                  (IBlock [ (ICall "^require" [ (IString id) ])
+                            (ICrumb "require" origin) ])))))
      (else
       (err-expected "S" module sym "STRING" "(require STRING)")))))
 
@@ -728,7 +700,6 @@
 ;;   RESULTS = results (not including previous compiled form)
 ;;   O = result of compiling previous form EXCEPT the first time
 ;;       this function is called, when it is nil.
-;;       This may be a regular IL node *or* (IEnv env node)
 ;;
 (define (c0-block-cc env forms k ?results ?o)
   &public
@@ -736,14 +707,14 @@
     (append results (if o [o])))
 
   (case o
-    ((IEnv new-env node)
-     (c0-block-cc new-env forms k results node))
+    ((IEnv env-recs node)
+     (c0-block-cc (append env-recs env) forms k results node))
 
     (else
      (if (not forms)
          (k env (filter-out NoOp new-results))
          (c0-block-cc env (rest forms) k new-results
-                      (c0 (first forms) env 1))))))
+                      (c0 (first forms) env))))))
 
 
 ;; Compile a vector of forms as a block (each expression may modiy
@@ -760,7 +731,7 @@
                          NoOp)))))
 
 
-(define (ml.special-begin env sym args inblock)
+(define (ml.special-begin env sym args)
   (c0-block args env))
 
 
@@ -882,13 +853,13 @@
 
 
 ;; c0: compile an inline expression.  Return IL.  (see c0-block)
-(define (c0 form env ?inblock)
+(define (c0 form env)
   &public
   (case form
     ((PSymbol n value) (c0-S env form value (resolve form env)))
     ((PString n value) (IString value))
     ((PList n subforms) (c0-L env n (first subforms) (rest subforms)
-                              (resolve (first subforms) env) inblock))
+                              (resolve (first subforms) env)))
     ((PDict n pairs) (c0-D env n pairs))
     ((PQuote n subform) (IString subform))
     ((PQQuote n subform) (c0-qq env subform))

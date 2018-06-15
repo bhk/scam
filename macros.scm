@@ -457,7 +457,7 @@
 (define defmacro-where
   "(defmacro (NAME ARG...) BODY)")
 
-(define (ml.special-defmacro env sym args inblock)
+(define (ml.special-defmacro env sym args)
   (define `what (first args))
   (define `body (rest args))
   (case what
@@ -470,10 +470,12 @@
         ;; compile as a function
         (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
                         env))
-              (new-env (append
-                        { =name: (EXMacro (gen-global-name name env) "x") }
-                        env)))
-          (IEnv new-env node)))
+              (new-env { =name: (EXMacro (gen-global-name name env) "x") }))
+          (IEnv new-env
+                ;; discard the env entries returned by `define`
+                (case node
+                  ((IEnv _ subnode) subnode)
+                  (else node)))))
        (else (err-expected "S" m-name sym "NAME" defmacro-where))))
     (else (err-expected "L" what sym "(NAME ARG...)" defmacro-where))))
 
@@ -482,7 +484,7 @@
 ;; (use MODULE)
 ;;--------------------------------
 
-(define (ml.special-use env sym args inblock)
+(define (ml.special-use env sym args)
   (define `module (first args))
 
   (or (check-argc 1 args sym)
@@ -498,8 +500,7 @@
               (gen-error "use: module %q %s" mod-name desc))
              ;; success
              (else
-              (block-result inblock (append imports env)
-                            (ICrumb "use" origin))))))
+              (IEnv imports (ICrumb "use" origin))))))
         (else (err-expected "Q" module sym "MODULE" "(use MODULE)")))))
 
 
@@ -605,42 +606,39 @@
                      all-ctors)))))
 
 
-(define (ml.special-data env sym args inblock)
+(define (ml.special-data env sym args)
   (define `type (first args))
   (define `flags (get-flags args 1))
   (define `ctor-forms (skip-flags args 1))
 
-  (env-strip
-   inblock
-   (let ((types
-          (case type
-            ((PSymbol _ name)
-             (read-types sym (concat "!:" name) ctor-forms))
-            (else
-             (err-expected "S" type sym "NAME" data-where))))
-         (scope (if (filter "&public" flags) "x" "p"))
-         (env env))
-     (begin
-        ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
-       (define `tag-defs
-         (append-for ty types
-                     (case ty
-                       ((DataType tag name encodings argnames)
-                        { =tag: (append name encodings) }))))
+  (let ((types
+         (case type
+           ((PSymbol _ name)
+            (read-types sym (concat "!:" name) ctor-forms))
+           (else
+            (err-expected "S" type sym "NAME" data-where))))
+        (scope (if (filter "&public" flags) "x" "p")))
+    (begin
+      ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
+      (define `tag-defs
+        (append-for ty types
+                    (case ty
+                      ((DataType tag name encodings argnames)
+                       { =tag: (append name encodings) }))))
 
-       ;; Add record descriptions to the environment
-       (define `bindings
-         (append-for ty types
-                     (case ty
-                       ((DataType tag name encodings argnames)
-                        { =name: (ERecord encodings scope tag) }))))
+      ;; Add record descriptions to the environment
+      (define `bindings
+        (append-for ty types
+                    (case ty
+                      ((DataType tag name encodings argnames)
+                       { =name: (ERecord encodings scope tag) }))))
 
-       ;; Add tag/pattern bindings to ^tags
-       (define `node
-         (ICall "^add-tags" [(IString tag-defs)]))
+      ;; Add tag/pattern bindings to ^tags
+      (define `node
+        (ICall "^add-tags" [(IString tag-defs)]))
 
-       (or (case types ((PError _ _) types))
-           (IEnv (append bindings env) node))))))
+      (or (case types ((PError _ _) types))
+          (IEnv bindings node)))))
 
 
 ;;--------------------------------

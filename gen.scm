@@ -50,10 +50,11 @@
 ;;
 ;; IEnv
 ;;
-;;    Some expressions in a block context modify the environment for
-;;    subsequent expressions.  In that case, the phase 0 compilation of
-;;    those expressions return an IEnv record, which is then unwrapped by
-;;    c0-block-cc.  IEnv records should never be presented to phase 1.
+;;    Some expressions in a block context create new bindings for the
+;;    environment.  In those cases, the phase 0 compilation of those
+;;    expressions return an IEnv record containing the code *and* the new
+;;    bindings.  These are "unwrapped" by c0-block-cc and replaced with
+;;    `node`.  If phase 1 sees an IEnv record, it ignores the env field.
 ;;
 ;; Errors
 ;;

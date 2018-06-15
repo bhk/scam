@@ -130,7 +130,6 @@ Optimizations
 
  * gen0/gen1 optimizations:
     * perf measurement section in gen0-q.scm
-    * c0 inblock mode: can ILEnv return just the new env items?
     * optimize c0-block-cc
     * functions vs. macros for begin-block
     * revisit `is-balanced?`... aren't more things balanced?

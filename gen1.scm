@@ -295,6 +295,7 @@
     ((IBuiltin name args) (c1-Builtin name args))
     ((IWhere value) (escape value))
     ((ICrumb key value) (crumb key value))
+    ((IEnv _ node) (c1 node))
     (else (c1-Error node))))
 
 

@@ -228,12 +228,14 @@
 ;; (defmacro (NAME ARG...) BODY)
 ;;--------------------------------
 
-(let ((out (c0 (p1 "(defmacro (foo a) a)") nil 1)))
+(let ((out (c0 (p1 "(defmacro (foo a) a)") nil)))
   (case out
     ((IEnv env il)
      (fexpect env
               (xns { foo: (EXMacro "~foo" "x") }))
-     (expect (il-ser il)
+     (expect (il-ser (case il
+                       ((IEnv _ node) node)
+                       (else il)))
              (xns "(^fset ~foo,`{1})")))
     (else
      ;; not an ILEnv
