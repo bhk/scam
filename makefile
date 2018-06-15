@@ -67,7 +67,7 @@ promote: cok ; $(_@)cp $B/scam bin/scam
 
 install: ; cp bin/scam `which scam`
 
-clean: ; rm -rf .out .scam
+clean: ; rm -rf .out .scam */.out */.scam
 
 bench: ; bin/scam --out-dir .out/ -x bench.scm $(ARGS)
 
