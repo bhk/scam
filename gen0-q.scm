@@ -319,9 +319,9 @@
 (expect (c0-ser ",a")
         "!(PError 1 'unquote (,) outside of a quasiquoted (`) form')")
 (expect (cqq "`)")
-        "!(PError 2 ')')")
+        "!(PError 2 ') .')")
 (expect (cqq "`,)")
-        "!(PError 3 ')')")
+        "!(PError 3 ') .')")
 
 
 ;; splicing

@@ -1,6 +1,10 @@
 (require "core")
 (require "io" &private)
 
+(define SOURCE_FILE (first (split ":" (current-file-line))))
+(define SOURCE_DIR (dir SOURCE_FILE))
+(define TMP_DIR (or (value "TEST_DIR")
+                    (concat SOURCE_DIR ".out/")))
 
 ;; shell!
 
@@ -27,9 +31,11 @@
           (shell (concat "echo X >> " tmpfile))
           (read-file tmpfile)))
 
-(expect 1 (see "directory" (write-file ".out/a" "xyz")))
+(define `non-file (concat TMP_DIR "io-q-dir"))
+(shell (concat "mkdir -p " (quote-sh-arg non-file)))
+(expect 1 (see "directory" (write-file non-file "xyz")))
 ;; ensure it cleaned up the temp file
-(expect nil (file-exists? ".out/a_[tmp]"))
+(expect nil (file-exists? (concat non-file "_[tmp]")))
 
 ;; read-file
 
@@ -44,16 +50,18 @@
 
 (define io-q (concat (concat-vec io-q-lines "\n") "\n"))
 
-(expect io-q (read-file "test/io-q.txt"))
-(expect io-q-lines (read-lines "test/io-q.txt"))
-(expect (wordlist 2 5 io-q-lines) (read-lines "test/io-q.txt" 2 5))
+(define `test-file (concat SOURCE_DIR "test/io-q.txt"))
 
-(expect nil (read-lines "test/nonexist"))
+(expect io-q (read-file test-file))
+(expect io-q-lines (read-lines test-file))
+(expect (wordlist 2 5 io-q-lines) (read-lines test-file 2 5))
+
+(expect nil (read-lines (concat SOURCE_DIR "does-not-exist")))
 
 ;; file-exists?
 
-(expect "io.scm" (file-exists? "io.scm"))
-(expect nil (file-exists? "io.scm.not"))
+(expect SOURCE_FILE (file-exists? SOURCE_FILE))
+(expect nil (file-exists? (concat SOURCE_DIR "does-not-exist")))
 
 ;; clean-path
 

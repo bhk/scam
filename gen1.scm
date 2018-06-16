@@ -148,7 +148,7 @@
 (define `(voidify node)
   (if (case node
         ((IBuiltin name args) (filter "error eval info" name))
-        ((ICall name args) (filter "^require" name))
+        ((ICall name args) (filter "^require ^add-tags" name))
         ((ICrumb _ _) 1))
       node
       (IBuiltin "if" [node (IString "")])))
@@ -163,14 +163,15 @@
 
 
 ;; These nodes generate code with balanced parens and without leading or
-;; trailing whitespace.
+;; trailing whitespace.  This saves a trip through `protect-arg`.
 ;;
-(define `(is-balanced? node)
+(define (is-balanced? node)
   (case node
     ((ICall _ _)    1)
     ((IVar _)       1)
     ((IBuiltin _ _) 1)
-    ((IFuncall _)   1)))
+    ((IFuncall _)   1)
+    ((ILocal _ _)   1)))
 
 
 (define (c1-arg node)

@@ -655,8 +655,7 @@
 
 
 ;; Apply two-argument function F to all elements of V, starting at the left
-;; with (F Z <first>).  If there is only one element, return it.  If V is
-;; empty, return Z.
+;; with (F Z <first>).  If V is empty, return Z.
 (define (foldl f z v)
   &public
   (if (firstword v)

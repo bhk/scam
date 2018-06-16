@@ -79,25 +79,6 @@
     ((PString n value) "literal string")
     (_ "invalid form")))
 
-;; Set all form positions to POS.
-;;
-(define (form-set-indices pos form)
-  &public
-  (define `(recur f)
-    (form-set-indices pos f))
-
-  (if form
-      (case form
-        ((PString  n v) (PString pos v))
-        ((PSymbol  n v) (PSymbol pos v))
-        ((PError   n v) (PError pos v))
-        ((PList    n subs) (PList pos (for f subs (recur f))))
-        ((PQuote   n sub) (PQuote pos (recur sub)))
-        ((PQQuote  n sub) (PQQuote pos (recur sub)))
-        ((PUnquote n sub) (PUnquote pos (recur sub)))
-        ((PSplice  n sub) (PSplice pos (recur sub)))
-        (else (concat "ERROR:form-set-indices(" form ")")))))
-
 
 ;; End Type internals
 ;;----------------------------------------------------------------
@@ -314,11 +295,14 @@
 ;; This is a separate function to keep this rare case outside the tight
 ;; loop.
 (define (parse-seq-err term start-pos err-n err-desc)
-  (if (filter "." err-desc)
-      ;; EOF: unterminated sequence
-      (POut start-pos (PError start-pos (subst ")" "(" "]" "[" term)))
-      ;; other error
-      (POut err-n (PError err-n (concat err-desc " " term)))))
+  (define `err-form
+    (if (filter "." err-desc)
+        ;; EOF: unterminated sequence
+        (PError start-pos (subst ")" "(" "]" "[" term))
+        ;; other error
+        (PError err-n (concat err-desc " " term))))
+
+  (POut err-n err-form))
 
 
 (define (parse-seq subj term start-pos out lst)
@@ -467,6 +451,22 @@
    (POut pos (PError pos "."))))
 
 
+;; Parse all sexps in `subject`.  Return vector of forms.
+;; `subject` is the penc-encoded form of the original text.
+;;
+(define (parse-subject subj)
+  &public
+  (let ((form (POut-form (parse-seq subj "." 0 (parse-exp subj 1) nil))))
+    (case form
+      ((PList pos lst) lst)
+      (else [form]))))
+
+
+(define (parse-text text)
+  &public
+  (parse-subject (penc text)))
+
+
 ;;--------------------------------
 ;; Parse error diagnostics
 ;;--------------------------------
@@ -483,7 +483,6 @@
 ;; Get "LINE:COL" or POS in SUBJ.
 ;;
 (define (get-subject-line-col pos subj)
-  &public
   ;; prefix lines with "\n" to handle POS when at start of line
   (let ((lines (subst " " "" "\n" " \n"
                       (wordlist 1 (or pos 1) (concat "\n " subj)))))
@@ -541,37 +540,3 @@
        (if (word-index? pos)
            (sprintf "%s:%s: %s\n%s\n%s\n" filename lc msg line-text ptr)
            (sprintf "%s: %s\n" filename desc))))))
-
-
-;; (parse-forms subj pos k) -->  (k form-list err)
-;;    ERR = nil if sequence ended at EOF,  (PError ...) otherwise.
-;;
-(define (parse-forms-r subj k o form-list)
-  (define `form (POut-form o))
-  (define `pos (POut-pos o))
-
-  (case form
-    ((PError n desc)
-     (k form-list (if (eq? desc ".") nil form)))
-
-    (else (parse-forms-r subj k
-                         (parse-exp subj (1+ pos))
-                         (conj form-list form)))))
-
-(define `(parse-forms subj pos k)
-  (parse-forms-r subj k (parse-exp subj pos) nil))
-
-
-;; Parse all sexps in `subject`.  Return vector of forms.
-;; `subject` is the penc-encoded form of the original text.
-;;
-(define (parse-subject subj)
-  &public
-  (parse-forms subj 1 (lambda (form-list err)
-                        (if err
-                            (conj form-list err)
-                            form-list))))
-
-(define (parse-text text)
-  &public
-  (parse-subject (penc text)))

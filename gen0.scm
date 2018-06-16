@@ -704,17 +704,17 @@
 (define (c0-block-cc env forms k ?results ?o)
   &public
   (define `new-results
-    (append results (if o [o])))
+    (concat results (if o (concat " " [o]))))
 
   (case o
-    ((IEnv env-recs node)
-     (c0-block-cc (append env-recs env) forms k results node))
+    ((IEnv bindings node)
+     (c0-block-cc (append bindings env) forms k results node))
 
     (else
-     (if (not forms)
-         (k env (filter-out NoOp new-results))
+     (if forms
          (c0-block-cc env (rest forms) k new-results
-                      (c0 (first forms) env))))))
+                      (c0 (first forms) env))
+         (k env (filter-out NoOp new-results))))))
 
 
 ;; Compile a vector of forms as a block (each expression may modiy

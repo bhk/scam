@@ -80,7 +80,7 @@
     (define `newenv (dict-get "env" o))
     (define `(is-error codes)
       (filter codes (case (first errors)
-                      ((PError n desc) desc))))
+                      ((PError n desc) (word 1 desc)))))
 
     (cond
      ;; unterminated expr: append more text

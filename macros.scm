@@ -398,6 +398,15 @@
 (define cond-where
   "(cond (TEST BODY)...)")
 
+
+;; Make a valid expression from a vector of forms.
+;;
+(define (begin-block forms)
+  (if (filter 1 (words forms))
+      (first forms)
+      (PList 0 (cons (PSymbol 0 "begin") forms))))
+
+
 ;; Combine a cond clause with its "else" value.
 ;;   CLAUSE = `(TEST BODY)
 ;;   ELSE-FORM = value of remaining clauses

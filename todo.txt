@@ -1,23 +1,52 @@
 TODO
 
-* fix: (num-format 0.4 2 " ")                -> "  "
-       (num-format 868.8888888888858 6 " ")  ->  "??????"
-       (num-format 0.18 5 " " 3)             ->  "     .18000"
+Bugs
+----
 
-* Allow varargs in macros:
+ * fix: (num-format 0.4 2 " ")                -> "  "
+        (num-format 868.8888888888858 6 " ")  ->  "??????"
+        (num-format 0.18 5 " " 3)             ->  "     .18000"
+
+ * fix: circular dependency warning with gen-testutils.
+
+
+Library Enhancements
+----
+
+ * num: (div-rem float float) : (div-rem N 1) == [floor(N) (- N floor(N))]
+ * num: faster div: O(n) or close, not O(n^2)
+ * num: validate all inputs; no undefined behavior
+ * num: Exponentiation with non-integral exponents
+ * num: accept E-notation for integers in: range, ^
+ * num: multi-arg + and *
+
+
+Language/Runtime Enhancements
+----
+
+ * Prefix automatic variables to avoid conflicts with globals, making them
+   functionally equivalent to locals.
+
+ * Auto-rename variables to avoid conflict with Make special variables and
+   keywords (@, +, SHELL, MAKEFLAGS, etc.)
+
+ * Forbid shadowing of variables
+    - allow `(let ((x x)) ...)` or `&override` exceptions
+    - validate `define` against prior `declare`
+
+ * Remove `use`; handle xmacros-exporting modules in `require`
+
+ * Enhance call-site tracing to support lambdas and macros/builtins
+
+     (? lambda ...)  -->  (call "^tv" "any" (any ...))
+     or:  (call "^yt" "any" (lambda (args) (any args)) ...)
+
+ * Allow varargs in macros:
       Maybe:  (ILocal "1+" ups)
-      At macro expand time, evalutes to precisely-sized vector.
-
- * Call-site tracing of lambda values
-
-   (? lambda ...)  -->  (call "^tv" "any" (any ...))
-   or:  (call "^yt" "any" (lambda (args) (any args)) ...)
-   fix (? builtin ...) and (? macro ...).
-   &inline functions then only good for (global-name ...) or Make interop.
+      At macro expand time, evaluates to precisely-sized vector.
 
  * Deconstruct vectors in `let`
-    (let (([a b c] vec)) ...)
-    Okay if it always succeeds; no "else".
+    (let (([a b c] vec)) ...)       ;; always succeeds
 
  * Record reflection.  What format-record needs:
 
@@ -25,14 +54,17 @@ TODO
     (data-type value)    -> [ctor-name arity ctor dtor]
 
  * (case EXPR
-      ([a b]        EXPR)   ;; deconstruct vectors [succeeds when?]
       (CONST        EXPR)   ;; match constant value (nil, for example)
       ((Ctor "K" y) EXPR)   ;; match constant member
       (["A" a b]    EXPR)   ;; match constant element (always succeeds)
       ...)
 
- * WARN when shadowing variables
-    - allow `(let ((x x)) ...)` or `&shadow` exceptions
+ * "spread" with "..." syntax.
+
+ * Macros don't have a good way to generate error messages or gensym.
+
+ * aliases: (define `g f) assigns g the correct value, but arity information
+   is lost, and it compiles to a lambda-call, not a call-by-name.
 
  * looping constructs / named lambda
 
@@ -53,96 +85,25 @@ TODO
                  [a 1 (* a i)])
                 ((zero? i) a))))
 
- * "spread" with "..." syntax.
-
- * build / bundling / namespaces
-
-   Fix circular dependency for gen-testutils.
-
-   scam-ct should not "require" runtime.
-
-   Include namespace in MIN file names and variable names?
-    + User modules need not conflict with compiler modules.
-    - When `require` is compiled, module name is resolved to a variable or
-      file, using "file map" and "bundle map".  Bundle map is built into the
-      compiler (mod -> varname).  File map is passed to compile-file.
-
-   compile-file: is-boot -> boot-mode
-        r = runtime (no implicit deps for this module; no bundles)
-        c = ct macros (runtime is implicit; no bundles)
-        1 = in boot phase (no bundles)
-        nil => "normal" mode
-     is-boot & mod-files -> opts
-
-   Compile via command to enable more parallelism.
-
- * use & executable macros
-
-    - .out/a/scam ends up using NS='~' runtime, and also building and
-      loading its own runtime for .out/b/xxx with NS='~'.  Assuming
-      namespacing is used by only the compiler, this is only a problem for
-      compiler builds, and is MOSTLY handled by the current NS usage -- c0 =
-      "~", c1b = "", c1b = "~", c1c = "~" but is identical to c1b -- but the
-      .out/a/scam / .out/b/runtime clash remains.
-
-    - Syntax quoting is an incomplete feature because the resulting values
-      are undefined.
-
-       1. Expose "Form" data type to target code as part of the base env.
-       2. Write converter from "Form" to internal type (namespacing must
-          distinguish c0's from c1's "Form").
-       3. Make this a no-op when we observe that Form == internal (could be
-          a compiler-specific mechanism for deeper type reflection).
-
-    - Macros don't have a good way to generate error messages or gensym
-      (needs env).
-
-    - Even with namespacing, "global" symbols remain.  More complete
-      namespacing would help, but would complicate RT.  Maybe a new IL node
-      would help here (IRT, akin to IBuiltin). Those *actually* used in
-      codegen:
-
-        ^u, ^d, ^n, ^set, ^fset, ^Y, ^E, ^av, ^t, ^require, ^start
-
- * aliases: (define `g f) assigns g the correct value, but arity information
-   is lost, and it compiles to a lambda-call, not a call-by-name.
-
- * Custom constructors
-
-   (data (Bind key value)
-     (rec (concat [key] "!=" [value]))
-     (key (first (subst "!=" " " rec)))
-     (value (nth 2 (subst "!=" "! " rec)))a
-     (match (findstring "!=" rec)))
-
- * Integrate `strlen` with core.scm and use `strlen` to report column
-   for errors.
-
  * do / bind / return
+
+   Monads <-> exceptions
+   do         try
 
    (do (a b <- f1 x)
        (c <- fn2 a b)
        (return c))
 
 
-Optimizations
+Code Optimizations
 ----
 
- * gen0/gen1 optimizations:
-    * perf measurement section in gen0-q.scm
-    * optimize c0-block-cc
-    * functions vs. macros for begin-block
-    * revisit `is-balanced?`... aren't more things balanced?
+ * Identify arguments using special IL record (vs. R)
+     A n level           ->   local (arg)       $n
 
- * parse.scm optimizations/rework
-    * perf measurement
-    * parse: replace (parse-seq ...) with (parse-formsXX ...)
-    * parse: (POut nextpos form), not (POut lastpos form)
-    * parse: errors are not nested in forms... Keep parsing after errors?
-        (POut (1+ pos) (PError pos ...))
-        (POut (1+ (words subj)) (PError pos ...))
-    * Add SCAM_TAGS option to optimize "Form" tags; remove string
-      tag-specifiers from `data` when done.
+
+Optimizations for Generated Code
+----
 
  * Recover crafted optimizations:
      (demote (promote x))  -->  x
@@ -153,19 +114,6 @@ Optimizations
        -->  (if (filter "!1:x!0% !1:x" (word 1 vec)) ...)
 
      Number-ness validated by ... `cond` test,  `foreach` variable, ...
-
- * Tracing `scam` itself is problematic because the processing occurs after
-   `main` exits (in the rule-processing phase).
-
- * (case NAME    -->  (foreach TMP (or (word 1 VALUE) "!.")
-       (Foo a)    -->    (if (filter "TAG" TMP) ...))
-        a         -->    (word 2 (^u TMP))  or  (word 2 VALUE)
-   (case EXPR    -->  (foreach TMP [VALUE]
-      (Foo a b)  -->    (if (filter "TAG!0%" "%") TMP) ...))  [always args]
-      (Bar)      -->    (if (filter "TAG" "%") TMP) ...))     [no args]
-
- * Output a very limited environment when a module does not export macros or
-   inline functions. (Any examples?)
 
  * Constant propagation:  (ICall PURE CONST...) -->   (Const (PURE CONST...))
 
@@ -247,9 +195,8 @@ Optimizations
 
 
  * Extraction and naming of anonymous functions.  The main motivation is to
-   make nested "let" blocks more efficient.  Currently size expands
-   exponentially ... which directly impacts performance.  Deeper nesting is
-   also a performance hit.
+   make nested "let" blocks more efficient.  Call overhead and deeper
+   nesting both degrade performance.
 
     A) Convert lambda literals to variable references:
 
@@ -284,167 +231,3 @@ Optimizations
        file vs. expression context), but it improves performance
        independently of A & B, so it would be good anyway.  (But this can be
        done manually by the programmer, so maybe isn't as urgent.)
-
-
-    Looking at the `let` case in particular (where we know A and B are
-    relevant):
-
-    text:   (define (f) (let ((a VAL)) BODY))
-    nodes:  [["F" "call" "Q ^fset" "Q f" ["X" ["Y" ["X" BODY] VAL]]]
-    file:   f = $(call ^Y,VAL,,,,,,,,,ESC_BODY)
-
-
-    One special case that might be easy to approach is when a function
-    begins with `let` (so the generated code begins a lambda call).  This is
-    fairly frequent, but doesn't cover a majority.  Another common case is
-    `(if arg1 (let ...))` and there are lots of other cases.
-
-
-* Misc
-    * (div-rem float float) : (div-rem N 1) == [floor(N) (- N floor(N))]
-    * Exponentiation with non-integral exponents
-    * num: accept E-notation for integers in: range, ^
-    * num: accept "undefined" everywhere
-    * num: switch to big-endian: hurts u-add, but helps u-cmp, u-norm, carry?
-    * support "+" prefix in numeric constants
-    * (tail ...) to core.scm
-    * num: multi-arg + and *
-    * num: eliminate dead code
-    * Interleave compile with parsing of top-level expressions.
-    * Improve void-node?  (void? (if c a b)) --> (and (void? a) (void? b))
-    * Identify arguments using special IL record (vs. R)
-         A n level           ->   local (arg)       $n
-
-
-----------------------------------------------------------------
-Examples to be written:
-
- - cleanPath
- - numerical ordering
- - regular expressions
- - makefile lisp templating
- - syracuse / ackerman / HOTPO
- - web server
-
-----------------------------------------------------------------
-Root causes of some BUGS I've encountered:
-
- * Wrong number of arguments (misplaced parentheses)  X2
-
-   e.g.: (if ( ... ) ( ... ))
-   vs:   (if ( ... )) ( ... )
-
-         (f (g a b c) d)
-   vs:   (f (g a) b c d)
-
- * Used `func` instead of `"func"`
-
- * Undefined variable name (at least 6 times)
-
- * Shadowed "eval" with user-defined function!
-
-----------------------------------------------------------------
-
-The following provide all of the capabilities that SCAM needs:
-
-     * (if a b c)
-     * (subst a b c)
-     * (word n s)
-     * (f ...) : calling a lambda expression.
-     * (set a b)     [needed only for Make interop]
-
-The following functions make some common operations more efficient (but can
-be fiendishly difficult to employ correctly):
-
-    wordlist, filter, filter-out, patsubst, findstring, foreach, join
-
-; (define (concat a b)  (u (subst "!*" (d b) (subst 1 (d a) "1!*")))
-
-; (define (eq? a b)
-;    (not (and (or a b)
-;              (or (subst b "" a)
-;                  (subst a "" b)))))
-
-; (define (findstring a b)  (if (not (eq? (subst a "" b) b)) a))
-
-
---------------------------------
-
-Assignment and control flow: matching, parsing
-
-Monads <-> exceptions
-do         try
-
-  ;; (PSymbol n name) <- func else (warn func "FUNC" "(? FUNC ...)")
-  ;; (case func ((PSymbol n name) ...) (else (warn func "FUNC" "(? FUNC ...")))
-  ;; (match func (PSymbol n name) else (warn ...)) ...
-
-  (match (PSymbol n name) func
-         else (warn ...))
-  ...
-
---------------------------------
-
-Namespace/boot discusssion
-----
-
-Assume compiler c0, compiled from unknown sources.  Everything about *how*
-it works is a mystery; the language definition is all that is known.  All it
-does is compile sources to programs in the default (un-prefixed) namespace.
-Our first step:
-
-$ c0 -o c1 c.scm
-
-Presumably, this program will include a runtime that was bundled with c0,
-suitably namespaced to avoid collisions with our program's functions.
-But we can't even assume that it has a runtime.  Certainly it does not
-use the runtime in the c1 sources.
-
-Ideally, c1 would be fully functional, so that we could proceed to:
-
-$ c1 -o prog prog.scm
-
-...but we aren't ready to, because *our* compiler -- the c1 source code
--- makes use of a runtime that must be bundled with any program we
-generated.  That runtime is a separate source file, also written in SCAM.
-It cannot be compiled with c0, because c0 generates only programs, not
-discrete modules.  Even if it did, the discrete module would presumably
-have external dependencies the way *our* generate code will have
-dependencies on our runtime.  Just as our generated code will drag along
-our runtime, c0's might drag along a copy of its runtime, and after a few
-generations things can get quite large and conflicts get harder to avoid.
-
-So we need c1 to compile its own runtime.  Maybe a special command-line
-option will suffice for this "mode" of operation:
-
-$ c1 --boot -o prog prog.scm
-
-It will have to be careful to avoid having runtime code depending on
-things not yet defined later in the runtime, but with knowledge of c1
-codegen and runtime we could achieve this.  Once built, it will bundle
-the runtime with the program it generates, leaving it with a standalone
-program.
-
-We still want to arrive at a standalone *compiler*, and in addition to
-having its embedded runtime requirements met, it will also want to
-extract a copy of that runtime from itself for bundling with programs it
-generates.
-
-That, in turn, generates namespacing concerns.  We want compiled code to
-be able to run alongside compiler code in one instance of Make -- the
-'-e' and interactive modes require this.  That means the generated code
-uses a different namespace (the default namespace).  That means the
-compiler must get OUT OF the default namespace.  And then how can it
-share the runtime (on one namespace) with the generated code?
-
-Currently in SCAM:
-
- - c1 (c1a) compiles c1b, and c1b uses a special namespace ("~" prefix).
-
- - c1b can then generate code in the deafult namespace.
-
- - However, once we promote c1b to be the new "c0", we will have a c0
-   that internally uses the "~" namespace.  And therefore the next c1a
-   will end up using a "~" runtime, the same as the next c1b that c1a
-   generates.  This can cause problems when c1a executes code it
-   generated for c1b.

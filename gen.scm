@@ -744,16 +744,3 @@
     ((PSymbol n name) (dict-value (or (find-name name env)
                                       (find-name name base-env))))
     (else "-")))
-
-
-;;
-;; AST utilities
-;;
-
-;; Make a valid expression from a vector of forms.
-;;
-(define (begin-block forms)
-  &public
-  (if (and forms (not (word 2 forms)))
-      (first forms)
-      (PList 0 (cons (PSymbol 0 "begin") forms))))

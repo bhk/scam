@@ -111,7 +111,7 @@
 ;;
 (define (trace-match pat variables)
   (define `avoid-pats
-    (foreach p "^% ~% ~trace%"
+    (foreach p "^% ~% ~trace% ~esc-% ~set-rglobal"
              (if (filter-out p pat)
                  p)))
   (filter-out avoid-pats (filter pat variables)))

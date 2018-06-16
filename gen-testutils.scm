@@ -9,6 +9,31 @@
 
 (declare SCAM_DEBUG &global)
 
+;; Set all form positions to POS.
+;;
+(define (form-set-indices pos form)
+  &public
+  (define `(recur f)
+    (form-set-indices pos f))
+
+  (if form
+      (case form
+        ((PString  n v) (PString pos v))
+        ((PSymbol  n v) (PSymbol pos v))
+        ((PError   n v) (PError pos v))
+        ((PList    n subs) (PList pos (for f subs (recur f))))
+        ((PQuote   n sub) (PQuote pos (recur sub)))
+        ((PQQuote  n sub) (PQQuote pos (recur sub)))
+        ((PUnquote n sub) (PUnquote pos (recur sub)))
+        ((PSplice  n sub) (PSplice pos (recur sub)))
+        (else (concat "ERROR:form-set-indices(" form ")")))))
+
+
+;; form-set-indices
+(fexpect (PList 0 [ (PString 0 1) (PSymbol 0 2) ])
+         (form-set-indices 0 (PList 9 [ (PString 8 1) (PSymbol 7 2) ])))
+
+
 ;; Serialize IL to a compact, readable format.  This transformation is not
 ;; reliably reversible, but the output should be suitable for assertions
 ;; when the inputs are crafted to avoid ambiguities.

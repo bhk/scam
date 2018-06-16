@@ -30,7 +30,6 @@
 ;;--------------------------------
 
 (expect 3 (form-index (PString 3 0)))
-(expect 2 (form-index 2))
 
 ;; penc isolates tokens as words
 
@@ -77,10 +76,6 @@
 (expect "a b c" (string-value (PString 0 "a b c")))
 (expect "a b c" (symbol-name (PSymbol 0 "a b c")))
 (fexpect (PString 1 "x") (symbol-to-string (PSymbol 1 "x")))
-
-;; form-set-indices
-(fexpect (PList 0 [ (PString 0 1) (PSymbol 0 2) ])
-         (form-set-indices 0 (PList 9 [ (PString 8 1) (PSymbol 7 2) ])))
 
 ;; format-form
 (fexpect "(foo (x \"y\"))"  (format-form
@@ -142,14 +137,14 @@
 (fexpect (POut 5 (PList 1 [ (PSymbol 3 "xyz") ]))             (p1 "( xyz )"))
 (fexpect (POut 7 (PList 1 [ (PSymbol 2 "a") (PList 4 []) ]))  (p1 "(a () )"))
 (fexpect (POut 1 (PError 1 ")"))                              (p1 ")"))
-(fexpect (POut 1 (PError 1 "("))                              (p1 "( a"))
+(fexpect (POut 4 (PError 1 "("))                              (p1 "( a"))
 (fexpect (POut 5 (PError 5 "] )"))                            (p1 "( a ]"))
 
 ;; vectors
 (fexpect (POut 5 (PList 1 [ (PSymbol 0 "vector")
                            (PString 2 1) (PString 4 293) ]))
         (p1 "[1 293] 3"))
-(fexpect (POut 1 (PError 1 "[") ) (p1 "["))
+(fexpect (POut 2 (PError 1 "[") ) (p1 "["))
 (fexpect (POut 3 (PError 3 ") ]")) (p1 "[ ) ]"))
 (fexpect (POut 5 (PError 5 "] ) ]")) (p1  "[ ( ]"))
 
@@ -249,5 +244,5 @@
 ;; parse-text
 
 (fexpect [ (PList 1 [ (PSymbol 2 "or") (PString 4 1) ])
-          (PSymbol 7 "a") ]
-        (parse-text "(or 1) a"))
+           (PSymbol 7 "a") ]
+         (parse-text "(or 1) a"))
