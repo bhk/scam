@@ -383,6 +383,10 @@ SHELL:=/bin/bash
 ;;
 (define (test-rule testmod modules runtime)
   (declare MAKE &global)
+  (define `(implicit mod)
+    (if *is-boot*
+        (concat mod ".scm")
+        (concat "'" mod)))
 
   ;; test modules are always source modules, so module-object-file returns a file.
   (let ((obj-file (module-object-file testmod)))
@@ -391,7 +395,7 @@ SHELL:=/bin/bash
 
     (define `link-lambda
       (let ((mods (sort-by (lambda (f) (notdir f))
-                           modules))
+                           (append modules (implicit "trace"))))
             (exe exe))
         (lambda ()
           (link exe mods testmod runtime nil))))
@@ -402,7 +406,8 @@ SHELL:=/bin/bash
                                 (subst "$" "$$" (quote-sh-arg exe))
                                 " >&2"))
                     link-lambda)
-            (concat MAKE " -s -f " exe)
+            (concat "TEST_DIR=" (quote-sh-arg (dir exe)) " "
+                    MAKE " -s -f " exe)
             (concat "touch " ok-file) ])))
 
 
