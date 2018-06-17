@@ -146,9 +146,11 @@
 ;; Construct a node that expands NODE but returns nil.
 ;;
 (define `(voidify node)
+  (define `void-fns
+    "error eval info ^require ^add-tags")
   (if (case node
-        ((IBuiltin name args) (filter "error eval info" name))
-        ((ICall name args) (filter "^require ^add-tags" name))
+        ((IBuiltin name args) (filter void-fns name))
+        ((ICall name args) (filter void-fns name))
         ((ICrumb _ _) 1))
       node
       (IBuiltin "if" [node (IString "")])))
@@ -165,7 +167,7 @@
 ;; These nodes generate code with balanced parens and without leading or
 ;; trailing whitespace.  This saves a trip through `protect-arg`.
 ;;
-(define (is-balanced? node)
+(define `(is-balanced? node)
   (case node
     ((ICall _ _)    1)
     ((IVar _)       1)
@@ -286,6 +288,7 @@
 (define (c1 node)
   (case node
     ((IString value) (escape value))
+    ((IWhere value) (escape value))
     ((ILocal ndx ups) (c1-Local ndx ups))
     ((ICall name args) (c1-Call name args))
     ((IVar name) (c1-Var name))
@@ -294,7 +297,6 @@
     ((IBlock nodes) (c1-Block nodes))
     ((IFuncall nodes) (c1-Funcall nodes))
     ((IBuiltin name args) (c1-Builtin name args))
-    ((IWhere value) (escape value))
     ((ICrumb key value) (crumb key value))
     ((IEnv _ node) (c1 node))
     (else (c1-Error node))))

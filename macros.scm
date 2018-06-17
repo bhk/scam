@@ -729,16 +729,72 @@
           (else (err-expected "L S" pattern c "PATTERN" case-where)))))
      (else (err-expected "L" c nil "(PATTERN BODY)" case-where)))))
 
+
 (define (case-append-arg node value)
   (case node
     ((IBuiltin name args) (IBuiltin name (conj args value)))
     ;; could be an error, or block containing errors
     (else node)))
 
+
+;; Collapse sequence of IF expressions...
+;;   [(IF C A) (IF C2 A2) ...] --> (IF C A (IF C2 A2 ...))
+;;
 (define (case-fold args)
   (if (word 2 args)
       (foldr case-append-arg (last args) (butlast args))
       (first args)))
+
+
+;; If NODE matches `(if (filter "P" V) T)` then return [P V T], else nil.
+;;
+(define (clause-pvt node)
+  (case node
+    ((IBuiltin if? if-args)
+     (case (first if-args)
+       ((IBuiltin filter? f-args)
+        (let ((if-args if-args)
+              (f-args f-args)
+              (if? if?)
+              (filter? filter?))
+          (and (filter "if" if?)
+               (not (word 3 if-args))
+               (filter "filter" filter?)
+               (case (first f-args)
+                 ((IString p)
+                  [p (nth 2 f-args) (nth 2 if-args)])))))))))
+
+
+(define (clauses-merge-loop clause in out)
+  (if in
+      (let ((pvt1 (clause-pvt clause))
+            (pvt2 (clause-pvt (first in)))
+            (clause clause)
+            (clause2 (first in))
+            (others (rest in))
+            (out out))
+        (if (and pvt1
+                 (eq? (rest pvt1) (rest pvt2)))
+            ;; merge
+            (let& ((p (IString (concat (first pvt1) " " (first pvt2))))
+                   (flt-node (IBuiltin "filter" [p (nth 2 pvt1)]))
+                   (if-node (IBuiltin "if" [flt-node (nth 3 pvt1)])))
+              (clauses-merge-loop if-node others out))
+            ;; emit clause; look at next pair
+            (clauses-merge-loop clause2 others (conj out clause))))
+      ;; no more
+      (conj out clause)))
+
+
+;; Merge adjacent clauses where the following applies:
+;;      clause = (if (filter "A" V) T)
+;; next clause = (if (filter "B" V) T)
+;;     result -> (if (filter "A B" V) T)
+;;
+(define (clauses-merge clauses)
+  (if clauses
+      (clauses-merge-loop (first clauses) (rest clauses) nil)))
+
 
 (define (ml.special-case env sym args)
   (define `value-form (first args))
@@ -748,6 +804,6 @@
             (env env))
         (case value
           ((PError _ _) value)
-          (else (case-fold (c0-clauses (rest args) value env)))))
+          (else (case-fold (clauses-merge (c0-clauses (rest args) value env))))))
       ;; no value-form
       (err-expected "" value-form sym "VALUE" case-where)))

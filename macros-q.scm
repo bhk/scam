@@ -375,3 +375,10 @@
                 (append { Ctor: (ERecord "S W L" "." "!:T0") }
                         default-env))
         "!(PError 8 '\\'Ctor\\' accepts 3 arguments, not 2')")
+
+;; collapse clauses with equivalent bodies
+(expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))"
+                (append { C: (ERecord "S W L" "." "!:T0") }
+                        { D: (ERecord "S W" "." "!:T1") }
+                        default-env))
+        "(.if (.filter !:T0 !:T1,(.firstword {V})),(.word 3,{V}),{V})")

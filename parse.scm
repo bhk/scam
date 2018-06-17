@@ -65,11 +65,16 @@
 
 (define (form-index form)
   &public
-  (if (filter "!:%" (word 1 form))
-      (word 2 form)
-      (if (numeric? form)
-          form
-          0)))
+  (case form
+    ((PList    n forms) n)
+    ((PString  n value) n)
+    ((PSymbol  n value) n)
+    ((PDict    n pairs) n)
+    ((PQuote   n form) n)
+    ((PQQuote  n form) n)
+    ((PUnquote n form) n)
+    ((PSplice  n form) n)
+    ((PError   n desc) n)))
 
 (define (form-typename form)
   &public

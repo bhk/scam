@@ -17,9 +17,9 @@
 (data IL
       &public
       (IString  value)                      ; "value"
-      (IVar     name)                       ; "$(name)"
+      (IVar     &word name)                 ; "$(name)"
       (IBuiltin &word name  &list args)     ; "$(name ARGS...)"
-      (ICall    name        &list args)     ; "$(call name,ARGS...)"
+      (ICall    &word name  &list args)     ; "$(call name,ARGS...)"
       (ILocal   &word ndx   &word level)    ; "$(ndx)"
       (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
       (IConcat  &list nodes)                ; "VALUES..."
@@ -474,7 +474,11 @@
 ;;
 (define (gen-error form fmt ...values)
   &public
-  (PError (form-index form) (vsprintf fmt values)))
+  (PError (or (form-index form)
+              (if (numeric? form)
+                  form
+                  0))
+          (vsprintf fmt values)))
 
 
 ;; Display a warning during compilation.
