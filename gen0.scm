@@ -31,7 +31,7 @@
 (define (scan-flags-x args n prev-n)
   (or (case (nth n args)
         ((PSymbol pos name)
-         (if (filter "&private &public &inline &global" name)
+         (if (filter "&private &public &global" name)
              (scan-flags args n))))
       prev-n))
 
@@ -252,9 +252,9 @@
     ((EVar gname _)
      (IVar gname))
 
-    ((EFunc gname _ _ inln)
+    ((EFunc gname _ _ macro)
      (if (filter NoGlobalName gname)
-         (c0-macro env inln)
+         (c0-macro env macro)
          (IBuiltin "value" [(IString gname)])))
 
     ((EIL depth _ il)
@@ -281,24 +281,23 @@
 
 ;; Function call by name.
 ;;
-;;   - Ordinary function:  inln is nil
-;;   - Compound macro:     inln non-nil, REALNAME = NoGlobalName
-;;   - Inline function:    inln non-nil, REALNAME = other
+;;   Ordinary function:  macro is nil,  REALNAME = global name
+;;   Compound macro:     macro non-nil, REALNAME = NoGlobalName
 ;;
-(define (c0-call env sym args realname argc inln)
-  (define `depth-from (first inln))
-  (define `macro-il (rest inln))
+(define (c0-call env sym args realname argc macro)
+  (define `depth-from (first macro))
+  (define `macro-il (rest macro))
 
   (or (check-argc argc args sym)
-      (if inln
-          ;; macro/inline
+      (if macro
+          ;; macro
           (expand-macro macro-il
                         depth-from
                         (current-depth env)
                         (for a args (c0 a env))
                         (form-index sym))
 
-          ;; non-inline
+          ;; function
           (ICall realname (c0-vec args env)))))
 
 
@@ -339,8 +338,8 @@
   (define `symname (symbol-name sym))
 
   (case defn
-    ((EFunc realname _ argc inln)
-     (c0-call env sym args realname argc inln))
+    ((EFunc realname _ argc macro)
+     (c0-call env sym args realname argc macro))
 
     ((EBuiltin realname _ argc)
      (or (check-argc argc args sym)
@@ -512,10 +511,7 @@
 ;; (define  NAME FLAGS... BODY)
 
 (define (c0-def-symbol env n name flags body is-define is-macro)
-  (or (if (filter "&inline" flags)
-          (gen-error n "'&inline' does not apply to symbol definitions"))
-
-      (c0-check-body n (first body) is-define)
+  (or (c0-check-body n (first body) is-define)
 
       (if (not is-macro)
           (check-name name n))
@@ -555,7 +551,6 @@
 ;; (define  (NAME ARGS...) FLAGS BODY)
 
 (define (c0-def-compound env n name args flags body is-define is-macro)
-  (define `has-inline (filter "&inline" flags))
   (define `argc (get-argc (for a args (symbol-name a))))
   (define `gname (gen-global-name name flags))
   (define `scope (if (filter "&public" flags) "x" "p"))
@@ -568,28 +563,27 @@
 
   (or (c0-check-body n (first body) is-define)
 
-      (if (or is-macro has-inline)
+      (if is-macro
+          ;; check params
           (vec-or
            (for a args
                 (if (filter "...%" (symbol-name a))
-                    (gen-error a "%s cannot have rest (...) parameters"
-                               (if is-macro "macros" "inline functions"))))))
-
-      (if (not is-macro)
+                    (gen-error a "macros cannot have rest (...) parameters"))))
+          ;; check name for conflict
           (check-name name n))
 
       ;; compile function/macro body
       (let ((macro-il (c0-lambda env-in args body))
-            (depth (current-depth env)))
+            (depth (current-depth env))
+            (is-macro is-macro)
+            (argc argc)
+            (scope scope)
+            (gname (if is-macro NoGlobalName gname)))
 
         (define `defn
-          (EFunc (if is-macro NoGlobalName gname)
-                 scope
-                 argc
-                 (if (or is-macro has-inline)
-                     (cons depth
-                           (case macro-il
-                             ((ILambda body) body))))))
+          (EFunc gname scope argc (if is-macro
+                                      (cons depth (case macro-il
+                                                    ((ILambda body) body))))))
 
         (or (il-error-node macro-il)
             (IEnv {=name: defn}
@@ -852,7 +846,8 @@
   (gen-error form msg form))
 
 
-;; c0: compile an inline expression.  Return IL.  (see c0-block)
+;; c0: compile an expression.  Return IL.  (see c0-block)
+;;
 (define (c0 form env)
   &public
   (case form

@@ -105,7 +105,7 @@
         "!(PError 2 '\\'f\\' accepts 1 or 2 or 3 arguments, not 0')")
 
 
-;; PList: (inlinefunc ...)
+;; PList: (macro ...)
 
 (define `inln-f
   (cons "." (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
@@ -405,17 +405,11 @@
         "!(PError 2 'missing FORM in (define FORM ...); expected a list or symbol')")
 (expect (c0-ser "(define `1)")
         "!(PError 5 'invalid FORM in (define `FORM ...); expected a list or symbol')")
-(expect (c0-ser "(define `M &inline 1)")
-        "!(PError 5 ''&inline' does not apply to symbol definitions')")
-(expect (c0-ser "(define X &inline 1)")
-        "!(PError 4 ''&inline' does not apply to symbol definitions')")
 (expect (c0-ser "(define `(m ...x) x)")
         "!(PError 8 'macros cannot have rest (...) parameters')")
 ;; Allow "?x", but not "...x".
 (expect (c0-ser "(define `(m ?a) a)")
         "")
-(expect (c0-ser "(define (m ...x) &inline x)")
-        "!(PError 7 'inline functions cannot have rest (...) parameters')")
 (expect (c0-ser "(define (f ...x z) x)")
         "!(PError 9 'non-optional parameter after optional one')")
 (expect (c0-ser "(lambda (f ...x z) x)")
@@ -450,36 +444,14 @@
         "(.info )")
 
 
-;; define inline FUNC
-(let ((env (text-to-env (concat "(define (f a b) &inline (join a b))"
-                                "(define (g x) &inline (info x))")
-                        nil 1)))
-  (expect (dict-get "g" env)
-          (EFunc (gen-global-name "g" nil)
-                 "p"
-                 1
-                 (cons "" (IBuiltin "info" [ (ILocal 1 0) ]))))
-  (fexpect (dict-get "f" env)
-           (EFunc (gen-global-name "f" nil)
-                  "p"
-                  2
-                  (cons "" (IBuiltin "join" [ (ILocal 1 0) (ILocal 2 0) ])))))
-
-
-;; define and use inline FUNC
-(expect (c0-ser "(define (f a b) &inline (join a b))  (f 1 2)")
-        (xns "(IBlock (^fset ~f,`(.join {1},{2})),(.join 1,2))"))
-
-
 ;;
-;; Macro & inline function exporting/importing.
+;; Macro exporting/importing.
 ;;
 
 (define (canned-MIN name)
   (cond
    ((eq? ".out/D/M.min" name) "(declare X) (declare x &public)")
    ((eq? ".out/M.min" name) "(declare X) (declare x &public)")
-   ((eq? ".out/F.min" name) "(define X 1) (define (f) &inline &public X)")
    ((eq? ".out/CM.min" name) "(define `(F) 1337) (define `(G) &public (F))")
    ((eq? ".out/SM.min" name) "(define `A 7331) (define `B &public A)")
    (else (expect (concat "Bad module: " name) nil))))
@@ -525,13 +497,8 @@
           { x: (EVar (gen-global-name "x" nil) "x"),
                X: (EVar (gen-global-name "X" nil) "p") })
 
-  ;; Verify that IMPORTED inline functions & macros are expanded in their
-  ;; original environment (read from their MIN files' exports) so they can
-  ;; see private members.
-
-  ;; IMPORTED inline function
-  (expect 1 (see (xns "{~X}")
-                 (c0-ser "(require \"F\") (f)")))
+  ;; Verify that IMPORTED macros are expanded in their original environment
+  ;; (read from their MIN files' exports) so they can see private members.
 
   ;; IMPORTED compound macro
   (expect 1 (see 1337
@@ -540,10 +507,3 @@
   ;; IMPORTED symbol macro
   (expect 1 (see 7331
                  (c0-ser "(require \"SM\") B"))))
-
-;; RECURSIVE INLINE FUNCTION: we should see one level of expansion where it
-;; is used.
-
-(expect
- (c0-ser "(define (f a b) &inline (if a b (f b \"\"))) (f 1 2)")
- (xns "(IBlock (^fset ~f,`(.if {1},{2},(~f {2},))),(.if 1,2,(~f 2,)))"))

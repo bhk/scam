@@ -12,9 +12,8 @@
   (if (findstring aa (findstring bb aa))
       1))
 
-(define (identity a)
+(define `(identity a)
   &public
-  &inline
   a)
 
 ;; Return the parameter that is not nil (unless both or none are nil).
@@ -38,17 +37,15 @@
   (concat vec (if vec " ") (demote item)))
 
 ;; Return the last item in vector VEC.
-(define (last vec)
+(define `(last vec)
   &public
-  &inline
   (promote (lastword vec)))
 
 ;; Collapse spaces and tabs, leaving "\n" alone.  This can be used to remove
 ;; redundant spaces from a vector or dictionary without modifying its
 ;; contents.  (The Make builtin `strip` will convert newlines to spaces.)
-(define (strip-vec vec)
+(define `(strip-vec vec)
   &public
-  &inline
   (filter "%" vec))
 
 ;; Return a vector of all items in VEC except for the last one.
@@ -71,9 +68,8 @@
            a))
 
 ;; Return the first non-nil member of VEC.
-(define (vec-or vec)
+(define `(vec-or vec)
   &public
-  &inline
   (first (filter-out [""] vec)))
 
 (define (indices-b max len lst)
@@ -275,12 +271,10 @@
 
 (define (dict-key pair)
   &public
-  &inline
   (promote (subst "!8" "%" (word 1 (subst "!=" " " pair)))))
 
-(define (dict-value pair)
+(define `(dict-value pair)
   &public
-  &inline
   (nth 2 (subst "!=" " " pair)))
 
 (define (dict-find key dict)

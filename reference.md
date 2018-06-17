@@ -554,7 +554,7 @@ value.
 parameter.  Optional `?NAME` parameters may not be followed by non-optional,
 non-rest parameters.
 
-Rest parameters may not be used with macros or inline functions.
+Rest parameters may not be used with macros.
 
 
 ## Variables

@@ -41,9 +41,8 @@
 ;; Convert a literal string to a form that will survive expansion.  We use
 ;; $` instead of $$ to avoid exponential growth after repeated escape
 ;; operations.
-(define (escape str)
+(define `(escape str)
   &public
-  &inline
   (subst "$" "$`" str))
 
 
@@ -62,12 +61,10 @@
       (protect-hash2 (subst "#" ".#\\#" str))
     str))
 
-(define (replace-nl str)
-  &inline
+(define `(replace-nl str)
   (subst "\n" "$'" str))
 
-(define (replace-hash str)
-  &inline
+(define `(replace-hash str)
   (subst "#" "$\"" str))
 
 

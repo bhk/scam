@@ -207,8 +207,7 @@
 
 ;; Add two U-encoded values.  Add a most-significant zero to accommodate
 ;; carry.
-(define (u+ a b)
-  &inline
+(define `(u+ a b)
   (u-carry (concat (raw-add a b) " :")))
 
 (define `(mul-carry u)

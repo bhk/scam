@@ -74,7 +74,7 @@
       ;; data variable
       (EVar     name &word scope)
       ;; function variable or compound macro
-      (EFunc    name &word scope argc &list inln)
+      (EFunc    name &word scope argc &list macro)
       ;; pre-compiled IL
       (EIL      depth &word scope &list il)
       ;; executable macro
@@ -123,11 +123,9 @@
 ;; ARGC = number of arguments the function/macro accepts, in a form
 ;;        ready for check-argc, such as: "0", "1 or 2", "1 or more".
 ;;
-;; INLN = definition of a function or compound macro body:
-;;           [ [ARGNAME...] BODY...]
-;;        where each ARGNAME is a string and BODY... is a vector of
-;;        forms.  For inline functions and compound macros, BODY is
-;;        non-empty.  For non-inline functions, BODY is empty.
+;; MACRO = For functions, this is nil.  For macros, it is (cons DEPTH NODE)
+;;         where DEPTH is the lambda nesting depth where the macro was
+;;         defined, and NODE is an IL node representing the macro body.
 ;;
 ;; ARGREF = description of local variable or capture.  Note that these
 ;;   references are absolute, an ILocal records use relative addressing.
