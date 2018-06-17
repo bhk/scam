@@ -493,29 +493,48 @@
 ;; (use MODULE)
 ;;--------------------------------
 
+
 (define (ml.special-use env sym args)
   (define `module (first args))
 
   (or (check-argc 1 args sym)
       (case module
-        ((PString _ mod-name)
-         (let ((origin (locate-module *compile-file* mod-name))
-               (imports (use-module-env mod-name))
-               (mod-name mod-name)
-               (env env))
-           (case (dict-get ErrorMarkerKey imports)
-             ;; error loading module
-             ((EMarker desc)
-              (gen-error "use: module %q %s" mod-name desc))
-             ;; success
-             (else
-              (IEnv imports (ICrumb "use" origin))))))
+        ((PString _ name)
+         (let ((o (get-module name *compile-file* nil 1))
+               (module module))
+           (case o
+             ((ModError message)
+              (gen-error module "use: %s" message))
+             ((ModSuccess id origin exports)
+              (IEnv exports (ICrumb "use" origin))))))
         (else (err-expected "Q" module sym "MODULE" "(use MODULE)")))))
 
 
 ;;--------------------------------
 ;; (data NAME CTOR...)
 ;;--------------------------------
+
+;; A TAG is a string stored in the first word of a constructed record,
+;; differentiating it from other records, and from vectors.  Each tag begins
+;; with "!:", which cannot appear in any of SCAM's standard subordinate data
+;; types (vectors, dictionaries, numbers).  Record types are therefore
+;; disjoint from each other and from subordinate types.  (Although vectors
+;; and numbers are not disjoint from each other... 1 == [1] == [[1]].)
+;;
+;; Subsequent words in the record describe the members of the record.  An
+;; ENCODING describes how arguments are encoded in words:
+;;
+;;      "W" => word   => extract using $(word N ...)
+;;      "S" => string => extract using $(nth N ...)
+;;      "L" => list   => extract using $(nth-rest N ...)
+;;
+;; A PATTERN contains the constructor name and the member encodings:
+;;
+;;    [CTORNAME ENCODING...]
+;;
+;; Global variable `^tags` holds a dictionary that maps TAGs to PATTERNs for
+;; all constructors whose definitions have been executed.
+
 
 (data Data
       (DataType &word tag

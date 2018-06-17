@@ -11,7 +11,6 @@
 ;; not to use SCAM constructs that depend upon runtime functions before
 ;; those functions are defined.
 
-
 ;; Variables not to be instrumented.
 (define *do-not-trace*
   (value ".VARIABLES"))
@@ -267,8 +266,7 @@ endef
 
 ;; This will be overridden by compiler modules.
 ;;
-(define (load-ext mod-id)
-  nil)
+(declare (load-ext mod-id))
 
 
 ;; Load the module identified by ID.

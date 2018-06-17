@@ -64,11 +64,6 @@
 ;;--------------------------------------------------------------
 
 
-;; When non-nil, comile, link, and test operations emit messages.
-;;
-(define *is-quiet* &public nil)
-
-
 (define (fatal fmt ...args)
   (print (vsprintf (concat "scam: " fmt) args))
   (error "fatal error"))

@@ -444,66 +444,31 @@
         "(.info )")
 
 
-;;
-;; Macro exporting/importing.
-;;
+;; (require MOD)
 
-(define (canned-MIN name)
-  (cond
-   ((eq? ".out/D/M.min" name) "(declare X) (declare x &public)")
-   ((eq? ".out/M.min" name) "(declare X) (declare x &public)")
-   ((eq? ".out/CM.min" name) "(define `(F) 1337) (define `(G) &public (F))")
-   ((eq? ".out/SM.min" name) "(define `A 7331) (define `B &public A)")
-   (else (expect (concat "Bad module: " name) nil))))
 
-(define (canned-read-file name)
-  (env-export-line (text-to-env (canned-MIN name) nil 1)))
+(let-global ((get-module (lambda () (ModError "no worky"))))
 
-(define (harness-locate-module src name)
-  (concat (patsubst "./%" "%" (dir src)) name ".scm"))
+  ;; too many arguments
+  (expect (c0-ser "(require \"mod\" foo)")
+          "!(PError 8 'too many arguments to require')")
 
-(let-global
-    ;; This overrides (!) the function for looking up modules.
-    ((locate-module harness-locate-module)
-     (read-file canned-read-file)
-     (read-lines (lambda (file a b) (wordlist a b (split "\n" (canned-read-file file)))))
-     (*compile-file* "foo.scm")
-     (*file-mods* "D/M M F CM SM")
-     (*obj-dir* ".out/")
-     (*is-boot* nil))
+  ;; non-string
+  (expect (c0-ser "(require MOD)")
+          (concat "!(PError 4 'invalid STRING in (require STRING); "
+                  "expected a literal string')"))
 
-  ;; Test: (require MOD)
+  ;; get-module failure
+  (expect (c0-ser "(require \"mod\")")
+          "!(PError 4 'require: no worky')"))
 
-  (expect (module-id (locate-module *compile-file* "D/M"))
-          "D/M")
 
-  (expect (c0-ser "(require \"D/M\")")
-          "(IBlock (^require D/M),!(ICrumb 'require' 'D/M.scm'))")
+(define (mock-get-module name base private)
+  (ModSuccess (subst ".scm" "" name)
+            (concat "DIR/" name)
+            {f: (EVar "f" "i")}))
 
-  (let-global ((*is-boot* 1)
-               (*file-mods* "'D/M"))
-    (expect (c0-ser "(require \"D/M\")")
-            "(IBlock (^require 'D/M),!(ICrumb 'require' 'D/M.scm'))"))
-
-  (expect (text-to-env "(require \"M\")" nil 1)
-          {x: (EVar (gen-global-name "x" nil) "i")})
-
-  (expect (c0-ser "(require \"D/M\" \"xyz\")")
-          "!(PError 0 'too many arguments to require')")
-
-  ;; (require MOD &private)
-
-  (expect (text-to-env "(require \"M\" &private)" nil 1)
-          { x: (EVar (gen-global-name "x" nil) "x"),
-               X: (EVar (gen-global-name "X" nil) "p") })
-
-  ;; Verify that IMPORTED macros are expanded in their original environment
-  ;; (read from their MIN files' exports) so they can see private members.
-
-  ;; IMPORTED compound macro
-  (expect 1 (see 1337
-                 (c0-ser "(require \"CM\") (G)")))
-
-  ;; IMPORTED symbol macro
-  (expect 1 (see 7331
-                 (c0-ser "(require \"SM\") B"))))
+(let-global ((get-module mock-get-module))
+  ;; get-module success
+  (expect (c0-ser "(require \"mod.scm\")")
+          "(IBlock (^require mod),!(ICrumb 'require' 'DIR/mod.scm'))"))

@@ -200,7 +200,11 @@
 
   (if (and *warn-upvals*
            (not (findstring depth arg)))
-          (compile-warn sym "reference to upvalue %q" (symbol-name sym)))
+      (info (describe-error
+             (gen-error sym "reference to upvalue %q" (symbol-name sym))
+             (pdec *compile-subject*)
+             *compile-file*)))
+
   (ILocal ndx
          (level-count (subst arg "" (concat depth ndx)))))
 
@@ -642,17 +646,24 @@
   (c0-def env sym args nil))
 
 
+;; This is supplied by modules that are not strict dependencies, in order to
+;; avoid sprawling/circular dependencies.
+(declare (get-module name base private is-use) &public)
+
+(data Mod
+  &public
+  ;; ID = string to be passed to ^require
+  ;; ENV = exported environment entries
+  (ModSuccess id env origin)
+  (ModError message))
+
+
 ;; (require STRING [&private])
 ;;
 ;; Emit code to call REQUIRE, and add the module's exported symbols to the
 ;; current environment.
 ;;
 (define (ml.special-require env sym args)
-  ;; These are supplied later by other modules.  We avoid circular build
-  ;; dependencies this way.
-  (declare (compile-module infile outfile flags))
-  (declare *is-quiet*)
-
   (define `module (first args))
   (define `flags (get-flags args 1))
   (define `body (skip-flags args 1))
@@ -661,29 +672,20 @@
 
   (or
    (if body
-       (gen-error body "too many arguments to require"))
+       (gen-error (first body) "too many arguments to require"))
 
    (case module
      ((PString _ name)
-      (let ((origin (locate-module *compile-file* name))
-            (module module) (env env) (name name) (read-priv read-priv))
-        (define `id (module-id origin))
-        (or (if (not origin)
-                (gen-error module "require: Cannot find %q" name))
-            (if (not (module-has-binary? origin))
-                (begin
-                  (or *is-quiet*
-                      (print "... compiling " origin))
-                  (if (compile-module origin (modid-file id) nil)
-                      (gen-error module "require: compilation of %q failed" origin)
-                      ;; success => nil => proceed to ordinary result
-                      (set *file-mods* (append *file-mods* id)))))
-            ;; already compiled or bundled
-            (IEnv (env-import origin read-priv)
-                  (IBlock [ (ICall "^require" [ (IString id) ])
-                            (ICrumb "require" origin) ])))))
+      (let ((o (get-module name *compile-file* read-priv nil))
+            (module module))
+        (case o
+          ((ModError message)
+           (gen-error module "require: %s" message))
+          ((ModSuccess id origin exports)
+           (IEnv exports (IBlock [ (ICall "^require" [ (IString id) ])
+                                   (ICrumb "require" origin) ]))))))
      (else
-      (err-expected "S" module sym "STRING" "(require STRING)")))))
+      (err-expected "Q" module sym "STRING" "(require STRING)")))))
 
 
 ;; c0-block-cc: Compile a vector of forms, calling `k` with results.

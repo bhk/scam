@@ -1,6 +1,7 @@
 (require "gen")
 (require "core")
 (require "io")
+(require "compile")
 (require "build" &private)
 
 ;; strip-comments

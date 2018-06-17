@@ -1,11 +1,23 @@
 ;--------------------------------------------------------------
-;; gen : Environment, IL, and related utilities.
+;; gen : Environment and IL types; code generation utilities
 ;;--------------------------------------------------------------
 
 (require "core")
-(require "io")
 (require "parse")
-(require "escape")
+
+;; Globals used in code generation
+;; -------------------------------
+
+;; *compile-subject* contains the penc-encoded SCAM source being compiled
+(declare *compile-subject* &public)
+
+;; *compile-file* is the name of the source file being compiled.
+(declare *compile-file* &public)
+
+;; When true, the compiler operates in boot mode: no builtin modules will be
+;; used, and globals in generated code will be prefixed with "~".
+(define *is-boot* &public nil)
+
 
 ;; IL Records
 ;; ----------
@@ -13,22 +25,7 @@
 ;; "IL" is an intermediate language, structured as a tree of records.  The
 ;; first word of each vector describes its type.  IL constructs map closely
 ;; to GNU Make constructs.
-
-(data IL
-      &public
-      (IString  value)                      ; "value"
-      (IVar     &word name)                 ; "$(name)"
-      (IBuiltin &word name  &list args)     ; "$(name ARGS...)"
-      (ICall    &word name  &list args)     ; "$(call name,ARGS...)"
-      (ILocal   &word ndx   &word level)    ; "$(ndx)"
-      (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
-      (IConcat  &list nodes)                ; "VALUES..."
-      (IBlock   &list nodes)                ; "$(if NODES,,)"
-      (ILambda  node)                       ; (lambda-quote (c1 node))
-      (IWhere   value)                      ; "value"
-      (ICrumb   &word key value)            ; <crumb>
-      (IEnv     env &list node))            ; used during phase 0
-
+;;
 ;; Blocks
 ;;
 ;;   Blocks are sequences of expressions, as in a `begin` expression or a
@@ -59,7 +56,24 @@
 ;; Errors
 ;;
 ;;   PError records may occur where IL records may appear.  See parse.scm.
-;;
+
+
+(data IL
+      &public
+      (IString  value)                      ; "value"
+      (IVar     &word name)                 ; "$(name)"
+      (IBuiltin &word name  &list args)     ; "$(name ARGS...)"
+      (ICall    &word name  &list args)     ; "$(call name,ARGS...)"
+      (ILocal   &word ndx   &word level)    ; "$(ndx)"
+      (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
+      (IConcat  &list nodes)                ; "VALUES..."
+      (IBlock   &list nodes)                ; "$(if NODES,,)"
+      (ILambda  node)                       ; (lambda-quote (c1 node))
+      (IWhere   value)                      ; "value"
+      (ICrumb   &word key value)            ; <crumb>
+      (IEnv     env &list node))            ; used during phase 0
+
+
 ;; Environment Records
 ;; -------------------
 ;;
@@ -68,43 +82,6 @@
 ;; dictionary, it maps a symbol name to its in-scope *definition*.  Each
 ;; definition is a vector in one of the following formats:
 ;;
-
-(data EDefn
-      &public
-      ;; data variable
-      (EVar     name &word scope)
-      ;; function variable or compound macro
-      (EFunc    name &word scope argc &list macro)
-      ;; pre-compiled IL
-      (EIL      depth &word scope &list il)
-      ;; executable macro
-      (EXMacro  name &word scope)
-      ;; data record type
-      (ERecord  encs &word scope tag)
-      ;; builtin function
-      (EBuiltin name &word scope argc)
-      ;; function argument
-      (EArg     &word argref)
-      ;; marker
-      (EMarker  &word data))
-
-(define `(EDefn.scope defn)
-  &public
-  (word 3 defn))
-
-(define `(EDefn.set-scope defn scope)
-  (append (wordlist 1 2 defn)
-          scope
-          (nth-rest 4 defn)))
-
-(define `(EDefn.is-public? defn)
-  &public
-  (filter "x" (EDefn.scope defn)))
-
-(define `NoGlobalName
-    &public
-    ":")
-
 ;; SCOPE describes the scope and origin of top-level bindings.
 ;;
 ;;      When `require` imports symbols, only &public symbols will be
@@ -140,6 +117,33 @@
 ;; EMarker values embed contextual data other than variable bindings.  They
 ;; use keys that begin with ":" to distinguish them from variable names.
 
+(data EDefn
+      &public
+      ;; data variable
+      (EVar     name &word scope)
+      ;; function variable or compound macro
+      (EFunc    name &word scope argc &list macro)
+      ;; pre-compiled IL
+      (EIL      depth &word scope &list il)
+      ;; executable macro
+      (EXMacro  name &word scope)
+      ;; data record type
+      (ERecord  encs &word scope tag)
+      ;; builtin function
+      (EBuiltin name &word scope argc)
+      ;; function argument
+      (EArg     &word argref)
+      ;; marker
+      (EMarker  &word data))
+
+(define `(EDefn.scope defn)
+  &public
+  (word 3 defn))
+
+(define `NoGlobalName
+    &public
+    ":")
+
 
 ;; The current function nesting level: ".", "..", "...", and so on.
 (define `LambdaMarkerKey &public ":")
@@ -148,83 +152,10 @@
 (define `ErrorMarkerKey &public ":E")
 
 
-;; Exports and Imports
-;; -------------------
-;;
-;; Each generated .min file includes a comment line that describes the
-;; module's "final" environment state -- the lexical environment as it was
-;; at the end of processing the source file.  The comment has the following
-;; format:
-;;
-;;     "# Exports: " (env-compress <vector>)
-;;
-;; Both public *and* private symbols are exported.  Imported symbols are not
-;; re-exported.
-;;
-;; Exports are consumed when `(require MOD)` is compiled.  At that time, the
-;; bindings *exported* from MOD (public in its final env) are added to the
-;; current environment, and marked as imported (SCOPE = "i").
-;;
-;; When `(require MOD &private)` is compiled, both public and private
-;; symbols from MOD are added to the current environment.
-;;
-;; Lambda markers and local variables are not exported -- it is actually
-;; impossible for them to exist in the final environment because the end of
-;; the file is necessarily outside of any lambda context.
-;;
-;; Data Records
-;; ------------
-;;
-;; A TAG is a string stored in the first word of a constructed record,
-;; differentiating it from other records, and from vectors.  Each tag begins
-;; with "!:", which cannot appear in any of SCAM's standard subordinate data
-;; types (vectors, dictionaries, numbers).  Record types are therefore
-;; disjoint from each other and from subordinate types.  (Although vectors
-;; and numbers are not disjoint from each other... 1 == [1] == [[1]].)
-;;
-;; Subsequent words in the record describe the members of the record.  An
-;; ENCODING describes how arguments are encoded in words:
-;;
-;;      "W" => word   => extract using $(word N ...)
-;;      "S" => string => extract using $(nth N ...)
-;;      "L" => list   => extract using $(nth-rest N ...)
-;;
-;; A PATTERN contains the constructor name and the member encodings:
-;;
-;;    [CTORNAME ENCODING...]
-;;
-;; Global variable `^tags` holds a dictionary that maps TAGs to PATTERNs for
-;; all constructors whose definitions have been executed.
-;;
-;;--------------------------------------------------------------
-
-
-;; *compile-subject* contains the penc-encoded SCAM source being compiled
-(declare *compile-subject* &public)
-
-;; *compile-file* is the name of the source file being compiled.
-(declare *compile-file* &public)
-
-;; *compile-outfile* is the name of the MIN file being generated.  This is
-;; used to find modules when `require` expressions are encountered.
-(declare *compile-outfile* &public)
-
-;; *file-mods* is a list of IDs of modules that should be read from files at
-;; run-time, rather than bundles.This enables interactive mode and
-;; executable macros, and simplifies unit-testing.
-(declare *file-mods* &public)
-
-;; When true, the compiler operates in boot mode: no builtin modules will be
-;; used, and globals in generated code will be prefixed with "~".
-(define *is-boot* &public nil)
-
-;; Root directory for compiled binaries.
-(define *obj-dir* &public ".scam/")
-
-
 (define `NoOp
   &public
   (IString ""))
+
 
 ;; Merge consecutive (IString ...) nodes into one node.  Retain all other
 ;; nodes.
@@ -284,118 +215,6 @@
     (else (IBuiltin "subst" [ (IString a) (IString b) node ]))))
 
 
-;;--------------------------------------------------------------
-;; Module management
-;;--------------------------------------------------------------
-
-;; We have different ways of referring to modules in different contexts:
-;;
-;;  NAME: This is the string given as a literal argument to (require).
-;;
-;;  ORIGIN: If NAME identifies a source file, it will be the complete path to
-;;       the source file path.  If NAME identifies a builtin module, it will be
-;;       that module's ID (which begins with `'`).
-;;
-;;  ID: This is what will be passed to ^require at run-time.  Ordinarily it
-;;      identifies a bundle, but when modules execute in the context of the
-;;      compiler and ID is found in *file-mods*, the object code will be
-;;      loaded directly from the file.
-;;
-;;                  --boot           not --boot       not --boot
-;;                  Source File      Source File      Builtin
-;;                  ----------       ---------        -----------
-;;   ORIGIN         io.scm           io.scm           'io
-;;   ID             'io              io               'io
-;;   Load File      .scam/io.min     .scam/io.min
-;;   Load Bundle                                      [mod-'io]
-;;   Bundle as      [mod-'io]         [mod-io]        [mod-'io]
-;;
-
-
-;; Return the file that holds (or will hold) the module's compiled code
-;; (valid only for modules compiled from source).
-;;
-(define (modid-file id)
-  &public
-  (concat *obj-dir* (patsubst "'%" "%" id) ".min"))
-
-
-;; Return the bundle variable that holds (or will hold) the modules's code.
-;;
-(define `(modid-var id)
-  &public
-  (concat "[mod-" id "]"))
-
-
-(define (module-opath origin)
-  &public
-  (escape-path (basename origin)))
-
-
-;; Construct the ID corresponding to a module origin.  When building the
-;; compiler (booting), we add a "'" prefix to allow them to coexist with
-;; user source modules of the same name.
-;;
-(define (module-id origin)
-  &public
-  (or (filter "'%" origin)
-      (concat (if *is-boot* "'") (module-opath origin))))
-
-
-(define (module-var origin)
-  &public
-  (modid-var (module-id origin)))
-
-
-(define `(module-is-source? origin)
-  &public
-  (filter-out "'%" origin))
-
-
-(define (module-has-binary? origin)
-  &public
-  (or (filter "'%" origin)
-      (filter (module-id origin) *file-mods*)))
-
-
-;; Get the "origin" of the module (a SCAM source file or a builtin bundle).
-;; Note that when source is found, a compiled version may not be present.
-;; Return nil on failure.
-;;
-;; SOURCE-FILE =  the source file calling `require`
-;; NAME = the literal string passed to "require"
-;;
-(define (locate-module source-file name)
-  &public
-  (define `srcname
-    (if *is-boot*
-        (patsubst "'%" "%" name)
-        name))
-
-  (or (firstword
-       (foreach dir (append (dir source-file)
-                            (subst ":" " " (value "SCAM_LIBPATH")))
-                (file-exists? (resolve-path dir (concat srcname ".scm")))))
-
-      ;; builtin?
-      (and (not *is-boot*)
-           ;; Either "name" or "'name" will match "'name"...
-           (let ((id (subst "''" "'" (concat "'" name))))
-             (if (bound? (modid-var id))
-                 id)))))
-
-
-;; Return the first 4 lines of a compiled module as an array of lines.
-;;
-(define (module-read-lines origin)
-  (if (filter "'%" origin)
-      (wordlist 1 4 (split "\n" (value (module-var origin))))
-      (read-lines (modid-file (module-id origin)) 1 4)))
-
-
-;;--------------------------------------------------------------
-;; Environment functions
-;;--------------------------------------------------------------
 
 ;; Namespacing
 ;; -----------
@@ -479,14 +298,6 @@
           (vsprintf fmt values)))
 
 
-;; Display a warning during compilation.
-;;
-(define (compile-warn form fmt ?a ?b ?c)
-  &public
-  (info (describe-error (gen-error form fmt a b c)
-                        (pdec *compile-subject*)
-                        *compile-file*)))
-
 (define (form-description code)
   (cond
    ((eq? code "%") "form")
@@ -527,174 +338,6 @@
                  (subst "%S" (if (eq? expected 1) "" "s")
                         "%q accepts %s argument%S, not %s")
                  (symbol-name sym) expected (words args))))
-
-
-;; env-cmp and env-exp were generated by envcomp.scm.
-
-(define (env-cmp s)
-  (subst ";" "!A" "\\" "!B" "," "!C" "`" "!D" "'" "!E" "<" "!F" ">" "!G"
-         "[" "!H" "]" "!I" "|" "!J" "@" "!K" "{" "!L" "}" "!M" "#" "!N"
-         "\"" "!O" "&" "!P" "(" "!Q" ")" "!R" "+" "!S" "_" "!T" "!0" ";" "!1"
-         "\\" "\\1" "," ";," "`" ":IL0" "'" ":IL2" "<" ":IL3" ">" ":IL4"
-         "[" "\\0" "]" ",0" "|" ",11" "@" "111" "{" ",10" "}" "!=\\:EDefn"
-         "#" "#1;~%;" "\"" "#1;:;" "&" " ml.special-" "(" "\"p;" ")" ")1 "
-         "+" "\"x;" "_" s))
-
-(define (env-exp s)
-  (subst "_" "\"x;" "+" ")1 " ")" "\"p;" "(" " ml.special-" "&" "#1;:;" "\""
-         "#1;~%;" "#" "!=\\:EDefn" "}" ",10" "{" "111" "@" ",11" "|" ",0" "]"
-         "\\0" "[" ":IL4" ">" ":IL3" "<" ":IL2" "'" ":IL0" "`" ";," ","
-         "\\1" "\\" "!1" ";" "!0" "!T" "_" "!S" "+" "!R" ")" "!Q" "(" "!P" "&"
-         "!O" "\"" "!N" "#" "!M" "}" "!L" "{" "!K" "@" "!J" "|" "!I" "]"
-         "!H" "[" "!G" ">" "!F" "<" "!E" "'" "!D" "`" "!C" "," "!B" "\\"
-         "!A" ";" s))
-
-
-;; Tokenize the key within the binding (it usually occurs once).
-;;
-(define (tokenize-key v)
-  (foreach w v
-           (concat
-            (word 1 (subst "!=" "!= " w))
-            (subst "%" "!p" (word 1 (subst "!=" " " w)) "%"
-                   (word 2 (subst "!=" "!= " w))))))
-
-(define (detokenize-key v)
-  (foreach w v
-           (concat
-            (word 1 (subst "!=" "!= " w))
-            (subst "%" (word 1 (subst "!=" " " w)) "!p" "%"
-                   (word 2 (subst "!=" "!= " w))))))
-
-
-;; Prepare environment V for inclusion in a line of text in the MIN file.
-;;
-(define (env-compress v)
-  ;; Strip redundant spaces from record values; not reversible but
-  ;; that's okay.
-  (define `(strip-space v)
-    (patsubst "%!0" "%" v))
-
-  (env-cmp
-   (tokenize-key
-    (strip-space
-     (subst "\n" "!n" v)))))
-
-
-;; Recover an environment value produced by env-compress.
-;;
-(define (env-expand str)
-   (subst "!n" "\n"
-          (detokenize-key
-           (env-exp str))))
-
-
-(define (import-binding key defn)
-  (if (EDefn.is-public? defn)
-      {=key: (EDefn.set-scope defn "i")}))
-
-
-
-;; Import bindings from another module. Return an environment.
-;;
-;; ENV = env containing exported bindings
-;; ALL = whether to return all bindings.
-;;    If true, return the final environment of the module.
-;;    If false, return only public bindings from the final env.
-;;
-(define (env-strip-imports env all)
-  (if all
-      ;; Add all symbols, public and private.
-      env
-      ;; Add only public symbols.
-      (strip-vec
-       (foreach b env
-                (import-binding (dict-key b) (dict-value b))))))
-
-
-;; Discard imported bindings.  Leave other public and private bindings.
-;;
-;; ENV = the final environment of the module
-;;
-(define `(env-strip-exports env)
-  (strip-vec
-   (foreach b env
-            (if (not (filter "i" (EDefn.scope (dict-value b))))
-                b))))
-
-
-;; Generate "exports" comment line for MIN file
-;;
-(define (env-export-line env)
-  &public
-  (concat "# Exports: " (env-compress (env-strip-exports env)) "\n"))
-
-
-;; Return all bindings exported from a MIN file.  The keys of non-public
-;; entries are prefixed with "(".
-;;
-(define `(env-parse lines)
-  (subst "!n" "\n"
-         (env-expand (first (filtersub ["# Exports: %"] "%" lines)))))
-
-
-;; Read a module from a file or a bundled variable and return its final
-;; environment ("exports").
-;;
-(define `(env-load origin)
-  (env-parse (module-read-lines origin)))
-
-
-;; Return the environment exported from a module, given its ID.
-;;
-(define (env-import origin all)
-  &public
-  (env-strip-imports (env-load origin) all))
-
-
-(memoize (global-name env-import))
-
-
-;; Get the environment exported from a module.  On error, this will contain
-;; {=ErrorMarkerKey:...}.
-;;
-;; NAME = module name (string literal in source file)
-;; ALL = True => return all environment entries that were visible at
-;;               the end of MOD.
-;;       False => return &public symbols defined/declared in MOD.
-;;
-(define (get-module-env name all)
-  &public
-  (let ((origin (locate-module *compile-file* name)))
-    (if origin
-        (env-import origin all)
-        {=ErrorMarkerKey: (EMarker "not found")})))
-
-
-;; Perform a compile-time import of "mod", returning env entries exported to
-;; the using module.  On error, this will contain {=ErrorMarkerKey:...}.
-;;
-(define (use-module-env name)
-  &public
-  (let ((origin (locate-module *compile-file* name)))
-    (if origin
-        (begin
-          ;; load the module now (into the compiler)
-          (call "^require" (module-id origin))
-          (strip-vec (foreach e (env-import origin nil)
-                              (case (dict-value e)
-                                ((EXMacro _ _) e)))))
-        {=ErrorMarkerKey: (EMarker "not found")})))
-
-
-;; Extend the runtime's ^require to handle file-based modules during
-;; compilation.
-;;
-(define (load-ext id)
-  (if (filter id *file-mods*)
-      (begin
-        (eval (concat "include " (modid-file id)))
-        1)))
 
 
 (define builtins-1
