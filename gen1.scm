@@ -4,7 +4,7 @@
 
 (require "core")
 (require "escape")
-(require "parse") ;; for PError
+(require "parse")
 (require "gen")
 
 ;; File vs. Function Syntax
@@ -105,6 +105,14 @@
 ;;                        -->  "$`$1BC"
 ;;   (((f "C") "B") "A")  -->  ("$`$1BC" "A")
 ;;                        -->  "$ABC"
+
+
+;; "FILE" or "FILE:LINE" as given by POS and current file.
+;;
+(define (c1-Where pos)
+  (define `lnum
+    (get-subject-line pos *compile-subject*))
+  (escape (concat *compile-file* (if pos (concat ":" lnum)))))
 
 
 ;; Lambda-escape CODE
@@ -288,7 +296,6 @@
 (define (c1 node)
   (case node
     ((IString value) (escape value))
-    ((IWhere value) (escape value))
     ((ILocal ndx ups) (c1-Local ndx ups))
     ((ICall name args) (c1-Call name args))
     ((IVar name) (c1-Var name))
@@ -297,6 +304,7 @@
     ((IBlock nodes) (c1-Block nodes))
     ((IFuncall nodes) (c1-Funcall nodes))
     ((IBuiltin name args) (c1-Builtin name args))
+    ((IWhere pos) (c1-Where pos))
     ((ICrumb key value) (crumb key value))
     ((IEnv _ node) (c1 node))
     (else (c1-Error node))))

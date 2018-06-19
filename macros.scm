@@ -35,6 +35,17 @@
 
 
 ;;--------------------------------
+;; (current-file)
+;;--------------------------------
+
+;; Evaluates to literal string containing source file name.
+;;
+(define (ml.special-current-file env sym args)
+  (or (check-argc 0 args sym)
+      (IWhere nil)))
+
+
+;;--------------------------------
 ;; (current-file-line)
 ;;--------------------------------
 
@@ -42,7 +53,7 @@
 ;;
 (define (ml.special-current-file-line env sym args)
   (or (check-argc 0 args sym)
-      (IWhere (get-where (form-index sym)))))
+      (IWhere (form-index sym))))
 
 
 ;;--------------------------------

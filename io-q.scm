@@ -1,8 +1,7 @@
 (require "core")
 (require "io" &private)
 
-(define SOURCE_FILE (first (split ":" (current-file-line))))
-(define SOURCE_DIR (dir SOURCE_FILE))
+(define SOURCE_DIR (dir (current-file)))
 (define TMP_DIR (or (value "TEST_DIR")
                     (concat SOURCE_DIR ".out/")))
 
@@ -60,7 +59,7 @@
 
 ;; file-exists?
 
-(expect SOURCE_FILE (file-exists? SOURCE_FILE))
+(expect (current-file) (file-exists? (current-file)))
 (expect nil (file-exists? (concat SOURCE_DIR "does-not-exist")))
 
 ;; clean-path

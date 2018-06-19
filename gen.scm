@@ -34,10 +34,9 @@
 ;;
 ;; IWhere
 ;;
-;;    IWhere represents a constant string that indicated a source file
-;;    position formatted as "FILE:LINE".  When IWhere occurs within a macro,
-;;    its contents will be rewritten when the macro is expanded to reflect
-;;    where the macro was invoked.
+;;    IWhere will be expanded to the source file name, and, if POS is
+;;    non-nil, a ":LINE" suffix.  When IWhere occurs within a macro, POS
+;;    will be rewritten to reflect where the macro was invoked.
 ;;
 ;;  ICrumb
 ;;
@@ -69,7 +68,7 @@
       (IConcat  &list nodes)                ; "VALUES..."
       (IBlock   &list nodes)                ; "$(if NODES,,)"
       (ILambda  node)                       ; (lambda-quote (c1 node))
-      (IWhere   value)                      ; "value"
+      (IWhere   &word pos)                  ; "value"
       (ICrumb   &word key value)            ; <crumb>
       (IEnv     env &list node))            ; used during phase 0
 

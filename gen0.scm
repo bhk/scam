@@ -11,15 +11,6 @@
 (define *warn-upvals*
   (findstring "U" (value "SCAM_DEBUG")))
 
-;; Return `FILE:LINE:COL` as determined by POS and current file & subject.
-;;
-(define (get-where pos)
-  &public
-  (define `lnum
-    (get-subject-line pos *compile-subject*))
-  (concat *compile-file* ":" lnum))
-
-
 ;; scan-flags: find index of last flag (or 0 if no flags), after
 ;; skipping the first SKIP entries.
 
@@ -85,13 +76,18 @@
     (for n nodes (xlat-where n pos)))
 
   (case node
-    ((IWhere s) (IWhere (get-where pos)))
-    ((IBuiltin name args) (IBuiltin name (x* args)))
+    ;; These are handled the same as the else clause, but are frequent, so
+    ;; check them first.  Note that they collapse to one `if`.
+    ((ILocal _ _) node)
+    ((IString _) node)
+    ((IVar _) node)
     ((ICall name args) (ICall name (x* args)))
+    ((IBuiltin name args) (IBuiltin name (x* args)))
+    ((IWhere p) (IWhere (if p pos)))
     ((IConcat nodes) (IConcat (x* nodes)))
-    ((ILambda node) (ILambda (xlat-where node pos)))
     ((IFuncall nodes) (IFuncall (x* nodes)))
     ((IBlock nodes) (IBlock (x* nodes)))
+    ((ILambda node) (ILambda (xlat-where node pos)))
     (else node)))
 
 

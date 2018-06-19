@@ -4,7 +4,7 @@
 (require "compile")
 (require "build" &private)
 
-(define SOURCE_DIR (dir (first (split ":" (current-file-line)))))
+(define SOURCE_DIR (dir (current-file)))
 
 ;; strip-comments
 
