@@ -116,16 +116,15 @@
                                 "" "(test)" "test.tmp")))
 
 
-;; require & use
+;; require
 (declare ^require &global)
 
 (let-global ((locate-module (lambda (f name) (concat "'" name)))
              (^require (lambda () nil))
              (env-import (lambda () nil)))
-  (let ((o (compile-text "(require \"r\")(use \"u\")(use \"v\")" "" "(test)" "test.tmp")))
+  (let ((o (compile-text "(require \"r\")" "" "(test)" "test.tmp")))
     (expect "" (dict-get "errors" o))
     (expect "'r" (dict-get "require" o))
-    (expect "'u 'v" (dict-get "use" o))
     (expect 1 (see "$(call ^require,'r)\n"
                    (dict-get "code" o)))))
 

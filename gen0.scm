@@ -648,7 +648,7 @@
 
 ;; This is supplied by modules that are not strict dependencies, in order to
 ;; avoid sprawling/circular dependencies.
-(declare (get-module name base private is-use) &public)
+(declare (get-module name base private) &public)
 
 (data Mod
   &public
@@ -676,7 +676,7 @@
 
    (case module
      ((PString _ name)
-      (let ((o (get-module name *compile-file* read-priv nil))
+      (let ((o (get-module name *compile-file* read-priv))
             (module module))
         (case o
           ((ModError message)

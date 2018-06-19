@@ -249,22 +249,6 @@
 
 
 ;;--------------------------------
-;; (use MODULE)
-;;--------------------------------
-
-(define *use-test* nil)
-(let-global
-    ((get-module (lambda (name base priv is-use)
-                   (ModError "no worky"))))
-
-   (expect (c0-ser "(use \"x\" \"y\")")
-          "!(PError 2 '\\'use\\' accepts 1 argument, not 2')")
-
-   (expect (c0-ser "(use a)")
-           (concat "!(PError 4 'invalid MODULE in (use MODULE);"
-                   " expected a literal string')")))
-
-;;--------------------------------
 ;; (data NAME CTOR...)
 ;;--------------------------------
 

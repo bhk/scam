@@ -2,7 +2,7 @@
 ;; scam-ct.scm
 ;;--------------------------------
 
-;; This file is an implicit "use" dependency of ordinary SCAM programs.
+;; This file is an implicit dependency of ordinary SCAM programs.
 
 ;; (when COND EXPR...)
 ;;

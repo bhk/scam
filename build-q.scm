@@ -4,6 +4,8 @@
 (require "compile")
 (require "build" &private)
 
+(define SOURCE_DIR (dir (first (split ":" (current-file-line)))))
+
 ;; strip-comments
 
 (expect "a\nb\n" (strip-comments "#Comment\n\n# comment 2\na\nb\n"))
@@ -26,9 +28,8 @@
 
 ;; scan-source
 
-(expect [ ["req/a!1" "req/b"]
-          ["use/a" "use/b"] ]
-        (scan-source "test/build-q.txt"))
+(expect ["req/a!1" "req/a2" "req/b"]
+        (scan-source (concat SOURCE_DIR "test/build-q.txt")))
 
 ;; scan-object
 
@@ -36,19 +37,15 @@
 (set-global "[mod-'builtin-test]"
             (concat "# comment\n"
                     "# Requires: 'core 'io\n"
-                    "# Uses: 'a 'b\n"
                     "# comment\n"))
 
-(expect [ ["'core" "'io"]
-          ["'a" "'b"] ]
+(expect ["'core" "'io"]
         (scan-builtin "'builtin-test"))
 
 
 ;;----------------------------------------------------------------
 ;; compile-rule
 ;;----------------------------------------------------------------
-
-(set *is-boot* nil)
 
 (let ((rule (compile-rule "p"
                           "p.src"
@@ -57,71 +54,66 @@
                           ["m1" "m2"]
                           nil)))
   (let ((lines (split "\n" rule)))
-    (expect (subst "SELF" (firstword MAKEFILE_LIST)
-                   "p: p.src p.obj SELF | a-q.ok")
-            (first lines))
-    (expect 1 (see "\t@: " (nth 2 lines)))
-    (expect 1 (see "compile" (nth 2 lines)))))
+    (let-global ((*is-boot* nil))
+      (expect (subst "SELF" (firstword MAKEFILE_LIST)
+                     "p: p.src p.obj SELF | a-q.ok")
+              (first lines))
+      (expect 1 (see "\t@: " (nth 2 lines)))
+      (expect 1 (see "compile" (nth 2 lines))))))
 
 ;;----------------------------------------------------------------
 ;; scan-modules
 ;;----------------------------------------------------------------
 
-(define `(scan sources is-boot mmap-in ?env)
-  (set *is-boot* is-boot)
-  (set *obj-dir* "out/")
-  (scan-modules env sources mmap-in))
-
-(define `(sexpect a b)
+(define `(sort-expect a b)
   (expect-x (sort a) (sort b) (current-file-line)))
 
+(declare *file-deps*)
 
-(declare *files*)
-(define (test-scan-deps file)
-  (rest (assoc file *files*)))
+(define (mock-scan-deps file)
+  (nth 2 (assoc file *file-deps*)))
 
-(define (test-file-exists? file)
-  (if (assoc file *files*) file))
+(define (mock-file-exists? file)
+  (if (assoc file *file-deps*) file))
 
-(let-global ((scan-deps test-scan-deps)
-             (file-exists?   test-file-exists?))
+(define (scan env sources ?mmap ?is-boot)
+  (let-global ((*is-boot* is-boot)
+               (*obj-dir* "out/")
+               (scan-deps mock-scan-deps)
+               (file-exists? mock-file-exists?))
+    (scan-modules env sources mmap)))
 
-  ;; Assert: detects `-q` tests
-  ;; Assert: follows dependencies (including paths)
-  ;; Assert: does not use bundles when `rebundle` is nil
-  ;; Assert: MMAP records are correct for found sources & not-found files
 
-  (set *files* [; filename     requires      uses
-                ["a.scm"       "x/b.scm"             ]
-                ["x/b.scm"     "x/r.scm"     "'core" ]
-                ["x/b-q.scm"                         ]
-                ["x/r.scm"                           ]
-                ["'core"                             ] ])
+;; Assert: detects `-q` tests
+;; Assert: follows dependencies (including paths)
+;; Assert: does not use bundles when `rebundle` is nil
+;; Assert: MMAP records are correct for found sources & not-found files
 
-;;  (sexpect [ ["a"    "a.scm"      "out/a.min"    nil    "b"   nil  1]
-;;             ["b"    "x/b.scm"    "out/b.min"    "b-q"  "r"   "u"  1]
-;;             ["b-q"  "x/b-q.scm"  "out/b-q.min"  nil    nil   nil  1]
-;;             ["r"    "x/r.scm"    "out/r.min"    nil    nil   nil  1]
-;;             ["u"    nil          "x/u.scm"      nil    nil   nil  1] ]
-;;           (scan ["a.scm"] nil 1 nil))
-  (sexpect [ ["a.scm"      nil          "x/b.scm"  nil      "RC"]
-             ["x/b.scm"    "x/b-q.scm"  "x/r.scm"  "'core"  "RC"]
-             ["x/b-q.scm"  nil           nil       nil      "RC"]
-             ["x/r.scm"    nil           nil       nil      "RC"]
-             ["'core"      nil           nil       nil      "RC"] ]
-           (scan ["a.scm"] nil nil))
+(set *file-deps*
+     [; filename     requires
+      ["a.scm"       "x/b.scm"       ]
+      ["x/b.scm"     "x/r.scm 'core" ]
+      ["x/b-q.scm"                   ]
+      ["x/r.scm"                     ]
+      ["'core"                       ] ])
 
-  ;; Assert: `rt` and `ct` are heeded.
+(sort-expect [ ["a.scm"      nil          "x/b.scm"        "RC"]
+               ["x/b.scm"    "x/b-q.scm"  "x/r.scm 'core"  "RC"]
+               ["x/b-q.scm"  nil           nil             "RC"]
+               ["x/r.scm"    nil           nil             "RC"]
+               ["'core"      nil           nil             "RC"] ]
+             (scan nil ["a.scm"]))
 
-  (set *files* [["a.scm"]
-                ["b.scm"] ])
+;; Assert: `rt` and `ct` are heeded.
 
-  (set-global "[mod-'xx]" "# nothing")
+(set *file-deps* [ ["a.scm" nil]
+                   ["b.scm" nil] ])
 
-  (define mm0 (scan ["a.scm"] nil nil { rt: "'xx" }))
-  (sexpect [ ["a.scm" nil "'xx" nil "C"] ]
-           mm0)
+(set-global "[mod-'xx]" "# nothing")
+(sort-expect [ ["a.scm" nil "'xx" "C"] ]
+             (scan {rt: "'xx" }
+                   ["a.scm"]))
 
-  (define mm0 (scan ["b.scm"] nil nil { rt: "'rt", ct: "'ct" }))
-  (sexpect [ ["b.scm" nil "'rt" "'ct" ""] ]
-           mm0))
+(sort-expect [ ["b.scm" nil "'rt 'ct" nil] ]
+             (scan { rt: "'rt", ct: "'ct" }
+                   ["b.scm"]))

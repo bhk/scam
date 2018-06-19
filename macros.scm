@@ -490,27 +490,6 @@
 
 
 ;;--------------------------------
-;; (use MODULE)
-;;--------------------------------
-
-
-(define (ml.special-use env sym args)
-  (define `module (first args))
-
-  (or (check-argc 1 args sym)
-      (case module
-        ((PString _ name)
-         (let ((o (get-module name *compile-file* nil 1))
-               (module module))
-           (case o
-             ((ModError message)
-              (gen-error module "use: %s" message))
-             ((ModSuccess id origin exports)
-              (IEnv exports (ICrumb "use" origin))))))
-        (else (err-expected "Q" module sym "MODULE" "(use MODULE)")))))
-
-
-;;--------------------------------
 ;; (data NAME CTOR...)
 ;;--------------------------------
 

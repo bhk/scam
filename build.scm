@@ -57,8 +57,8 @@
 ;;
 ;; When `--boot` is NOT specified:
 ;;
-;;  * Ordinary dependencies (`require` or `use`) may be satisfied by
-;;    SCAM sources *or* by modules that are bundled with the compiler.
+;;  * Ordinary dependencies (`require) may be satisfied by SCAM sources
+;;    *or* by modules that are bundled with the compiler.
 ;;  * Implicit dependencies will be satisfied by bundled modules.
 ;;
 ;;--------------------------------------------------------------
@@ -128,43 +128,31 @@
           (printf "module-read-obj: file '%s' not found!" (modid-file (module-id origin))))))
 
 
-;; Scan a source file for `require` and `use` dependencies.
-;; Returns:  [REQUIRES USES]
-;;
-;; REQUIRES and USES are vectors of module names found in the source file
-;; (the constant strings passed to `require` and `use`).
+;; Scan a source file for `require` dependencies.
+;; Returns:  REQUIRES   (a vector of module names)
 ;;
 (define (scan-source filename)
   (define `sedcmd
-    "sed -E 's/ //g;s/^\\((require|use)\"([^\"]*)\".*|.*/\\1\\2/g;/../!d'")
-
-  (let ((out (shell (concat sedcmd " " (quote-sh-arg filename)))))
-     (for symbol ["require%" "use%"]
-          (foreach f (filtersub symbol "%" out)
-                   [f]))))
+    "sed -E 's/ //g;s/!/!1/g;s/^\\(require\"([^\"]*)\".*|.*/\\1/g;/../!d'")
+  (shell (concat sedcmd " " (quote-sh-arg filename))))
 
 
-;; Scan a builtin module for `require` and `use` dependencies.
+;; Scan a builtin module for `require` dependencies.
 ;;
 (define (scan-builtin origin)
   (let ((lines (wordlist 1 4 (split "\n" (value (module-var origin))))))
-    (define `(collect key)
-      (promote (filtersub [(concat "# " key ": %")] "%" lines)))
-
     (assert lines)
-    (foreach key "Requires Uses"
-             [ (collect key) ])))
+    (promote (filtersub [(concat "# Requires: %")] "%" lines))))
 
 
-;; Return [REQUIRES USES], where both REQUIRES and USES are vectors of
-;; module origins.
+;; Return REQUIRES, a vector of module origins.
 ;;
 (define (scan-deps origin)
   (if (module-is-source? origin)
-      (for v (scan-source origin)
-           (for name v
-                (or (locate-module origin name)
-                    (print "Could not find module: " name))))
+      (append-for v (scan-source origin)
+                  (for name v
+                       (or (locate-module origin name)
+                           (print "Could not find module: " name))))
       (scan-builtin origin)))
 
 
@@ -175,21 +163,18 @@
 ;;                When builtin, (concat "'" MODNAME)
 ;;    testmod   : test module origin (if one exists)
 ;;    requires  : "sources" in `require` deps (explicit and implicit)
-;;    uses      : "sources" in `use` deps (explicit and implicit)
 ;;    excludes  : see compile-file
 ;; ]
 
 (define `(mod-origin mod)    (nth 1 mod))
 (define `(mod-testmod mod)   (nth 2 mod))
 (define `(mod-requires mod)  (nth 3 mod))
-(define `(mod-uses mod)      (nth 4 mod))
-(define `(mod-excludes mod)  (nth 5 mod))
-(define `(mod-deps mod)      (append (mod-requires mod) (mod-uses mod)))
+(define `(mod-excludes mod)  (nth 4 mod))
 
 (define `(mod-obj mod)       (module-object-file (mod-origin mod)))
 
-(define `(mod-new origin testmod requires uses excludes)
-  [origin testmod requires uses excludes])
+(define `(mod-new origin testmod requires excludes)
+  [origin testmod requires excludes])
 
 
 ;; plural accessors (each takes a list of module names)
@@ -210,9 +195,8 @@
   (declare *mmap*)
   (let-global ((*mmap* mmap))
     (traverse-graph mods
-                    (lambda (mod) (mod-requires (assoc mod *mmap*)))
+                    (lambda (mod) (sort (mod-requires (assoc mod *mmap*))))
                     nil)))
-
 
 
 ;; Visit a set of source files, scanning dependencies, and visiting them
@@ -243,16 +227,17 @@
           (deps (scan-deps origin)))
 
       (define `test-origin (and (filter-out "'%" origin)
-                             (file-exists? (filtersub "%.scm" "%-q.scm" origin))))
-      (define `requires (append (nth 1 deps) (dict-get "rt" env)))
-      (define `uses (append (nth 2 deps) (dict-get "ct" env)))
+                                (file-exists? (filtersub "%.scm" "%-q.scm" origin))))
+      (define `all-deps (append deps
+                                (dict-get "rt" env)
+                                (dict-get "ct" env)))
       (define `excludes
         (concat (if (dict-get "rt" env) nil "R")
                 (if (dict-get "ct" env) nil "C")))
 
       (scan-modules env
-                    (append others (promote deps) test-origin)
-                    (cons (mod-new origin test-origin requires uses excludes)
+                    (append others deps test-origin)
+                    (cons (mod-new origin test-origin all-deps excludes)
                           mmap))))))
 
 
@@ -289,7 +274,7 @@
 ;; DEPS = other files directly and indirectly used in compilation
 ;; OODEPS = order-only deps (qualification tests for dependencies)
 ;; FILE-MODS = list of module locations that have been freshly compiled
-;; REQS, USES, EXCLUDES = see compile.scm
+;; REQS, EXCLUDES = see compile.scm
 ;;
 (define (compile-rule object source deps oodeps file-mods excludes)
   (define `compile-lambda
@@ -412,7 +397,7 @@ SHELL:=/bin/bash
   (declare *mmap*)
   (let-global ((*mmap* mmap))
     (traverse-graph mods
-                    (lambda (mod) (mod-deps (assoc mod *mmap*)))
+                    (lambda (mod) (mod-requires (assoc mod *mmap*)))
                     nil)))
 
 
@@ -420,7 +405,7 @@ SHELL:=/bin/bash
   (define `origin (mod-origin mod))
   (define `object (mod-obj mod))
   (define `testmod (mod-testmod mod))
-  (define `deps (mod-deps mod))
+  (define `deps (mod-requires mod))
 
   (define `depfiles (origins-to-obj-files deps))
   (define `file-mods (mmap-all-deps mmap deps))

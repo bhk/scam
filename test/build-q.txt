@@ -1,13 +1,11 @@
 # Requires: a/!11b c
-# Uses: x/y
 
 ;; Used by ../build-q.scm
-;; Note: `Requires: ...` and `Uses: ...` contain vector-encoded values
+;; Note: `Requires: ...` contains vector-encoded values
 
 ( require  "req/a!1"  );; comment after with "quotes"
-(use"use/a")
+(require"req/a2")
 (if nil
     (begin
       ;; these create "fake" dependencies (on-purpose, presumably)
-      (use "use/b")
       (require "req/b" &private)))
