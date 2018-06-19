@@ -227,7 +227,7 @@
 
 (define (c0-builtin env name argc)
   (define `max-argc
-    (firstword (filter "3 2 1" argc)))
+    (word 1 (filter "3 2 1" argc)))
 
   (ILambda
    (if max-argc

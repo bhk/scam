@@ -221,7 +221,7 @@
 (define (u* a b)
   (mul-carry
    (raw-add
-    (subst "i" (subst ":" "" (firstword a)) b)
+    (subst "i" (subst ":" "" (word 1 a)) b)
     (if (word 2 a)
         (u* (rest a) (concat ": " b))))))
 

@@ -55,7 +55,7 @@
                           nil)))
   (let ((lines (split "\n" rule)))
     (let-global ((*is-boot* nil))
-      (expect (subst "SELF" (firstword MAKEFILE_LIST)
+      (expect (subst "SELF" (word 1 MAKEFILE_LIST)
                      "p: p.src p.obj SELF | a-q.ok")
               (first lines))
       (expect 1 (see "\t@: " (nth 2 lines)))

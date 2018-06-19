@@ -328,13 +328,13 @@
 (expect (c0-ser "(case v ((Ctor s w v) v))"
                (append { Ctor: (ERecord "S W L" "." "!:T0") }
                        default-env))
-        "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}))")
+        "(.if (.filter !:T0,(.word 1,{V})),(.wordlist 4,99999999,{V}))")
 
 ;; multiple cases
 (expect (c0-ser "(case v ((Ctor s w l) l) (a a))"
                 (append { Ctor: (ERecord "S W L" "." "!:T0") }
                         default-env))
-        "(.if (.filter !:T0,(.firstword {V})),(.wordlist 4,99999999,{V}),{V})")
+        "(.if (.filter !:T0,(.word 1,{V})),(.wordlist 4,99999999,{V}),{V})")
 
 ;; non-ctor in pattern
 (expect (c0-ser "(case v ((Foo a) 1))")
@@ -355,4 +355,4 @@
                 (append { C: (ERecord "S W L" "." "!:T0") }
                         { D: (ERecord "S W" "." "!:T1") }
                         default-env))
-        "(.if (.filter !:T0 !:T1,(.firstword {V})),(.word 3,{V}),{V})")
+        "(.if (.filter !:T0 !:T1,(.word 1,{V})),(.word 3,{V}),{V})")

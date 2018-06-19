@@ -652,7 +652,7 @@
 ;; with (F Z <first>).  If V is empty, return Z.
 (define (foldl f z v)
   &public
-  (if (firstword v)
+  (if (word 1 v)
       (foldl f (f z (first v)) (rest v))
       z))
 
@@ -660,7 +660,7 @@
 ;; Like foldl, but starting from the right with (F <last> Z).
 (define (foldr f z v)
   &public
-  (if (firstword v)
+  (if (word 1 v)
       (f (first v) (foldr f z (rest v)))
       z))
 

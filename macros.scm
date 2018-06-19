@@ -717,7 +717,8 @@
 
                  (define `test-node
                    (IBuiltin "filter" [ (IString tag)
-                                       (IBuiltin "firstword" [value-node]) ]))
+                                        (IBuiltin "word" [ (IString 1)
+                                                           value-node]) ]))
                  (define `bindings
                    (arg-bindings ctor-args encs value-node (current-depth env)))
 

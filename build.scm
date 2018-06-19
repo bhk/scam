@@ -70,7 +70,7 @@
 
 
 ;; *self* = the compiler itself
-(define *self* (firstword MAKEFILE_LIST))
+(define *self* (word 1 MAKEFILE_LIST))
 
 
 (define (build-eval str)
