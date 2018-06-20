@@ -4,12 +4,6 @@
 (require "compile")
 (require "build" &private)
 
-(define SOURCE_DIR (dir (current-file)))
-
-;; strip-comments
-
-(expect "a\nb\n" (strip-comments "#Comment\n\n# comment 2\na\nb\n"))
-(expect "" (strip-comments ""))
 
 ;; traverse-graph
 
@@ -24,23 +18,6 @@
         (traverse-graph "a c"
                         (lambda (node) (dict-get node nodemap))
                         (lambda (node) (concat "{" node "}"))))
-
-
-;; scan-source
-
-(expect ["req/a!1" "req/a2" "req/b"]
-        (scan-source (concat SOURCE_DIR "test/build-q.txt")))
-
-;; scan-object
-
-
-(set-global "[mod-'builtin-test]"
-            (concat "# comment\n"
-                    "# Requires: 'core 'io\n"
-                    "# comment\n"))
-
-(expect ["'core" "'io"]
-        (scan-builtin "'builtin-test"))
 
 
 ;;----------------------------------------------------------------
@@ -79,7 +56,7 @@
 (define (scan env sources ?mmap ?is-boot)
   (let-global ((*is-boot* is-boot)
                (*obj-dir* "out/")
-               (scan-deps mock-scan-deps)
+               (module-deps mock-scan-deps)
                (file-exists? mock-file-exists?))
     (scan-modules env sources mmap)))
 

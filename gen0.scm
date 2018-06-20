@@ -105,7 +105,7 @@
 
 ;; This limits to 128 the levels of lambda nesting around an argument within
 ;; a macro.
-(define (dots-from-num num)
+(define `(dots-from-num num)
   (wordlist 1 num (subst "." ". . . . . . . . "
                          "................")))
 

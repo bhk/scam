@@ -132,7 +132,7 @@
 ;; a ";" occurs quotes, the rest of the line is ignored.  When inside
 ;; nothing except `\` or `"` will have any special handling.
 ;;
-(define (compact-comments str)
+(define `(compact-comments str)
   (subst " " "" "!s" " " "; ;" ";;"
          (foreach c (subst " " "!s" "\"" " \"" "\\" " \\" "\n" " \n" ";" " ;" str)
                   (if (filter ";%" c)
@@ -141,7 +141,7 @@
 
 ;; When compressing, don't replace the initial "!0" character in a word
 ;; (which identifies its type to the parser).
-(define (compress-spaces str)
+(define `(compress-spaces str)
   (subst "\n !0" "\n!0" "\n!0!0" "\n!2" "!0!0!0" "!0!2" "!2!0!2!0" "!6" "!6!6" "!c"
          str))
 
@@ -173,7 +173,7 @@
 ;; Undo `penc` and also process backslash sequences [e.g.: \" -> " ],
 ;; returning the demoted form of the string.
 ;;
-(define (pdec-str text)
+(define `(pdec-str text)
   (or (expand-spaces (subst "!Q" "\"" "!b" "\\" "!p" "%" text))
       "!."))
 
@@ -207,12 +207,6 @@
 (define `(POut-form st)
   (rest st))
 
-(define (POut-format value)
-  (if (and (numeric? (word 1 value))
-           (filter "!:%" (word 2 value)))
-      (concat "(POut " (word 1 value) " " (format (rest value)) ")")))
-
-
 (declare (parse-exp subj pos))
 
 
@@ -241,7 +235,7 @@
 
 
 ;; Scan to end of string before returning error
-(define (PQError subj pos desc)
+(define `(PQError subj pos desc)
   (POut (find-word subj pos "\"") (PError pos desc)))
 
 
@@ -487,7 +481,7 @@
 
 ;; Get "LINE:COL" or POS in SUBJ.
 ;;
-(define (get-subject-line-col pos subj)
+(define `(get-subject-line-col pos subj)
   ;; prefix lines with "\n" to handle POS when at start of line
   (let ((lines (subst " " "" "\n" " \n"
                       (wordlist 1 (or pos 1) (concat "\n " subj)))))

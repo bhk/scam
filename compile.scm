@@ -48,7 +48,7 @@
 
 
 ;; *file-mods* is a list of IDs of modules that should be read from files at
-;; run-time, rather than bundles.This enables interactive mode and
+;; run-time, rather than bundles.  This enables interactive mode and
 ;; executable macros, and simplifies unit-testing.
 (define *file-mods* nil)
 
@@ -59,110 +59,11 @@
 (define *is-quiet* &public nil)
 
 
-;;--------------------------------------------------------------
-;; Module management
-;;--------------------------------------------------------------
-
-;; We have different ways of referring to modules in different contexts:
+;; Display a progress message.
 ;;
-;;  NAME: This is the string given as a literal argument to (require).
-;;
-;;  ORIGIN: If NAME identifies a source file, it will be the complete path to
-;;       the source file path.  If NAME identifies a builtin module, it will be
-;;       that module's ID (which begins with `'`).
-;;
-;;  ID: This is what will be passed to ^require at run-time.  Ordinarily it
-;;      identifies a bundle, but when modules execute in the context of the
-;;      compiler and ID is found in *file-mods*, the object code will be
-;;      loaded directly from the file.
-;;
-;;                  --boot           not --boot       not --boot
-;;                  Source File      Source File      Builtin
-;;                  ----------       ---------        -----------
-;;   ORIGIN         io.scm           io.scm           'io
-;;   ID             'io              io               'io
-;;   Load File      .scam/io.min     .scam/io.min
-;;   Load Bundle                                      [mod-'io]
-;;   Bundle as      [mod-'io]         [mod-io]        [mod-'io]
-;;
-
-
-;; Return the file that holds (or will hold) the module's compiled code
-;; (valid only for modules compiled from source).
-;;
-(define (modid-file id)
-  &public
-  (concat *obj-dir* (patsubst "'%" "%" id) ".min"))
-
-
-;; Return the bundle variable that holds (or will hold) the modules's code.
-;;
-(define `(modid-var id)
-  (concat "[mod-" id "]"))
-
-
-(define (module-opath origin)
-  (escape-path (basename origin)))
-
-
-;; Construct the ID corresponding to a module origin.  When building the
-;; compiler (booting), we add a "'" prefix to allow them to coexist with
-;; user source modules of the same name.
-;;
-(define (module-id origin)
-  &public
-  (or (filter "'%" origin)
-      (concat (if *is-boot* "'") (module-opath origin))))
-
-
-(define (module-var origin)
-  &public
-  (modid-var (module-id origin)))
-
-
-(define `(module-is-source? origin)
-  &public
-  (filter-out "'%" origin))
-
-
-(define (module-has-binary? origin)
-  (or (filter "'%" origin)
-      (filter (module-id origin) *file-mods*)))
-
-
-;; Get the "origin" of the module (a SCAM source file or a builtin bundle).
-;; Note that when source is found, a compiled version may not be present.
-;; Return nil on failure.
-;;
-;; SOURCE-FILE =  the source file calling `require`
-;; NAME = the literal string passed to "require"
-;;
-(define (locate-module source-file name)
-  &public
-  (define `srcname
-    (if *is-boot*
-        (patsubst "'%" "%" name)
-        name))
-
-  (or (firstword
-       (foreach dir (append (dir source-file)
-                            (subst ":" " " (value "SCAM_LIBPATH")))
-                (file-exists? (resolve-path dir (concat srcname ".scm")))))
-
-      ;; builtin?
-      (and (not *is-boot*)
-           ;; Either "name" or "'name" will match "'name"...
-           (let ((id (subst "''" "'" (concat "'" name))))
-             (if (bound? (modid-var id))
-                 id)))))
-
-
-;; Return the first 4 lines of a compiled module as an array of lines.
-;;
-(define (module-read-lines origin)
-  (if (filter "'%" origin)
-      (wordlist 1 4 (split "\n" (value (module-var origin))))
-      (read-lines (modid-file (module-id origin)) 1 4)))
+(define (build-message action file)
+  (or *is-quiet*
+      (write 2 (concat "... " action " " file "\n"))))
 
 
 ;;----------------------------------------------------------------
@@ -280,39 +181,251 @@
                 (import-binding (dict-key b) (dict-value b))))))
 
 
-;; Discard imported bindings.  Leave other public and private bindings.
+;; Filter bindings by scope.
 ;;
 ;; ENV = the final environment of the module
+;; SCOPES = "x" for public bindings only; "p x" for private and public
 ;;
-(define (env-strip-exports env)
+(define (env-filter-scope env scopes)
   (strip-vec
    (foreach b env
-            (if (not (filter "i" (EDefn.scope (dict-value b))))
+            (if (filter scopes (EDefn.scope (dict-value b)))
                 b))))
 
 
 ;; Generate "exports" comment line for MIN file
+;; SCOPE = see env-filter-scope
 ;;
-(define (env-export-line env)
-  (concat "# Exports: " (env-compress (env-strip-exports env)) "\n"))
+(define (env-export-line env scope)
+  (concat "# Exports: " (env-compress (env-filter-scope env scope)) "\n"))
 
 
 ;; Return all bindings exported from a MIN file.  The keys of non-public
 ;; entries are prefixed with "(".
 ;;
-(define `(env-parse lines)
+(define (env-parse lines)
   (subst "!n" "\n"
          (env-expand (first (filtersub ["# Exports: %"] "%" lines)))))
 
 
+;;--------------------------------------------------------------
+;; Module management
+;;--------------------------------------------------------------
+
+;; We have different ways of referring to modules in different contexts:
+;;
+;;  NAME: This is the string given as a literal argument to (require).
+;;
+;;  ORIGIN: If NAME identifies a source file, it will be the complete path to
+;;       the source file path.  If NAME identifies a builtin module, it will be
+;;       that module's ID (which begins with `'`).
+;;
+;;  ID: This is what will be passed to ^require at run-time.  Ordinarily it
+;;      identifies a bundle, but when modules execute in the context of the
+;;      compiler and ID is found in *file-mods*, the object code will be
+;;      loaded directly from the file.
+;;
+;;                  --boot           not --boot       not --boot
+;;                  Source File      Source File      Builtin
+;;                  ----------       ---------        -----------
+;;   ORIGIN         io.scm           io.scm           'io
+;;   ID             'io              io               'io
+;;   Load File      .scam/io.min     .scam/io.min
+;;   Load Bundle                                      [mod-'io]
+;;   Bundle as      [mod-'io]         [mod-io]        [mod-'io]
+;;
+
+
+;; Return the file that holds (or will hold) the module's compiled code
+;; (valid only for modules compiled from source).
+;;
+(define (modid-file id)
+  (concat *obj-dir* (patsubst "'%" "%" id) ".min"))
+
+
+;; Return the bundle variable that holds (or will hold) the modules's code.
+;;
+(define `(modid-var id)
+  (concat "[mod-" id "]"))
+
+
+(define `(module-opath origin)
+  (escape-path (basename origin)))
+
+
+;; Construct the ID corresponding to a module origin.  When building the
+;; compiler (booting), we add a "'" prefix to allow them to coexist with
+;; user source modules of the same name.
+;;
+(define (module-id origin)
+  (or (filter "'%" origin)
+      (concat (if *is-boot* "'") (module-opath origin))))
+
+
+(define (module-var origin)
+  (modid-var (module-id origin)))
+
+
+(define (module-is-source? origin)
+  &public
+  (filter-out "'%" origin))
+
+
+(define (module-object-file origin)
+  &public
+  (modid-file (module-id origin)))
+
+
+;; Return the first 4 lines of a compiled module as an array of lines.
+;;
+(define (module-read-lines origin ?max)
+  (if (filter "'%" origin)
+      (wordlist 1 (or max 99999999) (split "\n" (value (module-var origin))))
+      (read-lines (module-object-file origin) (and max 1) max)))
+
+
 ;; Return the environment exported from a module, given its ID.
 ;;
-(define (env-import origin all)
-  (env-strip-imports (env-parse (module-read-lines origin))
+(define (module-import origin all)
+  (env-strip-imports (env-parse (module-read-lines origin 4))
                      all))
 
 
-(memoize (global-name env-import))
+(memoize (global-name module-import))
+
+
+;; Scan a source file for `require` dependencies.
+;; Returns:  REQUIRES   (a vector of module names)
+;;
+(define `(module-source-deps filename)
+  (define `sedcmd
+    "sed -E 's/ //g;s/!/!1/g;s/^\\(require\"([^\"]*)\".*|.*/\\1/g;/../!d'")
+  (shell (concat sedcmd " " (quote-sh-arg filename))))
+
+
+;; Scan a builtin module for `require` dependencies.
+;;
+(define `(module-builtin-deps origin)
+  (let ((lines (wordlist 1 4 (split "\n" (value (module-var origin))))))
+    (assert lines)
+    (promote (filtersub [(concat "# Requires: %")] "%" lines))))
+
+
+;; Get the "origin" of the module (a SCAM source file or a builtin bundle).
+;; Note that when source is found, a compiled version may not be present.
+;; Return nil on failure.
+;;
+;; SOURCE-FILE =  the source file calling `require`
+;; NAME = the literal string passed to "require"
+;;
+(define (module-locate source-file name)
+  (define `srcname
+    (if *is-boot*
+        (patsubst "'%" "%" name)
+        name))
+
+  (or (firstword
+       (foreach dir (append (dir source-file)
+                            (subst ":" " " (value "SCAM_LIBPATH")))
+                (file-exists? (resolve-path dir (concat srcname ".scm")))))
+
+      ;; builtin?
+      (and (not *is-boot*)
+           ;; Either "name" or "'name" will match "'name"...
+           (let ((id (subst "''" "'" (concat "'" name))))
+             (if (bound? (modid-var id))
+                 id)))))
+
+
+;; Return REQUIRES, a vector of module origins.
+;;
+(define (module-deps origin)
+  &public
+  (if (module-is-source? origin)
+      (append-for v (module-source-deps origin)
+                  (for name v
+                       (or (module-locate origin name)
+                           (print "Could not find module: " name))))
+      (module-builtin-deps origin)))
+
+
+;; Skip initial comment lines.
+;;
+(define (skip-comments lines)
+  (if (filter ["#%" ""] (word 1 lines))
+      (skip-comments (rest lines))
+      lines))
+
+
+;; Construct a bundle for a compiled module.
+;;
+(define `(construct-bundle mod keep-syms)
+  (let ((lines (module-read-lines mod))
+        (var (module-var mod))
+        (keep-syms keep-syms))
+    (define `headers (wordlist 1 4 lines))
+    (define `env (env-parse headers))
+    (define `req (concat (first (filter ["# Req%"] headers)) "\n"))
+    (concat "\ndefine " var "\n"
+            (if keep-syms
+                (concat req (env-export-line env "x")))
+            (concat-vec (skip-comments lines) "\n")
+            "\nendef\n")))
+
+
+;; Construct an object file for a compiled module.
+;;
+(define (construct-file infile env exe reqs)
+  (define `(to-ids origins)
+    (for m origins
+         (module-id m)))
+  (concat (if reqs (concat "# Requires: " (to-ids reqs) "\n"))
+          (env-export-line env "p x")
+          exe))
+
+
+;; This preamble makes the resulting file both a valid shell script and a
+;; valid makefile.  When invoked by the shell, the script invokes `make` to
+;; process the script as a makefile.
+;;
+;; LC_ALL=C allows makefiles to contain non-UTF-8 byte sequences, which is
+;; needed to enable SCAM's UTF-8 support.
+;;
+;; Some make distros (Ubuntu) ignore the environment's SHELL and set it to
+;; /bin/sh.  We set it to bash rather than bothering to test `io` with
+;; others.
+;;
+(define `prologue
+"#!/bin/bash
+:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\" 9>&1
+SHELL:=/bin/bash
+")
+
+(define `(epilogue main main-func rt)
+  (concat "$(eval $(value " (module-var rt) "))\n"
+          "$(call ^start," (module-id main) "," main-func ",$(value SCAM_ARGS))\n"))
+
+
+;; Construct a bundled executable.  This function is typically executed when
+;; rules are expanded during Make's rule processing phase.
+;;
+;; OUTFILE = file name
+;; MODULES = vector of module origins
+;; MAIN = main module origin
+;; RUNTIME = runtime module origin
+;; KEEP-SYMS = If not true, symbols willbe stripped.
+;;
+(define (link outfile modules main runtime keep-syms)
+  &public
+  (build-message "linking" outfile)
+  (write-file outfile
+              (concat prologue
+                      (concat-for mod modules " "
+                               (construct-bundle mod keep-syms))
+                      (epilogue main (gen-global-name "main" nil) runtime)))
+
+  (shell (concat "chmod +x " (quote-sh-arg outfile))))
+
 
 ;; Extend the runtime's ^require to handle file-based modules during
 ;; compilation.
@@ -327,9 +440,14 @@
 (declare (compile-module infile outfile excludes))
 
 
+(define `(module-has-binary? origin)
+  (or (filter "'%" origin)
+      (filter (module-id origin) *file-mods*)))
+
+
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
 ;;
-(define (has-xmacro? env)
+(define `(has-xmacro? env)
   (word 1 (foreach pair env
                    (case (dict-value pair)
                      ((EXMacro _ _) 1)))))
@@ -345,7 +463,7 @@
 ;;
 (define (get-module name base private)
   &public
-  (let ((origin (locate-module base name))
+  (let ((origin (module-locate base name))
         (private private))
     (define `id (module-id origin))
 
@@ -359,7 +477,7 @@
                   (ModError (sprintf "compilation of %q failed" origin))
                   ;; success => nil => proceed to ordinary result
                   (set *file-mods* (append *file-mods* id)))))
-        (let ((exports (env-import origin private))
+        (let ((exports (module-import origin private))
               (id id) (origin origin))
           (or (if (has-xmacro? exports)
                   (if *is-boot*
@@ -427,16 +545,6 @@
                  (parse-subject *compile-subject*)
                  (lambda (env-out nodes)
                    (concat (gen1 nodes is-file) " " {env: env-out})))))
-
-
-(define (construct-file infile env exe reqs)
-  (define `(to-ids origins)
-    (for m origins
-         (module-id m)))
-  (concat "# compiled from " infile "\n"
-          (if reqs (concat "# Requires: " (to-ids reqs) "\n"))
-          (env-export-line env)
-          exe))
 
 
 ;; Replace the first line with a blank line if it begins with "#".
@@ -510,6 +618,7 @@
 ;;
 (define (compile-file infile outfile file-mods excludes)
   &public
+  (build-message "compiling" infile)
   (let-global ((*file-mods* (for m file-mods
                                  (if (module-is-source? m)
                                      (module-id m)))))

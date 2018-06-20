@@ -3,6 +3,9 @@
 (require "io")
 (require "compile" &private)
 
+;; strip-comments
+
+(expect ["a" "" "b"] (skip-comments ["#Comment" "" "# comment 2" "a" "" "b"]))
 
 ;;----------------------------------------------------------------
 ;; Env importing/exporting
@@ -14,7 +17,7 @@
     q: (EFunc "Q" "p" 1 nil) })
 
 ;; no imports to trim
-(expect (env-strip-exports mod-A-env)
+(expect (env-filter-scope mod-A-env "x p")
         mod-A-env)
 
 ;; reconstruct A (include)
@@ -54,7 +57,7 @@
 (define (export-round-trip env flag)
   (env-strip-imports
    (env-parse [ "# comment"
-                (subst "\n" "" (env-export-line env))
+                (subst "\n" "" (env-export-line env "p x"))
                 "# F F F F F F"])
    flag))
 
@@ -91,6 +94,27 @@
 
 
 ;;--------------------------------------------------------------
+;; Module Management
+;;--------------------------------------------------------------
+
+;; module-source-deps
+
+(expect ["req/a!1" "req/a2" "req/b"]
+        (module-source-deps (concat (dir (current-file))
+                                    "test/build-q.txt")))
+
+;; scan-object
+
+(set-global "[mod-'builtin-test]"
+            (concat "# comment\n"
+                    "# Requires: 'core 'io\n"
+                    "# comment\n"))
+
+(expect ["'core" "'io"]
+        (module-builtin-deps "'builtin-test"))
+
+
+;;--------------------------------------------------------------
 ;; compile-text
 ;;--------------------------------------------------------------
 
@@ -119,9 +143,9 @@
 ;; require
 (declare ^require &global)
 
-(let-global ((locate-module (lambda (f name) (concat "'" name)))
+(let-global ((module-locate (lambda (f name) (concat "'" name)))
              (^require (lambda () nil))
-             (env-import (lambda () nil)))
+             (module-import (lambda () nil)))
   (let ((o (compile-text "(require \"r\")" "" "(test)" "test.tmp")))
     (expect "" (dict-get "errors" o))
     (expect "'r" (dict-get "require" o))

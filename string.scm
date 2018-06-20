@@ -74,6 +74,33 @@
   (subst [" "] " " [vec]))
 
 
+(define (gen-split chars to-pattern)
+  (let& ((froms (vdemote chars)))
+    (gen-polysub froms (patsubst "%" to-pattern froms))))
+
+(define `ascii (wordlist 1 127 all-bytes))
+(define `utf8-cont (wordlist 128 191 all-bytes))   ;; continuation bytes
+(define `utf8-esc (wordlist 194 244 all-bytes))    ;; initial bytes of a sequence
+
+;; Note: These 'split' functions operate on *demoted* strings.
+(declare (split-ascii str))
+(declare (split-utf8-esc str))
+(declare (split-utf8-cont str))
+
+(set split-ascii (gen-split ascii ["% "]))
+(set split-utf8-esc (gen-split utf8-esc ["% "]))
+(set split-utf8-cont (gen-split utf8-cont ["!.% "]))
+
+;; Group UTF-8 continuation characters with UTF-8 initial bytes *if* the
+;; string contains any initial bytes.  Just in case we have non-UTF8,
+;; don't leave any "!." strings behind.
+;;
+(define (utf8-group-if s)
+  (if (word 2 s)
+      (subst " !." "" "!." " " (split-utf8-cont s))
+      s))
+
+
 ;; Get all characters in STR.  The result is a vector of strings, each
 ;; containing one character. `concat-vec` reverses this operation.
 ;;
@@ -82,39 +109,11 @@
 ;; still reverse the operation) but grouping into vector elements will be
 ;; undefined.
 ;;
-(declare (string-to-chars str) &public)
-(begin
-
-  (define (gen-split chars to-pattern)
-    (let& ((froms (vdemote chars)))
-      (gen-polysub froms (patsubst "%" to-pattern froms))))
-
-  (define `ascii (wordlist 1 127 all-bytes))
-  (define `utf8-cont (wordlist 128 191 all-bytes))   ;; continuation bytes
-  (define `utf8-esc (wordlist 194 244 all-bytes))    ;; initial bytes of a sequence
-
-  ;; Note: These 'split' functions operate on *demoted* strings.
-  (declare (split-ascii str))
-  (declare (split-utf8-esc str))
-  (declare (split-utf8-cont str))
-
-  (set split-ascii (gen-split ascii ["% "]))
-  (set split-utf8-esc (gen-split utf8-esc ["% "]))
-  (set split-utf8-cont (gen-split utf8-cont ["!.% "]))
-
-  ;; Group UTF-8 continuation characters with UTF-8 initial bytes *if* the
-  ;; string contains any initial bytes.  Just in case we have non-UTF8,
-  ;; don't leave any "!." strings behind.
-  ;;
-  (define (utf8-group-if s)
-    (if (word 2 s)
-        (subst " !." "" "!." " " (split-utf8-cont s))
-      s))
-
-  (define (string-to-chars s)
-    (define `u8
-      (utf8-group-if (split-utf8-esc (subst "!" "!1" " " "!0" "\t" "!+" s))))
-    (filter "%" (split-ascii u8))))
+(define (string-to-chars s)
+  &public
+  (define `u8
+    (utf8-group-if (split-utf8-esc (subst "!" "!1" " " "!0" "\t" "!+" s))))
+  (filter "%" (split-ascii u8)))
 
 
 (define (string-len s)

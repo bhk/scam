@@ -90,23 +90,7 @@
         (cons node (traverse-graph new-nodes get-children new-visited)))))
 
 
-(define (skip-comments lines)
-  (if (filter ["#%" ""] (word 1 lines))
-      (skip-comments (rest lines))
-      lines))
-
-
-;; Remove initial comment lines from a .min file.
-;;
-(define (strip-comments text)
-  (concat-vec (skip-comments (split "\n" text)) "\n"))
-
-
 ;; Generic module manipulation
-
-(define (module-object-file origin)
-  (modid-file (module-id origin)))
-
 
 (define (origins-to-objs origins)
   (for m origins
@@ -116,44 +100,6 @@
 ;; For modules that are satsified by files, return the object file names.
 (define (origins-to-obj-files origins)
   (origins-to-objs (filter-out "'%" origins)))
-
-
-;; Read the compiled (binary) form of a module.
-;;
-(define (module-read-obj origin)
-  (if (filter "'%" origin)
-      (value (module-var origin))
-      (or (read-file (modid-file (module-id origin)))
-          ;; TODO: remove
-          (printf "module-read-obj: file '%s' not found!" (modid-file (module-id origin))))))
-
-
-;; Scan a source file for `require` dependencies.
-;; Returns:  REQUIRES   (a vector of module names)
-;;
-(define (scan-source filename)
-  (define `sedcmd
-    "sed -E 's/ //g;s/!/!1/g;s/^\\(require\"([^\"]*)\".*|.*/\\1/g;/../!d'")
-  (shell (concat sedcmd " " (quote-sh-arg filename))))
-
-
-;; Scan a builtin module for `require` dependencies.
-;;
-(define (scan-builtin origin)
-  (let ((lines (wordlist 1 4 (split "\n" (value (module-var origin))))))
-    (assert lines)
-    (promote (filtersub [(concat "# Requires: %")] "%" lines))))
-
-
-;; Return REQUIRES, a vector of module origins.
-;;
-(define (scan-deps origin)
-  (if (module-is-source? origin)
-      (append-for v (scan-source origin)
-                  (for name v
-                       (or (locate-module origin name)
-                           (print "Could not find module: " name))))
-      (scan-builtin origin)))
 
 
 ;; MMAP = [ MOD... ]
@@ -179,7 +125,7 @@
 
 ;; plural accessors (each takes a list of module names)
 
-(define (mmap-testmods mmap sources)
+(define `(mmap-testmods mmap sources)
   (filter-out [""]
               (for s sources
                    (mod-testmod (assoc s mmap)))))
@@ -224,7 +170,7 @@
           (others others)
           (mmap mmap)
           (origin origin)
-          (deps (scan-deps origin)))
+          (deps (module-deps origin)))
 
       (define `test-origin (and (filter-out "'%" origin)
                                 (file-exists? (filtersub "%.scm" "%-q.scm" origin))))
@@ -242,14 +188,6 @@
 
 
 ;;======================== Rule Construction ========================
-
-
-;; Display a progress message.
-;;
-(define (build-message action file)
-  (or *is-quiet*
-      (write 2 (concat "... " action " " file "\n"))))
-
 
 ;; Construct a Make "rule"
 ;;
@@ -279,65 +217,10 @@
 (define (compile-rule object source deps oodeps file-mods excludes)
   (define `compile-lambda
     (lambda ()
-      (build-message "compiling" object)
       (compile-file source object file-mods excludes)))
 
   (rule object (append source deps *self*) oodeps
         [ (concat ": " compile-lambda) ]))
-
-
-;;----------------------------------------------------------------
-;; Linking
-;;----------------------------------------------------------------
-
-
-;; This preamble makes the resulting file both a valid shell script and a
-;; valid makefile.  When invoked by the shell, the script invokes `make` to
-;; process the script as a makefile.
-;;
-;; LC_ALL=C allows makefiles to contain non-UTF-8 byte sequences, which is
-;; needed to enable SCAM's UTF-8 support.
-;;
-;; Some make distros (Ubuntu) ignore the environment's SHELL and set it to
-;; /bin/sh.  We set it to bash rather than bothering to test `io` with
-;; others.
-;;
-(define prologue
-"#!/bin/bash
-:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\" 9>&1
-SHELL:=/bin/bash
-")
-
-(define (epilogue main main-func rt)
-  (concat "$(eval $(value " (module-var rt) "))\n"
-          "$(call ^start," (module-id main) "," main-func ",$(value SCAM_ARGS))\n"))
-
-
-;; Construct a bundled executable.  This function is typically executed when
-;; rules are expanded during Make's rule processing phase.
-;;
-;; OUTFILE = file name
-;; MODULES = vector of module origins
-;; MAIN = main module origin
-;; RUNTIME = runtime module origin
-;; KEEP-SYMS = If not true, symbols willbe stripped.
-;;
-(define (link outfile modules main runtime keep-syms)
-  (define `(bundle mod)
-    (define `var (module-var mod))
-    (define `text ((if keep-syms identity strip-comments)
-                   (module-read-obj mod)))
-    (concat "\ndefine " var "\n" text "\nendef\n"))
-
-  (build-message "linking" outfile)
-
-  (write-file outfile
-              (concat prologue
-                      (concat-for mod modules " "
-                               (bundle mod))
-                      (epilogue main (gen-global-name "main" nil) runtime)))
-
-  (shell (concat "chmod +x " (quote-sh-arg outfile))))
 
 
 ;; Generate a rule for constructing an executable.

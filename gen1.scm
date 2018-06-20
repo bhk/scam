@@ -129,10 +129,10 @@
 ;; performed during code generation.  Before `gen1` returns, all crumbs are
 ;; removed from the generated code and collated into name/vector pairs.
 
-(define (crumb-encode str)
+(define `(crumb-encode str)
   (subst "~" "~1" "(" "~L" "," "~C" ")" "~R" "$" "~S" "\n" "~N" str))
 
-(define (crumb-decode str)
+(define `(crumb-decode str)
   (subst "~N" "\n" "~S" "$" "~R" ")" "~C" "," "~L" "(" "~1" "~" str))
 
 
@@ -144,7 +144,7 @@
 
 ;; Extract crumbs.  Returns { code: CODE, errors: ERRORS }.
 ;;
-(define (crumb-extract code)
+(define `(crumb-extract code)
   (let ((dc (subst "$.{" " $.{" "$.}" " " [code])))
     (append {code: (concat-vec (filter-out "$.{%" dc))}
             (dict-collate (foreach w (filtersub "$.{%" "%" dc)

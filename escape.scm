@@ -137,7 +137,7 @@
   (balance-match-r (word 1 str) (rest str) "!."))
 
 
-(define (balance str)
+(define `(balance str)
   (balance2
    (subst " " "" "!R" "$]" "!L" "$["
           (balance-match (subst "," "!C," ")" " !R " "(" " !L"

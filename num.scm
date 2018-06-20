@@ -239,7 +239,7 @@
   (filter 2 (u-cmp a b)))
 
 ;; Make U have DIGITS digits by appending 0's to most-significant end.
-(define (u-extend-ms u digits)
+(define `(u-extend-ms u digits)
   (subst "::" ":" (join (nwords digits ":") u)))
 
 ;; Replace each digit D in U with 9-D, then add one.  The result is
@@ -478,16 +478,6 @@
              (numreverse (wordlist 2 shift-index (concat ": " a)))
              b
              shift-index))))
-
-
-(define (u-mod-loop a bi 10-mod-b)
-  (define `a/10-mod-b
-    (u-mod-loop (rest a) bi 10-mod-b))
-
-  (if a
-      (subst bi "" (concat (subst ":" "" (word 1 a))
-                           (if 10-mod-b
-                               (subst "i" 10-mod-b a/10-mod-b))))))
 
 
 ;; A mod B in ticks, where BI = ticks in B.  For B in {1, 2, 4, 5, 8} not

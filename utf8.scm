@@ -58,7 +58,7 @@
       (+ (lastword bits) (* 2 (b2d-loop (butlast bits))))
       bits))
 
-(define (bin-to-dec str)
+(define `(bin-to-dec str)
   (b2d-loop (subst 1 "1 " 0 "0 " str)))
 
 

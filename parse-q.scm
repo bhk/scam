@@ -9,6 +9,12 @@
 ;; utilities
 ;;--------------------------------
 
+(define (POut-format value)
+  (if (and (numeric? (word 1 value))
+           (filter "!:%" (word 2 value)))
+      (concat "(POut " (word 1 value) " " (format (rest value)) ")")))
+
+
 (format-add POut-format)
 
 (define (check-eq expected actual)

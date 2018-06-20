@@ -524,17 +524,14 @@
 ;; Order is preserved; the first occurrence of each member is retained.  The
 ;; Make builtin `sort` returns unique items and is much faster, but it does
 ;; not preserve ordering.
-(declare (uniq vec)
-         &public)
+(define (uniq-x lst)
+  (if lst
+      (concat (word 1 lst) " " (uniq-x (filter-out (word 1 lst) (rest lst))))))
 
-(begin
-  (define (uniq-x lst)
-    (if lst
-        (concat (word 1 lst) " " (uniq-x (filter-out (word 1 lst) (rest lst))))))
-
-  (define (uniq vec)
-    (subst "~p" "%" "~1" "~"
-           (strip-vec (uniq-x (subst "~" "~1" "%" "~p" vec))))))
+(define (uniq vec)
+  &public
+  (subst "~p" "%" "~1" "~"
+         (strip-vec (uniq-x (subst "~" "~1" "%" "~p" vec)))))
 
 
 ;; Split STR at each occurrence of DELIM.  Returns vector whose length is one
