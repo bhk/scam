@@ -6,54 +6,72 @@
 (require "num")
 (require "io")
 
+(define TIMEMS
+  (concat (or (value "TEST_DIR") ".scam/") "timems"))
+
+
 ;; Default duration in milliseconds
 (define default-duration
   &public
   250)
 
-;; Build .out/timems if it isn't there...
-(or (wildcard ".out/timems")
-    (begin
-      (shell! "mkdir -p .out/")
-      (assert (not (shell! "cc -o .out/timems timems.c 2>&1")))))
+
+(define `timems.c
+  "#include <stdio.h>
+#include <sys/time.h>
+
+int main(int argc, char **argv)
+{
+   struct timeval tv;
+   gettimeofday(&tv, (struct timezone *) NULL);
+   printf(\"%lu.%03lu\\n\", tv.tv_sec, tv.tv_usec / 1000LU);
+}
+")
+
+
+;; Build timems if it isn't there...
+(define (build-timems)
+  (or (wildcard TIMEMS)
+      (begin
+        (expect "" (mkdir-p (dir TIMEMS)))
+        (expect "" (shell! (concat (echo-command timems.c) " | "
+                                   " cc -o " TIMEMS " -x c - 2>&1"))))))
 
 
 (define (get-time-ms)
   &public
-  (subst "." "" (shell ".out/timems")))
+  (subst "." "" (shell TIMEMS)))
 
 
 (define (floor n)
   (word 1 (subst "." " " n)))
 
 
-(define (clk-time-foreach fn lst)
+(define (clk-time-once fn)
   (let ((t0 (get-time-ms))
-        (_ (foreach n lst (fn)))
+        (_ (fn))
         (t1 (get-time-ms)))
     (- t1 t0)))
 
 
-(define (clk-make-list reps)
-  (patsubst "%" "." (range 1 reps)))
-
-
 (define (clk-time-iter fn reps)
-  (clk-time-foreach fn (clk-make-list reps)))
+  (define `fnx
+    (subst " " "" "." fn (patsubst "%" "." (range 1 reps))))
+  (if fn
+      (clk-time-once fnx)
+      0))
 
 
 ;; Iteration overhead for lambda call & foreach (~0.01ms)
 (define t-nil nil)
 ;; Time consumed by get-time-ms
-(define t-time
-  (let ((a (get-time-ms))
-        (b (get-time-ms)))
-    (- b a)))
+(define t-time 0)
 
 
 (define (clk-time-loop fn duration reps)
   (let ((t-reps (clk-time-iter fn reps)))
-    (if (>= t-reps duration)
+    (if (or (>= t-reps duration)
+            (> reps 100000))
         [reps t-reps]
         ;; -1 for resolution inaccuracy; *1.5 for t-time duration
         (let& ((t-min (- t-reps (+ (* t-time 1.5) 1)))
@@ -77,14 +95,16 @@
   (define `(.reps o) (word 1 o))
   (define `(.time o) (word 2 o))
 
-  ;; get this warm in the cache
+  ;; build timems and get it warm in the cache
+  (build-timems)
   (get-time-ms)
+  (set t-time (clk-time-once (lambda () nil)))
 
   ;; These initial 'reps' values shave a little time off
   (let ((cgt (clk-time-loop (lambda () (get-time-ms)) durn 2)))
     ;; there is one get-time-ms worth of overhead, hence reps+1
     (set t-time (/ (.time cgt) (+ 1 (.reps cgt)) 5))
-    (let ((cnil (clk-time-loop (lambda () nil nil) durn 1000)))
+    (let ((cnil (clk-time-loop (lambda () (and nil nil)) durn 1000)))
       (set t-nil (/ (- (.time cnil) t-time) (.reps cnil) 5)))))
 
 
@@ -113,13 +133,13 @@
 ;;
 (define `(clk-time expr ?duration ?reps)
   &public
-  (clk-time-fn (lambda () expr nil) duration reps))
+  (clk-time-fn (lambda () (and expr nil)) duration reps))
 
 
 ;; Compute and print time consumed by evaluating EXPR.
 ;;
 (define `(clk-show name expr ?duration ?reps)
   &public
-  (let ((time (clk-time-fn (lambda () expr nil) duration reps)))
+  (let ((time (clk-time-fn (lambda () (and expr nil)) duration reps)))
     (printf "%s: %s" name time)
     time))

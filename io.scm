@@ -169,7 +169,7 @@
 
 (define (mkdir-p dir)
   &public
-  (logshell (concat "mkdir -p " (quote-sh-file dir))))
+  (logshell (concat "mkdir -p " (quote-sh-file dir) " 2>&1")))
 
 
 ;; clean-path-x: Helper for clean-path
