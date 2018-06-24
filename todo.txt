@@ -9,6 +9,14 @@ Bugs
 
  * fix: circular dependency warning with gen-testutils.
 
+ * fix: 'rest' captures
+
+   (begin
+     (define (f a ...r)
+       (let ((x (wildcard a)))
+         (cons a r)))
+     (expect [1 2 3 "a b"] (f 1 2 3 "a b")))
+
 
 Library Enhancements
 ----
