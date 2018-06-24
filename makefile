@@ -106,7 +106,7 @@ $C/scam: *.scm $B.ok
 # v1 tests:
 #  run: validates code generation
 #
-$A.ok: $A/scam
+$A.ok: $A/scam test/run.scm
 	@ echo '... test $A/scam'
 	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot
 	$(_@)    .out/ta/run
@@ -122,7 +122,7 @@ $B.ok: $B-o.ok $B-x.ok $B-e.ok $B-i.ok $B-io.ok
 #     Uses a bundled file, so $A/scam will not always work.
 #   dash-x: compile and execute source file, passing arguments
 
-$B-o.ok: $B/scam
+$B-o.ok: $B/scam test/*.scm
 	@ echo '... test scam -o EXE FILE'
 	$(_@) $B/scam -o .out/tb/using test/using.scm
 	$(_@) .out/tb/using
@@ -133,7 +133,7 @@ $B-o.ok: $B/scam
 	$(_@) touch $@
 
 
-$B-x.ok: $B/scam
+$B-x.ok: $B/scam test/*.scm
 	@ echo '... test scam -x FILE ARGS...'
 	$(_@) SCAM_TRACE='%conc:c' $B/scam --out-dir .out/tbx/ -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
 	$(_@) $(call guard,BX1,grep '9:3:a b' .out/tb/dash-x.out)
