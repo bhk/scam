@@ -431,18 +431,12 @@ SHELL:=/bin/bash
 ;; compilation.
 ;;
 (define (load-ext id)
-  (if (filter id *file-mods*)
-      (begin
-        (eval (concat "include " (modid-file id)))
-        1)))
+  (begin
+    (eval (concat "include " (modid-file id)))
+    1))
 
 
 (declare (compile-module infile outfile excludes))
-
-
-(define `(module-has-binary? origin)
-  (or (filter "'%" origin)
-      (filter (module-id origin) *file-mods*)))
 
 
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
@@ -469,14 +463,12 @@ SHELL:=/bin/bash
 
     (or (if (not origin)
             (ModError (sprintf "cannot find %q" name)))
-        (if (not (module-has-binary? origin))
-            (begin
-              (or *is-quiet*
-                  (print "... compiling " origin))
-              (if (compile-module origin (modid-file id) nil)
-                  (ModError (sprintf "compilation of %q failed" origin))
-                  ;; success => nil => proceed to ordinary result
-                  (set *file-mods* (append *file-mods* id)))))
+        (if (not (filter "'%" origin))
+            (if (not (filter id *file-mods*))
+                (if (compile-module origin (modid-file id) nil)
+                    (ModError (sprintf "compilation of %q failed" origin))
+                    ;; success => nil => proceed to ordinary result
+                    (set *file-mods* (append *file-mods* id)))))
         (let ((exports (module-import origin private))
               (id id) (origin origin))
           (or (if (has-xmacro? exports)
@@ -579,6 +571,8 @@ SHELL:=/bin/bash
     (let-global ((*compile-file* infile))
       (compile-prelude excludes)))
 
+  (build-message "compiling" infile)
+
   (let ((o (compile-text text imports infile outfile))
         (ireqs (append (implicit-mod "runtime" excludes "R")
                        (implicit-mod "scam-ct" excludes "C")))
@@ -618,7 +612,6 @@ SHELL:=/bin/bash
 ;;
 (define (compile-file infile outfile file-mods excludes)
   &public
-  (build-message "compiling" infile)
   (let-global ((*file-mods* (for m file-mods
                                  (if (module-is-source? m)
                                      (module-id m)))))

@@ -273,9 +273,9 @@ endef
 ;;
 (define (^load id)
   &global
-  (or (load-ext id)
-      (if (bound? (mod-var id))
-          (eval (value (mod-var id)))
+  (if (bound? (mod-var id))
+      (eval (value (mod-var id)))
+      (or (load-ext id)
           (error (concat "module " id " not found!"))))
   ;; return value is useful when viewing trace of load sequence
   id)
