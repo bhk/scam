@@ -313,14 +313,15 @@ endef
   &public
   (if specs
       (begin
-        (call "^require" "'trace")
+        ;; Use ^require, not require, to avoid treating it as a dependency.
+        (^require "'trace")
         (trace-ext specs *do-not-trace*))))
 
 (define (untrace names ?retval)
   &public
   (if names
       (begin
-        (call "^require" "'trace")
+        (^require "'trace")
         (untrace-ext names)))
   retval)
 
@@ -375,7 +376,7 @@ endef
   ;; Allow module loading to be traced.
   (start-trace main-mod)
   ;; Now it's dangerous...
-  (do-not-trace "^require ^load ^load-ext")
+  (do-not-trace (concat "^require ^load " (global-name load-ext)))
 
   (^require main-mod)
   (start-trace main-mod)
