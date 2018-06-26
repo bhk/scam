@@ -18,7 +18,7 @@
   (define text (read-file-assert file))
   (set text (subst "require \"" "require \"'" text))
   (define asts (parse-text text))
-  (define env (compile-prelude ""))
+  (define env (compile-prelude file))
   (define nodes (c0-block-cc env asts (lambda (e n) n)))
 
   (let ((o (gen1 nodes 1)))

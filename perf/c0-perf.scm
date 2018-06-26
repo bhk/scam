@@ -18,7 +18,7 @@
   ;; try to prevent `require` from compiling OTHER files...
   (define text (subst "\"core\"" "\"'core\"" (read-file-assert file)))
   (define ast (parse-text text))
-  (define env (compile-prelude ""))
+  (define env (compile-prelude file))
 
   (let-global ((*compile-subject*  (penc text))
                (*compile-file*     file))

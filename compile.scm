@@ -47,11 +47,6 @@
      (require "utf8"))
 
 
-;; *file-mods* is a list of IDs of modules that should be read from files at
-;; run-time, rather than bundles.  This enables interactive mode and
-;; executable macros, and simplifies unit-testing.
-(define *file-mods* nil)
-
 ;; Root directory for compiled binaries.
 (define *obj-dir* &public ".scam/")
 
@@ -221,9 +216,8 @@
 ;;       that module's ID (which begins with `'`).
 ;;
 ;;  ID: This is what will be passed to ^require at run-time.  Ordinarily it
-;;      identifies a bundle, but when modules execute in the context of the
-;;      compiler and ID is found in *file-mods*, the object code will be
-;;      loaded directly from the file.
+;;      identifies a bundle, but when no such bundle is found the object
+;;      code will be loaded directly from the file.
 ;;
 ;;                  --boot           not --boot       not --boot
 ;;                  Source File      Source File      Builtin
@@ -319,15 +313,10 @@
 ;; NAME = the literal string passed to "require"
 ;;
 (define (module-locate source-file name)
-  (define `srcname
-    (if *is-boot*
-        (patsubst "'%" "%" name)
-        name))
-
   (or (firstword
        (foreach dir (append (dir source-file)
                             (subst ":" " " (value "SCAM_LIBPATH")))
-                (file-exists? (resolve-path dir (concat srcname ".scm")))))
+                (file-exists? (resolve-path dir (concat name ".scm")))))
 
       ;; builtin?
       (and (not *is-boot*)
@@ -436,7 +425,7 @@ SHELL:=/bin/bash
     1))
 
 
-(declare (compile-module infile outfile excludes))
+(declare (compile-module infile outfile))
 
 
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
@@ -464,11 +453,10 @@ SHELL:=/bin/bash
     (or (if (not origin)
             (ModError (sprintf "cannot find %q" name)))
         (if (not (filter "'%" origin))
-            (if (not (filter id *file-mods*))
-                (if (compile-module origin (modid-file id) nil)
-                    (ModError (sprintf "compilation of %q failed" origin))
-                    ;; success => nil => proceed to ordinary result
-                    (set *file-mods* (append *file-mods* id)))))
+            (if (compile-module origin (modid-file id))
+                (ModError (sprintf "compilation of %q failed" origin))
+                ;; success => nil => proceed to ordinary result
+                nil))
         (let ((exports (module-import origin private))
               (id id) (origin origin))
           (or (if (has-xmacro? exports)
@@ -493,6 +481,16 @@ SHELL:=/bin/bash
 
 ;;----------------------------------------------------------------
 
+(define (prelude-modules source)
+  &public
+  (if *is-boot*
+      ;; building compiler from source => use its own runtime
+      (if (not (filter "runtime.scm" source))
+          "runtime")
+      ;; normal compilation
+      "'runtime 'scam-ct"))
+
+
 ;; Return an initial environment (standard prelude).
 ;;
 ;; We construct this by calling `require` on "implicit" modules, but that
@@ -500,18 +498,12 @@ SHELL:=/bin/bash
 ;; modules, and should always receive builtin versions.  When compiling the
 ;; compiler itself, however, we obtain these from source files.
 ;;
-;; EXCLUDES = string of characters that disable implicit dependencies:
-;;            "" = default; "R" avoids runtime; "C" avoids scam-ct, "RC" both.
-;;
 ;; On error, the result wil contain {=ErrorMarkerKey:...} pair.
 ;;
-(define (compile-prelude excludes)
+(define (compile-prelude source)
   &public
-  (append (if (not (findstring "R" excludes))
-              (get-module-env "'runtime"))
-          (if (and (not (findstring "C" excludes))
-                   (not *is-boot*))
-              (get-module-env "'scam-ct"))))
+  (foreach m (prelude-modules source)
+           (get-module-env m)))
 
 
 ;; Compile SCAM source to executable code.
@@ -559,23 +551,21 @@ SHELL:=/bin/bash
 ;;
 ;; INFILE = source file name (to be read)
 ;; OUTFILE = object file name (to be written)
-;; EXCLUDES = see compile-prelude
 ;;
 ;; Returns: nil on success, error description on failure.
 ;;
-(define (compile-module infile outfile excludes)
+(define (compile-module infile outfile)
   &public
   (define `text (trim-hashbang (read-file infile)))
 
   (define `imports
     (let-global ((*compile-file* infile))
-      (compile-prelude excludes)))
+      (compile-prelude infile)))
 
   (build-message "compiling" infile)
 
   (let ((o (compile-text text imports infile outfile))
-        (ireqs (append (implicit-mod "runtime" excludes "R")
-                       (implicit-mod "scam-ct" excludes "C")))
+        (ireqs (prelude-modules infile))
         (infile infile)
         (outfile outfile))
     (define `errors (dict-get "errors" o))
@@ -597,6 +587,9 @@ SHELL:=/bin/bash
                       (construct-file infile env-out exe reqs))))))
 
 
+(memoize (global-name compile-module))
+
+
 (define (error-if desc)
   (if desc
       (error desc)))
@@ -608,11 +601,7 @@ SHELL:=/bin/bash
 ;; INFILE = source file name (to be read)
 ;; OUTFILE = object file name (to be written)
 ;; FILE-MODS = module origins that have been compiled
-;; EXCLUDES = see compile-prelude
 ;;
 (define (compile-file infile outfile file-mods excludes)
   &public
-  (let-global ((*file-mods* (for m file-mods
-                                 (if (module-is-source? m)
-                                     (module-id m)))))
-    (error-if (compile-module infile outfile excludes))))
+  (error-if (compile-module infile outfile)))
