@@ -266,7 +266,10 @@
 ;;     once, bound to a vector of all its values in DICT.
 ;;
 ;; (dict-keys DICT)
-;;     Return a vector of KEYS from DICT.
+;;     Return a vector of keys from DICT.
+;;
+;; (dict-values DICT)
+;;     Return a vector of values from DICT.
 ;;
 
 (define (dict-key pair)
@@ -277,14 +280,17 @@
   &public
   (nth 2 (subst "!=" " " pair)))
 
+(define `(dict-matches key dict)
+  (filter (concat (subst "%" "!8" [key]) "!=%") dict))
+
 (define (dict-find key dict)
   &public
-  (word 1 (filter (concat (subst "%" "!8" [key]) "!=%") dict)))
+  (word 1 (dict-matches key dict)))
 
 (define (dict-get key dict ?default)
   &public
-  (nth 2 (concat (subst "!=" " " (dict-find key dict))
-                 (if default (concat " x " (demote default))))))
+  (promote (or (word 2 (subst "!=" " " (dict-matches key dict)))
+               (subst "!" "!1" default))))
 
 (define (dict-set key value map)
   &public
@@ -300,10 +306,13 @@
         (append pair
                 (dict-compact (filter-out prefix (rest dict)))))))
 
-(define (dict-keys h)
+(define (dict-keys dict)
   &public
-  (foreach e h
-           (subst "!8" "%" (word 1 (subst "!=" " " e)))))
+  (subst "!8" "%" (filter-out "!=%" (subst "!=" " !=" dict))))
+
+(define (dict-values dict)
+  &public
+  (filter-out "%!=" (subst "!=" "!= " dict)))
 
 (define (dict-collate pairs)
   &public

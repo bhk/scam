@@ -111,6 +111,7 @@
 (expect "x!=M" (dict-find "x" {x: "M", x: "K"}))
 
 (expect " " (dict-get "" {a: "b", "": " ", x: "y"}))
+(expect "b" (dict-get "a" {a: "b", a:2 }))
 (expect "%" (dict-get "" {"": "%"} "default"))
 (expect "" (dict-get "%" {"%": ""} "default"))
 (expect "default" (dict-get "x" {"": ""} "default"))
@@ -124,6 +125,9 @@
 
 (expect ["%" "!8" "a b" ""]
         (dict-keys {"%": "", "!8": "x", "a b": "%1", "": "x"}))
+
+(expect ["" "%x"]
+        (dict-values {"%": "", "": "%x"}))
 
 (expect { a: [1 2 3], b: ["%" "b c" "! " ""] }
         (dict-collate {a: 1, a: 2, b: "%", b: "b c", b: "! ", a: 3, b: ""}))
