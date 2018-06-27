@@ -94,12 +94,14 @@
 
 (define (memo-call-v fname args)
   (define `key (concat fname " " args))
-  (let ((o (memo-playback key))
-        (key key)
-        (args args))
-    (case o
-      ((Result v) v)
-      (else (memo-log-call fname args (memo-record key fname args))))))
+  (memo-log-call
+   fname args
+   (let ((o (memo-playback key))
+         (key key)
+         (args args))
+     (case o
+       ((Result v) v)
+       (else (memo-record key fname args))))))
 
 
 ;; Call a function *or* return cached results.
@@ -113,7 +115,40 @@
 ;; [Ends in a newline, and newlines separate entries.]
 (define (memo-get-cache)
   (concat (subst "\n" "!n" " " "\n" *memo-db*)
+          " "
+          {tag: *memo-tag*}
           "\n"))
 
 (define (memo-set-cache data)
-  (set *memo-db* (strip-vec (subst "\n" " " "!n" "\n" data))))
+  (set *memo-db* (strip-vec (subst "\n" " " "!n" "\n" data)))
+  (set *memo-tag* (dict-get "tag" *memo-db* 0))
+  (set *memo-db* (filter-out {tag: *memo-tag*} *memo-db*)))
+
+
+;; File IO
+
+(define (hex-split str)
+  (subst "0" "0 " "1" "1 " "2" "2 " "3" "3 " "4" "4 " "5" "5 "
+         "6" "6 " "7" "7 " "8" "8 " "9" "9 " "a" "a " "b" "b "
+         "c" "c " "d" "d " "e" "e " "f" "f " str))
+
+;; Get hashes of file names matching GLOB-PATTERN.
+;; Return { FILENAME: HASH, ... } dictionary.
+;;
+(define (hash-file filename)
+  (define `cmd
+    (concat "shasum " (quote-sh-arg filename) " 2>/dev/null"))
+  (define `(initial n str)
+    (subst " " "" (wordlist 1 n (hex-split str))))
+  (initial 12 (word 1 (shell cmd))))
+
+
+(define (memo-read-file filename)
+  (memo-io (global-name hash-file) filename)
+  (read-file filename))
+
+
+(define (memo-write-file filename data)
+  (let ((result (write-file filename data)))
+    (memo-io (global-name hash-file) filename)
+    result))

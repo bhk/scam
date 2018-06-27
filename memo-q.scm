@@ -117,7 +117,48 @@
 
 (define db-old *memo-db*)
 (define sav (memo-get-cache))
+(define sav-tag *memo-tag*)
+
 (memo-set-cache nil)
 (expect nil *memo-db*)
+(set *memo-tag* nil)
+
 (memo-set-cache sav)
 (expect db-old *memo-db*)
+(expect sav-tag *memo-tag*)
+
+
+;; File IO
+
+(define tmpfile (concat (assert (value "TEST_DIR")) "memo-q-t1"))
+
+(write-file tmpfile "1 2 3")
+
+(define (file-words name)
+  (log "file-words")
+  (words (memo-read-file name)))
+
+(expect 3 (memo-call (global-name file-words) tmpfile))
+(expect 1 (log-count "file-words"))
+(expect 3 (memo-call (global-name file-words) tmpfile))
+(expect 1 (log-count "file-words"))
+(write-file tmpfile "1 2")
+(expect 2 (memo-call (global-name file-words) tmpfile))
+(expect 2 (log-count "file-words"))
+
+
+;; nested memo-call functions, where only the innermost needs to be
+;; recalculated
+
+(define (fx name)
+  (log "fx")
+  (concat "x" (memo-call (global-name file-words) name)))
+
+(expect "x2" (memo-call (global-name fx) tmpfile))
+(expect 1 (log-count "fx"))
+(expect 2 (log-count "file-words"))
+
+(write-file tmpfile "a b")
+(expect "x2" (memo-call (global-name fx) tmpfile))
+(expect 1 (log-count "fx"))
+(expect 3 (log-count "file-words"))
