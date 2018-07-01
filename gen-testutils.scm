@@ -5,7 +5,7 @@
 (require "core")
 (require "parse")
 (require "gen")
-(require "gen0")
+(require "gen0" &private)
 
 (declare SCAM_DEBUG &global)
 

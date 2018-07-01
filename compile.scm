@@ -8,6 +8,7 @@
 (require "gen0")
 (require "gen1")
 (require "io")
+(require "memo")
 
 ;; The following diagram summarizes the stages of compiling a SCAM
 ;; expression:
@@ -37,8 +38,9 @@
 ;; value for error information.
 
 
+
 (begin
-  ;; Load macros. We don't directly call from this module, but it registers
+  ;; Load macros. We don't directly call these modules, but they register
   ;; functions called from gen0.
   (require "macros"))
 
@@ -47,10 +49,10 @@
      (require "utf8"))
 
 
-;; Root directory for compiled binaries.
+;; Root directory for intermediate files.
 (define *obj-dir* &public ".scam/")
 
-;; When non-nil, comile, link, and test operations emit messages.
+;; When non-nil, emit progress messages.
 (define *is-quiet* &public nil)
 
 
@@ -59,6 +61,43 @@
 (define (build-message action file)
   (or *is-quiet*
       (write 2 (concat "... " action " " file "\n"))))
+
+
+;; Return the name of the DB file for caching compilation results.
+;;
+(define (compile-cache-file)
+  (concat *obj-dir*
+          (hash-file (word 1 (value "MAKEFILE_LIST")))
+          ".cache"))
+
+
+(define (compile-eval text)
+  (eval text))
+
+
+;; Return entries in vector V that do not appear in vector FLT.
+;; This may also be used to operation on dictionaries.
+;;
+(define (literal-filter-out flt v)
+  (if (findstring "%" flt)
+      ;; escaping would be expensive
+      (subst "!P" "%" (filter-out (subst "%" "!P" flt)
+                                  (subst "%" "!P" v)))
+      (filter-out flt v)))
+
+
+;; Return transitive closure of a one-to-many relationship.
+;; Ordering is per first ocurrence in a breadth-first search.
+;;
+(define (descendants fn children ?out)
+  (define `new-children
+    (literal-filter-out (concat children " " out)
+                        (fn (first children))))
+
+  (if children
+      (descendants fn (append (rest children) new-children)
+                   (append out (word 1 children)))
+      out))
 
 
 ;;----------------------------------------------------------------
@@ -219,14 +258,15 @@
 ;;      identifies a bundle, but when no such bundle is found the object
 ;;      code will be loaded directly from the file.
 ;;
-;;                  --boot           not --boot       not --boot
-;;                  Source File      Source File      Builtin
-;;                  ----------       ---------        -----------
-;;   ORIGIN         io.scm           io.scm           'io
-;;   ID             'io              io               'io
-;;   Load File      .scam/io.min     .scam/io.min
-;;   Load Bundle                                      [mod-'io]
-;;   Bundle as      [mod-'io]         [mod-io]        [mod-'io]
+;;                  (normal)         (normal)        *is-boot*
+;;                  Source File      Builtin         Source File
+;;                  ------------     ------------    ------------
+;;   NAME           io               'io             io
+;;   ORIGIN         io.scm           'io             io.scm
+;;   ID             io               'io             'io
+;;   Load File      .scam/io.min                     .scam/io.min
+;;   Load Bundle                     [mod-'io]
+;;   Bundle as      [mod-io]         [mod-'io]       [mod-'io]
 ;;
 
 
@@ -243,66 +283,46 @@
   (concat "[mod-" id "]"))
 
 
-(define `(module-opath origin)
-  (escape-path (basename origin)))
+;; Return the first 4 lines of a compiled module as an array of lines.
+;;
+(define (modid-read-lines id ?max)
+  (if (and (filter "'%" id) (not *is-boot*))
+      (wordlist 1 (or max 99999999) (split "\n" (value (modid-var id))))
+      (begin
+        (memo-io (global-name hash-file) (modid-file id))
+        (read-lines (modid-file id) (and max 1) max))))
+
+
+;; Scan a builtin module for `require` dependencies.
+;;
+(define (modid-deps id)
+  (let ((lines (modid-read-lines id 4)))
+    (assert lines) ;; TODO?
+    (promote (filtersub [(concat "# Requires: %")] "%" lines))))
+
+
+;; Return the environment exported from a module, given its ID.
+;;
+(define (modid-import id all)
+  (env-strip-imports (env-parse (modid-read-lines id 4))
+                     all))
+
+
+(define `(module-opath orgn)
+  (escape-path (basename orgn)))
 
 
 ;; Construct the ID corresponding to a module origin.  When building the
 ;; compiler (booting), we add a "'" prefix to allow them to coexist with
 ;; user source modules of the same name.
 ;;
-(define (module-id origin)
-  (or (filter "'%" origin)
-      (concat (if *is-boot* "'") (module-opath origin))))
+(define (module-id orgn)
+  (or (filter "'%" orgn)
+      (concat (if *is-boot* "'") (module-opath orgn))))
 
 
-(define (module-var origin)
-  (modid-var (module-id origin)))
-
-
-(define (module-is-source? origin)
-  &public
-  (filter-out "'%" origin))
-
-
-(define (module-object-file origin)
-  &public
-  (modid-file (module-id origin)))
-
-
-;; Return the first 4 lines of a compiled module as an array of lines.
-;;
-(define (module-read-lines origin ?max)
-  (if (filter "'%" origin)
-      (wordlist 1 (or max 99999999) (split "\n" (value (module-var origin))))
-      (read-lines (module-object-file origin) (and max 1) max)))
-
-
-;; Return the environment exported from a module, given its ID.
-;;
-(define (module-import origin all)
-  (env-strip-imports (env-parse (module-read-lines origin 4))
-                     all))
-
-
-(memoize (global-name module-import))
-
-
-;; Scan a source file for `require` dependencies.
-;; Returns:  REQUIRES   (a vector of module names)
-;;
-(define `(module-source-deps filename)
-  (define `sedcmd
-    "sed -E 's/ //g;s/!/!1/g;s/^\\(require\"([^\"]*)\".*|.*/\\1/g;/../!d'")
-  (shell (concat sedcmd " " (quote-sh-arg filename))))
-
-
-;; Scan a builtin module for `require` dependencies.
-;;
-(define `(module-builtin-deps origin)
-  (let ((lines (wordlist 1 4 (split "\n" (value (module-var origin))))))
-    (assert lines)
-    (promote (filtersub [(concat "# Requires: %")] "%" lines))))
+(define (module-object-file orgn)
+  (modid-file (module-id orgn)))
 
 
 ;; Get the "origin" of the module (a SCAM source file or a builtin bundle).
@@ -316,7 +336,8 @@
   (or (firstword
        (foreach dir (append (dir source-file)
                             (subst ":" " " (value "SCAM_LIBPATH")))
-                (file-exists? (resolve-path dir (concat name ".scm")))))
+                (file-exists? (resolve-path dir (concat (basename name)
+                                                        ".scm")))))
 
       ;; builtin?
       (and (not *is-boot*)
@@ -324,18 +345,6 @@
            (let ((id (subst "''" "'" (concat "'" name))))
              (if (bound? (modid-var id))
                  id)))))
-
-
-;; Return REQUIRES, a vector of module origins.
-;;
-(define (module-deps origin)
-  &public
-  (if (module-is-source? origin)
-      (append-for v (module-source-deps origin)
-                  (for name v
-                       (or (module-locate origin name)
-                           (print "Could not find module: " name))))
-      (module-builtin-deps origin)))
 
 
 ;; Skip initial comment lines.
@@ -348,9 +357,9 @@
 
 ;; Construct a bundle for a compiled module.
 ;;
-(define `(construct-bundle mod keep-syms)
-  (let ((lines (module-read-lines mod))
-        (var (module-var mod))
+(define (construct-bundle id keep-syms)
+  (let ((lines (modid-read-lines id))
+        (var (modid-var id))
         (keep-syms keep-syms))
     (define `headers (wordlist 1 4 lines))
     (define `env (env-parse headers))
@@ -360,17 +369,6 @@
                 (concat req (env-export-line env "x")))
             (concat-vec (skip-comments lines) "\n")
             "\nendef\n")))
-
-
-;; Construct an object file for a compiled module.
-;;
-(define (construct-file infile env exe reqs)
-  (define `(to-ids origins)
-    (for m origins
-         (module-id m)))
-  (concat (if reqs (concat "# Requires: " (to-ids reqs) "\n"))
-          (env-export-line env "p x")
-          exe))
 
 
 ;; This preamble makes the resulting file both a valid shell script and a
@@ -386,34 +384,13 @@
 ;;
 (define `prologue
 "#!/bin/bash
-:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -j ${SCAM_JOBS:-9} -f\"$0\" 9>&1
+:; for v in \"${@//!/!1}\" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f\"$0\" 9>&1
 SHELL:=/bin/bash
 ")
 
-(define `(epilogue main main-func rt)
-  (concat "$(eval $(value " (module-var rt) "))\n"
-          "$(call ^start," (module-id main) "," main-func ",$(value SCAM_ARGS))\n"))
-
-
-;; Construct a bundled executable.  This function is typically executed when
-;; rules are expanded during Make's rule processing phase.
-;;
-;; OUTFILE = file name
-;; MODULES = vector of module origins
-;; MAIN = main module origin
-;; RUNTIME = runtime module origin
-;; KEEP-SYMS = If not true, symbols willbe stripped.
-;;
-(define (link outfile modules main runtime keep-syms)
-  &public
-  (build-message "linking" outfile)
-  (write-file outfile
-              (concat prologue
-                      (concat-for mod modules " "
-                               (construct-bundle mod keep-syms))
-                      (epilogue main (gen-global-name "main" nil) runtime)))
-
-  (shell (concat "chmod +x " (quote-sh-arg outfile))))
+(define `(epilogue main-id main-func)
+  (concat "$(eval $(value " (modid-var "'runtime") "))\n"
+          "$(call ^start," main-id "," main-func ",$(value SCAM_ARGS))\n"))
 
 
 ;; Extend the runtime's ^require to handle file-based modules during
@@ -425,7 +402,7 @@ SHELL:=/bin/bash
     1))
 
 
-(declare (compile-module infile outfile))
+(declare (compile-module-and-test src-file is-test))
 
 
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
@@ -446,63 +423,62 @@ SHELL:=/bin/bash
 ;;
 (define (get-module name base private)
   &public
-  (let ((origin (module-locate base name))
+  (let ((orgn (module-locate base name))
         (private private))
-    (define `id (module-id origin))
+    (define `id (module-id orgn))
 
-    (or (if (not origin)
+    (or (if (not orgn)
             (ModError (sprintf "cannot find %q" name)))
-        (if (not (filter "'%" origin))
-            (if (compile-module origin (modid-file id))
-                (ModError (sprintf "compilation of %q failed" origin))
+        (if (not (filter "'%" orgn))
+            (if (compile-module-and-test orgn private)
+                (ModError (sprintf "compilation of %q failed" orgn))
                 ;; success => nil => proceed to ordinary result
                 nil))
-        (let ((exports (module-import origin private))
-              (id id) (origin origin))
+        (let ((exports (modid-import id private))
+              (id id) (orgn orgn))
           (or (if (has-xmacro? exports)
                   (if *is-boot*
-                      ;; return error
+                      ;; do not require at run-time, and
                       (ModError "module has executable macros (boot=true)")
                       ;; require module and continue
                       (call "^require" id)))
-              (ModSuccess id origin exports))))))
-
-
-;; Return the exports from a module.  Errors are fatal. (!)
-;;
-(define (get-module-env name)
-  (let ((o (get-module name "." nil)))
-    (case o
-      ((ModSuccess id origin exports)
-       exports)
-      ((ModError desc)
-       (error desc)))))
+              (ModSuccess id exports))))))
 
 
 ;;----------------------------------------------------------------
 
-(define (prelude-modules source)
-  &public
+;; Get the name of the runtime module.
+;;
+(define (runtime-module-name source)
   (if *is-boot*
-      ;; building compiler from source => use its own runtime
-      (if (not (filter "runtime.scm" source))
-          "runtime")
-      ;; normal compilation
-      "'runtime 'scam-ct"))
+      ;; When booting, build runtime from source, and avoid a circular
+      ;; dependency.  Avoid treating "runtime.scm" as an implicit
+      ;; dependency of runtime-q.scm to avoid a circular dependency on
+      ;; testing.
+      (filter-out (basename (subst "-q.scm" ".scm" [source])) "runtime")
+      ;; Normal compilation: use builtin
+      "'runtime"))
 
 
 ;; Return an initial environment (standard prelude).
 ;;
-;; We construct this by calling `require` on "implicit" modules, but that
-;; is a compiler implementation detail.  User programs do not know of these
-;; modules, and should always receive builtin versions.  When compiling the
-;; compiler itself, however, we obtain these from source files.
-;;
-;; On error, the result wil contain {=ErrorMarkerKey:...} pair.
+;; We construct this environment by effectively calling `require` on
+;; "implicit" modules (user programs do not know they exist).  Normally this
+;; pulls in symbols from a builtin module, but during compiler "boot" phase
+;; this will ensure compilation of these modules from source.
 ;;
 (define (compile-prelude source)
   &public
-  (foreach m (prelude-modules source)
+
+  (define `(get-module-env name)
+    (let ((o (get-module name "." nil)))
+      (case o
+        ((ModSuccess id exports)
+         exports)
+        ((ModError desc)
+         (error desc)))))
+
+  (foreach m (runtime-module-name source)
            (get-module-env m)))
 
 
@@ -539,55 +515,47 @@ SHELL:=/bin/bash
       text))
 
 
-(define (implicit-mod name flag flags)
-  (if (not (findstring flag flags))
-      (if *is-boot*
-          (concat name ".scm")
-          (concat "'" name))))
-
-
-;; Compile a SCAM source file and write out a .min file.  On failure,
-;; display errors.
+;; Compile a SCAM source file and all ites dependencies.
 ;;
 ;; INFILE = source file name (to be read)
-;; OUTFILE = object file name (to be written)
 ;;
 ;; Returns: nil on success, error description on failure.
 ;;
-(define (compile-module infile outfile)
-  &public
-  (define `text (trim-hashbang (read-file infile)))
-
-  (define `imports
-    (let-global ((*compile-file* infile))
-      (compile-prelude infile)))
+(define (do-compile-module infile)
+  (define `text (trim-hashbang (memo-read-file infile)))
+  (define `outfile (modid-file (module-id infile)))
+  (define `imports (compile-prelude infile))
 
   (build-message "compiling" infile)
 
   (let ((o (compile-text text imports infile outfile))
-        (ireqs (prelude-modules infile))
         (infile infile)
         (outfile outfile))
     (define `errors (dict-get "errors" o))
     (define `exe (dict-get "code" o))
     (define `env-out (dict-get "env" o))
-    (define `reqs (append (dict-get "require" o) ireqs))
+    (define `reqs (dict-get "require" o))
 
     (if errors
         ;; Error
         (begin
           (for e errors
                (info (describe-error e text infile)))
-          (subst "S" (if (word 2 errors) "s" "")
-                 "compilation errorS"))
+          (error "compilation failed"))
+
         ;; Success
         (begin
+          (define `content
+            (concat "# Requires: " reqs "\n"
+                    (env-export-line env-out "p x")
+                    exe))
+
           (mkdir-p (dir outfile))
-          (write-file outfile
-                      (construct-file infile env-out exe reqs))))))
+          (memo-write-file outfile content)))))
 
 
-(memoize (global-name compile-module))
+(define (compile-module infile)
+  (memo-call (global-name do-compile-module) infile))
 
 
 (define (error-if desc)
@@ -595,13 +563,119 @@ SHELL:=/bin/bash
       (error desc)))
 
 
-;; Compile a SCAM source file and write out a .min file.  On failure,
-;; display errors and terminate execution.
+;; Construct a bundled executable from a compiled module.
 ;;
-;; INFILE = source file name (to be read)
-;; OUTFILE = object file name (to be written)
-;; FILE-MODS = module origins that have been compiled
+;; EXE-FILE = exectuable file to create
+;; MAIN-ID = module ID for the main module (previously compiled, so that
+;;     object files for it and its dependencies are available).
 ;;
-(define (compile-file infile outfile file-mods excludes)
+(define (do-link exe-file main-id)
+  (build-message "linking" exe-file)
+
+  (define `main-func (gen-global-name "main" nil))
+  (define `roots (uniq (append main-id
+                               (foreach m (runtime-module-name nil)
+                                        (module-id m)))))
+
+  (define `bundles
+    (let ((mod-ids (descendants modid-deps roots)))
+      ;; Symbols are valuable only if 'compile is present
+      (define `keep-syms (filter "'compile" mod-ids))
+      (concat-for id mod-ids ""
+                  (construct-bundle id keep-syms))))
+
+  (define `exe-code
+    (concat prologue bundles (epilogue main-id main-func)))
+
+  (memo-write-file exe-file exe-code)
+  (shell (concat "chmod +x " (quote-sh-arg exe-file))))
+
+
+(define (link exe-file main-id)
+  (memo-call (global-name do-link) exe-file main-id))
+
+
+(define (do-run exe)
+  ;; ensure it begins with "./" or "/"
+  (build-message "running" exe)
+
+  ;; track dependency for memoization
+  (memo-io (global-name hash-file) exe)
+
+  (define `cmd-name (concat (dir exe) (notdir exe)))
+  (define `cmd-line
+    (concat "TEST_DIR=" (quote-sh-arg *obj-dir*) " "
+            (quote-sh-arg cmd-name) " >&2 ;"
+            "echo \" $?\""))
+
+  (lastword (logshell cmd-line)))
+
+
+(define (run exe)
+  (memo-call (global-name do-run) exe))
+
+
+;; Compile a module and test it.
+;;
+(define (do-compile-module-and-test src-file untested)
+  (define `test-src (subst ".scm" "-q.scm" src-file))
+  (define `test-mod (module-id test-src))
+  (define `test-exe (basename (modid-file test-mod)))
+
+  (or (compile-module src-file)
+      (and (not untested)
+           (file-exists? test-src)
+           (or (compile-module test-src)
+               (link test-exe test-mod)
+               (if (filter-out 0 (run test-exe))
+                   (error (concat test-src " failed")))))))
+
+
+(define (compile-module-and-test src-file untested)
+  (memo-on (compile-cache-file)
+           (memo-call (global-name do-compile-module-and-test) src-file untested)))
+
+
+;; Compile a SCAM program.
+;;
+;; EXE-FILE = exectuable file to create
+;; SRC-FILE = source file of the main module
+;; OPTS = command-line options
+;;
+(define (compile-program exe-file src-file)
   &public
-  (error-if (compile-module infile outfile)))
+  (define `main-id (module-id src-file))
+  (memo-on (compile-cache-file)
+           (begin
+             (error-if (compile-module-and-test src-file 1))
+             (link exe-file main-id)
+             nil)))
+
+
+;; Compile a program and then execute it.
+;;
+(define (compile-and-run src-file argv)
+  &public
+
+  (define `exe-file
+    (basename (module-object-file src-file)))
+
+  ;; Option 1: link and run via rule
+
+  (compile-program exe-file src-file)
+  (define `run-cmd
+    (concat "SCAM_ARGS=" (quote-sh-arg argv)
+            " make -f " (quote-sh-arg exe-file)))
+
+  (compile-eval (concat ".PHONY: [run]\n"
+                        "[run]: ; @" (subst "$" "$$" run-cmd)))
+
+  ;; Option 2: directly load and run module
+  ;; (compile-module ...)
+  ;; todo: prevent main & compile-and-run from being traced
+  ;; (trace (value "SCAM_ARGS"))
+  ;; (eval (concat "include " outfile))
+  ;; (declare (main a))
+  ;; (trace (value "SCAM_ARGS"))
+  ;; (main argv)
+  nil)

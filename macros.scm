@@ -19,6 +19,15 @@
 
 
 ;;--------------------------------
+;; (when COND EXPR...)
+;;--------------------------------
+
+(define (ml.special-when env sym args)
+  (or (check-argc "2 or more" args sym)
+      (IBuiltin "if" [ (c0 (first args) env) (c0-block (rest args) env) ])))
+
+
+;;--------------------------------
 ;; (print args...)
 ;;--------------------------------
 

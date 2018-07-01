@@ -465,10 +465,9 @@
 
 (define (mock-get-module name base private)
   (ModSuccess (subst ".scm" "" name)
-            (concat "DIR/" name)
-            {f: (EVar "f" "i")}))
+              {f: (EVar "f" "i")}))
 
 (let-global ((get-module mock-get-module))
   ;; get-module success
   (expect (c0-ser "(require \"mod.scm\")")
-          "(IBlock (^require mod),!(ICrumb 'require' 'DIR/mod.scm'))"))
+          "(^require mod!(ICrumb 'require' 'mod'))"))

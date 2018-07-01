@@ -7,6 +7,7 @@
 
 
 (define (logshell cmd)
+  &public
   (if (filter "S" SCAM_DEBUG)
       (print "shell: " cmd))
   (shell cmd))

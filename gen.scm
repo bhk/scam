@@ -147,9 +147,6 @@
 ;; The current function nesting level: ".", "..", "...", and so on.
 (define `LambdaMarkerKey &public ":")
 
-;; Indication of error in loading environment.
-(define `ErrorMarkerKey &public ":E")
-
 
 (define `NoOp
   &public

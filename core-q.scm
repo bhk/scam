@@ -117,6 +117,8 @@
 (expect "default" (dict-get "x" {"": ""} "default"))
 (expect "val1" (dict-get "x%x" {"x%x": "val1", "x%x": "%"}))
 
+(expect {a:1, c:3} (dict-remove "b" {a:1, b:2, c:3}))
+
 (expect {b:"!", a:1, c:3}
         (dict-set "b" "!" {a:1, b:2, c:3}))
 

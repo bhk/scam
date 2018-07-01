@@ -292,6 +292,10 @@
   (promote (or (word 2 (subst "!=" " " (dict-matches key dict)))
                (subst "!" "!1" default))))
 
+(define (dict-remove key dict)
+  &public
+  (filter-out (concat (subst "%" "!8" [key]) "!=%") dict))
+
 (define (dict-set key value map)
   &public
   (foreach p (concat (subst "%" "!8" [key]) "!=")

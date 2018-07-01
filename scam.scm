@@ -4,7 +4,6 @@
 
 (require "core")
 (require "repl")
-(require "build")
 (require "getopts")
 (require "compile")
 (require "gen")
@@ -22,7 +21,6 @@
 
 Options:
 
-  --no-trace      Omit tracing functionality from the executable
   --quiet         Do not display progress messages
   --out-dir DIR   Specify directory for intermediate files
   --              Stop processing options
@@ -30,8 +28,6 @@ Options:
 
 ;; The following are options are subject to change:
 ;;
-;;  --no-syms  Strip symbols information.  This will result in a smaller file
-;;             that behaves the same, unless it makes compilation functions.
 ;;  --boot     Selects "bootstrap" mode, in which the run-time and compile-time
 ;;             implied dependencies are read from sources, not bundles.
 
@@ -55,19 +51,9 @@ Options:
   (set *obj-dir* (patsubst "%//" "%/" (concat given-dir "/"))))
 
 
-;; Construct & eval rules that will build an execute a program.  These rules
-;; will be executed after `main` returns.
-;;
-(define (build-and-run file-and-args omap)
-  (build (concat *obj-dir* (basename (notdir (first file-and-args))))
-         (first file-and-args)
-         (append { run: (rest file-and-args) }
-                 omap)))
-
-
 (define (main argv)
   (define `opt-names
-    "-o= -e= -v --version -h -x -i --no-trace --quiet --out-dir= --no-syms --boot")
+    "-o= -e= -v --version -h -x -i --quiet --out-dir= --boot")
 
   (let ((omap (getopts argv opt-names)))
     (define `(opt name) (dict-get name omap))
@@ -75,6 +61,7 @@ Options:
     (define `names (opt "*"))      ; non-option arguments
     (define `errors (opt "!"))     ; errors encountered by getopts
     (set *is-quiet* (opt "quiet"))
+    (set *is-boot* (opt "boot"))
     (set-obj-dir (last (opt "out-dir")) (last (opt "o")))
 
     (cond
@@ -92,7 +79,7 @@ Options:
      ((opt "o")
       (if (word 2 names)
           (perror "to many input files were given with `-o`")
-          (build (last (opt "o")) names omap)))
+          (compile-program (last (opt "o")) (first names))))
 
      ((opt "e")
       (for expr (opt "e")
@@ -106,7 +93,7 @@ Options:
      ((opt "x")
       (if (not names)
           (perror "no FILE was given with '-x'")
-          (build-and-run names omap)))
+          (compile-and-run (first names) (rest names))))
 
      ((not names) ;; handles valid `-i` case as well
       (print "SCAM v" version " interactive mode. Type '?' for help.")
@@ -116,4 +103,4 @@ Options:
       (perror "extraneous arguments were provided with -i"))
 
      (else
-      (build-and-run names omap)))))
+      (compile-and-run (first names) (rest names))))))

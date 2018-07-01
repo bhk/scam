@@ -650,7 +650,7 @@
   &public
   ;; ID = string to be passed to ^require
   ;; ENV = exported environment entries
-  (ModSuccess id env origin)
+  (ModSuccess id env)
   (ModError message))
 
 
@@ -677,9 +677,9 @@
         (case o
           ((ModError message)
            (gen-error module "require: %s" message))
-          ((ModSuccess id origin exports)
-           (IEnv exports (IBlock [ (ICall "^require" [ (IString id) ])
-                                   (ICrumb "require" origin) ]))))))
+          ((ModSuccess id exports)
+           (define `arg (IConcat [(IString id) (ICrumb "require" id)]))
+           (IEnv exports (ICall "^require" [arg]))))))
      (else
       (err-expected "Q" module sym "STRING" "(require STRING)")))))
 

@@ -7,6 +7,19 @@
 
 (expect ["a" "" "b"] (skip-comments ["#Comment" "" "# comment 2" "a" "" "b"]))
 
+
+;; literal-filter-out
+
+(expect "a d" (literal-filter-out "b c" "a b c d"))
+(expect "a d" (literal-filter-out "b c %" "a b c % d"))
+
+;; descendants
+
+(define `map {1:[2 3 4], 2:[5 4 3 6], 3: [4 7]})
+
+(expect [1 2 3 4 5 6 7]
+        (descendants (lambda (a) (dict-get a map)) [1]))
+
 ;;----------------------------------------------------------------
 ;; Env importing/exporting
 ;;----------------------------------------------------------------
@@ -97,21 +110,15 @@
 ;; Module Management
 ;;--------------------------------------------------------------
 
-;; module-source-deps
-
-(expect ["req/a!1" "req/a2" "req/b"]
-        (module-source-deps (concat (dir (current-file))
-                                    "test/build-q.txt")))
-
 ;; scan-object
+(let-global ((modid-read-lines (lambda (id)
+                                 (expect id "'test")
+                                 [ "# comment"
+                                   "# Requires: 'core 'io"
+                                   "# comment" ])))
 
-(set-global "[mod-'builtin-test]"
-            (concat "# comment\n"
-                    "# Requires: 'core 'io\n"
-                    "# comment\n"))
-
-(expect ["'core" "'io"]
-        (module-builtin-deps "'builtin-test"))
+  (expect ["'core" "'io"]
+          (modid-deps "'test")))
 
 
 ;;--------------------------------------------------------------
@@ -145,7 +152,7 @@
 
 (let-global ((module-locate (lambda (f name) (concat "'" name)))
              (^require (lambda () nil))
-             (module-import (lambda () nil)))
+             (modid-import (lambda () nil)))
   (let ((o (compile-text "(require \"r\")" "" "(test)" "test.tmp")))
     (expect "" (dict-get "errors" o))
     (expect "'r" (dict-get "require" o))
@@ -153,12 +160,9 @@
                    (dict-get "code" o)))))
 
 
-(define *written* "")
-(define `wname (first *written*))
-(define `wtext (nth 2 *written*))
 
 
-;; compile-file
+;; compile-module
 
 (define harness-FS
   { "foo.scm": "(define x 1)",
@@ -170,11 +174,18 @@
 (define (harness-read-lines name)
   (split "\n" (harness-read-file name)))
 
-(let-global ((write-file (lambda (name data) (set *written* [name data]) nil))
-             (read-file harness-read-file)
-             (read-lines harness-read-lines))
+(define *written* "")
+(define (harness-write-file name data)
+  (set *written* (append *written* {=name: data}))
+  nil)
 
-  (compile-file "foo.scm" ".out/foo.min" "rt" "C")
-  (expect ".out/foo.min" wname)
-  (expect 1 (see "# Exports: x" wtext))
-  (expect 1 (see "x := 1" wtext)))
+(let-global ((write-file harness-write-file)
+             (read-file harness-read-file)
+             (read-lines harness-read-lines)
+             (*is-quiet* 1)
+             (*obj-dir* ".out/"))
+
+  (compile-module "foo.scm")
+  (let ((min (dict-get ".out/foo.min" *written*)))
+    (expect 1 (see "# Exports: x" min))
+    (expect 1 (see "x := 1" min))))

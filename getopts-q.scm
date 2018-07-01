@@ -1,5 +1,5 @@
 (require "core")
-(require "getopts")
+(require "getopts" &private)
 
 (expect (getopts ["a" "b c"]
                  nil)

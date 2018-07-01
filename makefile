@@ -94,7 +94,7 @@ $A/scam: *.scm bin/scam
 $B/scam: *.scm $A.ok
 	$(build_message)
 	$(_@) rm -f $@
-	$A/scam -o $@ scam.scm --boot
+	time $A/scam -o $@ scam.scm --boot
 	$(_@) test -f $@
 
 $C/scam: *.scm $B.ok
