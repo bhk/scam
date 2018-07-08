@@ -4,11 +4,11 @@
 
 ;; Analyze compression performance.
 
-(require "core")
-(require "gen" &private)
-(require "io")
-(require "num")
-(require "string")
+(require "core.scm")
+(require "gen.scm" &private)
+(require "io.scm")
+(require "num.scm")
+(require "string.scm")
 
 
 ;; Single character values that can be used to replace longer strings.

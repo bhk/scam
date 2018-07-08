@@ -2,8 +2,8 @@
 ;; parse : parsing
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "string")
+(require "core.scm")
+(require "string.scm")
 
 ;; These records, called "forms", describe the parse tree (AST):
 

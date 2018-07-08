@@ -2,7 +2,7 @@
 ;; num : numeric operations
 ;;--------------------------------------------------------------
 
-(require "core")
+(require "core.scm")
 
 ;; Exported functions:
 ;;

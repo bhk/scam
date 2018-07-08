@@ -1,7 +1,9 @@
-(require "core")
-(require "gen")
-(require "io")
-(require "compile" &private)
+(require "core.scm")
+(require "gen.scm")
+(require "io.scm")
+(require "memo.scm")
+(require "compile.scm" &private)
+
 
 ;; strip-comments
 
@@ -110,15 +112,57 @@
 ;; Module Management
 ;;--------------------------------------------------------------
 
-;; scan-object
-(let-global ((modid-read-lines (lambda (id)
-                                 (expect id "'test")
-                                 [ "# comment"
-                                   "# Requires: 'core 'io"
-                                   "# comment" ])))
+;; modid-deps & modid-read-lines
 
-  (expect ["'core" "'io"]
-          (modid-deps "'test")))
+(set-native "[mod-cqtx]" "# Requires: a!0b var\n# xyz")
+(define test-dir (assert (value "TEST_DIR")))
+(write-file (concat test-dir "cqtx.o") "# Requires: a!0b boot-file\n# xyz\n")
+(write-file (concat test-dir "cqtx.scm.o") "# Requires: a!0b file\n# xyz\n")
+
+
+(let-global ((*is-boot* nil)
+             (*obj-dir* test-dir))
+  (expect ["a b" "var"] (modid-deps "cqtx"))
+  (expect ["a b" "file"] (modid-deps "cqtx.scm")))
+
+(let-global ((*is-boot* 1)
+             (*obj-dir* test-dir))
+  (expect ["a b" "boot-file"] (modid-deps "cqtx")))
+
+;; locate-module
+
+(declare SCAM_LIBPATH &native)
+
+;; Assert: Source file relative to requiring file is treated as origin.
+(expect "compile.scm"
+        (let-global ((SCAM_LIBPATH nil))
+          (locate-module "compile-q.scm" "compile.scm")))
+
+;; Assert: Source files must end in ".scm"
+(expect nil
+        (let-global ((SCAM_LIBPATH nil))
+          (locate-module "compile-q.scm" "makefile")))
+
+;; Assert: Source file relative to SCAM_LIBPATH is treated as origin.
+(expect "test/run.scm"
+        (let-global ((SCAM_LIBPATH "test:x/y/z"))
+          (locate-module "a/b/c/x.scm" "run.scm")))
+
+;; Assert: builtin is detected only if modvar is present
+(expect nil (locate-module "a.scm" "cqtest"))
+(set-native "[mod-cqtest]" 1)
+(expect "cqtest" (locate-module "a.scm" "cqtest"))
+
+
+;; module-id
+
+(let-global ((*is-boot* 1))
+  (expect "a+0b" (module-id "a b.scm"))
+  (expect "+./b" (module-id "../b.scm")))
+
+(let-global ((*is-boot* nil))
+  (expect "a+0b.scm" (module-id "a b.scm"))
+  (expect "+./b.scm" (module-id "../b.scm")))
 
 
 ;;--------------------------------------------------------------
@@ -126,14 +170,14 @@
 ;;--------------------------------------------------------------
 
 ;; for file
-(let ((o (compile-text "(define a &global 1)" "" "(test)" "test.tmp")))
+(let ((o (compile-text "(define a &native 1)" "" "(test)" "test.tmp")))
   (expect "" (dict-get "errors" o))
   (expect "a := 1\n" (dict-get "code" o))
   (expect (dict-get "a" (dict-get "env" o))
           (EVar "a" "p")))
 
 ;; for eval
-(let ((o (compile-text "(define a &global 1)" "" "(test)" "")))
+(let ((o (compile-text "(define a &native 1)" "" "(test)" "")))
   (expect "" (dict-get "errors" o))
   (expect "$(call ^set,a,1)" (dict-get "code" o))
   (expect { a: (EVar "a" "p") }
@@ -142,50 +186,19 @@
 
 (expect "a := 1\nb := 2\n"
         (dict-get "code"
-                  (compile-text (concat "(define a &global 1) "
-                                        "(define b &global 2)")
+                  (compile-text (concat "(define a &native 1) "
+                                        "(define b &native 2)")
                                 "" "(test)" "test.tmp")))
 
+;; require with get-module
 
-;; require
-(declare ^require &global)
+(declare ^require &native)
 
-(let-global ((module-locate (lambda (f name) (concat "'" name)))
+(let-global ((locate-module (lambda (f name) name))
              (^require (lambda () nil))
              (modid-import (lambda () nil)))
-  (let ((o (compile-text "(require \"r\")" "" "(test)" "test.tmp")))
+  (let ((o (compile-text "(require \"r.scm\")" "" "(test)" "test.tmp")))
     (expect "" (dict-get "errors" o))
-    (expect "'r" (dict-get "require" o))
-    (expect 1 (see "$(call ^require,'r)\n"
+    (expect "r.scm" (dict-get "require" o))
+    (expect 1 (see "$(call ^require,r.scm)\n"
                    (dict-get "code" o)))))
-
-
-
-
-;; compile-module
-
-(define harness-FS
-  { "foo.scm": "(define x 1)",
-    ".scam/runtime.min": "# empty" })
-
-(define (harness-read-file name)
-  (dict-get name harness-FS))
-
-(define (harness-read-lines name)
-  (split "\n" (harness-read-file name)))
-
-(define *written* "")
-(define (harness-write-file name data)
-  (set *written* (append *written* {=name: data}))
-  nil)
-
-(let-global ((write-file harness-write-file)
-             (read-file harness-read-file)
-             (read-lines harness-read-lines)
-             (*is-quiet* 1)
-             (*obj-dir* ".out/"))
-
-  (compile-module "foo.scm")
-  (let ((min (dict-get ".out/foo.min" *written*)))
-    (expect 1 (see "# Exports: x" min))
-    (expect 1 (see "x := 1" min))))

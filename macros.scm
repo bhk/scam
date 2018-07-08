@@ -2,10 +2,10 @@
 ;; macros.scm : standard macro definitions
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "parse")
-(require "gen")
-(require "gen0")
+(require "core.scm")
+(require "parse.scm")
+(require "gen.scm")
+(require "gen0.scm")
 
 ;; Functions named "ml.special-NAME" implement special forms.  They are
 ;; executed at compile-time when a list form starting with the corresponding
@@ -458,25 +458,25 @@
 
 
 ;;--------------------------------
-;; (global-name SYM)
+;; (native-name SYM)
 ;;--------------------------------
 
-(define (defn-global-name defn)
+(define (defn-native-name defn)
   (case defn
     ((EFunc name _ _ _) name)
     ((EVar name _) name)))
 
-(define (ml.special-global-name env sym args)
+(define (ml.special-native-name env sym args)
   (define `var (first args))
   (or (check-argc 1 args sym)
       (case var
         ((PSymbol _ name)
-         (let ((global-name (defn-global-name (resolve var env)))
+         (let ((global-name (defn-native-name (resolve var env)))
                (name name))
            (if global-name
                (IString global-name)
                (gen-error var "%q is not a global variable" name))))
-        (else (err-expected "S" var sym "NAME" "(global-name NAME)")))))
+        (else (err-expected "S" var sym "NAME" "(native-name NAME)")))))
 
 
 ;;--------------------------------
@@ -499,7 +499,7 @@
         ;; compile as a function
         (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
                         env))
-              (new-env { =name: (EXMacro (gen-global-name name env) "x") }))
+              (new-env { =name: (EXMacro (gen-native-name name env) "x") }))
           (IEnv new-env
                 ;; discard the env entries returned by `define`
                 (case node

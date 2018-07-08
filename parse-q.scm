@@ -2,8 +2,8 @@
 ;; parse-q : parsing tests
 ;;--------------------------------
 
-(require "core")
-(require "parse" &private)
+(require "core.scm")
+(require "parse.scm" &private)
 
 ;;--------------------------------
 ;; utilities

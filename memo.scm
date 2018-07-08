@@ -18,24 +18,9 @@
 ;; construct more custom IO using `memo-io`.
 
 
-(require "core")
-(require "io")
-(require "string")
-
-
-;; Call function named NAME with elements of vector ARGV as arguments.
-;;
-(define (name-apply name argv)
-  &public
-  (define `call-expr
-    (concat "$(call " name
-            (subst " ," ","
-                   (foreach n (wordlist 1 (words argv) "1 2 3 4 5 6 7 8")
-                            (concat ",$(call ^n," n ",$2)")))
-            (if (word 9 argv)
-                (concat "," (lambda (_ a) (nth-rest 9 a))))
-            ")"))
-  (call "if" nil nil call-expr))
+(require "core.scm")
+(require "io.scm")
+(require "string.scm")
 
 
 (define *memo-on* nil)        ;; are we in a session?
@@ -280,7 +265,7 @@
     (foreach pair *memo-db*
              (case (dict-value pair)
                ((IO tag op args)
-                (if (eq? op (global-name hash-file))
+                (if (eq? op (native-name hash-file))
                     (word 1 args))))))
   (define `files
     (sort (append filename hashed-files)))
@@ -309,7 +294,7 @@
 ;;
 (define (memo-read-file filename)
   &public
-  (memo-io (global-name hash-file) filename)
+  (memo-io (native-name hash-file) filename)
   (read-file filename))
 
 
@@ -320,5 +305,5 @@
   ;; Remove any previously-read hash.
   (set *memo-hashes* (dict-remove filename *memo-hashes*))
   (let ((result (write-file filename data)))
-    (memo-io (global-name hash-file) filename)
+    (memo-io (native-name hash-file) filename)
     result))

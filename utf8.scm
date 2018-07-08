@@ -6,8 +6,8 @@
 ;;   utf8-decode
 ;;
 
-(require "core")
-(require "num")
+(require "core.scm")
+(require "num.scm")
 
 
 ;; Construct a multi-byte UTF-8 sequence.

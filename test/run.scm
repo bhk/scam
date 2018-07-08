@@ -4,7 +4,7 @@
 
 ;; This module is compiled by .out/a/scam and it cannot use bundled modules,
 ;; so we use "../core" to identify the location of the source file.
-(require "../core")
+(require "../core.scm")
 
 
 ;; run-time escaping of lambda expressions
@@ -31,13 +31,13 @@
 
 ;; compile-time escaping
 
-(define v0 &global "$a$$a$$$a\\\\n")
+(define v0 &native "$a$$a$$$a\\\\n")
 (expect v0 "$a$$a$$$a\\\\n")
 
-(define v1 &global " $a $$a $$$a \\\\n\n ")
+(define v1 &native " $a $$a $$$a \\\\n\n ")
 (expect v1 " $a $$a $$$a \\\\n\n ")
 
-(define (f0) &global nil)
+(define (f0) &native nil)
 (expect "" f0)
 
 ;; run-time escaping of assignment values
@@ -49,8 +49,8 @@
   (subst "$ " "" val))
 
 
-(declare var &global)
-(declare (fun) &global)
+(declare var &native)
+(declare (fun) &native)
 
 (for str [ " # $a "
            "))})({"
@@ -63,22 +63,22 @@
            ]
 
      (begin
-       (set-global "var" str)
+       (set-native "var" str)
        (expect "simple" (flavor "var"))
        (expect str var)
 
-       (set-rglobal "fun" str)
+       (set-native-fn "fun" str)
        (expect "recursive" (flavor "fun"))
        (expect str (unmunge fun))))
 
 
 
 (for name [ "a# " "a; " "a: " "a ( " "a ) " "a\n" " $a" "a=1" "a:=1"]
-     (set-global name name)
+     (set-native name name)
      (expect "simple" (flavor name))
      (expect name (value name))
 
-     (set-rglobal name name)
+     (set-native-fn name name)
      (expect "recursive" (flavor name))
      (expect name (value name)))
 
@@ -93,7 +93,7 @@
 
 ;; Flies in the ointment (function values)
 
-(set-rglobal "fun" "define\nendef\n\\")
+(set-native-fn "fun" "define\nendef\n\\")
 (expect "$ define\n$ endef\n\\$ " fun)
 
 ;; current-file-line

@@ -2,8 +2,8 @@
 ;; gen : Environment and IL types; code generation utilities
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "parse")
+(require "core.scm")
+(require "parse.scm")
 
 ;; Globals used in code generation
 ;; -------------------------------
@@ -230,25 +230,25 @@
 ;; See reference.md for more on namespaces.  The compile flag "--boot"
 ;; indicates that we are building the compiler, and *is-boot* will be true.
 ;;
-;; (gen-global-name SCAM-NAME FLAGS)
+;; (gen-native-name SCAM-NAME FLAGS)
 ;;
 ;;     This function generates a global name for the target code. It is
 ;;     by the compiler when generating code.
 ;;
-;; (global-name SYMBOL)
+;; (native-name SYMBOL)
 ;;
 ;;    This special form retrieves the global name associated with the SYMBOL
 ;;    in the current environment.  This yields a string suitable for passing
 ;;    to `call`, `value`, `origin`, etc..
 ;;
-;; If FLAGS contains a word ending in "&global", the symbol name is returned
+;; If FLAGS contains a word ending in "&native", the symbol name is returned
 ;; unmodified.
 ;;
 
-(define (gen-global-name local flags)
+(define (gen-native-name local flags)
   &public
   (concat (and *is-boot*
-               (not (filter "%&global" flags))
+               (not (filter "%&native" flags))
                "~")
           local))
 

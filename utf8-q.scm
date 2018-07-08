@@ -1,5 +1,5 @@
-(require "core")
-(require "utf8" &private)
+(require "core.scm")
+(require "utf8.scm" &private)
 
 ;; byte-to-bin
 

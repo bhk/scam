@@ -2,13 +2,13 @@
 ;; compile.scm
 ;;----------------------------------------------------------------
 
-(require "core")
-(require "parse")
-(require "gen")
-(require "gen0")
-(require "gen1")
-(require "io")
-(require "memo")
+(require "core.scm")
+(require "parse.scm")
+(require "gen.scm")
+(require "gen0.scm")
+(require "gen1.scm")
+(require "io.scm")
+(require "memo.scm")
 
 ;; The following diagram summarizes the stages of compiling a SCAM
 ;; expression:
@@ -42,11 +42,11 @@
 (begin
   ;; Load macros. We don't directly call these modules, but they register
   ;; functions called from gen0.
-  (require "macros"))
+  (require "macros.scm"))
 
 (and nil
      ;; We don't use this module, but we want it bundled with the compiler.
-     (require "utf8"))
+     (require "utf8.scm"))
 
 
 ;; Root directory for intermediate files.
@@ -248,25 +248,28 @@
 
 ;; We have different ways of referring to modules in different contexts:
 ;;
-;;  NAME: This is the string given as a literal argument to (require).
+;; NAME: This is the literal string argument to `require`.
 ;;
-;;  ORIGIN: If NAME identifies a source file, it will be the complete path to
-;;       the source file path.  If NAME identifies a builtin module, it will be
-;;       that module's ID (which begins with `'`).
+;; ORIGIN: If NAME identifies a source file, it will be the path to the
+;;    source file, ending in ".scm".  If NAME identifies a builtin
+;;    module, it will be that module's ID (which begins with `'`).
 ;;
-;;  ID: This is what will be passed to ^require at run-time.  Ordinarily it
-;;      identifies a bundle, but when no such bundle is found the object
-;;      code will be loaded directly from the file.
+;; ID: This is passed to ^require at run-time.  The bundle variable name
+;;    and the compiled module name are based on this string, which is
+;;    escaped using `escape-path`.  Modules that are bundled with the
+;;    compiler are named differently to avoid conflicts with user
+;;    modules [both user modules and builtin modules can be bundled in a
+;;    user program].
 ;;
 ;;                  (normal)         (normal)        *is-boot*
 ;;                  Source File      Builtin         Source File
 ;;                  ------------     ------------    ------------
-;;   NAME           io               'io             io
-;;   ORIGIN         io.scm           'io             io.scm
-;;   ID             io               'io             'io
-;;   Load File      .scam/io.min                     .scam/io.min
-;;   Load Bundle                     [mod-'io]
-;;   Bundle as      [mod-io]         [mod-'io]       [mod-'io]
+;;   NAME           io.scm           io              io.scm
+;;   ORIGIN         io.scm           io              io.scm
+;;   ID             io.scm           io              io
+;;   Load File      .scam/io.scm.o                   .scam/io.o
+;;   Load Bundle                     [mod-io]
+;;   Bundle as      [mod-io.scm]     [mod-io]        [mod-io]
 ;;
 
 
@@ -274,7 +277,7 @@
 ;; (valid only for modules compiled from source).
 ;;
 (define (modid-file id)
-  (concat *obj-dir* (patsubst "'%" "%" id) ".min"))
+  (concat *obj-dir* id ".o"))
 
 
 ;; Return the bundle variable that holds (or will hold) the modules's code.
@@ -286,18 +289,21 @@
 ;; Return the first 4 lines of a compiled module as an array of lines.
 ;;
 (define (modid-read-lines id ?max)
-  (if (and (filter "'%" id) (not *is-boot*))
-      (wordlist 1 (or max 99999999) (split "\n" (value (modid-var id))))
+  (if (or (filter "%.scm" id) *is-boot*)
+      ;; load file
       (begin
-        (memo-io (global-name hash-file) (modid-file id))
-        (read-lines (modid-file id) (and max 1) max))))
+        (memo-io (native-name hash-file) (modid-file id))
+        (read-lines (modid-file id) (and max 1) max))
+      ;; load bundle
+      (wordlist 1 (or max 99999999) (split "\n" (value (modid-var id))))))
 
 
 ;; Scan a builtin module for `require` dependencies.
 ;;
 (define (modid-deps id)
   (let ((lines (modid-read-lines id 4)))
-    (assert lines) ;; TODO?
+    ;; should not happen... module was not compiled?
+    (assert lines)
     (promote (filtersub [(concat "# Requires: %")] "%" lines))))
 
 
@@ -308,43 +314,37 @@
                      all))
 
 
-(define `(module-opath orgn)
-  (escape-path (basename orgn)))
-
-
-;; Construct the ID corresponding to a module origin.  When building the
-;; compiler (booting), we add a "'" prefix to allow them to coexist with
-;; user source modules of the same name.
+;; Construct the ID corresponding to a module origin.
 ;;
 (define (module-id orgn)
-  (or (filter "'%" orgn)
-      (concat (if *is-boot* "'") (module-opath orgn))))
+  (let ((e (escape-path orgn)))
+    (if *is-boot*
+        (basename e)
+        e)))
 
 
 (define (module-object-file orgn)
   (modid-file (module-id orgn)))
 
 
-;; Get the "origin" of the module (a SCAM source file or a builtin bundle).
-;; Note that when source is found, a compiled version may not be present.
+;; Get the "origin" of the module.  This is either the path of a SCAM
+;; source file (ending in .scm) or a builtin module ("core", etc.).
 ;; Return nil on failure.
 ;;
 ;; SOURCE-FILE =  the source file calling `require`
 ;; NAME = the literal string passed to "require"
 ;;
-(define (module-locate source-file name)
-  (or (firstword
-       (foreach dir (append (dir source-file)
-                            (subst ":" " " (value "SCAM_LIBPATH")))
-                (file-exists? (resolve-path dir (concat (basename name)
-                                                        ".scm")))))
+(define (locate-module source-file name)
+  (define `path-dirs
+    (addsuffix "/" (subst ":" " " (value "SCAM_LIBPATH"))))
 
-      ;; builtin?
+  (or (and (filter "%.scm" [name])
+           (firstword
+            (foreach dir (append (dir source-file) path-dirs)
+                     (file-exists? (resolve-path dir name)))))
       (and (not *is-boot*)
-           ;; Either "name" or "'name" will match "'name"...
-           (let ((id (subst "''" "'" (concat "'" name))))
-             (if (bound? (modid-var id))
-                 id)))))
+           (if (bound? (modid-var name))
+               name))))
 
 
 ;; Skip initial comment lines.
@@ -389,7 +389,7 @@ SHELL:=/bin/bash
 ")
 
 (define `(epilogue main-id main-func)
-  (concat "$(eval $(value " (modid-var "'runtime") "))\n"
+  (concat "$(eval $(value " (modid-var "runtime") "))\n"
           "$(call ^start," main-id "," main-func ",$(value SCAM_ARGS))\n"))
 
 
@@ -423,13 +423,13 @@ SHELL:=/bin/bash
 ;;
 (define (get-module name base private)
   &public
-  (let ((orgn (module-locate base name))
+  (let ((orgn (locate-module base name))
         (private private))
     (define `id (module-id orgn))
 
     (or (if (not orgn)
             (ModError (sprintf "cannot find %q" name)))
-        (if (not (filter "'%" orgn))
+        (if (filter "%.scm" [orgn])
             (if (compile-module-and-test orgn private)
                 (ModError (sprintf "compilation of %q failed" orgn))
                 ;; success => nil => proceed to ordinary result
@@ -455,9 +455,9 @@ SHELL:=/bin/bash
       ;; dependency.  Avoid treating "runtime.scm" as an implicit
       ;; dependency of runtime-q.scm to avoid a circular dependency on
       ;; testing.
-      (filter-out (basename (subst "-q.scm" ".scm" [source])) "runtime")
+      (filter-out (subst "-q.scm" ".scm" [source]) "runtime.scm")
       ;; Normal compilation: use builtin
-      "'runtime"))
+      "runtime"))
 
 
 ;; Return an initial environment (standard prelude).
@@ -541,7 +541,7 @@ SHELL:=/bin/bash
         (begin
           (for e errors
                (info (describe-error e text infile)))
-          (error "compilation failed"))
+          "compilation failed")
 
         ;; Success
         (begin
@@ -555,7 +555,7 @@ SHELL:=/bin/bash
 
 
 (define (compile-module infile)
-  (memo-call (global-name do-compile-module) infile))
+  (memo-call (native-name do-compile-module) infile))
 
 
 (define (error-if desc)
@@ -572,7 +572,7 @@ SHELL:=/bin/bash
 (define (do-link exe-file main-id)
   (build-message "linking" exe-file)
 
-  (define `main-func (gen-global-name "main" nil))
+  (define `main-func (gen-native-name "main" nil))
   (define `roots (uniq (append main-id
                                (foreach m (runtime-module-name nil)
                                         (module-id m)))))
@@ -580,7 +580,7 @@ SHELL:=/bin/bash
   (define `bundles
     (let ((mod-ids (descendants modid-deps roots)))
       ;; Symbols are valuable only if 'compile is present
-      (define `keep-syms (filter "'compile" mod-ids))
+      (define `keep-syms (filter "compile" mod-ids))
       (concat-for id mod-ids ""
                   (construct-bundle id keep-syms))))
 
@@ -592,7 +592,7 @@ SHELL:=/bin/bash
 
 
 (define (link exe-file main-id)
-  (memo-call (global-name do-link) exe-file main-id))
+  (memo-call (native-name do-link) exe-file main-id))
 
 
 (define (do-run exe)
@@ -600,7 +600,7 @@ SHELL:=/bin/bash
   (build-message "running" exe)
 
   ;; track dependency for memoization
-  (memo-io (global-name hash-file) exe)
+  (memo-io (native-name hash-file) exe)
 
   (define `cmd-name (concat (dir exe) (notdir exe)))
   (define `cmd-line
@@ -612,7 +612,7 @@ SHELL:=/bin/bash
 
 
 (define (run exe)
-  (memo-call (global-name do-run) exe))
+  (memo-call (native-name do-run) exe))
 
 
 ;; Compile a module and test it.
@@ -633,7 +633,7 @@ SHELL:=/bin/bash
 
 (define (compile-module-and-test src-file untested)
   (memo-on (compile-cache-file)
-           (memo-call (global-name do-compile-module-and-test) src-file untested)))
+           (memo-call (native-name do-compile-module-and-test) src-file untested)))
 
 
 ;; Compile a SCAM program.

@@ -2,12 +2,12 @@
 ;; Tests for compile.scm
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "parse")
-(require "gen")
-(require "gen0")
-(require "gen-testutils")
-(require "macros" &private)
+(require "core.scm")
+(require "parse.scm")
+(require "gen.scm")
+(require "gen0.scm")
+(require "gen-testutils.scm")
+(require "macros.scm" &private)
 
 ;; symbol to use for the `sym` argument for macros (or `parent` node)
 (define `macro-sym (PSymbol 0 "MACRO"))
@@ -212,17 +212,17 @@
 
 
 ;;--------------------------------
-;; (global-name SYM)
+;; (native-name SYM)
 ;;--------------------------------
 
 (expect "V"
-        (c0-ser "(global-name v)"))
+        (c0-ser "(native-name v)"))
 (expect "!(PError 4 '\\'a\\' is not a global variable')"
-        (c0-ser "(global-name a)"))
-(expect "!(PError 4 'invalid NAME in (global-name NAME); expected a symbol')"
-        (c0-ser "(global-name 1)"))
-(expect "!(PError 2 '\\'global-name\\' accepts 1 argument, not 2')"
-        (c0-ser "(global-name v v)"))
+        (c0-ser "(native-name a)"))
+(expect "!(PError 4 'invalid NAME in (native-name NAME); expected a symbol')"
+        (c0-ser "(native-name 1)"))
+(expect "!(PError 2 '\\'native-name\\' accepts 1 argument, not 2')"
+        (c0-ser "(native-name v v)"))
 
 ;;--------------------------------
 ;; (defmacro (NAME ARG...) BODY)
@@ -301,7 +301,7 @@
  (lambda (env sil)
    (expect (dict-get "CA" env)
            (ERecord "S W L" "p" "!:T0"))
-   ;; ^add-tags is &global
+   ;; ^add-tags is &native
    (expect sil
            "(^add-tags !1:T0!=CA!0S!0W!0L !1:T1!=CB)")))
 

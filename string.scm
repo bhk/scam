@@ -13,7 +13,7 @@
 ;;   string-from-bytes
 ;;
 
-(require "core")
+(require "core.scm")
 
 ;; This is a vector of all bytes 1...255.
 (define all-bytes

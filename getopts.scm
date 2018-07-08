@@ -2,7 +2,7 @@
 ;; getopts.scm: parse command-line options
 ;;--------------------------------
 
-(require "core")
+(require "core.scm")
 
 ;; (getopts argv opts)
 ;;

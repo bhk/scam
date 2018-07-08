@@ -1,6 +1,6 @@
-(require "core")
-(require "parse")
-(require "gen" &private)
+(require "core.scm")
+(require "parse.scm")
+(require "gen.scm" &private)
 
 ;;
 ;; IL-related definitions

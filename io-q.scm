@@ -1,5 +1,5 @@
-(require "core")
-(require "io" &private)
+(require "core.scm")
+(require "io.scm" &private)
 
 (define SOURCE_DIR (dir (current-file)))
 (define TMP_DIR (or (value "TEST_DIR")
@@ -93,6 +93,7 @@
 (expect "foo" (escape-path "foo"))
 (expect "+Tfoo" (escape-path "~foo"))
 (expect "+/foo" (escape-path "/foo"))
+(expect "+./foo" (escape-path "../foo"))
 
 (define `(escape-rt str)
   (expect str (unescape-path (escape-path str)))

@@ -2,12 +2,12 @@
 ;; utilities for testing compilation
 ;;--------------------------------
 
-(require "core")
-(require "parse")
-(require "gen")
-(require "gen0" &private)
+(require "core.scm")
+(require "parse.scm")
+(require "gen.scm")
+(require "gen0.scm" &private)
 
-(declare SCAM_DEBUG &global)
+(declare SCAM_DEBUG &native)
 
 ;; Set all form positions to POS.
 ;;
@@ -116,4 +116,4 @@
 ;; Translate "~" to local namespace prefix in str.
 (define (xns str)
   &public
-  (subst "~" (gen-global-name "" nil) str))
+  (subst "~" (gen-native-name "" nil) str))

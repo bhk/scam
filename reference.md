@@ -16,7 +16,6 @@
  * [Special Forms](#special-forms)
  * [Intrinsics](#intrinsics)
  * [Libraries](#libraries)
- * [Compilation](#compilation)
  * [Command Line Syntax](#command-line-syntax)
  * [Debugging](#debugging)
 
@@ -721,31 +720,50 @@ returned (or nil if no expressions are given).
 #### `(require MODULE &private?)`
 
 The `require` special form provides access to functionality defined in other
-modules.  `MODULE` must be provided as a literal string.  Module lookup and
-compilation is described [below](#compilation).
+modules.  `MODULE` is a literal string that names either a SCAM source file
+or a standard SCAM module.  Symbols are exported by the module (those
+declared "&public") will be are visible to all expressions that follow in
+the current block.  At run-time, the required module will be loaded and
+executed, unless it has already been required by the program.
 
-Symbols exported by the module (those declared "&public") are imported into
-the current environment, and are visible to all expressions that follow in
-the current block.  If the `require` call includes the `&private` flag, then
-non-exported symbols are *also* imported.
+The `&private` flag is intended for use by unit test modules.  When present,
+private symbols will be imported in addition to `&public` ones, and the
+qualification step will not be required.  (See "qualification", below.)
 
-When the `require` expression is executed, the required module will be loaded
-and executed, unless it has already been required by the program.
+When `MODULE` is one of the [standard library names](#libraries), the
+standard library will be supplied by the compiler.  Otherwise, `MODULE` is
+names a SCAM source file.  If it is a relative path, it is treated as
+relative to the directory containing the requiring file, or, if no such file
+exists, the directories listed in `SCAM_LIBPATH` (colon-delimited) until a
+matching file is found.
 
-#### `(use MODULE)`
+When `MODULE` identifies a source file, that source file will be compiled to
+determine its exports before compilation can continue.  In turn, modules
+required by `MODULE` will also have to be compiled in order to build
+`MODULE`, and so on.
 
-The `use` form specifies a module that defines "executable macros".
-Executable macros are functions written in scam that define syntax
-extensions.  When such a macro is encountered in the "using" source file,
-the executable macro is given the syntax tree as an argument, and it has the
-opportunity to transform it.
+**Qualification:** Each module can be accompanied by a qualification test: a
+module with the same name except for an added `-q` before the extension.
+For example, `foo-q.scm` is the qualification test for `foo.scm`.  When a
+module is required, its qualification test (if present) will be built and
+executed before compilation of the requiring module continues.  If the
+qualification test terminates with a non-zero exit code, it is considered a
+test failure and compilation stops.  (Note that qualification test files
+must use the `&private` flag when requiring the module they test in order to
+avoid a dependency loop.)
 
-`MODULE` must be a literal string value.  Dependencies are discovered just
-as with the `require` directive.
+**Object directory:** During compilation, SCAM writes intermediate build
+results under a directory called the object directory, and on subsequent
+compilations it will reuse those files if they remain valid, compiling and
+testing modules only when necessary.  The object directory is determined as
+follows:
 
-Unlike the `require` directive, `use` does not introduce any run-time
-dependencies.  The specified module is instead loaded by the compiler, at
-compile-time.
+  - The object directory defaults to `./.scam`.
+  - If `scam -o EXE SRC` is invoked and `EXE` is *not* in the current
+    working directory, the object directory will be set to the directory
+    containing `EXE`.
+  - If the option `--obj-dir=DIR` is given, it will override the above two
+    possibilities.
 
 #### `define`
 
@@ -985,44 +1003,6 @@ the standard libraries:
 
 For documentation, refer to the corresponding `.scm` files in the SCAM
 project.  (Look for `&public` functions.)
-
-
-## Compilation
-
-When SCAM encounters a `require` directive, the specified `MODULE` refers to
-a source file, minus its `.scm` extension, or to a standard module.  First,
-it is interpreted as a path to a source file.  If it does not begin with
-`/`, it is treated as relative to the directory containing the file being
-compiled, or in interactive mode, the current directory.  If that lookup
-fails, directories listed in the `SCAM_LIBPATH` environment variable
-(colon-delimited) are tried, in order, as base directories to perform the
-lookup.  Finally, if no source file is found and if the name matches a
-standard builtin module (supplied by the compiler), then the builtin module
-will be used.  If `MODULE` begins with `'` this will prevent source file
-matches and select a builtin module explicitly.
-
-### Building and Testing
-
-When `MODULE` identifies a source file, that source file will be compiled to
-determine its exports before compilation can continue.  In turn, modules
-required by `MODULE` will also have to be compiled in order to build
-`MODULE`, and so on.
-
-When a module source file is accompanied by a qualification test -- a module
-named `MODULE-q.scm` -- then the test will be compiled and run before the
-tested module is used in other requiring modules.
-
-SCAM will re-build object files (compilation results) and re-run tests only
-when necessary.  Subsequent invocations of `scam -o EXE SRC` or `scam -x
-SRC` will re-build only the source files that have changed, plus any source
-files that depend on them.
-
-SCAM stores compilation results in an "output directory" which is determined
-by how SCAM is invoked:
-
-  - `scam -o EXE SRC` will set the output directory to `(dir EXE)`.
-  - The option `--out-dir=DIR` will override the output directory.
-  - Otherwise, the output directory defaults to `".scam/"`.
 
 
 ## Command Line Syntax

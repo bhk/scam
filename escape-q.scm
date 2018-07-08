@@ -2,8 +2,8 @@
 ;; escaping tests
 ;;--------------------------------
 
-(require "core")
-(require "escape" &private)
+(require "core.scm")
+(require "escape.scm" &private)
 
 (expect ""                      (protect-arg ""))
 (expect "()"                    (protect-arg "()"))
@@ -39,6 +39,3 @@
 (expect "abc\ndef" (protect-define "abc\ndef"))
 (expect "$ define\n$ endef extra\\$ \n\\$ "
         (protect-define "define\nendef extra\\\n\\"))
-
-
-(print "escape ok")

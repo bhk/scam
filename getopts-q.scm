@@ -1,5 +1,5 @@
-(require "core")
-(require "getopts" &private)
+(require "core.scm")
+(require "getopts.scm" &private)
 
 (expect (getopts ["a" "b c"]
                  nil)

@@ -1,6 +1,6 @@
 (require "num")
 (require "core")
-(require "clocker" &private)
+(require "clocker.scm" &private)
 
 (set default-duration 50)
 

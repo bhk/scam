@@ -2,7 +2,7 @@
 ;; general purpose function tests
 ;;--------------------------------
 
-(require "core" &private)
+(require "core.scm" &private)
 
 (if (eq? 1 2)
     (error "eq not working"))
@@ -11,11 +11,11 @@
     nil
     (error "promote/demote not working"))
 
-(set-global "GG" "$")
+(set-native "GG" "$")
 (expect "simple" (flavor "GG"))
 (expect "$" (value "GG"))
 
-(set-rglobal "FF" "$")
+(set-native-fn "FF" "$")
 (expect "recursive" (flavor "FF"))
 (expect "$" (value "FF"))
 
@@ -208,7 +208,7 @@
 (define (mtest a b c)
   (concat mprefix c b a))
 
-(memoize (global-name mtest))
+(memoize (native-name mtest))
 
 (expect 321 (mtest 1 2 3))
 (set mprefix 9)

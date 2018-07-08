@@ -1,5 +1,5 @@
 (require "core")
-(require "clocker")
+(require "clocker.scm")
 (require "parse")
 (require "num")
 (require "io")

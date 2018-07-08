@@ -1,7 +1,7 @@
-(require "core")
-(require "io")
-(require "string")
-(require "memo" &private)
+(require "core.scm")
+(require "io.scm")
+(require "string.scm")
+(require "memo.scm" &private)
 
 
 (define dbfile (concat (assert (value "TEST_DIR")) "memo-q-db.txt"))
@@ -91,12 +91,12 @@
  (begin
    ;; Assert: Calling through memo-call (first time) returns the same
    ;; results as a non-memoized call.
-   (expect ab-out (memo-call (global-name fn-ab) 1 2))
+   (expect ab-out (memo-call (native-name fn-ab) 1 2))
    (expect 1 (log-count "fn-ab"))
    ;; Assert: Calling through memo-call a second time with the same function
    ;; and arguments returns the previous result with no re-invocation of the
    ;; function.
-   (expect ab-out (memo-call (global-name fn-ab) 1 2))
+   (expect ab-out (memo-call (native-name fn-ab) 1 2))
    (expect 1 (log-count "fn-ab"))))
 
 
@@ -104,7 +104,7 @@
 ;; sessions.
 (memo-session
  (begin
-   (expect ab-out (memo-call (global-name fn-ab) 1 2))
+   (expect ab-out (memo-call (native-name fn-ab) 1 2))
    (expect 0 (log-count "fn-ab"))))
 
 
@@ -120,16 +120,16 @@
 
 ;; Assert: Many IO function arguments are supported and correctly passed
 ;; during record and playback modes. [TODO: i j]
-(define (fetch a b c d e f g h)
+(define (fetch a b c d e f g h i j)
   (log "fetch")
-  (expect 2345678 (concat b c d e f g h))
+  (expect 2345678910 (concat b c d e f g h i j))
   (dict-get a fetch-tbl))
 
 (define (test-impure a b)
   (log "test-impure")
   (concat a "="
           (while (lambda (name) (filter "A B C" name))
-                 (lambda (name) (memo-io (global-name fetch) name 2 3 4 5 6 7 8))
+                 (lambda (name) (memo-io (native-name fetch) name 2 3 4 5 6 7 8 9 10))
                  a)))
 
 ;; Assert: memo-io works outside of memo context, and does not disturb
@@ -141,20 +141,20 @@
 
 (memo-session
  (begin
-   (expect "A=123" (memo-call (global-name test-impure) "A" 1))
+   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
    (expect 1 (log-count "test-impure"))
    (expect 1 (log-count "fetch"))
 
    ;; Assert: After a function call is recorded within this session, a
    ;; matching call returns a result without without IO replay or
    ;; re-invocation.
-   (expect "A=123" (memo-call (global-name test-impure) "A" 1))
+   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
    (expect 1 (log-count "test-impure"))
    (expect 1 (log-count "fetch"))
 
    ;; Assert: When function arguments do not match a cached value, it is not
    ;; returned.
-   (expect "A=123" (memo-call (global-name test-impure) "A" 2))
+   (expect "A=123" (memo-call (native-name test-impure) "A" 2))
    (expect 2 (log-count "test-impure"))
    (expect 2 (log-count "fetch"))))
 
@@ -163,13 +163,13 @@
  (begin
    ;; Assert: In subsequent session with same external state, playback
    ;; succeeds with IO replay and no re-invocation.
-   (expect "A=123" (memo-call (global-name test-impure) "A" 1))
+   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
    (expect 0 (log-count "test-impure"))
    (expect 1 (log-count "fetch"))
 
    ;; Assert: After successful playback in this session, a matching call
    ;; returns a result without IO replay or re-invocation. (Ephemeral)
-   (expect "A=123" (memo-call (global-name test-impure) "A" 1))
+   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
    (expect 0 (log-count "test-impure"))
    (expect 1 (log-count "fetch"))))
 
@@ -182,7 +182,7 @@
    ;; Assert: In subsequent session with different external state, playback
    ;; will fail on IO replay and the function will be re-invoked.
    ;; (triggering another IO op).
-   (expect "A=789" (memo-call (global-name test-impure) "A" 1))
+   (expect "A=789" (memo-call (native-name test-impure) "A" 1))
    (expect 1 (log-count "test-impure"))
    (expect 4 (log-count "fetch"))))
 
@@ -191,12 +191,12 @@
 ;; external state.  Only IO replay is required, not re-invocation.
 (memo-session
  (begin
-   (expect "A=123" (memo-call (global-name test-impure) "A" 1))
+   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
    (expect 0 (log-count "test-impure"))
    (expect 1 (log-count "fetch"))))
 (memo-session
  (let-global ((fetch-tbl {A:"B", B:"C", C:789}))
-   (expect "A=789" (memo-call (global-name test-impure) "A" 1))
+   (expect "A=789" (memo-call (native-name test-impure) "A" 1))
    (expect 0 (log-count "test-impure"))
    (expect 3 (log-count "fetch"))))
 
@@ -212,20 +212,20 @@
 
 (define (inner n)
   (log "inner")
-  (memo-io (global-name lookup) 5)
-  (memo-io (global-name lookup) n))
+  (memo-io (native-name lookup) 5)
+  (memo-io (native-name lookup) n))
 
 (define (outer a b)
   (log "outer")
-  (concat (memo-io (global-name lookup) a)
-          (memo-call (global-name inner) b)))
+  (concat (memo-io (native-name lookup) a)
+          (memo-call (native-name inner) b)))
 
 (reset-cache)
 (memo-session
  (begin
    ;; Assert: Initial call of nested memo-call returns correct value with
    ;; one invocation of each function.
-   (expect "XY" (memo-call (global-name outer) 1 2))
+   (expect "XY" (memo-call (native-name outer) 1 2))
    (expect 1 (log-count "outer"))
    (expect 1 (log-count "inner"))
    (expect 3 (log-count "lookup"))
@@ -233,7 +233,7 @@
    ;; Assert: (Ephemeral caching of outer) When outer function is passed the
    ;; same arguments in the same session, cached value is returned without
    ;; any IO or reinvocation.
-   (expect "XY" (memo-call (global-name outer) 1 2))
+   (expect "XY" (memo-call (native-name outer) 1 2))
    (expect 1 (log-count "outer"))
    (expect 1 (log-count "inner"))
    (expect 3 (log-count "lookup"))
@@ -241,7 +241,7 @@
    ;; Assert: (Ephemeral caching of inner) Re-invocation of outer function
    ;; does not cause re-invocation or IO replay of inner function (if its
    ;; inputs are unchanged).
-   (expect "AY" (memo-call (global-name outer) 4 2))
+   (expect "AY" (memo-call (native-name outer) 4 2))
    (expect 2 (log-count "outer"))
    (expect 1 (log-count "inner"))
    (expect 4 (log-count "lookup"))))
@@ -251,7 +251,7 @@
    ;; Assert: In a subsequent session, if the outer function is re-invoked
    ;; but passes the same arguments to the inner function, the inner
    ;; function is replayed but not re-invoked.
-   (expect "ZY" (memo-call (global-name outer) 3 2))
+   (expect "ZY" (memo-call (native-name outer) 3 2))
    (expect 1 (log-count "outer"))
    (expect 0 (log-count "inner"))
    (expect 3 (log-count "lookup"))))
@@ -264,7 +264,7 @@
 
    ;; The previous "ZY" result recorded the outer function while the inner
    ;; was played back, but now the inner function is invalid.
-   (expect "Z2" (memo-call (global-name outer) 3 2))
+   (expect "Z2" (memo-call (native-name outer) 3 2))
    (expect 1 (log-count "outer"))
    (expect 1 (log-count "inner"))
    (expect 6 (log-count "lookup"))))
@@ -277,7 +277,7 @@
 
    ;; The previous "AY" result recorded the outer function while the inner
    ;; was played back, but now the inner function is invalid.
-   (expect "A3" (memo-call (global-name outer) 4 2))
+   (expect "A3" (memo-call (native-name outer) 4 2))
    (expect 1 (log-count "outer"))
    (expect 1 (log-count "inner"))
    (expect 6 (log-count "lookup"))))
@@ -287,7 +287,7 @@
    ;; Assert: In a subsequent session, if inner function must be re-invoked
    ;; but it returns the same value, the outer function will not be
    ;; re-invoked.
-   (expect "XY" (memo-call (global-name outer) 1 2))
+   (expect "XY" (memo-call (native-name outer) 1 2))
    (expect 0 (log-count "outer"))
    (expect 1 (log-count "inner"))
    ;; replay of outer IO (1) + first inner IO (1) + record of inner (2)
@@ -312,8 +312,8 @@
 
 
 (define (hash-two-files-test)
-   (expect xyz (memo-io (global-name hash-file) tmp-file))
-   (memo-io (global-name hash-file) memo-file))
+   (expect xyz (memo-io (native-name hash-file) tmp-file))
+   (memo-io (native-name hash-file) memo-file))
 
 ;; Assert: Calls to hash-file outside a memo session are NOT cached.
 (hash-file tmp-file)
@@ -327,7 +327,7 @@
    (expect 0 (words *memo-hashes*))
    ;; Call within a memo-call to create (IO ... "hash-file" ...) records
    ;; (used below)
-   (memo-call (global-name hash-two-files-test))
+   (memo-call (native-name hash-two-files-test))
    (expect 2 (words *memo-hashes*))
    (expect xyz (let-global ((do-hash-file (lambda (f) (assert nil))))
                  (hash-file tmp-file)))))
@@ -367,11 +367,11 @@
 (memo-session
  (begin
    ;; Assert: memo-read-file functions like read-file.
-   (expect 3 (memo-call (global-name file-words) tmpfile))
+   (expect 3 (memo-call (native-name file-words) tmpfile))
    (expect 1 (log-count "file-words"))
    ;; Assert: memo-read-file does not trigger re-evaluate when file does not
    ;; change.
-   (expect 3 (memo-call (global-name file-words) tmpfile))
+   (expect 3 (memo-call (native-name file-words) tmpfile))
    (expect 1 (log-count "file-words"))))
 
  (memo-session
@@ -379,7 +379,7 @@
     ;; Assert: memo-read-file *does* trigger re-evaluate when file changes
     ;; (in a subsequent session).
     (write-file tmpfile "1 2")
-    (expect 2 (memo-call (global-name file-words) tmpfile))
+    (expect 2 (memo-call (native-name file-words) tmpfile))
     (expect 1 (log-count "file-words"))))
 
 ;; memo-write-file
@@ -392,12 +392,12 @@
 (memo-session
  (begin
    ;; Assert: memo-write-file functions like write-file.
-   (expect nil (memo-call (global-name copy-file) tmpfile tmpfile-out))
+   (expect nil (memo-call (native-name copy-file) tmpfile tmpfile-out))
    (expect 1 (log-count "copy-file"))
    (expect "1 2" (strip (read-file tmpfile-out)))
    ;; Assert: memo-write-file does not trigger re-evaluate when the output
    ;; file has not changed.
-   (expect nil (memo-call (global-name copy-file) tmpfile tmpfile-out))
+   (expect nil (memo-call (native-name copy-file) tmpfile tmpfile-out))
    (expect 1 (log-count "copy-file"))))
 
  (memo-session
@@ -405,6 +405,6 @@
     ;; Assert: memo-write-file *does* trigger re-evaluate when the output
     ;; file has changed (in a subsequent session).
     (write-file tmpfile-out "xyz")
-    (expect nil (memo-call (global-name copy-file) tmpfile tmpfile-out))
+    (expect nil (memo-call (native-name copy-file) tmpfile tmpfile-out))
     (expect 1 (log-count "copy-file"))
     (expect "1 2" (strip (read-file tmpfile-out)))))

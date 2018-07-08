@@ -6,11 +6,11 @@
 ;; prevent runtime from being eval'ed again.
 (declare *required*)
 (set *required* "'runtime")
-(require "runtime" &private)
+(require "runtime.scm" &private)
 
 
 ;; Many of the runtime functions are tested by calling the "manifest
-;; functions" that expose their functionality.  For example, "set-global" makes
+;; functions" that expose their functionality.  For example, "set-native" makes
 ;; use of `^set`.
 
 (define (expect-x o i file-line)
@@ -36,13 +36,13 @@
 
 ;; ^set
 
-(set-global ".v" "$$")
+(set-native ".v" "$$")
 (expect (value ".v") "$$")
 (expect (call ".v") "$$")
 
 ;; ^fset
 
-(set-rglobal ".f" "$$")
+(set-native-fn ".f" "$$")
 (expect (value ".f") "$$")
 (expect (call ".f") "$")
 
@@ -68,6 +68,12 @@
 
 (expect "x" (apply indexarg
                    "24 a b c d e f g h i j k l m n o p q r s t u v w x y z"))
+
+;; name-apply
+
+(expect "11 10 321" (name-apply (native-name rev)
+                                [ 1 2 3 "" "" "" "" "" "" "10 " "11 "]))
+
 
 ;; esc-LHS
 
@@ -118,7 +124,7 @@
 (expect nil (not "x"))
 
 (expect nil (bound? "_xya13"))
-(expect "1" (bound? (global-name ^require)))
+(expect "1" (bound? (native-name ^require)))
 
 (expect "4 5" (nth-rest 4 "1 2 3 4 5"))
 
@@ -153,7 +159,7 @@
   (set *log* (concat *log* str "\n")))
 
 (define (hijack-info fnbody)
-  (subst "$(info " (concat "$(call " (global-name logln) " ,") fnbody))
+  (subst "$(info " (concat "$(call " (native-name logln) " ,") fnbody))
 
 (define (hook-trace-info a ?b ?c ?d)
   (log (concat a b c d "\n")))
@@ -202,7 +208,7 @@
 
 ;;-------- trace-body x
 
-(set-rglobal (save-var "ID") initial-fx)
+(set-native-fn (save-var "ID") initial-fx)
 (set fx (trace-body "x" "FX" "ID" initial-fx))
 
 (let-global ((*log* nil))
@@ -227,7 +233,7 @@
 
 ;;-------- trace-body t
 
-(declare (^tp name value) &global)
+(declare (^tp name value) &native)
 
 (set fx (hijack-info (trace-body "t" "FX" "ID" initial-fx)))
 
@@ -285,14 +291,14 @@
 ;;-------- trace-ext
 
 (set fx initial-fx)
-(define `fx-name (global-name fx))
+(define `fx-name (native-name fx))
 (define `fx-id (trace-id fx-name))
 (define `fx-save (value (save-var fx-id)))
 (define `fx-count (subst ":" "" (trace-digits (value (count-var fx-id)))))
 
 ;; do not trace non-functions
 (define data nil)
-(expect nil (trace (global-name data)))
+(expect nil (trace (native-name data)))
 
 ;; *do-not-trace*
 (let-global ((*do-not-trace* (concat *do-not-trace* " " fx-name)))

@@ -2,8 +2,8 @@
 ;; io : File I/O and shell interaction
 ;;--------------------------------------------------------------
 
-(require "core")
-(declare SCAM_DEBUG &global)
+(require "core.scm")
+(declare SCAM_DEBUG &native)
 
 
 (define (logshell cmd)
@@ -230,13 +230,14 @@
   (define `a
     (subst "+" "+2" " " "+0" "!" "+1" "#" "+H" "\\" "+B" "$" "+D"
            ":" "+C" ";" "+S" "=" "+E" "%" "+P" "~" "+T" "*" "+A"
-           "?" "+Q" "|" "+V" "\t" "+-" "\n" "+_" "/.." "/+." path))
-   (patsubst "/%" "+/%" a))
+           "?" "+Q" "|" "+V" "\t" "+-" "\n" "+_" ".." "+."
+           path))
+  (patsubst "/%" "+/%" a))
 
 ;; Undo `escape-path`
 ;;
 (define (unescape-path loc)
   &public
-  (subst "+/" "/" "/+." "/.." "+_" "\n" "+-" "\t" "+V" "|" "+Q" "?"
+  (subst "+/" "/" "+." ".." "+_" "\n" "+-" "\t" "+V" "|" "+Q" "?"
          "+A" "*" "+T" "~" "+P" "%" "+E" "=" "+S" ";" "+C" ":"
          "+D" "$" "+B" "\\" "+H" "#" "+1" "!" "+0" " " "+2" "+" loc))

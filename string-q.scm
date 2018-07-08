@@ -1,6 +1,6 @@
-(require "core")
-(require "num")
-(require "string" &private)
+(require "core.scm")
+(require "num.scm")
+(require "string.scm" &private)
 
 
 (expect 255 (words all-bytes))

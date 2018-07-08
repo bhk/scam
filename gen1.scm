@@ -2,10 +2,10 @@
 ;; gen1: compiler back-end
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "escape")
-(require "parse")
-(require "gen")
+(require "core.scm")
+(require "escape.scm")
+(require "parse.scm")
+(require "gen.scm")
 
 ;; File vs. Function Syntax
 ;; ----------------
@@ -16,7 +16,7 @@
 ;; function body, is suitable for invoking directly or binding to a function
 ;; variable.
 ;;
-;;     SCAM source:     (set-global "x" 1)    (+ 1 2)
+;;     SCAM source:     (set-native "x" 1)    (+ 1 2)
 ;;     Function Code:   $(call ^set,x,1)      $(call +,1,2)
 ;;     File Code:       x = 1                 $(if $(call +,1,2),)
 ;;
@@ -227,17 +227,17 @@
           " " ; this space is necessary even when there are no arguments
           (protect-ltrim (c1-vec args ","
                               (if (filter "and or" name)
-                                  (global-name c1-arg-trim)
-                                  (global-name c1-arg))))
+                                  (native-name c1-arg-trim)
+                                  (native-name c1-arg))))
           ")"))
 
 ;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
 ;;
 (define (c1-args9 nodes)
   (if (word 9 nodes)
-      (concat (c1-vec (wordlist 1 8 nodes) "," (global-name c1-arg))
+      (concat (c1-vec (wordlist 1 8 nodes) "," (native-name c1-arg))
               (concat "," (protect-arg (c1 (il-vector (nth-rest 9 nodes))))))
-      (c1-vec nodes "," (global-name c1-arg))))
+      (c1-vec nodes "," (native-name c1-arg))))
 
 
 ;; Call user-defined function (by name)
@@ -284,7 +284,7 @@
 ;; Block: evaluate all nodes and return value of last node
 (define (c1-Block nodes)
   (if (word 2 nodes)
-      (concat "$(and " (c1-vec nodes "1," (global-name c1-arg)) ")")
+      (concat "$(and " (c1-vec nodes "1," (native-name c1-arg)) ")")
       (if nodes
           (c1 (first nodes)))))
 
@@ -299,7 +299,7 @@
     ((ILocal ndx ups) (c1-Local ndx ups))
     ((ICall name args) (c1-Call name args))
     ((IVar name) (c1-Var name))
-    ((IConcat nodes) (c1-vec nodes "" (global-name c1)))
+    ((IConcat nodes) (c1-vec nodes "" (native-name c1)))
     ((ILambda code) (c1-Lambda (c1 code)))
     ((IBlock nodes) (c1-Block nodes))
     ((IFuncall nodes) (c1-Funcall nodes))

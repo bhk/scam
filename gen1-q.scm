@@ -1,10 +1,10 @@
 ;; tests for gen1
 
-(require "core")
-(require "parse")  ;; for PError
-(require "gen")
-(require "escape")
-(require "gen1" &private)
+(require "core.scm")
+(require "parse.scm")  ;; for PError
+(require "gen.scm")
+(require "escape.scm")
+(require "gen1.scm" &private)
 
 
 ;; crumbs

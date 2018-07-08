@@ -2,7 +2,7 @@
 ;; escape : escaping
 ;;--------------------------------------------------------------
 
-(require "core")
+(require "core.scm")
 
 ;; The problem of "escaping" strings for inclusion in Make source code can
 ;; be broken down into two aspects.

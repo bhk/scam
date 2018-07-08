@@ -1,9 +1,9 @@
-(require "core")
-(require "gen")
-(require "parse")
-(require "gen0" &private)
-(require "gen-testutils")
-(require "io")
+(require "core.scm")
+(require "gen.scm")
+(require "parse.scm")
+(require "gen0.scm" &private)
+(require "gen-testutils.scm")
+(require "io.scm")
 
 ;;--------------------------------
 ;; utilities
@@ -30,7 +30,7 @@
 
 
 (define `flag-args
-  [ (PString 0 "F") (PSymbol 2 "&private") (PSymbol 3 "&global")
+  [ (PString 0 "F") (PSymbol 2 "&private") (PSymbol 3 "&native")
     (PSymbol 2 "bar") ])
 
 (expect 0 (scan-flags flag-args 0))
@@ -39,8 +39,8 @@
 (expect 3 (scan-flags flag-args 3))
 (expect 4 (scan-flags flag-args 4))
 
-(expect ["&private" "&global"]  (get-flags flag-args 1))
-(expect ["&global"]             (get-flags flag-args 2))
+(expect ["&private" "&native"]  (get-flags flag-args 1))
+(expect ["&native"]             (get-flags flag-args 2))
 (expect flag-args               (skip-flags flag-args 0))
 (expect [(PSymbol 2 "bar") ]    (skip-flags flag-args 1))
 (expect [(PSymbol 2 "bar") ]    (skip-flags flag-args 2))
@@ -194,7 +194,7 @@
   (define (test-xmacro form)
     (PString 1 "hi"))
   (define `test-xm-env
-    { var: (EXMacro (global-name test-xmacro) "i")})
+    { var: (EXMacro (native-name test-xmacro) "i")})
 
   (expect (c0-ser "(var 7)" test-xm-env)
           "hi"))
@@ -337,15 +337,15 @@
 ;;
 
 (expect (text-to-env "(declare var)")
-        { var: (EVar (gen-global-name "var" nil) "p") })
+        { var: (EVar (gen-native-name "var" nil) "p") })
 (expect (text-to-env "(declare var &public)")
-        { var: (EVar (gen-global-name "var" nil) "x") })
+        { var: (EVar (gen-native-name "var" nil) "x") })
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        { fn: (EFunc (gen-global-name "fn" nil) "p" 2 nil) })
+        { fn: (EFunc (gen-native-name "fn" nil) "p" 2 nil) })
 (expect (text-to-env "(declare (fn a b) &public)")
-        { fn: (EFunc (gen-global-name "fn" nil) "x" 2 nil) })
+        { fn: (EFunc (gen-native-name "fn" nil) "x" 2 nil) })
 
 ;; declare errors
 (expect (c0-ser "(declare)")

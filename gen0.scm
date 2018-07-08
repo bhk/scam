@@ -2,11 +2,11 @@
 ;; gen0 : compiler front end  (see gen.scm)
 ;;--------------------------------------------------------------
 
-(require "core")
-(require "parse")
-(require "escape")
-(require "gen")
-(require "num")
+(require "core.scm")
+(require "parse.scm")
+(require "escape.scm")
+(require "gen.scm")
+(require "num.scm")
 
 (define *warn-upvals*
   (findstring "U" (value "SCAM_DEBUG")))
@@ -22,7 +22,7 @@
 (define (scan-flags-x args n prev-n)
   (or (case (nth n args)
         ((PSymbol pos name)
-         (if (filter "&private &public &global" name)
+         (if (filter "&private &public &native" name)
              (scan-flags args n))))
       prev-n))
 
@@ -305,7 +305,7 @@
 ;;
 (define `(special-form-func name)
   (declare (ml.special-))
-  (concat (global-name ml.special-) name))
+  (concat (native-name ml.special-) name))
 
 
 ;; form = `(Ctor ARG...)
@@ -518,7 +518,7 @@
 
       (let ((value (c0-block body env))
             (scope (if (filter "&public" flags) "x" "p"))
-            (gname (gen-global-name name flags))
+            (gname (gen-native-name name flags))
             (depth (current-depth env)))
 
         (define `env-out
@@ -552,7 +552,7 @@
 
 (define (c0-def-compound env n name args flags body is-define is-macro)
   (define `argc (get-argc (for a args (symbol-name a))))
-  (define `gname (gen-global-name name flags))
+  (define `gname (gen-native-name name flags))
   (define `scope (if (filter "&public" flags) "x" "p"))
 
   ;; Make function name known *within* the body, unless it is a macro.

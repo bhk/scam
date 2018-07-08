@@ -2,12 +2,12 @@
 ;; scam.scm: implements `main` for the SCAM compiler/interpreter.
 ;;----------------------------------------------------------------
 
-(require "core")
-(require "repl")
-(require "getopts")
-(require "compile")
-(require "gen")
-(require "io")
+(require "core.scm")
+(require "repl.scm")
+(require "getopts.scm")
+(require "compile.scm")
+(require "gen.scm")
+(require "io.scm")
 
 
 (define usage-string
@@ -22,7 +22,7 @@
 Options:
 
   --quiet         Do not display progress messages
-  --out-dir DIR   Specify directory for intermediate files
+  --obj-dir DIR   Specify directory for intermediate files
   --              Stop processing options
 ")
 
@@ -41,9 +41,9 @@ Options:
 (define `version "1.4")
 
 
-(define (set-obj-dir out-dir out-file)
+(define (set-obj-dir obj-dir out-file)
   (define `given-dir
-      (or out-dir
+      (or obj-dir
           (if out-file
               (dir out-file)
               ".scam/")))
@@ -53,7 +53,7 @@ Options:
 
 (define (main argv)
   (define `opt-names
-    "-o= -e= -v --version -h -x -i --quiet --out-dir= --boot")
+    "-o= -e= -v --version -h -x -i --quiet --obj-dir= --boot")
 
   (let ((omap (getopts argv opt-names)))
     (define `(opt name) (dict-get name omap))
@@ -62,7 +62,7 @@ Options:
     (define `errors (opt "!"))     ; errors encountered by getopts
     (set *is-quiet* (opt "quiet"))
     (set *is-boot* (opt "boot"))
-    (set-obj-dir (last (opt "out-dir")) (last (opt "o")))
+    (set-obj-dir (last (opt "obj-dir")) (last (opt "o")))
 
     (cond
      (errors

@@ -2,7 +2,7 @@
 ;; core : general-purpose functions
 ;;--------------------------------------------------------------
 
-(declare SCAM_DEBUG &global)
+(declare SCAM_DEBUG &native)
 
 ;; Return 1 if A and B are equal, nil otherwise.
 (define (eq? a b)
@@ -585,7 +585,7 @@
   (if more
       (info "Warning: memoized function passed more than three arguments"))
   (if (not (bound? varname))
-      (set-global varname (func a b c)))
+      (set-native varname (func a b c)))
   (value varname))
 
 
@@ -602,7 +602,7 @@
       (let ((func (value funcname))
             (varbase (concat "*memo" (memoenc funcname)))
             (funcname funcname))
-        (set-rglobal funcname
+        (set-native-fn funcname
                      (lambda (a b c d e f g h)
                        (mcache (concat varbase (memoenc a b c)) func a b c
                                (or d e f g h)))))))

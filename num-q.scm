@@ -1,5 +1,5 @@
-(require "core")
-(require "num" &private)
+(require "core.scm")
+(require "num.scm" &private)
 
 ;;---------------- Utilities
 

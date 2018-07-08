@@ -1,6 +1,6 @@
-(require "'core")
+(require "core")
 (require "num")
-(require "clocker")
+(require "clocker.scm")
 
 
 (define (main argv)

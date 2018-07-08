@@ -27,32 +27,32 @@ endef
 & := ,
 ")
 
-;; Most runtime exports are declared as "global" so that the code generation
+;; Most runtime exports are declared as "&native" so that the code generation
 ;; phase does not have to take namespacing into account.
 
 ;; (^d string) => "down" = encode as word
 ;;
 (define (^d str)
-  &global
+  &native
   (or (subst "!" "!1" "\t" "!+" " " "!0" str) "!."))
 
 ;; (^u string) => "up" = recover string from word
 ;;
 (define (^u str)
-  &global
+  &native
   (subst "!." "" "!0" " " "!+" "\t" "!1" "!" str))
 
 ;; (^n n vec) => Nth member of vector VEC
 ;;
 (define (^n n vec)
-  &global
+  &native
   (^u (word n vec)))
 
 ;; Encode dictionary key
 ;;
 (define (^k str)
-  &global
-  (declare ^d &global)
+  &native
+  (declare ^d &native)
   (subst "%" "!8" ^d))
 
 ;; ^Y : invokes lambda expression
@@ -61,7 +61,7 @@ endef
 ;;  hold the first 8 arguments; I is a vector of remaining arguments.
 ;;
 (declare (^Y ...args)
-         &global)
+         &native)
 (set ^Y "$(call if,,,$(10))")
 
 
@@ -75,14 +75,14 @@ endef
 ;; order to retain $1, $2, etc..
 
 (declare (^v)
-         &global)
+         &native)
 
 (set ^v (concat "$(subst !.,!. ,$(filter-out %!,$(subst !. ,!.,"
                 "$(foreach n,$(wordlist $N,9,1 2 3 4 5 6 7 8),"
                 "$(call ^d,$($n)))$(if $9, $9) !)))"))
 
 (declare (^av)
-         &global)
+         &native)
 
 (set ^av "$(foreach N,1,$(^v))")
 
@@ -94,6 +94,20 @@ endef
                     "$(call ^n,4,$2),$(call ^n,5,$2),$(call ^n,6,$2),"
                     "$(call ^n,7,$2),$(call ^n,8,$2),$(wordlist 9,99999999,$2),$1)"))
 
+;; Call function named NAME with elements of vector ARGV as arguments.
+;;
+(define (name-apply name argv)
+  &public
+  (define `call-expr
+    (concat "$(call " name
+            (subst " ," ","
+                   (foreach n (wordlist 1 (words argv) "1 2 3 4 5 6 7 8")
+                            (concat ",$(call ^n," n ",$2)")))
+            (if (word 9 argv)
+                (concat ",$(wordlist 9,99999999,$2)"))
+            ")"))
+  (call "if" "" "" call-expr))
+
 
 ;;--------------------------------------------------------------
 ;; debugging and diagnostics
@@ -103,7 +117,7 @@ endef
 ;; Format a value as a quoted string.
 ;;
 (define (^f a)
-  &global
+  &native
   (concat "\""
           (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" a)
           "\""))
@@ -111,27 +125,27 @@ endef
 ;; Display a value to stdout and return it.
 ;;
 (define (^tp name value)
-  &global
+  &native
   (concat
    (info (concat name " " (^f value)))
    value))
 
 ;; ^tc : call function named by $1, and shift all other args left
 ;;
-(declare (^tc fn ...args) &global)
+(declare (^tc fn ...args) &native)
 (set ^tc (concat "$(call $1,$2,$3,$4,$5,$6,$7,$8,$(call ^n,1,$9),$(wordlist 2,9999,$9))"))
 
 
 ;; ^ta : format arguments for display
 ;;
-(declare (^ta ...args) &global)
+(declare (^ta ...args) &native)
 
 (set ^ta (concat "$(if $(or $1,$2,$3,$4,$5,$6,$7,$8,$9), $(^f)$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9))"))
 
 ;; ^t : trace function call with arguments and results.  Generated code will
 ;;      evaluate this as a variable -- `$(^t)` -- rather than via `call`.
 ;;
-(declare (^t) &global)
+(declare (^t) &native)
 (set ^t (concat "$(info --> ($1$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9)))$(call ^tp,<-- $1:,$(call ^tc,$1,$2,$3,$4,$5,$6,$7,$8,$9))"))
 
 
@@ -154,7 +168,7 @@ endef
 ;; Assign a new value to a simple variable, and return RETVAL.
 ;;
 (define (^set name value ?retval)
-  &global
+  &native
   (concat (eval (concat (esc-LHS name)
                         " :=$ "
                         (esc-RHS value)))
@@ -163,7 +177,7 @@ endef
 ;; Assign a new value to a recursive variable, and return RETVAL.
 ;;
 (define (^fset name value retval)
-  &global
+  &native
   (define `qname (esc-LHS name))
   (define `qbody (subst "endef" "$ endef"
                          "define" "$ define"
@@ -188,7 +202,7 @@ endef
 ;; small, simple output, ^E also tries to minimize encoding time.
 ;;
 (define (^E str ?pre)
-  &global
+  &native
   (subst "$" (concat "$" pre)
          (concat
           "$(if ,,"
@@ -205,8 +219,8 @@ endef
 (define (promote a) &public (^u a))
 (define (demote a)  &public (^d a))
 (define (nth a b)   &public (^n a b))
-(define (set-global a b ?c) &public (^set a b c))
-(define (set-rglobal a b ?c) &public (^fset a b c))
+(define (set-native a b ?c) &public (^set a b c))
+(define (set-native-fn a b ?c) &public (^fset a b c))
 
 (define `nil &public "")
 
@@ -246,12 +260,12 @@ endef
 ;; tags track record types for dynamic typing purposes
 
 (define ^tags
-  &global
+  &native
   &public
   "")
 
 (define (^add-tags str)
-  &global
+  &native
   (set ^tags (concat ^tags " " (filter-out ^tags str))))
 
 
@@ -272,7 +286,7 @@ endef
 ;; Load the module identified by ID.
 ;;
 (define (^load id)
-  &global
+  &native
   (if (bound? (mod-var id))
       (eval (value (mod-var id)))
       (or (load-ext id)
@@ -284,7 +298,7 @@ endef
 ;; Execute a module if it hasn't been executed yet.
 ;;
 (define (^require id)
-  &global
+  &native
   (or (filter id *required*)
       (begin
         (set *required* (concat *required* " " id))
@@ -363,7 +377,7 @@ endef
      ;; count invocations
      ((filter "c" mode)
       (define `cv (count-var id))
-      (set-global cv (or (value cv) zero))
+      (set-native cv (or (value cv) zero))
       (concat "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1)):D"))
 
      ;; prefix
@@ -406,7 +420,7 @@ endef
 ;;
 (define (trace-match pat variables)
   (define `avoid-pats
-    (foreach p "^% ~% ~trace% ~esc-% ~set-rglobal"
+    (foreach p "^% ~% ~trace% ~esc-% ~set-native-fn"
              (if (filter-out p pat)
                  p)))
   (filter-out avoid-pats (filter pat variables)))
@@ -460,7 +474,7 @@ endef
   ;; Find names matching pattern PAT, remove those that match "PAT:-" specs,
   ;; and remove non-function names.
   (define `(match-funcs pat)
-    (declare .VARIABLES &global)
+    (declare .VARIABLES &native)
     (define `eligible-vars
       (filter-out (concat *do-not-trace* " " dangerous-vars " "
                           (filtersub "%:-" "%" specs))
@@ -479,13 +493,13 @@ endef
 
     ;; don't overwrite original if it has already been saved
     (if (filter "u%" (origin (save-var id)))
-        (set-rglobal (save-var id) (value name)))
+        (set-native-fn (save-var id) (value name)))
 
     (define `body
       (trace-body (or mode "t") ename id (value (save-var id))))
     (if (filter "%:v" specs)
         (trace-info "[" mode "] " name))
-    (set-rglobal name body))
+    (set-native-fn name body))
 
   ;; Choose automatic vars extremely unlikely to shadow `(value NAME)`
   (define `instrumented-names
@@ -513,7 +527,7 @@ endef
              (foreach k (value (count-var (trace-id name)))
                       (if (findstring 1 k)
                           (begin
-                            (set-global (count-var (trace-id name)) zero)
+                            (set-native (count-var (trace-id name)) zero)
                             [(concat (subst ":" " " (trace-digits k)) " " name)])))))
 
   (for line (sort lines)
@@ -532,7 +546,7 @@ endef
     (foreach name matched-names
              (foreach id (trace-id name)
                       ;; restore original definition
-                      (set-rglobal name (value (save-var id)))
+                      (set-native-fn name (value (save-var id)))
                       name)))
 
   (trace-dump untraced-names)
@@ -554,7 +568,7 @@ endef
 
 (define (start-trace main-mod)
   ;; Activate tracing if [_]SCAM_TRACE is set
-  (define `env-prefix (if (filter "'%" main-mod) "_"))
+  (define `env-prefix (if (filter "scam" main-mod) "_"))
   (trace (value (concat env-prefix "SCAM_TRACE"))))
 
 
@@ -591,12 +605,12 @@ endef
 
 
 (define (^start main-mod main-func args)
-  &global
+  &native
 
   ;; Allow module loading to be traced.
   (start-trace main-mod)
   ;; Now it's dangerous...
-  (do-not-trace (concat "^require ^load " (global-name load-ext)))
+  (do-not-trace (concat "^require ^load " (native-name load-ext)))
 
   (^require main-mod)
   (start-trace main-mod)
@@ -616,5 +630,5 @@ endef
   (eval rules))
 
 ;; these will be on the stack
-(do-not-trace (concat (global-name ^start) " " (global-name start-trace)))
+(do-not-trace (concat (native-name ^start) " " (native-name start-trace)))
 (at-exit (lambda () (trace-dump known-names)))

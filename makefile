@@ -69,7 +69,7 @@ install: ; cp bin/scam `which scam`
 
 clean: ; rm -rf .out .scam */.out */.scam
 
-bench: ; bin/scam --out-dir .out/ -x bench.scm $(ARGS)
+bench: ; bin/scam --obj-dir .out/ -x bench.scm $(ARGS)
 
 $$%: ; 	@true $(info $$$* --> "$(call if,,,$$$*)")
 
@@ -94,7 +94,7 @@ $A/scam: *.scm bin/scam
 $B/scam: *.scm $A.ok
 	$(build_message)
 	$(_@) rm -f $@
-	time $A/scam -o $@ scam.scm --boot
+	$A/scam -o $@ scam.scm --boot
 	$(_@) test -f $@
 
 $C/scam: *.scm $B.ok
@@ -127,7 +127,6 @@ $B-o.ok: $B/scam test/*.scm
 	$(_@) $B/scam -o .out/tb/using test/using.scm
 	$(_@) .out/tb/using
 	$(_@) $B/scam -o .out/tb/dash-o test/dash-o.scm
-	$(_@) $(call guard,BO1,grep 'require.test/subdir/dup' .out/tb/test/dash-o.min)
 	$(_@) .out/tb/dash-o 1 2 > .out/tb/dash-o.out
 	$(_@) $(call guard,BO2,grep 'result=11:2' .out/tb/dash-o.out)
 	$(_@) touch $@
@@ -135,7 +134,7 @@ $B-o.ok: $B/scam test/*.scm
 
 $B-x.ok: $B/scam test/*.scm
 	@ echo '... test scam -x FILE ARGS...'
-	$(_@) SCAM_TRACE='%conc:c' $B/scam --out-dir .out/tbx/ -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
+	$(_@) SCAM_TRACE='%conc:c' $B/scam --obj-dir .out/tbx/ -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
 	$(_@) $(call guard,BX1,grep '9:3:a b' .out/tb/dash-x.out)
 	$(_@) $(call guard,BX2,grep ' 4 .*conc' .out/tb/dash-x.out)
 	$(_@) touch $@
@@ -143,7 +142,7 @@ $B-x.ok: $B/scam test/*.scm
 
 $B-e.ok: $B/scam
 	@ echo '... test scam -e EXPR'
-	$(_@) $B/scam --out-dir .out/tbx -e '(print [""])' -e '[""]' | tr '\n' '/' > .out/tb/dash-e.out
+	$(_@) $B/scam --obj-dir .out/tbx -e '(print [""])' -e '[""]' | tr '\n' '/' > .out/tb/dash-e.out
 	$(_@) $(call guard,BE1,grep '\!\./\[\"\"\]' .out/tb/dash-e.out)
 	$(_@) touch $@
 

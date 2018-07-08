@@ -2,20 +2,22 @@
 ;; repl: Interactive mode for SCAM
 ;;--------------------------------
 
-(require "core")
-(require "io")
-(require "parse")
-(require "compile")
-(require "gen")
-(require "num") ;; treat as a dependency (for build system purposes)
+(require "core.scm")
+(require "io.scm")
+(require "parse.scm")
+(require "compile.scm")
+(require "gen.scm")
+(begin
+  ;; treat as a dependency (for build system purposes)
+  (require "num.scm"))
 
 
 ;; Override this on the command line to automatically include a different
 ;; set of libraries.  repl supplies *1 and *2.
 (define LIBS "compile core getopts io num string utf8")
 
-(define *1 &global nil)  ; most recent evaluation result
-(define *2 &global nil)  ; previous result
+(define *1 &native nil)  ; most recent evaluation result
+(define *2 &native nil)  ; previous result
 
 (define (help)
   (print "Commands:\n"
@@ -135,7 +137,7 @@
 
 (define `initial-state
   (eval-and-print
-   (concat (foreach lib LIBS (concat "(require \"'" lib "\")"))
+   (concat (foreach lib LIBS (concat "(require \"" lib "\")"))
            "(declare *1)(declare *2)")
    (append (compile-prelude nil))))
 
