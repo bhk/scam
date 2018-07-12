@@ -157,7 +157,8 @@
   &public
   (define `env (nth 2 initial-state))
 
-  (let ((o (compile-text text env (or filename "[commandline]") "")))
+  (let ((o (compile-text text env (or filename "[commandline]") ""))
+        (text text))
     (define `errors (dict-get "errors" o))
     (define `exe    (dict-get "code" o))
 
@@ -177,9 +178,12 @@
 ;;
 (define (repl-file file)
   &public
-  (let ((text (read-file file)))
+  (let ((text (read-file file))
+        (file file))
     (if text
-        (let ((o (compile-text text (compile-prelude nil) file "///~")))
+        (let ((o (compile-text text (compile-prelude nil) file "///~"))
+              (text text)
+              (file file))
           (define `errors (dict-get "errors" o))
           (define `exe    (dict-get "code" o))
 

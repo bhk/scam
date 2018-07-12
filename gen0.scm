@@ -519,7 +519,9 @@
       (let ((value (c0-block body env))
             (scope (if (filter "&public" flags) "x" "p"))
             (gname (gen-native-name name flags))
-            (depth (current-depth env)))
+            (depth (current-depth env))
+            (is-define is-define)
+            (is-macro is-macro))
 
         (define `env-out
           { =name: (if is-macro
@@ -575,9 +577,11 @@
       ;; compile function/macro body
       (let ((macro-il (c0-lambda env-in args body))
             (depth (current-depth env))
+            (is-define is-define)
             (is-macro is-macro)
             (argc argc)
             (scope scope)
+            (name name)
             (gname (if is-macro NoGlobalName gname)))
 
         (define `defn

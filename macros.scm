@@ -110,6 +110,8 @@
         (sym sym)
         (value-node value-node)
         (retval-node retval-node)
+        (what what)
+        (where where)
         (env env))
 
     (define `(il-set setter varname)

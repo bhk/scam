@@ -188,10 +188,12 @@
                      level
                      (concat "i" k)))))
 
-  (define (while pred do initial)
+  (define (while pred op initial)
     (if (pred initial)
-        (let ((new-value (do initial)))
-          (nth 2 (while-N pred do (while-0 pred do new-value nil) 1 "ii")))
+        (let ((new-value (op initial))
+              (pred pred)
+              (op op))
+          (nth 2 (while-N pred op (while-0 pred op new-value nil) 1 "ii")))
         initial)))
 
 

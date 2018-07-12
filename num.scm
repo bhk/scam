@@ -584,7 +584,8 @@
    (if (not mul) 0)
 
    ;; Scientific
-   (let ((n (i+ exp (words (rest mul)))))
+   (let ((n (i+ exp (words (rest mul))))
+         (mul mul))
      (if (or (i> n 20)
              (i> -6 n))
          (let& ((frac (u-dec/10^n mul (words (rest mul)))))
@@ -656,7 +657,12 @@
        ;; zero
        "0 + :")
 
-   (let ((drr (u-divx awhole afrac bmul prec)))
+   (let ((drr (u-divx awhole afrac bmul prec))
+         (bmul bmul)
+         (aexp aexp)
+         (bexp bexp)
+         (asign asign)
+         (bsign bsign))
      (define `q (first drr))
      (define `rwhole (nth 2 drr))
      (define `rfrac (nth 3 drr))
@@ -733,7 +739,8 @@
   &public
   (if (or (float? b) (i-neg? b))
       "undefined"
-      (let ((fa (f-enc a)))
+      (let ((fa (f-enc a))
+            (b b))
         (f-dec3
          (i* (f-exp fa) b)
          (if (and (f-minus fa) (i-odd? b)) "-" "+")

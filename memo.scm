@@ -84,6 +84,7 @@
   (if *memo-key*
       (let ((result result)
             (prior-entry (dict-get *memo-key* *memo-db*))
+            (fname fname)
             (args args))
         (define `tag
           (if prior-entry
@@ -304,6 +305,7 @@
   &public
   ;; Remove any previously-read hash.
   (set *memo-hashes* (dict-remove filename *memo-hashes*))
-  (let ((result (write-file filename data)))
+  (let ((result (write-file filename data))
+        (filename filename))
     (memo-io (native-name hash-file) filename)
     result))
