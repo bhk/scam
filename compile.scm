@@ -645,11 +645,17 @@ SHELL:=/bin/bash
 (define (compile-program exe-file src-file)
   &public
   (define `main-id (module-id src-file))
-  (memo-on (compile-cache-file)
-           (begin
-             (error-if (compile-module-and-test src-file nil))
-             (link exe-file main-id)
-             nil)))
+
+  (if (file-exists? src-file)
+      (memo-on (compile-cache-file)
+               (begin
+                 (error-if (compile-module-and-test src-file nil))
+                 (link exe-file main-id)
+                 nil))
+      ;; file does not exist
+      (begin
+        (fprintf 2 "scam: file '%s' does not exist\n" src-file)
+        1)))
 
 
 ;; Compile a program and then execute it.
@@ -662,20 +668,10 @@ SHELL:=/bin/bash
 
   ;; Option 1: link and run via rule
 
-  (compile-program exe-file src-file)
   (define `run-cmd
     (concat "SCAM_ARGS=" (quote-sh-arg argv)
             " make -f " (quote-sh-arg exe-file)))
 
-  (compile-eval (concat ".PHONY: [run]\n"
-                        "[run]: ; @" (subst "$" "$$" run-cmd)))
-
-  ;; Option 2: directly load and run module
-  ;; (compile-module ...)
-  ;; todo: prevent main & compile-and-run from being traced
-  ;; (trace (value "SCAM_ARGS"))
-  ;; (eval (concat "include " outfile))
-  ;; (declare (main a))
-  ;; (trace (value "SCAM_ARGS"))
-  ;; (main argv)
-  nil)
+  (or (compile-program exe-file src-file)
+      (compile-eval (concat ".PHONY: [run]\n"
+                            "[run]: ; @" (subst "$" "$$" run-cmd)))))
