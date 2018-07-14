@@ -6,6 +6,7 @@ Bugs
  * fix: (num-format 0.4 2 " ")                -> "  "
         (num-format 868.8888888888858 6 " ")  ->  "??????"
         (num-format 0.18 5 " " 3)             ->  "     .18000"
+        (mod 999 16) -> 54
 
  * fix: circular dependency warning with gen-testutils.
 
