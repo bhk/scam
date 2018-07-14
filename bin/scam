@@ -296,7 +296,7 @@ $(subst !n,
 endef
 ~modid-file = $(~*obj-dir*)$1.o
 define ~modid-read-lines
-$(if $(or $(filter %.scm,$1),$(~*is-boot*)),$(and $(call ~memo-io,~hash-file,$(call ~modid-file,$1))1,$(call ~read-lines,$(call ~modid-file,$1),$(and $2,1),$2)),$(wordlist 1,$(or $2,99999999),$(call ~split,
+$(if $(or $(filter %.scm,$1),$(~*is-boot*)),$(and $(call ~memo-hash-file,$(call ~modid-file,$1))1,$(call ~read-lines,$(call ~modid-file,$1),$(and $2,1),$2)),$(wordlist 1,$(or $2,99999999),$(call ~split,
 ,$(value [mod-$1]))))
 endef
 define ~modid-deps
@@ -344,11 +344,11 @@ $`(call ^start,$2,$(call ~gen-native-name,main,),$`(value SCAM_ARGS))
 )1,$(shell chmod +x $(call ~quote-sh-arg,$1)))
 endef
 ~link = $(call ~memo-call,~do-link,$1,$2)
-~do-run = $(and $(call ~build-message,running,$1)1,$(call ~memo-io,~hash-file,$1)1,$(lastword $(call ~logshell,TEST_DIR=$(call ~quote-sh-arg,$(~*obj-dir*)) $(call ~quote-sh-arg,$(dir $1)$(notdir $1)) >&2 ;echo " $`?")))
+~do-run = $(and $(call ~build-message,running,$1)1,$(call ~memo-hash-file,$1)1,$(lastword $(call ~logshell,TEST_DIR=$(call ~quote-sh-arg,$(~*obj-dir*)) $(call ~quote-sh-arg,$(dir $1)$(notdir $1)) >&2 ;echo " $`?")))
 ~run = $(call ~memo-call,~do-run,$1)
 ~do-compile-module-and-test = $(or $(call ~compile-module,$1),$(and $(if $2,,1),$(call ~file-exists?,$(subst .scm,-q.scm,$1)),$(or $(call ~compile-module,$(subst .scm,-q.scm,$1)),$(call ~link,$(basename $(call ~modid-file,$(call ~module-id,$(subst .scm,-q.scm,$1)))),$(call ~module-id,$(subst .scm,-q.scm,$1))),$(if $(filter-out 0,$(call ~run,$(basename $(call ~modid-file,$(call ~module-id,$(subst .scm,-q.scm,$1)))))),$(error $(subst .scm,-q.scm,$1) failed)))))
 ~compile-module-and-test = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(call ~memo-call,~do-compile-module-and-test,$1,$2))
-~compile-program = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(and $(call ~error-if,$(call ~compile-module-and-test,$2,1))1,$(call ~link,$1,$(call ~module-id,$2))1,))
+~compile-program = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(and $(call ~error-if,$(call ~compile-module-and-test,$2,))1,$(call ~link,$1,$(call ~module-id,$2))1,))
 define ~compile-and-run
 $(and $(call ~compile-program,$(basename $(call ~module-object-file,$1)),$1)1,$(call ~compile-eval,.PHONY: [run]
 [run]: ; @$(subst $`,$`$`,SCAM_ARGS=$(call ~quote-sh-arg,$2) make -f $(call ~quote-sh-arg,$(basename $(call ~module-object-file,$1)))))1,)
@@ -387,15 +387,14 @@ endef
 
 define [mod-io]
 # Requires: core
-# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 mkdir-p_1 file-exists?_1 read-file_1 read-lines_1]or]2]or]3 write-file_2 getline_1 fprintf_2]or]more write_2 echo-command_1 shell\#1;~%1;x;1 quote-sh-file_1 quote-sh-arg_1 logshell_1
+# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 save-object_2 hash-file_1 hash-files_1 mkdir-p_1 file-exists?_1 read-file_1 read-lines_1]or]2]or]3 write-file_2 getline_1 fprintf_2]or]more write_2 echo-command_1 shell\#1;~%1;x;1 quote-sh-file_1 quote-sh-arg_1 logshell_1
 $(call ^require,core)
 ~logshell = $(and $(if $(filter S,$(SCAM_DEBUG)),$(info shell: $1))1,$(shell $1))
 ~quote-sh-arg = '$(subst ','\'',$1)'
 ~quote-sh-file = $(call ~quote-sh-arg,$(if $(filter -%,$(call ^d,$1)),./)$1)
 define ~unwrap-text
-$(if $1,$(call ~concat-vec,$1,
-)
-)
+$(call ~concat-vec,$(addsuffix 
+,$1))
 endef
 ~shell! = $(call ~unwrap-text,$(call ~logshell,( $1 ) | sed -e '$(if ,$(if ,,,!d;))s/!/!1/g;s/ /!0/g;s/	/!+/g;s/^$`/!./'))
 define ~echo-command
@@ -415,6 +414,11 @@ endef
 ~read-file = $(if $1,$(call ~unwrap-text,$(call ~read-lines,$1)),$(info error: read-file: nil filename))
 ~file-exists? = $(if $(call ~logshell,[[ -f $(call ~quote-sh-file,$1) ]] && echo t),$1)
 ~mkdir-p = $(call ~logshell,mkdir -p $(call ~quote-sh-file,$1) 2>&1)
+~*hash-cmd* := 
+~hash-cmd = $(or $(~*hash-cmd*),$(and $(call ^set,~*hash-cmd*,$(subst md5,md5 -r,$(or $(notdir $(word 1,$(shell which md5 sha1sum shasum))),$(error $(if ,,no md5, shasum, or sha1sum in path)))))1,$(~*hash-cmd*)))
+~hash-files = $(foreach dline,$(call ~logshell,$(call ~hash-cmd) $(foreach f,$1,$(call ~quote-sh-file,$(call ^u,$f))) 2>/dev/null | sed 's/\(^................\)[^ ]*/\1/;s/!/!1/g;s/ /!0/g;s/	/!+/g'),$(foreach hash,$(word 1,$(subst !0, ,$(dline))),$(call ^k,$(call ~promote,$(patsubst $(hash)!0$(if $(filter s%,$(call ~hash-cmd)),!0)%,%,$(dline))))!=$(call ^d,$(hash))))
+~hash-file = $(call ~nth,2,$(subst !=, ,$(call ~hash-files,$(call ^d,$1))))
+~save-object = $(addprefix $1,$(call ~logshell,( t=$`(mktemp $(call ~quote-sh-file,$1objtmp.XXXXXXXX)) && $(call ~echo-command,$2) > "$`t" && h=$`($(call ~hash-cmd) "$`t") && n="$`{h:0:16}" && mv -f "$`t" $(call ~quote-sh-file,$1)"$`n" && echo "$`n") 2>/dev/null))
 ~clean-path-x = $(if $1,$(filter ..,$(word 1,$1)$(word 1,$2)) $(call ~clean-path-x,$(wordlist 2,99999999,$1),$(subst /, ,$(filter-out %/..,$2/$(word 1,$1)))),$2)
 ~clean-path = $(call ~promote,$(patsubst /./,/,$(if $(filter /%,$1),/)$(or $(subst $  ,/,$(filter %,$(call ~clean-path-x,$(filter-out .,$(subst /, ,$(call ^d,$1)))))),.)$(if $(filter %/,$1),/)))
 ~resolve-path = $(call ~clean-path,$(if $(filter /%,$2),$2,$1/$2))
@@ -680,7 +684,7 @@ endef
 
 define [mod-memo]
 # Requires: core io string
-# Exports: memo-write-file_2 memo-read-file_1 hash-file_1 memo-on&x;2;\.;\>;~memo-minus`<]if],1:IL1|~*%*],1'|,1.],1:IL7|@>}~memo-start-session}@1[@01@00|@'}1`[]2]0 memo-call_1]or]more memo-io_1]or]more
+# Exports: memo-write-file_2 memo-read-file_1 memo-hash-file_1 memo-on&x;2;\.;\>;~memo-minus`<]if],1:IL1|~*%*],1'|,1.],1:IL7|@>}~memo-start-session}@1[@01@00|@'}1`[]2]0 memo-call_1]or]more memo-io_1]or]more
 $(call ^require,core)
 $(call ^require,io)
 $(call ^require,string)
@@ -694,11 +698,12 @@ $(call ^require,string)
 ~*memo-hashes* := 
 ~memo-db-add = $(call ^set,~*memo-db*,$(call ~append,$(~*memo-db*),$1))
 $(call ^add-tags,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
-~memo-playback = $(call ^Y,$(call ~dict-get,$1,$(call ~append,$(~*memo-cache*),$(~*memo-db*))),,,,,,,,,$`(if $`(filter !:PMDB0,$`(word 1,$`1)),$`1,$`(if $`(filter !:PMDB1,$`(word 1,$`1)),$`(call ~memo-playback,$`(call ^d,$`(call ^n,2,$`1)) $`(call ^d,$`(if $`(filter :%,$`(call ^n,3,$`1)),$`(call ~memo-apply,$`(patsubst :%,%,$`(call ^n,3,$`1)),$`(wordlist 4,99999999,$`1)),$`(call ~name-apply,$`(call ^n,3,$`1),$`(wordlist 4,99999999,$`1))))),)))
+~memo-playback = $(call ^Y,$(call ~dict-get,$1,$(call ~append,$(~*memo-cache*),$(~*memo-db*))),,,,,,,,,$`(if $`(filter !:PMDB0,$`(word 1,$`1)),$`1,$`(if $`(filter !:PMDB1,$`(word 1,$`1)),$`(call ~memo-playback,$`(call ^d,$`(call ^n,2,$`1)) $`(call ^d,$`(if $`(filter :%,$`(call ^n,3,$`1)),$`(call ~memo-do-apply,$`(patsubst :%,%,$`(call ^n,3,$`1)),$`(wordlist 4,99999999,$`1)),$`(call ~name-apply,$`(call ^n,3,$`1),$`(wordlist 4,99999999,$`1))))),)))
 ~memo-record = $(call ^set,~*memo-key*,$(call ^set,~*memo-key*,$1,$(~*memo-key*)),$(call ^Y,$(call ~name-apply,$2,$3),$1,,,,,,,,$`(and $`(call ~memo-db-add,$`(call ^k,$`(~*memo-key*))!=$`(call ^d,!:PMDB0 $`(call ^d,$`1)))1,$`1)))
 ~memo-log-io = $(and $(if $(~*memo-key*),$(call ^Y,$3,$(call ~dict-get,$(~*memo-key*),$(~*memo-db*)),$1,$2,,,,,,$`(call ^set,~*memo-key*,$`(call ^d,$`(if $`2,$`(call ^Y,$`(if $`(filter !:PMDB1,$`(word 1,$`2)),$`(call ^n,2,$`2)),,,,,,,,,$``(and $``(if $``(if $``(call ~eq?,$`(call ^E,$`2),!:PMDB1 $``(call ^d,$``1) $``(call ^d,$`(call ^E,$`3)) $`(call ^E,$`4)),,1),$``(and $``(call ~printf,prior entry = %q,$`(call ^E,$`2))1,$``(call ~printf,    current = %q,!:PMDB1 $``(call ^d,$``1) $``(call ^d,$`(call ^E,$`3)) $`(call ^E,$`4))1,$``(call ~assert-x,,memo.scm:103)))1,$``1)),$`(and $`(call ~memo-db-add,$`(call ^k,$`(~*memo-key*))!=$`(call ^d,!:PMDB1 $`(call ^d,$`(~*memo-tag*)) $`(call ^d,$`3) $`4))1,$`(call ^set,~*memo-tag*,$`(call ~1+,$`(~*memo-tag*)),$`(~*memo-tag*))))) $`(call ^d,$`1))))1,$3)
 ~memo-io = $(call ~memo-log-io,$1,$(foreach N,2,$(^v)),$(call ~name-apply,$1,$(foreach N,2,$(^v))))
-~memo-apply = $(call ~memo-log-io,:$1,$2,$(call ^Y,$(call ~dict-find,$1 $2,$(~*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ~nth,2,$`(subst !=, ,$`1)),$`(call ^Y,$`(call ^Y,$`(call ~memo-playback,$`2 $`3),$`2,$`3,,,,,,,$``(if $``(filter !:PMDB0,$``(word 1,$``1)),$``(call ^n,2,$``1),$``(call ~memo-record,$``2 $``3,$``2,$``3))),$`2 $`3,,,,,,,,$``(and $``(call ^set,~*memo-cache*,$``(call ~append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(~*memo-cache*)))1,$``1)))))
+~memo-do-apply = $(call ^Y,$(call ~dict-find,$1 $2,$(~*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ~nth,2,$`(subst !=, ,$`1)),$`(call ^Y,$`(call ^Y,$`(call ~memo-playback,$`2 $`3),$`2,$`3,,,,,,,$``(if $``(filter !:PMDB0,$``(word 1,$``1)),$``(call ^n,2,$``1),$``(call ~memo-record,$``2 $``3,$``2,$``3))),$`2 $`3,,,,,,,,$``(and $``(call ^set,~*memo-cache*,$``(call ~append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(~*memo-cache*)))1,$``1))))
+~memo-apply = $(call ~memo-log-io,:$1,$2,$(call ~memo-do-apply,$1,$2))
 ~memo-call = $(if $(~*memo-on*),$(call ~memo-apply,$1,$(foreach N,2,$(^v))),$(and $(info WARNING: memo-not-init: ($1 $(foreach N,2,$(^v))))1,$(call ~name-apply,$1,$(foreach N,2,$(^v)))))
 define ~memo-start-session
 $(and $(call ^set,~*memo-on*,1)1,$(if $(if $(call ~eq?,$(~*memo-db-file*),$1),,1),$(and $(call ^set,~*memo-db-file*,$1)1,$(call ^set,~*memo-db*,$(filter %,$(subst !n,
@@ -710,17 +715,13 @@ $(and $(if $1,$(and $(call ^set,~*memo-on*,)1,$(call ^set,~*memo-cache*,)1,$(cal
 $(subst !0, ,$(subst $  ,
 ,$(subst 
 ,!n,$(~*memo-db*))))
-),memo.scm:206)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))))1,$2)
+),memo.scm:209)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))))1,$2)
 endef
-~*hash-cmd* := 
-~hash-cmd = $(or $(~*hash-cmd*),$(and $(call ^set,~*hash-cmd*,$(subst md5,md5 -r,$(notdir $(or $(word 1,$(shell which md5 sha1sum shasum)),$(error $(if ,,no md5, shasum, or sha1sum))))))1,$(~*hash-cmd*)))
-~save-object = $(addprefix $1,$(call ~logshell,( t=$`(mktemp $(call ~quote-sh-arg,$1objtmp.XXXXXXXX)) && $(call ~echo-command,$2) > "$`t" && h=$`($(call ~hash-cmd) "$`t") && n="$`{h:0:16}" && mv -f "$`t" $(call ~quote-sh-arg,$1)"$`n" && echo "$`n") 2>/dev/null))
-~do-hash-file = $(call ~string-slice,1,16,$(word 1,$(shell $(call ~hash-cmd) $(call ~quote-sh-arg,$1) 2>/dev/null)))
 ~hash-add = $(call ^set,~*memo-hashes*,$(call ~append,$(~*memo-hashes*),$1))
-~hash-batch = $(call ^set,~*memo-hashes*,$(foreach dline,$(shell $(call ~hash-cmd) $(sort $(call ~append,$1,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ~nth,2,$(subst !=, ,$(pair))))),$(if $(call ~eq?,$(call ^n,3,$(call ~nth,2,$(subst !=, ,$(pair)))),~hash-file),$(word 1,$(wordlist 4,99999999,$(call ~nth,2,$(subst !=, ,$(pair)))))))))) 2>/dev/null | sed 's/!/!1/g;s/ /!0/g;s/	/!+/g'),$(call ^k,$(wordlist 2,99999999,$(call ~promote,$(dline))))!=$(call ^d,$(call ~string-slice,1,16,$(dline)))))
-~hash-file = $(if $(~*memo-on*),$(or $(if $(if $(~*memo-hashes*),,1),$(call ~hash-batch,$1)),$(call ~dict-get,$1,$(~*memo-hashes*)),$(foreach hash,$(call ~do-hash-file,$1),$(and $(call ~hash-add,$(call ^k,$1)!=$(call ^d,$(hash)))1,$(hash)))),$(call ~do-hash-file,$1))
-~memo-read-file = $(and $(call ~memo-io,~hash-file,$1)1,$(call ~read-file,$1))
-~memo-write-file = $(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$1,$(~*memo-hashes*)))1,$(call ^Y,$(call ~write-file,$1,$2),$1,,,,,,,,$`(and $`(call ~memo-io,~hash-file,$`2)1,$`1)))
+~do-memo-hash-file = $(if $(~*memo-on*),$(call ~nth,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ~nth,2,$(subst !=, ,$(pair))))),$(if $(call ~eq?,$(call ^n,3,$(call ~nth,2,$(subst !=, ,$(pair)))),~do-memo-hash-file),$(word 1,$(wordlist 4,99999999,$(call ~nth,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
+~memo-hash-file = $(call ~memo-io,~do-memo-hash-file,$1)
+~memo-read-file = $(and $(call ~memo-hash-file,$1)1,$(call ~read-file,$1))
+~memo-write-file = $(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$1,$(~*memo-hashes*)))1,$(call ^Y,$(call ~write-file,$1,$2),$1,,,,,,,,$`(and $`(call ~memo-hash-file,$`2)1,$`1)))
 endef
 
 define [mod-macros]

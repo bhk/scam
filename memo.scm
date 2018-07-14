@@ -54,7 +54,7 @@
   (IO tag op &list args))
 
 
-(declare (memo-apply fname args))
+(declare (memo-do-apply fname args))
 
 
 (define (memo-playback key)
@@ -64,7 +64,7 @@
 
       ((IO tag op args)
        (define `result (if (filter ":%" op)
-                           (memo-apply (patsubst ":%" "%" op) args)
+                           (memo-do-apply (patsubst ":%" "%" op) args)
                            (name-apply op args)))
        (memo-playback [tag result]))
 
@@ -116,7 +116,7 @@
   (memo-log-io fname args (name-apply fname args)))
 
 
-(define (memo-apply fname args)
+(define (memo-do-apply fname args)
   (define `(playback-or-record fname args)
     (let ((o (memo-playback (call-key fname args)))
           (fname fname)
@@ -125,17 +125,20 @@
         ((Result v) v)
         (else (memo-record (call-key fname args) fname args)))))
 
-  (memo-log-call
-   fname args
-   (let ((pair (dict-find (call-key fname args) *memo-cache*))
-         (fname fname)
-         (args args))
-     (if pair
-         (dict-value pair)
-         (let ((value (playback-or-record fname args))
-               (key (call-key fname args)))
-           (set *memo-cache* (append {=key: value} *memo-cache*))
-           value)))))
+  (let ((pair (dict-find (call-key fname args) *memo-cache*))
+        (fname fname)
+        (args args))
+    (if pair
+        (dict-value pair)
+        (let ((value (playback-or-record fname args))
+              (key (call-key fname args)))
+          (set *memo-cache* (append {=key: value} *memo-cache*))
+          value))))
+
+
+(define (memo-apply fname args)
+  (memo-log-call fname args (memo-do-apply fname args)))
+
 
 ;; Call a function *or* return cached results.
 ;;
@@ -220,82 +223,48 @@
 ;; File IO
 ;;---------------------------------------------------------------
 
-(define *hash-cmd* nil)
-
-(define (hash-cmd)
-  (or *hash-cmd*
-      (begin
-        (define `cmd
-          (notdir (or (word 1 (shell "which md5 sha1sum shasum"))
-                      (error "no md5, shasum, or sha1sum"))))
-        (set *hash-cmd* (subst "md5" "md5 -r" cmd))
-        *hash-cmd*)))
-
-
-;; Write DATA to a file in OBJ-DIR whose name is a function of DATA.
-;; Returns the path to the new file.
-;;
-(define (save-object obj-dir data)
-  (define `templ (quote-sh-arg (concat obj-dir "objtmp.XXXXXXXX")))
-  (define `cmd
-    (concat "( t=$(mktemp " templ ") && "
-            (echo-command data) " > \"$t\" && "
-            "h=$(" (hash-cmd) " \"$t\") && "
-            "n=\"${h:0:16}\" && "
-            "mv -f \"$t\" " (quote-sh-arg obj-dir) "\"$n\" && "
-            "echo \"$n\""
-            ") 2>/dev/null"))
-  (addprefix obj-dir (logshell cmd)))
-
-
-;; Get the first 16 bytes of a hash of FILENAME.
-;;
-(define (do-hash-file filename)
-  (define `cmd
-    (concat (hash-cmd) " " (quote-sh-arg filename) " 2>/dev/null"))
-  (string-slice 1 16 (word 1 (shell cmd))))
-
-
 (define (hash-add pairs)
   (set *memo-hashes* (append *memo-hashes* pairs)))
 
-(declare (hash-file))
 
-(define (hash-batch filename)
-  (define `hashed-files
-    (foreach pair *memo-db*
-             (case (dict-value pair)
-               ((IO tag op args)
-                (if (eq? op (native-name hash-file))
-                    (word 1 args))))))
-  (define `files
-    (sort (append filename hashed-files)))
-  (define `cmd
-    (concat (hash-cmd) " " files " 2>/dev/null"
-            " | sed 's/!/!1/g;s/ /!0/g;s/\t/!+/g'"))
-
-  (set *memo-hashes*
-       (foreach dline (shell cmd)
-                {(rest (promote dline)): (string-slice 1 16 dline)})))
+(declare (do-memo-hash-file))
 
 
-(define (hash-file filename)
-  &public
+;; Get vector of all filenames hashed in IO ops in the DB
+;;
+(define `files-in-db
+  (foreach pair *memo-db*
+           (case (dict-value pair)
+             ((IO tag op args)
+              (if (eq? op (native-name do-memo-hash-file))
+                  (word 1 args))))))
+
+
+(define (do-memo-hash-file filename)
   (if *memo-on*
-      (or (if (not *memo-hashes*)
-              (hash-batch filename))
-          (dict-get filename *memo-hashes*)
-          (foreach hash (do-hash-file filename)
-                   (hash-add {=filename: hash})
-                   hash))
-      (do-hash-file filename)))
+      (begin
+        (dict-value
+         (or (dict-find filename *memo-hashes*)
+             (begin
+               (define `names
+                 (sort (cons filename (if *memo-hashes* nil files-in-db))))
+               (hash-add (hash-files names))
+               (dict-find filename *memo-hashes*)))))
+      (hash-file filename)))
+
+
+;; Return hash of file contents, logging the IO transaction for playback.
+;;
+(define (memo-hash-file filename)
+  &public
+  (memo-io (native-name do-memo-hash-file) filename))
 
 
 ;; Read data from FILENAME, logging the IO transaction for playback.
 ;;
 (define (memo-read-file filename)
   &public
-  (memo-io (native-name hash-file) filename)
+  (memo-hash-file filename)
   (read-file filename))
 
 
@@ -307,5 +276,5 @@
   (set *memo-hashes* (dict-remove filename *memo-hashes*))
   (let ((result (write-file filename data))
         (filename filename))
-    (memo-io (native-name hash-file) filename)
+    (memo-hash-file filename)
     result))

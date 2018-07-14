@@ -1,9 +1,9 @@
 (require "core.scm")
+(require "string.scm")
 (require "io.scm" &private)
 
 (define SOURCE_DIR (dir (current-file)))
-(define TMP_DIR (or (value "TEST_DIR")
-                    (concat SOURCE_DIR ".out/")))
+(define TMP_DIR (assert (value "TEST_DIR")))
 
 ;; shell!
 
@@ -61,6 +61,22 @@
 
 (expect (current-file) (file-exists? (current-file)))
 (expect nil (file-exists? (concat SOURCE_DIR "does-not-exist")))
+
+;; hash-file & hash-files
+
+(define TMP_XYZ (concat TMP_DIR "io-q-hash"))
+(write-file TMP_XYZ "xyz")
+;; Exercise multiple files and space within a file name.
+(define TMP_XYZ2 (concat TMP_DIR " io-q! hash"))
+(write-file TMP_XYZ2 "xyz2")
+
+(expect nil *hash-cmd*)
+(define xyz (hash-file TMP_XYZ))
+(expect 16 (string-len xyz))
+
+(define xyz2 (hash-file TMP_XYZ2))
+(expect (hash-files [TMP_XYZ TMP_XYZ2])
+        { =TMP_XYZ: xyz, =TMP_XYZ2: xyz2 })
 
 ;; clean-path
 

@@ -292,7 +292,7 @@
   (if (or (filter "%.scm" id) *is-boot*)
       ;; load file
       (begin
-        (memo-io (native-name hash-file) (modid-file id))
+        (memo-hash-file (modid-file id))
         (read-lines (modid-file id) (and max 1) max))
       ;; load bundle
       (wordlist 1 (or max 99999999) (split "\n" (value (modid-var id))))))
@@ -600,7 +600,7 @@ SHELL:=/bin/bash
   (build-message "running" exe)
 
   ;; track dependency for memoization
-  (memo-io (native-name hash-file) exe)
+  (memo-hash-file exe)
 
   (define `cmd-name (concat (dir exe) (notdir exe)))
   (define `cmd-line
@@ -647,7 +647,7 @@ SHELL:=/bin/bash
   (define `main-id (module-id src-file))
   (memo-on (compile-cache-file)
            (begin
-             (error-if (compile-module-and-test src-file 1))
+             (error-if (compile-module-and-test src-file nil))
              (link exe-file main-id)
              nil)))
 

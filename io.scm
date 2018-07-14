@@ -3,6 +3,8 @@
 ;;--------------------------------------------------------------
 
 (require "core.scm")
+
+
 (declare SCAM_DEBUG &native)
 
 
@@ -39,8 +41,7 @@
 ;; Convert a sequence of lines to text.
 ;;
 (define (unwrap-text o)
-  (if o
-      (concat (concat-vec o "\n") "\n")))
+  (concat-vec (addsuffix "\n" o)))
 
 
 ;; Execute command CMD, returning data written to stdout.
@@ -171,6 +172,70 @@
 (define (mkdir-p dir)
   &public
   (logshell (concat "mkdir -p " (quote-sh-file dir) " 2>&1")))
+
+
+(define *hash-cmd*
+  nil)
+
+(define (hash-cmd)
+  (or *hash-cmd*
+      (begin
+        (define `cmd
+          (or (notdir (word 1 (shell "which md5 sha1sum shasum")))
+              (error "no md5, shasum, or sha1sum in path")))
+        (set *hash-cmd* (subst "md5" "md5 -r" cmd))
+        *hash-cmd*)))
+
+
+;; Hash multiple files, returning a dictionary mapping file names to hash
+;; values.  Hash values are 16 bytes long.  The selection of which hash
+;; algorithm to use depends on what is available in PATH; it is guaranteed
+;; to remain the same for the duration of the program's execution.
+;;
+(define (hash-files filenames)
+  &public
+  (define `quoted-names
+    (concat-for f filenames " "
+                (quote-sh-file f)))
+
+  ;; Limit the first word on each line (the hash) to 16 bytes
+  (define `cmd
+    (concat (hash-cmd) " " quoted-names " 2>/dev/null"
+            " | sed 's/\\(^................\\)[^ ]*/\\1/;s/!/!1/g;s/ /!0/g;s/\t/!+/g'"))
+
+  ;; Output is one line per file containing HASH and FILENAME seperated
+  ;; by one space (md5 -r) or two spaces (all others).
+  (define `extra (if (filter "s%" (hash-cmd)) "!0"))
+
+  (foreach dline (logshell cmd)
+           (foreach hash (word 1 (subst "!0" " " dline))
+                    (define `dfile
+                      (patsubst (concat hash "!0" extra "%") "%" dline))
+                    {(promote dfile): hash})))
+
+
+;; Return the hash of one file (see `hash-files`).
+;;
+(define (hash-file filename)
+  &public
+  (dict-value (hash-files [filename])))
+
+
+;; Write DATA to a file in OBJ-DIR whose name is a function of DATA.
+;; Returns the path to the new file.
+;;
+(define (save-object obj-dir data)
+  &public
+  (define `templ (quote-sh-file (concat obj-dir "objtmp.XXXXXXXX")))
+  (define `cmd
+    (concat "( t=$(mktemp " templ ") && "
+            (echo-command data) " > \"$t\" && "
+            "h=$(" (hash-cmd) " \"$t\") && "
+            "n=\"${h:0:16}\" && "
+            "mv -f \"$t\" " (quote-sh-file obj-dir) "\"$n\" && "
+            "echo \"$n\""
+            ") 2>/dev/null"))
+  (addprefix obj-dir (logshell cmd)))
 
 
 ;; clean-path-x: Helper for clean-path

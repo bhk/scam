@@ -125,8 +125,8 @@
   (expect 2345678910 (concat b c d e f g h i j))
   (dict-get a fetch-tbl))
 
-(define (test-impure a b)
-  (log "test-impure")
+(define (fa a b)
+  (log "fa")
   (concat a "="
           (while (lambda (name) (filter "A B C" name))
                  (lambda (name) (memo-io (native-name fetch) name 2 3 4 5 6 7 8 9 10))
@@ -135,27 +135,27 @@
 ;; Assert: memo-io works outside of memo context, and does not disturb
 ;; cache.
 (expect nil *memo-on*)
-(expect "A=123" (test-impure "A" 1))
+(expect "A=123" (fa "A" 1))
 (expect nil *memo-on*)
 
 
 (memo-session
  (begin
-   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
-   (expect 1 (log-count "test-impure"))
+   (expect "A=123" (memo-call (native-name fa) "A" 1))
+   (expect 1 (log-count "fa"))
    (expect 1 (log-count "fetch"))
 
    ;; Assert: After a function call is recorded within this session, a
    ;; matching call returns a result without without IO replay or
    ;; re-invocation.
-   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
-   (expect 1 (log-count "test-impure"))
+   (expect "A=123" (memo-call (native-name fa) "A" 1))
+   (expect 1 (log-count "fa"))
    (expect 1 (log-count "fetch"))
 
    ;; Assert: When function arguments do not match a cached value, it is not
    ;; returned.
-   (expect "A=123" (memo-call (native-name test-impure) "A" 2))
-   (expect 2 (log-count "test-impure"))
+   (expect "A=123" (memo-call (native-name fa) "A" 2))
+   (expect 2 (log-count "fa"))
    (expect 2 (log-count "fetch"))))
 
 
@@ -163,14 +163,14 @@
  (begin
    ;; Assert: In subsequent session with same external state, playback
    ;; succeeds with IO replay and no re-invocation.
-   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
-   (expect 0 (log-count "test-impure"))
+   (expect "A=123" (memo-call (native-name fa) "A" 1))
+   (expect 0 (log-count "fa"))
    (expect 1 (log-count "fetch"))
 
    ;; Assert: After successful playback in this session, a matching call
    ;; returns a result without IO replay or re-invocation. (Ephemeral)
-   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
-   (expect 0 (log-count "test-impure"))
+   (expect "A=123" (memo-call (native-name fa) "A" 1))
+   (expect 0 (log-count "fa"))
    (expect 1 (log-count "fetch"))))
 
 
@@ -182,8 +182,8 @@
    ;; Assert: In subsequent session with different external state, playback
    ;; will fail on IO replay and the function will be re-invoked.
    ;; (triggering another IO op).
-   (expect "A=789" (memo-call (native-name test-impure) "A" 1))
-   (expect 1 (log-count "test-impure"))
+   (expect "A=789" (memo-call (native-name fa) "A" 1))
+   (expect 1 (log-count "fa"))
    (expect 4 (log-count "fetch"))))
 
 
@@ -191,13 +191,13 @@
 ;; external state.  Only IO replay is required, not re-invocation.
 (memo-session
  (begin
-   (expect "A=123" (memo-call (native-name test-impure) "A" 1))
-   (expect 0 (log-count "test-impure"))
+   (expect "A=123" (memo-call (native-name fa) "A" 1))
+   (expect 0 (log-count "fa"))
    (expect 1 (log-count "fetch"))))
 (memo-session
  (let-global ((fetch-tbl {A:"B", B:"C", C:789}))
-   (expect "A=789" (memo-call (native-name test-impure) "A" 1))
-   (expect 0 (log-count "test-impure"))
+   (expect "A=789" (memo-call (native-name fa) "A" 1))
+   (expect 0 (log-count "fa"))
    (expect 3 (log-count "fetch"))))
 
 
@@ -294,6 +294,34 @@
    (expect 4 (log-count "lookup"))))
 
 
+;; Assert: Playback does not log transactions.  [memo-playback validates
+;; existing DB entries by re-issuing sub-operations (IOs and memo-call
+;; dependencies of the played-back function).  These sub-operations
+;; should not be logged as dependencies.]
+
+(define (f0 a) a)
+(define (f1 a b) (memo-call (native-name f0) a))
+(define (f2 a b c) (memo-call (native-name f1) a b))
+
+(reset-cache)
+
+(memo-session
+ (begin
+   (expect 5 (memo-call (native-name f2) 5 6 7))
+   (expect 5 (words *memo-db*))
+
+   ;; Record new invocation f2, reusing the EPHEMERAL cached results of
+   ;; f1 & f2.
+   (expect 5 (memo-call (native-name f2) 5 6 70))
+   (expect 7 (words *memo-db*))
+
+   ;; Record new invocation f2, reusing the non-EPHEMERAL cached results
+   ;; of f1 & f2.
+   (set *memo-cache* nil)
+   (expect 5 (memo-call (native-name f2) 5 6 700))
+   (expect 9 (words *memo-db*))))
+
+
 ;;----------------------------------------------------------------
 ;; File IO
 ;;----------------------------------------------------------------
@@ -301,49 +329,44 @@
 (define memo-file (subst "-q" "" (current-file)))
 (define tmp-file (concat (value "TEST_DIR") "memo-q.tmp"))
 
+;; memo-hash-file
 
-;; hash-file
-
-;; outside of memo session
-(expect nil *hash-cmd*)
 (write-file tmp-file "xyz")
 (define xyz (hash-file tmp-file))
-(expect 16 (string-len xyz))
-
 
 (define (hash-two-files-test)
-   (expect xyz (memo-io (native-name hash-file) tmp-file))
-   (memo-io (native-name hash-file) memo-file))
+   (expect xyz (memo-hash-file tmp-file))
+   (memo-hash-file memo-file))
 
-;; Assert: Calls to hash-file outside a memo session are NOT cached.
-(hash-file tmp-file)
+;; Assert: Calls to memo-hash-file outside a memo session are NOT cached.
+(memo-hash-file tmp-file)
 (expect nil *memo-hashes*)
 
-;; Assert: Calls to hash-file within a session are cached.
+;; Assert: Calls to memo-hash-file within a session are cached.
 (reset-cache)
 (memo-session
  (begin
    ;; caching
    (expect 0 (words *memo-hashes*))
-   ;; Call within a memo-call to create (IO ... "hash-file" ...) records
-   ;; (used below)
+   ;; Call memo-hash-file within a memo-call to create (IO ... "hash-file"
+   ;; ...) records (used below)
    (memo-call (native-name hash-two-files-test))
    (expect 2 (words *memo-hashes*))
-   (expect xyz (let-global ((do-hash-file (lambda (f) (assert nil))))
-                 (hash-file tmp-file)))))
+   (expect xyz (let-global ((hash-file (lambda (f) (assert nil))))
+                 (memo-hash-file tmp-file)))))
 
 ;; Assert: Cached hash values are flushed on session end.
 (expect nil *memo-hashes*)
 
-;; Assert: The first hash-file call within a session will hash all files
+;; Assert: The first memo-hash-file call within a session will hash all files
 ;; previously hashed AND the requested file.
 (memo-session
  (begin
    ;; hash-batch
-   (hash-file (current-file))
+   (memo-hash-file (current-file))
    (expect 3 (words *memo-hashes*))
-   (expect xyz (let-global ((do-hash-file (lambda (f) (assert nil))))
-                 (hash-file tmp-file)))))
+   (expect xyz (let-global ((hash-file (lambda (f) (assert nil))))
+                 (memo-hash-file tmp-file)))))
 
 
 ;; save-object
