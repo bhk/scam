@@ -136,22 +136,22 @@
 ;; Assert: Source file relative to requiring file is treated as origin.
 (expect "compile.scm"
         (let-global ((SCAM_LIBPATH nil))
-          (locate-module "compile-q.scm" "compile.scm")))
+          (do-locate-module "./" "compile.scm")))
 
 ;; Assert: Source files must end in ".scm"
 (expect nil
         (let-global ((SCAM_LIBPATH nil))
-          (locate-module "compile-q.scm" "makefile")))
+          (do-locate-module "./" "makefile")))
 
 ;; Assert: Source file relative to SCAM_LIBPATH is treated as origin.
 (expect "test/run.scm"
         (let-global ((SCAM_LIBPATH "test:x/y/z"))
-          (locate-module "a/b/c/x.scm" "run.scm")))
+          (do-locate-module "a/b/c/" "run.scm")))
 
 ;; Assert: builtin is detected only if modvar is present
-(expect nil (locate-module "a.scm" "cqtest"))
+(expect nil (do-locate-module "./" "not-exist"))
 (set-native "[mod-cqtest]" 1)
-(expect "cqtest" (locate-module "a.scm" "cqtest"))
+(expect "cqtest" (do-locate-module "./" "cqtest"))
 
 
 ;; module-id

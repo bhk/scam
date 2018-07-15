@@ -331,20 +331,30 @@
 ;; source file (ending in .scm) or a builtin module ("core", etc.).
 ;; Return nil on failure.
 ;;
-;; SOURCE-FILE =  the source file calling `require`
+;; SOURCE-DIR = directory containing the source file calling `require`
 ;; NAME = the literal string passed to "require"
 ;;
-(define (locate-module source-file name)
+(define (do-locate-module source-dir name)
   (define `path-dirs
-    (addsuffix "/" (subst ":" " " (value "SCAM_LIBPATH"))))
+    (addsuffix "/" (split ":" (value "SCAM_LIBPATH"))))
 
   (or (and (filter "%.scm" [name])
-           (firstword
-            (foreach dir (append (dir source-file) path-dirs)
-                     (file-exists? (resolve-path dir name)))))
+           (vec-or
+            (for dir (cons source-dir path-dirs)
+                 (file-exists? (resolve-path dir name)))))
       (and (not *is-boot*)
            (if (bound? (modid-var name))
                name))))
+
+
+;; do-locate-module is safe to memoize because:
+;;  1. results will not change during a program invocation.
+;;  2. it does not call memo-io or memo-call
+;;
+(memoize (native-name do-locate-module))
+
+(define (locate-module source-dir name)
+  (memo-io (native-name do-locate-module) source-dir name))
 
 
 ;; Skip initial comment lines.
@@ -423,7 +433,7 @@ SHELL:=/bin/bash
 ;;
 (define (get-module name base private)
   &public
-  (let ((orgn (locate-module base name))
+  (let ((orgn (locate-module (dir base) name))
         (private private))
     (define `id (module-id orgn))
 

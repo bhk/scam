@@ -305,7 +305,9 @@ endef
 ~modid-import = $(call ~env-strip-imports,$(call ~env-parse,$(call ~modid-read-lines,$1,4)),$2)
 ~module-id = $(call ^Y,$(call ~escape-path,$1),,,,,,,,,$`(if $`(~*is-boot*),$`(basename $`1),$`1))
 ~module-object-file = $(call ~modid-file,$(call ~module-id,$1))
-~locate-module = $(or $(and $(filter %.scm,$(call ^d,$2)),$(firstword $(foreach dir,$(call ~append,$(dir $1),$(addsuffix /,$(subst :, ,$(value SCAM_LIBPATH)))),$(call ~file-exists?,$(call ~resolve-path,$(dir),$2))))),$(and $(if $(~*is-boot*),,1),$(if $(if $(filter-out u%,$(flavor [mod-$2])),1),$2)))
+~do-locate-module = $(or $(and $(filter %.scm,$(call ^d,$2)),$(call ^u,$(word 1,$(filter-out !.,$(foreach dir,$(call ~cons,$1,$(addsuffix /,$(call ~split,:,$(value SCAM_LIBPATH)))),$(call ^d,$(call ~file-exists?,$(call ~resolve-path,$(call ^u,$(dir)),$2)))))))),$(and $(if $(~*is-boot*),,1),$(if $(if $(filter-out u%,$(flavor [mod-$2])),1),$2)))
+$(if $(call ~memoize,~do-locate-module),)
+~locate-module = $(call ~memo-io,~do-locate-module,$1,$2)
 define ~skip-comments
 $(if $(filter #% !.,$(word 1,$1)),$(call ~skip-comments,$(wordlist 2,99999999,$1)),$1)
 endef
@@ -319,7 +321,7 @@ $ endef
 )
 endef
 ~load-ext = $(and $(eval include $(call ~modid-file,$1))1,1)
-~get-module = $(call ^Y,$(call ~locate-module,$2,$1),$3,,,,,,,,$`(or $`(if $`(if $`1,,1),!:Mod1 $`(call ^d,$`(call ~sprintf,cannot find %q,$(call ^E,$1)))),$`(if $`(filter %.scm,$`(call ^d,$`1)),$`(if $`(call ~compile-module-and-test,$`1,$`2),!:Mod1 $`(call ^d,$`(call ~sprintf,compilation of %q failed,$`1)),)),$`(call ^Y,$`(call ~modid-import,$`(call ~module-id,$`1),$`2),$`(call ~module-id,$`1),$`1,,,,,,,$``(or $``(if $``(word 1,$``(foreach pair,$``1,$``(if $``(filter !:EDefn3,$``(word 1,$``(call ~nth,2,$``(subst !=, ,$``(pair))))),1))),$``(if $``(~*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$``(call ^require,$``2))),!:Mod0 $``(call ^d,$``2) $``(call ^d,$``1)))))
+~get-module = $(call ^Y,$(call ~locate-module,$(dir $2),$1),$3,,,,,,,,$`(or $`(if $`(if $`1,,1),!:Mod1 $`(call ^d,$`(call ~sprintf,cannot find %q,$(call ^E,$1)))),$`(if $`(filter %.scm,$`(call ^d,$`1)),$`(if $`(call ~compile-module-and-test,$`1,$`2),!:Mod1 $`(call ^d,$`(call ~sprintf,compilation of %q failed,$`1)),)),$`(call ^Y,$`(call ~modid-import,$`(call ~module-id,$`1),$`2),$`(call ~module-id,$`1),$`1,,,,,,,$``(or $``(if $``(word 1,$``(foreach pair,$``1,$``(if $``(filter !:EDefn3,$``(word 1,$``(call ~nth,2,$``(subst !=, ,$``(pair))))),1))),$``(if $``(~*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$``(call ^require,$``2))),!:Mod0 $``(call ^d,$``2) $``(call ^d,$``1)))))
 ~runtime-module-name = $(if $(~*is-boot*),$(filter-out $(subst -q.scm,.scm,$(call ^d,$1)),runtime.scm),runtime)
 ~compile-prelude = $(foreach m,$(call ~runtime-module-name,$1),$(call ^Y,$(call ~get-module,$m,.,),,,,,,,,,$`(if $`(filter !:Mod0,$`(word 1,$`1)),$`(call ^n,3,$`1),$`(if $`(filter !:Mod1,$`(word 1,$`1)),$`(error $`(call ^n,2,$`1))))))
 ~compile-text = $(call ^set,~*compile-subject*,$(call ^set,~*compile-subject*,$(call ~penc,$1),$(~*compile-subject*)),$(call ^set,~*compile-file*,$(call ^set,~*compile-file*,$3,$(~*compile-file*)),$(call ~c0-block-cc,$2,$(call ~parse-subject,$(~*compile-subject*)),$`(call ~gen1,$`2,$(call ^E,$4)) env!=$`(call ^d,$`1))))
@@ -348,10 +350,13 @@ endef
 ~run = $(call ~memo-call,~do-run,$1)
 ~do-compile-module-and-test = $(or $(call ~compile-module,$1),$(and $(if $2,,1),$(call ~file-exists?,$(subst .scm,-q.scm,$1)),$(or $(call ~compile-module,$(subst .scm,-q.scm,$1)),$(call ~link,$(basename $(call ~modid-file,$(call ~module-id,$(subst .scm,-q.scm,$1)))),$(call ~module-id,$(subst .scm,-q.scm,$1))),$(if $(filter-out 0,$(call ~run,$(basename $(call ~modid-file,$(call ~module-id,$(subst .scm,-q.scm,$1)))))),$(error $(subst .scm,-q.scm,$1) failed)))))
 ~compile-module-and-test = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(call ~memo-call,~do-compile-module-and-test,$1,$2))
-~compile-program = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(and $(call ~error-if,$(call ~compile-module-and-test,$2,))1,$(call ~link,$1,$(call ~module-id,$2))1,))
+define ~compile-program
+$(if $(call ~file-exists?,$2),$(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(and $(call ~error-if,$(call ~compile-module-and-test,$2,))1,$(call ~link,$1,$(call ~module-id,$2))1,)),$(and $(call ~fprintf,2,scam: file '%s' does not exist
+,$2)1,1))
+endef
 define ~compile-and-run
-$(and $(call ~compile-program,$(basename $(call ~module-object-file,$1)),$1)1,$(call ~compile-eval,.PHONY: [run]
-[run]: ; @$(subst $`,$`$`,SCAM_ARGS=$(call ~quote-sh-arg,$2) make -f $(call ~quote-sh-arg,$(basename $(call ~module-object-file,$1)))))1,)
+$(or $(call ~compile-program,$(basename $(call ~module-object-file,$1)),$1),$(call ~compile-eval,.PHONY: [run]
+[run]: ; @$(subst $`,$`$`,SCAM_ARGS=$(call ~quote-sh-arg,$2) make -f $(call ~quote-sh-arg,$(basename $(call ~module-object-file,$1))))))
 endef
 endef
 
