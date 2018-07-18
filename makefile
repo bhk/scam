@@ -1,12 +1,11 @@
 # bin/scam holds the "golden" compiler executable, which bootstraps compiler
-# generation.  From the source files we build to three different sets of
-# exectuable code:
+# generation.  From the source files we build three different generations:
 #
-#    Compiler  Output  Runtime used by the code
+#    Compiler  Output  Runtime used by generated code
 #    --------  ------  -----------------------------
-#    golden     $A     golden (bundled in bin/scam)
-#    $A         $B     current ($B/runtime.min)
-#    $B         $C     current (bundled in $B/scam)
+#    golden    $A/*    golden (bundled in bin/scam)
+#    $A/scam   $B/*    current ($B/runtime.min)
+#    $B/scam   $C/*    current (bundled in $B/scam)
 #
 # Generated code will implicitly depend on a runtime, because the compiler's
 # code generation phase emits references to runtime functions.  When we
@@ -19,9 +18,9 @@
 # that should be called out:
 #
 #  1. $A/scam contains and uses the golden runtime.  However, code that IT
-#     GENERATES must use a current runtime.  This means that the `scam -x
-#     ...` cannot be supported by the a compiler, so we do not run those
-#     tests against the a compiler.
+#     GENERATES must use a current runtime.  As a result, it cannot call
+#     functions that it compiles itself, so it cannot cupport REPL mode or
+#     and exectuable macros.
 #
 #  2. In order to support `scam -o ...`, the a compiler must bundle a
 #     current runtime into the generated program ... NOT the one bundled
@@ -56,12 +55,6 @@ bok: $B.ok
 cok: $C.ok
 
 
-# Skip A and boot with bin/scam.  This works unless there has been a change
-# to runtime exports, module bundling, or numerous other things. :-)
-shortcut:
-	bin/scam -o .out/shortcut/scam scam.scm --boot
-
-
 # Replace the "golden" compiler with a newer one.
 promote: cok ; $(_@)cp $B/scam bin/scam
 
@@ -84,12 +77,24 @@ guard = ( $2 ) > /dev/null || (echo 'makefile:$(target-line): $@ failed:' && /bi
 
 build_message = @ printf '*** build $@\n' 
 
-# Remember that $A/scam and $B/scam are files under test, so catch it if
-# they write nothing at all.
+# It is not always necessary to keep $A/scam up to date with sources.  Any
+# working $A/scam will suffice for building $B/scam except after `make
+# promote`, or when `--boot` behavior has changed, or various other changes.
+# Type `make a` to update $A/scam to reflect source changes.
 
-$A/scam: *.scm bin/scam
+ifneq "" "$(filter a,$(MAKECMDGOALS))"
+$A/scam: *.scm
+endif
+
+
+# Remember that $A/scam and $B/scam are files under test, so we do
+# not implicitly trust them to overwrite the existing output file,
+# and so we delete the output file first.
+
+$A/scam: bin/scam
 	$(build_message)
 	bin/scam -o $@ scam.scm
+	touch $@
 
 $B/scam: *.scm $A.ok
 	$(build_message)
