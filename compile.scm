@@ -341,7 +341,7 @@
   (or (and (filter "%.scm" [name])
            (vec-or
             (for dir (cons source-dir path-dirs)
-                 (file-exists? (resolve-path dir name)))))
+                 (wildcard (resolve-path dir name)))))
       (and (not *is-boot*)
            (if (bound? (modid-var name))
                name))))

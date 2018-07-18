@@ -58,7 +58,7 @@
 
 
 (define (memo-playback key)
-  (let ((o (dict-get key (append *memo-cache* *memo-db*))))
+  (let ((o (dict-get key (concat *memo-cache* " " *memo-db*))))
     (case o
       ((Result v) o)
 
