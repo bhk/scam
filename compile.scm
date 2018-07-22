@@ -54,6 +54,9 @@
 ;; When non-nil, emit progress messages.
 (define *is-quiet* &public nil)
 
+;; Files currently being compiled (to check for cycles)
+(define *compiling* nil)
+
 
 ;; Display a progress message.
 ;;
@@ -62,11 +65,11 @@
       (write 2 (concat "... " action " " file "\n"))))
 
 
-(define (bail-if desc)
-  (if desc
+(define (bail-if message)
+  (if message
       (begin
         (memo-drop)
-        (fprintf 2 "scam: %s\n" desc)
+        (fprintf 2 "scam: %s\n" message)
         1)))
 
 
@@ -82,24 +85,13 @@
   (eval text))
 
 
-;; Return entries in vector V that do not appear in vector FLT.
-;; This may also be used to operation on dictionaries.
-;;
-(define (literal-filter-out flt v)
-  (if (findstring "%" flt)
-      ;; escaping would be expensive
-      (subst "!P" "%" (filter-out (subst "%" "!P" flt)
-                                  (subst "%" "!P" v)))
-      (filter-out flt v)))
-
-
 ;; Return transitive closure of a one-to-many relationship.
 ;; Ordering is per first ocurrence in a breadth-first search.
 ;;
 (define (descendants fn children ?out)
   (define `new-children
-    (literal-filter-out (concat children " " out)
-                        (fn (first children))))
+    (vec-subtract (fn (first children))
+                  (concat children " " out)))
 
   (if children
       (descendants fn (append (rest children) new-children)
@@ -532,6 +524,12 @@ SHELL:=/bin/bash
       text))
 
 
+(define `(check-cycle file)
+  (if (vec-intersect *compiling* [file])
+      (bail-if (concat "dependency loop: "
+                       (concat-vec (conj *compiling* file) " -> ")))))
+
+
 ;; Compile a SCAM source file and all ites dependencies.
 ;; On success, return nil.
 ;; On failure, display message and return 1.
@@ -543,33 +541,37 @@ SHELL:=/bin/bash
   (define `outfile (modid-file (module-id infile)))
   (define `imports (compile-prelude infile))
 
-  (build-message "compiling" infile)
+  (or
+   (check-cycle infile)
+   (let-global ((*compiling* (conj *compiling* infile)))
 
-  (let ((o (compile-text text imports infile outfile))
-        (infile infile)
-        (outfile outfile))
-    (define `errors (dict-get "errors" o))
-    (define `exe (dict-get "code" o))
-    (define `env-out (dict-get "env" o))
-    (define `reqs (dict-get "require" o))
+     (build-message "compiling" infile)
 
-    (if errors
-        ;; Error
-        (begin
-          (for e errors
-               (info (describe-error e text infile)))
-          (memo-drop)
-          1)
+     (let ((o (compile-text text imports infile outfile))
+           (infile infile)
+           (outfile outfile))
+       (define `errors (dict-get "errors" o))
+       (define `exe (dict-get "code" o))
+       (define `env-out (dict-get "env" o))
+       (define `reqs (dict-get "require" o))
 
-        ;; Success
-        (begin
-          (define `content
-            (concat "# Requires: " reqs "\n"
-                    (env-export-line env-out "p x")
-                    exe))
+       (if errors
+           ;; Error
+           (begin
+             (for e errors
+                  (info (describe-error e text infile)))
+             (memo-drop)
+             1)
 
-          (mkdir-p (dir outfile))
-          (bail-if (memo-write-file outfile content))))))
+           ;; Success
+           (begin
+             (define `content
+               (concat "# Requires: " reqs "\n"
+                       (env-export-line env-out "p x")
+                       exe))
+
+             (mkdir-p (dir outfile))
+             (bail-if (memo-write-file outfile content))))))))
 
 
 (define (compile-module infile)

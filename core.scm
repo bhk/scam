@@ -72,6 +72,31 @@
   &public
   (first (filter-out [""] vec)))
 
+
+(define (vec-filter fname pat v)
+  (if (findstring "%" pat)
+      ;; escaping would be expensive
+      (subst "!P" "%" (call fname (subst "%" "!P" pat)
+                                  (subst "%" "!P" v)))
+      (call fname pat v)))
+
+
+;; Return entries in vector A that also appear in vector B.
+;; This may also be used to operation on dictionaries.
+;;
+(define `(vec-intersect a b)
+  &public
+  (vec-filter "filter" b a))
+
+
+;; Return entries in vector A that do not appear in vector B.
+;; This may also be used to operation on dictionaries.
+;;
+(define `(vec-subtract a b)
+  &public
+  (vec-filter "filter-out" b a))
+
+
 (define (indices-b max len lst)
   (if (filter max len)
       len

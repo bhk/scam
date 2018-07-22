@@ -43,6 +43,11 @@
 (expect "1 2" (vec-or ["" "1 2" 3]))
 (expect "" (vec-or ["" "" "" ""]))
 
+(expect "a d" (vec-subtract "a b c d" "b c"))
+(expect "a d" (vec-subtract "a b c % d" "b c %"))
+
+(expect "a % a" (vec-intersect "a b % d a" "c % a"))
+
 (expect "" (indices ""))
 (expect [1 2 3] (indices "a b c"))
 

@@ -9,12 +9,6 @@
 
 (expect ["a" "" "b"] (skip-comments ["#Comment" "" "# comment 2" "a" "" "b"]))
 
-
-;; literal-filter-out
-
-(expect "a d" (literal-filter-out "b c" "a b c d"))
-(expect "a d" (literal-filter-out "b c %" "a b c % d"))
-
 ;; descendants
 
 (define `map {1:[2 3 4], 2:[5 4 3 6], 3: [4 7]})
