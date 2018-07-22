@@ -273,7 +273,9 @@
   (or (foreach
           w (word pos subj)
           (if (filter "\"" w)
-              (POut pos (PString start (promote (pdec-str wstr))))
+              ;; Note: wstr may contain embedded "!." sequences, so it is not
+              ;; properly vector-encoded (which `promote` expects).
+              (POut pos (PString start (promote (pdec-str (subst "!." "" wstr)))))
               ;; Note the odd escaping required for `\%` with filter.
               (if (filter "\\\\%" w)
                   (parse-string-bs subj start pos wstr w)

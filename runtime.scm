@@ -215,12 +215,12 @@ endef
 ;;--------------------------------------------------------------
 ;; Support for fundamental data types
 
-(define (apply a b) &public (^apply a b))
-(define (promote a) &public (^u a))
-(define (demote a)  &public (^d a))
-(define (nth a b)   &public (^n a b))
-(define (set-native a b ?c) &public (^set a b c))
-(define (set-native-fn a b ?c) &public (^fset a b c))
+(define `(apply a b) &public (^apply a b))
+(define `(promote a) &public (^u a))
+(define `(demote a)  &public (^d a))
+(define `(nth a b)   &public (^n a b))
+(define `(set-native a b ?c) &public (^set a b c))
+(define `(set-native-fn a b ?c) &public (^fset a b c))
 
 (define `nil &public "")
 
@@ -246,14 +246,14 @@ endef
   (nth-rest 3 vec))
 
 
-;; (bound? VAR) -> 1 if variable VAR is defined
+;; (bound? VAR-NAME) -> 1 if variable VAR-NAME is defined
 ;;
-;; Note that VAR must be a string that names the variable, not
+;; Note that VAR-NAME must be a string that names the variable, not
 ;; a quoted symbol: (bound? "map"), not (bound? 'map).
 ;;
-(define `(bound? var)
+(define `(bound? var-name)
   &public
-  (if (filter-out "u%" (flavor var)) 1))
+  (if (filter-out "u%" (flavor var-name)) 1))
 
 
 ;;--------------------------------------------------------------
