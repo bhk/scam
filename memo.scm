@@ -24,17 +24,14 @@
 
 
 (define *memo-on* nil)        ;; are we in a session?
+(define *memo-cache* nil)     ;; ephemeral (per-session) cache
 (define *memo-db* nil)        ;; persistent DB
 (define *memo-db-file* nil)   ;; currently-loaded file
 (define *memo-db-disk* nil)   ;; version currently in file
-(define *memo-tag* nil)       ;; next tag to use for DB entries
 (define *memo-key* nil)       ;; next key to assign (when recording)
-(define *memo-cache* nil)     ;; ephemeral (per-session) cache
-(define *memo-hashes* nil)
-
-
-(define (memo-db-add entry)
-  (set *memo-db* (append *memo-db* entry)))
+(define *memo-tag* nil)       ;; next tag to use for DB entries
+(define *memo-log* nil)       ;; DB entries for currently-recording function
+(define *memo-hashes* nil)    ;; hash results during the current session
 
 
 ;; The database key to use for a call initiation
@@ -71,36 +68,54 @@
       (else nil))))
 
 
+
+(define (memo-add-entry rec)
+  (set *memo-log* (append *memo-log* {=*memo-key*: rec})))
+
+
 (define (memo-record key fname args)
-  (let-global ((*memo-key* key))
+  (let-global ((*memo-key* key)
+               (*memo-log* nil))
     (let ((value (name-apply fname args))
           (key key))
       ;; Save the final DB entry for this recording session.
-      (memo-db-add {=*memo-key*: (Result value)})
+      (if *memo-key*
+          (begin
+            (memo-add-entry (Result value))
+            (set *memo-db* (append *memo-db* *memo-log*))))
       value)))
 
 
+(define (memo-drop)
+  &public
+  (set *memo-key* nil))
+
+
+;; Re-use an existing IO record, but ensure that it matches fname & args.
+;; Since all inputs to the recorded function have matched up to this point,
+;; the IO requested by the function must match (or else memoization is
+;; invalid).
+(define (get-io-tag io-record fname args)
+  (define `io-tag
+    (case io-record ((IO t _ _) t)))
+
+  (if io-record
+      (begin
+        (expect io-record (IO io-tag fname args))
+        io-tag)))
+
+
 (define (memo-log-io fname args result)
+  (define `prior-record
+    (dict-get *memo-key* *memo-db*))
+  (define `tag
+    (or (get-io-tag prior-record fname args)
+        (begin
+          (memo-add-entry (IO *memo-tag* fname args))
+          (set *memo-tag* (1+ *memo-tag*) *memo-tag*))))
+
   (if *memo-key*
-      (let ((result result)
-            (prior-entry (dict-get *memo-key* *memo-db*))
-            (fname fname)
-            (args args))
-        (define `tag
-          (if prior-entry
-              (let ((prior-tag (case prior-entry ((IO t _ _) t))))
-                ;; any existing entry should match
-                (if (not (eq? prior-entry (IO prior-tag fname args)))
-                    (begin
-                      (printf "prior entry = %q" prior-entry)
-                      (printf "    current = %q" (IO prior-tag fname args))
-                      (assert nil)))
-                prior-tag)
-              (begin
-                (define `entry {=*memo-key*: (IO *memo-tag* fname args)})
-                (memo-db-add entry)
-                (set *memo-tag* (1+ *memo-tag*) *memo-tag*))))
-        (set *memo-key* [tag result])))
+      (set *memo-key* [tag result]))
   result)
 
 
@@ -136,20 +151,23 @@
           value))))
 
 
-(define (memo-apply fname args)
-  (memo-log-call fname args (memo-do-apply fname args)))
-
-
-;; Call a function *or* return cached results.
+;; Call (FNAME ...ARGS), or return cached results.
 ;;
-(define (memo-call fname ...args)
+(define (memo-apply fname args)
   &public
   (if *memo-on*
-      (memo-apply fname args)
+      (memo-log-call fname args (memo-do-apply fname args))
       (begin
         ;; TODO: allow or forbid, don't warn
         (print "WARNING: memo-not-init: (" fname " " args ")")
         (name-apply fname args))))
+
+
+;; Call (FNAME ...ARGS), or return cached results.
+;;
+(define (memo-call fname ...args)
+  &public
+  (memo-apply fname args))
 
 
 ;;---------------------------------------------------------------

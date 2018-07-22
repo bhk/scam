@@ -323,6 +323,43 @@
 
 
 ;;----------------------------------------------------------------
+;; memo-drop
+;;----------------------------------------------------------------
+
+;; Assert: memo-drop prevents persistent caching but does not prevent
+;; ephemeral caching.
+
+(define (fn-drop flags)
+  (log "fn-drop")
+  (if (findstring 2 flags)
+      (memo-io (native-name lookup) 1))
+  (memo-drop)
+  (if (findstring 3 flags)
+      (memo-io (native-name lookup) 1))
+  flags)
+
+
+(reset-cache)
+(memo-session
+ (begin
+   ;; Drop without IO
+   (expect 1 (memo-call (native-name fn-drop) 1))
+   (expect 1 (memo-call (native-name fn-drop) 1))
+   (expect 1 (log-count "fn-drop"))
+   (expect 0 (words *memo-db*))
+   ;; Drop preceded by IO
+   (expect 2 (memo-call (native-name fn-drop) 2))
+   (expect 2 (memo-call (native-name fn-drop) 2))
+   (expect 2 (log-count "fn-drop"))
+   (expect 0 (words *memo-db*))
+   ;; Drop followed by IO
+   (expect 3 (memo-call (native-name fn-drop) 3))
+   (expect 3 (memo-call (native-name fn-drop) 3))
+   (expect 3 (log-count "fn-drop"))
+   (expect 0 (words *memo-db*))))
+
+
+;;----------------------------------------------------------------
 ;; File IO
 ;;----------------------------------------------------------------
 

@@ -38,7 +38,6 @@
 ;; value for error information.
 
 
-
 (begin
   ;; Load macros. We don't directly call these modules, but they register
   ;; functions called from gen0.
@@ -61,6 +60,14 @@
 (define (build-message action file)
   (or *is-quiet*
       (write 2 (concat "... " action " " file "\n"))))
+
+
+(define (bail-if desc)
+  (if desc
+      (begin
+        (memo-drop)
+        (fprintf 2 "scam: %s\n" desc)
+        1)))
 
 
 ;; Return the name of the DB file for caching compilation results.
@@ -526,10 +533,10 @@ SHELL:=/bin/bash
 
 
 ;; Compile a SCAM source file and all ites dependencies.
+;; On success, return nil.
+;; On failure, display message and return 1.
 ;;
 ;; INFILE = source file name (to be read)
-;;
-;; Returns: nil on success, error description on failure.
 ;;
 (define (do-compile-module infile)
   (define `text (trim-hashbang (memo-read-file infile)))
@@ -551,7 +558,8 @@ SHELL:=/bin/bash
         (begin
           (for e errors
                (info (describe-error e text infile)))
-          "compilation failed")
+          (memo-drop)
+          1)
 
         ;; Success
         (begin
@@ -561,16 +569,11 @@ SHELL:=/bin/bash
                     exe))
 
           (mkdir-p (dir outfile))
-          (memo-write-file outfile content)))))
+          (bail-if (memo-write-file outfile content))))))
 
 
 (define (compile-module infile)
   (memo-call (native-name do-compile-module) infile))
-
-
-(define (error-if desc)
-  (if desc
-      (error desc)))
 
 
 ;; Construct a bundled executable from a compiled module.
@@ -597,8 +600,8 @@ SHELL:=/bin/bash
   (define `exe-code
     (concat prologue bundles (epilogue main-id main-func)))
 
-  (memo-write-file exe-file exe-code)
-  (shell (concat "chmod +x " (quote-sh-arg exe-file))))
+  (or (bail-if (memo-write-file exe-file exe-code))
+      (bail-if (shell (concat "chmod +x " (quote-sh-arg exe-file))))))
 
 
 (define (link exe-file main-id)
@@ -626,6 +629,8 @@ SHELL:=/bin/bash
 
 
 ;; Compile a module and test it.
+;; On success, return nil.
+;; On failure, display message and return 1.
 ;;
 (define (do-compile-module-and-test src-file untested)
   (define `test-src (subst ".scm" "-q.scm" src-file))
@@ -638,7 +643,7 @@ SHELL:=/bin/bash
            (or (compile-module test-src)
                (link test-exe test-mod)
                (if (filter-out 0 (run test-exe))
-                   (error (concat test-src " failed")))))))
+                   (bail-if (concat test-src " failed")))))))
 
 
 (define (compile-module-and-test src-file untested)
@@ -647,6 +652,8 @@ SHELL:=/bin/bash
 
 
 ;; Compile a SCAM program.
+;; On success, return nil.
+;; On failure, display message and return 1.
 ;;
 ;; EXE-FILE = exectuable file to create
 ;; SRC-FILE = source file of the main module
@@ -658,10 +665,8 @@ SHELL:=/bin/bash
 
   (if (file-exists? src-file)
       (memo-on (compile-cache-file)
-               (begin
-                 (error-if (compile-module-and-test src-file nil))
-                 (link exe-file main-id)
-                 nil))
+               (or (compile-module-and-test src-file nil)
+                   (link exe-file main-id)))
       ;; file does not exist
       (begin
         (fprintf 2 "scam: file '%s' does not exist\n" src-file)
@@ -669,6 +674,8 @@ SHELL:=/bin/bash
 
 
 ;; Compile a program and then execute it.
+;; On success, return nil.
+;; On failure, display message and return 1.
 ;;
 (define (compile-and-run src-file argv)
   &public
