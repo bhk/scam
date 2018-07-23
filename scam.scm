@@ -38,7 +38,7 @@ Options:
   1)
 
 
-(define `version "1.4")
+(define `version "1.4x")
 
 
 (define (set-obj-dir obj-dir out-file)

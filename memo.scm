@@ -95,6 +95,7 @@
 ;; Since all inputs to the recorded function have matched up to this point,
 ;; the IO requested by the function must match (or else memoization is
 ;; invalid).
+;;
 (define (get-io-tag io-record fname args)
   (define `io-tag
     (case io-record ((IO t _ _) t)))
@@ -168,6 +169,28 @@
 (define (memo-call fname ...args)
   &public
   (memo-apply fname args))
+
+
+(define (blobify fname ...args)
+  (save-blob (dir *memo-db-file*) (name-apply fname args)))
+
+
+(define (read-blob name)
+  (read-file name))
+
+(memoize (native-name read-blob))
+
+
+;; Memoize a function call that might return a large amount of data.  The
+;; return value is stored as an blob, and only the blob paths are stored
+;; in the database.  We assume the blobs are retained as long as the DB
+;; file.
+;;
+(define (memo-blob-call fname ...args)
+  &public
+  (if *memo-on*
+      (read-blob (memo-apply (native-name blobify) (cons fname args)))
+      (name-apply fname args)))
 
 
 ;;---------------------------------------------------------------

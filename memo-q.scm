@@ -406,13 +406,6 @@
                  (memo-hash-file tmp-file)))))
 
 
-;; save-object
-
-;; Assert: save-object creates a file containing the specified data.
-(let ((h (save-object (assert (value "TEST_DIR")) "abc")))
-  (expect 16 (string-len (notdir h)))
-  (expect "abc" (strip (read-file h))))
-
 ;; memo-read-file
 
 (define tmpfile (concat (assert (value "TEST_DIR")) "memo-q-test"))

@@ -65,12 +65,14 @@
       (write 2 (concat "... " action " " file "\n"))))
 
 
+(define `(drop-if cond ?fail ?succ)
+  (if cond
+      (begin fail (memo-drop) 1)
+      (begin succ nil)))
+
+
 (define (bail-if message)
-  (if message
-      (begin
-        (memo-drop)
-        (fprintf 2 "scam: %s\n" message)
-        1)))
+  (drop-if message (fprintf 2 "scam: %s\n" message)))
 
 
 ;; Return the name of the DB file for caching compilation results.
@@ -333,7 +335,7 @@
 ;; SOURCE-DIR = directory containing the source file calling `require`
 ;; NAME = the literal string passed to "require"
 ;;
-(define (do-locate-module source-dir name)
+(define (locate-module source-dir name)
   (define `path-dirs
     (addsuffix "/" (split ":" (value "SCAM_LIBPATH"))))
 
@@ -350,10 +352,10 @@
 ;;  1. results will not change during a program invocation.
 ;;  2. it does not call memo-io or memo-call
 ;;
-(memoize (native-name do-locate-module))
+(memoize (native-name locate-module))
 
-(define (locate-module source-dir name)
-  (memo-io (native-name do-locate-module) source-dir name))
+(define (m-locate-module source-dir name)
+  (memo-io (native-name locate-module) source-dir name))
 
 
 ;; Skip initial comment lines.
@@ -411,7 +413,20 @@ SHELL:=/bin/bash
     1))
 
 
+;;----------------------------------------------------------------
+;; Module compilation
+;;----------------------------------------------------------------
+
+(declare (compile-module src-file))
 (declare (compile-module-and-test src-file is-test))
+
+(define `(m-compile-module infile)
+  (memo-call (native-name compile-module) infile))
+
+(define `(m-compile-module-and-test src-file untested)
+  (memo-on (compile-cache-file)
+           (memo-call (native-name compile-module-and-test) src-file untested)))
+
 
 
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
@@ -432,18 +447,18 @@ SHELL:=/bin/bash
 ;;
 (define (get-module name base private)
   &public
-  (let ((orgn (locate-module (dir base) name))
+  (let ((orgn (m-locate-module (dir base) name))
         (private private))
     (define `id (module-id orgn))
 
     (or (if (not orgn)
             (ModError (sprintf "cannot find %q" name)))
         (if (filter "%.scm" [orgn])
-            (if (compile-module-and-test orgn private)
+            (if (m-compile-module-and-test orgn private)
                 (ModError (sprintf "compilation of %q failed" orgn))
                 ;; success => nil => proceed to ordinary result
                 nil))
-        (let ((exports (modid-import id private))
+        (let ((exports (memo-blob-call (native-name modid-import) id private))
               (id id) (orgn orgn))
           (or (if (has-xmacro? exports)
                   (if *is-boot*
@@ -536,7 +551,7 @@ SHELL:=/bin/bash
 ;;
 ;; INFILE = source file name (to be read)
 ;;
-(define (do-compile-module infile)
+(define (compile-module infile)
   (define `text (trim-hashbang (memo-read-file infile)))
   (define `outfile (modid-file (module-id infile)))
   (define `imports (compile-prelude infile))
@@ -555,27 +570,21 @@ SHELL:=/bin/bash
        (define `env-out (dict-get "env" o))
        (define `reqs (dict-get "require" o))
 
-       (if errors
-           ;; Error
-           (begin
-             (for e errors
-                  (info (describe-error e text infile)))
-             (memo-drop)
-             1)
+       (drop-if
+        errors
+        ;; Error case
+        (for e errors
+             (info (describe-error e text infile)))
 
-           ;; Success
-           (begin
-             (define `content
-               (concat "# Requires: " reqs "\n"
-                       (env-export-line env-out "p x")
-                       exe))
+        ;; Success
+        (begin
+          (define `content
+            (concat "# Requires: " reqs "\n"
+                    (env-export-line env-out "p x")
+                    exe))
 
-             (mkdir-p (dir outfile))
-             (bail-if (memo-write-file outfile content))))))))
-
-
-(define (compile-module infile)
-  (memo-call (native-name do-compile-module) infile))
+          (mkdir-p (dir outfile))
+          (bail-if (memo-write-file outfile content))))))))
 
 
 ;; Construct a bundled executable from a compiled module.
@@ -584,7 +593,7 @@ SHELL:=/bin/bash
 ;; MAIN-ID = module ID for the main module (previously compiled, so that
 ;;     object files for it and its dependencies are available).
 ;;
-(define (do-link exe-file main-id)
+(define (link exe-file main-id)
   (build-message "linking" exe-file)
 
   (define `main-func (gen-native-name "main" nil))
@@ -606,51 +615,47 @@ SHELL:=/bin/bash
       (bail-if (shell (concat "chmod +x " (quote-sh-arg exe-file))))))
 
 
-(define (link exe-file main-id)
-  (memo-call (native-name do-link) exe-file main-id))
+(define (m-link exe-file main-id)
+  (memo-call (native-name link) exe-file main-id))
 
 
-(define (do-run exe)
+;; Link and run a test module.
+;; On success, return nil.
+;; On failure, return 1.
+;;
+(define (run-test exe mod)
   ;; ensure it begins with "./" or "/"
-  (build-message "running" exe)
+  (or (m-link exe mod)
+      (begin
+        (build-message "running" exe)
 
-  ;; track dependency for memoization
-  (memo-hash-file exe)
+        ;; track dependency for memoization
+        (memo-hash-file exe)
 
-  (define `cmd-name (concat (dir exe) (notdir exe)))
-  (define `cmd-line
-    (concat "TEST_DIR=" (quote-sh-arg *obj-dir*) " "
-            (quote-sh-arg cmd-name) " >&2 ;"
-            "echo \" $?\""))
+        (define `cmd-name (concat (dir exe) (notdir exe)))
+        (define `cmd-line
+          (concat "TEST_DIR=" (quote-sh-arg *obj-dir*) " "
+                  (quote-sh-arg cmd-name) " >&2 ;"
+                  "echo \" $?\""))
 
-  (lastword (logshell cmd-line)))
-
-
-(define (run exe)
-  (memo-call (native-name do-run) exe))
+        (drop-if (filter-out 0 (lastword (logshell cmd-line)))))))
 
 
 ;; Compile a module and test it.
 ;; On success, return nil.
 ;; On failure, display message and return 1.
 ;;
-(define (do-compile-module-and-test src-file untested)
+(define (compile-module-and-test src-file untested)
   (define `test-src (subst ".scm" "-q.scm" src-file))
   (define `test-mod (module-id test-src))
   (define `test-exe (basename (modid-file test-mod)))
 
-  (or (compile-module src-file)
+  (or (m-compile-module src-file)
       (and (not untested)
            (file-exists? test-src)
-           (or (compile-module test-src)
-               (link test-exe test-mod)
-               (if (filter-out 0 (run test-exe))
+           (or (m-compile-module test-src)
+               (if (memo-call (native-name run-test) test-exe test-mod)
                    (bail-if (concat test-src " failed")))))))
-
-
-(define (compile-module-and-test src-file untested)
-  (memo-on (compile-cache-file)
-           (memo-call (native-name do-compile-module-and-test) src-file untested)))
 
 
 ;; Compile a SCAM program.
@@ -667,8 +672,8 @@ SHELL:=/bin/bash
 
   (if (file-exists? src-file)
       (memo-on (compile-cache-file)
-               (or (compile-module-and-test src-file nil)
-                   (link exe-file main-id)))
+               (or (m-compile-module-and-test src-file nil)
+                   (m-link exe-file main-id)))
       ;; file does not exist
       (begin
         (fprintf 2 "scam: file '%s' does not exist\n" src-file)

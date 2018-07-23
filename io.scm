@@ -38,12 +38,6 @@
           "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/^$/!./'"))
 
 
-;; Convert a sequence of lines to text.
-;;
-(define (unwrap-text o)
-  (concat-vec (addsuffix "\n" o)))
-
-
 ;; Execute command CMD, returning data written to stdout.
 ;;
 ;; Unlike `shell`, which trims trailing newlines and then converts newlines
@@ -54,7 +48,7 @@
 ;;
 (define (shell! cmd)
   &public
-  (unwrap-text (logshell (concat "( " cmd " ) | " (wrap-filter)))))
+  (concat-vec (logshell (concat "( " cmd " ) | " (wrap-filter))) "\n"))
 
 
 ;; Construct a command line to echo STR.
@@ -140,14 +134,16 @@
                              " || rm " temp-arg " 2>&1"))))))
 
 
-;; Read contents of file FILENAME and return a vector of lines.
+;; Read contents of file FILENAME and return a vector of lines.  The number
+;; of elements in the resulting vector is one more than the number of
+;; newlines in the file.
+;;
+;; Return nil if the file is not readable.
 ;;
 (define (read-lines filename ?start ?end)
   &public
-  (if filename
-      (logshell (concat (wrap-filter start end) " "
-                        (quote-sh-file filename) " 2>/dev/null"))
-      (print "error: read-lines: nil filename")))
+  (logshell (concat "(( cat " (quote-sh-file filename) " && echo ) | "
+                    (wrap-filter start end) " ) 2>/dev/null")))
 
 
 ;; Read the contents of file FILENAME and return it as a string.
@@ -155,7 +151,7 @@
 (define (read-file filename)
   &public
   (if filename
-      (unwrap-text (read-lines filename))
+      (concat-vec (read-lines filename) "\n")
       (print "error: read-file: nil filename")))
 
 
@@ -224,7 +220,7 @@
 ;; Write DATA to a file in OBJ-DIR whose name is a function of DATA.
 ;; Returns the path to the new file.
 ;;
-(define (save-object obj-dir data)
+(define (save-blob obj-dir data)
   &public
   (define `templ (quote-sh-file (concat obj-dir "objtmp.XXXXXXXX")))
   (define `cmd

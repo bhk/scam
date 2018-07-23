@@ -7,7 +7,7 @@
 
 ;; shell!
 
-(expect "  \t \n \n"
+(expect "  \t \n "
         (shell! "echo $'  \\t \\n '"))
 
 ;; write
@@ -24,10 +24,10 @@
 
 (define `thisfile (lastword MAKEFILE_LIST))
 
-(expect " a\\b\n\t cX\n"
+(expect " a\\b\n\t cX"
         (let ((tmpfile (concat thisfile "-rwtest")))
           (expect nil (write-file tmpfile " a\\b\n\t c"))
-          (shell (concat "echo X >> " tmpfile))
+          (shell (concat "echo -n X >> " tmpfile))
           (read-file tmpfile)))
 
 (define `non-file (concat TMP_DIR "io-q-dir"))
@@ -45,9 +45,10 @@
     "4"
     ""
     ""
-    "7"])
+    "7"
+    ""])
 
-(define io-q (concat (concat-vec io-q-lines "\n") "\n"))
+(define io-q (concat-vec io-q-lines "\n"))
 
 (define `test-file (concat SOURCE_DIR "test/io-q.txt"))
 
@@ -77,6 +78,13 @@
 (define xyz2 (hash-file TMP_XYZ2))
 (expect (hash-files [TMP_XYZ TMP_XYZ2])
         { =TMP_XYZ: xyz, =TMP_XYZ2: xyz2 })
+
+;; blob functions
+
+(expect "" (read-file (save-blob TMP_DIR "")))
+(expect " x " (read-file (save-blob TMP_DIR " x ")))
+(expect "a\nx" (read-file (save-blob TMP_DIR "a\nx")))
+(expect "a\nb\n" (read-file (save-blob TMP_DIR "a\nb\n")))
 
 ;; clean-path
 
