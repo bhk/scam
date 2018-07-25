@@ -709,8 +709,8 @@ $(call ^add-tags,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
 ~memo-playback = $(call ^Y,$(call ~dict-get,$1,$(~*memo-cache*) $(~*memo-db*)),,,,,,,,,$`(if $`(filter !:PMDB0,$`(word 1,$`1)),$`1,$`(if $`(filter !:PMDB1,$`(word 1,$`1)),$`(call ~memo-playback,$`(call ^d,$`(call ^n,2,$`1)) $`(call ^d,$`(if $`(filter :%,$`(call ^n,3,$`1)),$`(call ~memo-do-apply,$`(patsubst :%,%,$`(call ^n,3,$`1)),$`(wordlist 4,99999999,$`1)),$`(call ~name-apply,$`(call ^n,3,$`1),$`(wordlist 4,99999999,$`1))))),)))
 ~memo-add-entry = $(call ^set,~*memo-log*,$(call ~append,$(~*memo-log*),$(call ^k,$(~*memo-key*))!=$(call ^d,$1)))
 ~memo-record = $(call ^set,~*memo-key*,$(call ^set,~*memo-key*,$1,$(~*memo-key*)),$(call ^set,~*memo-log*,$(call ^set,~*memo-log*,,$(~*memo-log*)),$(call ^Y,$(call ~name-apply,$2,$3),$1,,,,,,,,$`(and $`(if $`(~*memo-key*),$`(and $`(call ~memo-add-entry,!:PMDB0 $`(call ^d,$`1))1,$`(call ^set,~*memo-db*,$`(call ~append,$`(~*memo-db*),$`(~*memo-log*)))))1,$`1))))
-~memo-drop = $(call ^set,~*memo-key*,)
-~get-io-tag = $(if $1,$(and $(call ~expect-x,$1,!:PMDB1 $(call ^d,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))) $(call ^d,$2) $3,memo.scm:106)1,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))))
+~memo-drop = $(and $(call ^set,~*memo-key*,)1,$(call ~memo-save-session))
+~get-io-tag = $(if $1,$(and $(call ~expect-x,$1,!:PMDB1 $(call ^d,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))) $(call ^d,$2) $3,memo.scm:110)1,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))))
 ~memo-log-io = $(and $(if $(~*memo-key*),$(call ^set,~*memo-key*,$(call ^d,$(or $(call ~get-io-tag,$(call ~dict-get,$(~*memo-key*),$(~*memo-db*)),$1,$2),$(and $(call ~memo-add-entry,!:PMDB1 $(call ^d,$(~*memo-tag*)) $(call ^d,$1) $2)1,$(call ^set,~*memo-tag*,$(call ~1+,$(~*memo-tag*)),$(~*memo-tag*))))) $(call ^d,$3)))1,$3)
 ~memo-io = $(call ~memo-log-io,$1,$(foreach N,2,$(^v)),$(call ~name-apply,$1,$(foreach N,2,$(^v))))
 ~memo-do-apply = $(call ^Y,$(call ~dict-find,$1 $2,$(~*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ^n,2,$`(subst !=, ,$`1)),$`(call ^Y,$`(call ^Y,$`(call ~memo-playback,$`2 $`3),$`2,$`3,,,,,,,$``(if $``(filter !:PMDB0,$``(word 1,$``1)),$``(call ^n,2,$``1),$``(call ~memo-record,$``2 $``3,$``2,$``3))),$`2 $`3,,,,,,,,$``(and $``(call ^set,~*memo-cache*,$``(call ~append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(~*memo-cache*)))1,$``1))))
@@ -720,18 +720,19 @@ $(call ^add-tags,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
 ~read-blob = $(call ~read-file,$1)
 $(if $(call ~memoize,~read-blob),)
 ~memo-blob-call = $(if $(~*memo-on*),$(call ~read-blob,$(call ~memo-apply,~blobify,$(call ~cons,$1,$(foreach N,2,$(^v))))),$(call ~name-apply,$1,$(foreach N,2,$(^v))))
+define ~memo-save-session
+$(if $(if $(call ~eq?,$(~*memo-db*),$(~*memo-db-disk*)),,1),$(and $(call ~expect-x,,$(call ~write-file,$(~*memo-db-file*),$(~*memo-tag*)
+$(subst !0, ,$(subst $  ,
+,$(subst 
+,!n,$(~*memo-db*))))
+),memo.scm:235)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))
+endef
 define ~memo-start-session
 $(and $(call ^set,~*memo-on*,1)1,$(if $(if $(call ~eq?,$(~*memo-db-file*),$1),,1),$(and $(call ^set,~*memo-db-file*,$1)1,$(call ^set,~*memo-db*,$(filter %,$(subst !n,
 ,$(subst 
 , ,$(subst $  ,!0,$(call ~read-file,$1))))))1,$(call ^set,~*memo-tag*,$(or $(word 1,$(~*memo-db*)),0))1,$(call ^set,~*memo-db*,$(wordlist 2,99999999,$(~*memo-db*)))1,$(call ^set,~*memo-db-disk*,$(~*memo-db*)))))
 endef
-define ~memo-minus
-$(and $(if $1,$(and $(call ^set,~*memo-on*,)1,$(call ^set,~*memo-cache*,)1,$(call ^set,~*memo-hashes*,)1,$(if $(if $(call ~eq?,$(~*memo-db*),$(~*memo-db-disk*)),,1),$(and $(call ~expect-x,,$(call ~write-file,$(~*memo-db-file*),$(~*memo-tag*)
-$(subst !0, ,$(subst $  ,
-,$(subst 
-,!n,$(~*memo-db*))))
-),memo.scm:254)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))))1,$2)
-endef
+~memo-minus = $(and $(if $1,$(and $(call ^set,~*memo-on*,)1,$(call ^set,~*memo-cache*,)1,$(call ^set,~*memo-hashes*,)1,$(call ~memo-save-session)))1,$2)
 ~hash-add = $(call ^set,~*memo-hashes*,$(call ~append,$(~*memo-hashes*),$1))
 ~do-memo-hash-file = $(if $(~*memo-on*),$(call ^n,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ^n,2,$(subst !=, ,$(pair))))),$(if $(call ~eq?,$(call ^n,3,$(call ^n,2,$(subst !=, ,$(pair)))),~do-memo-hash-file),$(word 1,$(wordlist 4,99999999,$(call ^n,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
 ~memo-hash-file = $(call ~memo-io,~do-memo-hash-file,$1)

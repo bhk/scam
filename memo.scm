@@ -33,7 +33,10 @@
 (define *memo-log* nil)       ;; DB entries for currently-recording function
 (define *memo-hashes* nil)    ;; hash results during the current session
 
+
 (declare (memo-mkdir-p dir))
+(declare (memo-save-session))
+
 
 ;; The database key to use for a call initiation
 (define `(call-key fname args)
@@ -89,7 +92,8 @@
 
 (define (memo-drop)
   &public
-  (set *memo-key* nil))
+  (set *memo-key* nil)
+  (memo-save-session))
 
 
 ;; Re-use an existing IO record, but ensure that it matches fname & args.
@@ -226,6 +230,11 @@
   (set *memo-db-disk* *memo-db*))
 
 
+(define (memo-save-session)
+  (if (not (eq? *memo-db* *memo-db-disk*))
+      (memo-write-db)))
+
+
 (define (memo-start-session dbfile)
   (set *memo-on* 1)
   (if (not (eq? *memo-db-file* dbfile))
@@ -237,8 +246,7 @@
   (set *memo-on* nil)
   (set *memo-cache* nil)
   (set *memo-hashes* nil)
-  (if (not (eq? *memo-db* *memo-db-disk*))
-      (memo-write-db)))
+  (memo-save-session))
 
 
 (define `(memo-plus dbfile)
