@@ -7,7 +7,8 @@
 
 ;; strip-comments
 
-(expect ["a" "" "b"] (skip-comments ["#Comment" "" "# comment 2" "a" "" "b"]))
+(expect ["a" "" "b"] (skip-comments ["#Comment" "" "# comment 2" "a" "" "b"] nil))
+(expect ["# comment 2" "a" "" "b"] (skip-comments ["#Comment" "" "# comment 2" "a" "" "b"] ["# c%"]))
 
 ;; descendants
 
@@ -26,16 +27,16 @@
     q: (EFunc "Q" "p" 1 nil) })
 
 ;; no imports to trim
-(expect (env-filter-scope mod-A-env "x p")
-        mod-A-env)
+;;(expect (env-filter-scope mod-A-env "x p")
+;;        mod-A-env)
 
 ;; reconstruct A (include)
-(expect (env-strip-imports mod-A-env 1)
-        mod-A-env)
+;;(expect (env-strip-imports mod-A-env 1)
+;;        mod-A-env)
 
 ;; get public bindinds (import)
-(fexpect (env-strip-imports mod-A-env nil)
-         {g: (EFunc "F" "i" 1 nil)})
+;;(fexpect (env-strip-imports mod-A-env nil)
+;;         {g: (EFunc "F" "i" 1 nil)})
 
 
 ;; env-compress
@@ -56,50 +57,47 @@
 
 ;; import only public members
 
-(fexpect (import-binding "f" (EFunc "F" "x" 2 nil))
-         {f: (EFunc "F" "i" 2 nil)})
+;;(fexpect (import-binding "f" (EFunc "F" "x" 2 nil))
+;;         {f: (EFunc "F" "i" 2 nil)})
 
-(fexpect (import-binding "f" (EFunc "F" "p" 2 nil))
-         nil)
-
-
-(define (export-round-trip env flag)
-  (env-strip-imports
-   (env-parse [ "# comment"
-                (subst "\n" "" (env-export-line env "p x"))
-                "# F F F F F F"])
-   flag))
+;;(fexpect (import-binding "f" (EFunc "F" "p" 2 nil))
+;;         nil)
 
 
-(fexpect (export-round-trip
-          { f: (EFunc "f" "x" 2 nil),
-            x: (EVar "X" "x"),
-            a: (EFunc "fa" "x" 2 ["a b" (IVar "a")]),
-            g: (EFunc "g" "p" 1 nil),  ;; private
-            g: (EFunc "g" "i" 1 nil),  ;; imported
-            m: (EIL "" "x" NoOp),
-            "a:n\n,x": (EVar "xyz" "x") }
-          nil)
+(define (export-round-trip env all)
+  (env-parse (split "\n"
+                    (concat "# comment\n" (env-export-lines env) "# f f f\n"))
+             all))
 
+(define e1
+  { f: (EFunc "f" "x" 2 nil),
+       x: (EVar "X" "x"),
+       a: (EFunc "fa" "x" 2 ["a b" (IVar "a")]),
+       g: (EFunc "g" "p" 1 nil),  ;; private
+       g: (EFunc "g" "i" 1 nil),  ;; imported, shadowed
+       z: (EFunc "z" "i" 1 nil),  ;; imported
+       m: (EIL "" "x" NoOp),
+       "a:n\n,x": (EVar "xyz" "x") })
+
+;; import public members
+(fexpect (export-round-trip e1 nil)
          { f: (EFunc "f" "i" 2 nil),
            x: (EVar "X" "i"),
            a: (EFunc "fa" "i" 2 ["a b" (IVar "a")]),
            m: (EIL "" "i" NoOp),
-           "a:n\n,x": (EVar "xyz" "i")} )
-
+           "a:n\n,x": (EVar "xyz" "i")})
 
 ;; import public AND private members
-
-(define mod-C-env
-  { f: (EFunc "f" "x" 2 nil),
-       x: (EVar "X" "x"),
-       ;; other definitions in this module
-       g: (EFunc "g" "p" 1 nil),  ;; private
-       "a:n\n,x": (EVar "xyz" "x")
-       })
-
-(fexpect (export-round-trip mod-C-env 1)
-         mod-C-env)
+;;   Only ony definition for `g` is retained because the dictionary is compacted.
+;;   Public members preceded private members.
+;;   All entries are marked scope="i"
+(fexpect (export-round-trip e1 1)
+         { f: (EFunc "f" "i" 2 nil),
+           x: (EVar "X" "i"),
+           a: (EFunc "fa" "i" 2 ["a b" (IVar "a")]),
+           m: (EIL "" "i" NoOp),
+           "a:n\n,x": (EVar "xyz" "i"),
+           g: (EFunc "g" "i" 1 nil)})
 
 
 ;;--------------------------------------------------------------

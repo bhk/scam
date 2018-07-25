@@ -116,7 +116,7 @@
 (TE "x), (a")
 (TE " a ")
 
-;; misc. macros
+;; misc. macros and functions
 
 (expect "" nil)
 
@@ -133,6 +133,9 @@
 (expect "b c" (rest "a   b c  "))
 
 (expect "3 4" (rrest "1 2 3 4"))
+
+(expect "bbc bhi" (filtersub "a%" "b%" "abc def ahi"))
+
 
 ;; atexits
 

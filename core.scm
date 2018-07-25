@@ -245,13 +245,6 @@
   (numeric? (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
 
 
-;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
-;;
-(define `(filtersub pat repl str)
-  &public
-  (patsubst pat repl (filter pat str)))
-
-
 ;; Join one or more (potentially empty) vectors, word lists, or
 ;; dictionaries.
 ;;

@@ -136,10 +136,10 @@
          "\\" "\\1" "," ";," "`" ":IL0" "'" ":IL2" "<" ":IL3" ">" ":IL4"
          "[" "\\0" "]" ",0" "|" ",11" "@" "111" "{" ",10" "}" "!=\\:EDefn"
          "#" "#1;~%;" "\"" "#1;:;" "&" " ml.special-" "(" "\"p;" ")" ")1 "
-         "+" "\"x;" "_" s))
+         "+" "\"i;" "_" s))
 
 (define (env-exp s)
-  (subst "_" "\"x;" "+" ")1 " ")" "\"p;" "(" " ml.special-" "&" "#1;:;" "\""
+  (subst "_" "\"i;" "+" ")1 " ")" "\"p;" "(" " ml.special-" "&" "#1;:;" "\""
          "#1;~%;" "#" "!=\\:EDefn" "}" ",10" "{" "111" "@" ",11" "|" ",0" "]"
          "\\0" "[" ":IL4" ">" ":IL3" "<" ":IL2" "'" ":IL0" "`" ";," ","
          "\\1" "\\" "!1" ";" "!0" "!T" "_" "!S" "+" "!R" ")" "!Q" "(" "!P" "&"
@@ -181,66 +181,48 @@
 
 ;; Recover an environment value produced by env-compress.
 ;;
-(define (env-expand str)
+(define `(env-expand str)
    (subst "!n" "\n"
+
+
+
+
           (detokenize-key
            (env-exp str))))
-
-
-(define (import-binding key defn)
-  (define `(EDefn.set-scope defn scope)
-    (append (wordlist 1 2 defn)
-            scope
-            (nth-rest 4 defn)))
-
-  (define `scope (word 3 defn))
-
-  (if (filter "x" scope)
-      {=key: (EDefn.set-scope defn "i")}))
-
-
-;; Import bindings from another module. Return an environment.
-;;
-;; ENV = env containing exported bindings
-;; ALL = whether to return all bindings.
-;;    If true, return the final environment of the module.
-;;    If false, return only public bindings from the final env.
-;;
-(define (env-strip-imports env all)
-  (if all
-      ;; Add all symbols, public and private.
-      env
-      ;; Add only public symbols.
-      (strip-vec
-       (foreach b env
-                (import-binding (dict-key b) (dict-value b))))))
-
-
-;; Filter bindings by scope.
-;;
-;; ENV = the final environment of the module
-;; SCOPES = "x" for public bindings only; "p x" for private and public
-;;
-(define (env-filter-scope env scopes)
-  (strip-vec
-   (foreach b env
-            (if (filter scopes (EDefn.scope (dict-value b)))
-                b))))
-
-
-;; Generate "exports" comment line for MIN file
-;; SCOPE = see env-filter-scope
-;;
-(define (env-export-line env scope)
-  (concat "# Exports: " (env-compress (env-filter-scope env scope)) "\n"))
 
 
 ;; Return all bindings exported from a MIN file.  The keys of non-public
 ;; entries are prefixed with "(".
 ;;
-(define (env-parse lines)
+(define `(env-parse lines all)
   (subst "!n" "\n"
-         (env-expand (first (filtersub ["# Exports: %"] "%" lines)))))
+         (env-expand
+          (foreach prefix (append "Exports" (if all "Private"))
+                   (promote (filtersub (concat ["# "] prefix [": %"])
+                                       "%" lines))))))
+
+
+(define (export-defn name rec)
+  (define `(EDefn.set-scope rec scope)
+    (append (wordlist 1 2 rec) scope (nth-rest 4 rec)))
+
+  (concat (EDefn.scope rec) ":"
+          {=name: (EDefn.set-scope rec "i")}))
+
+
+;; Generate two comment lines that describe public and private bindings.
+;;
+(define (env-export-lines env)
+  ;; Prefix each entry with its scope (e.g. "x:..." or "p:...")
+  ;; and replace the scope with "i".
+  (define `(prefix-entries e)
+    (filter "p:% x:%"
+            (foreach b (dict-compact e)
+                     (export-defn (dict-key b) (dict-value b)))))
+
+  (let ((e (prefix-entries env)))
+    (concat "# Exports: " (env-compress (filtersub "x:%" "%" e)) "\n"
+            "# Private: " (env-compress (filtersub "p:%" "%" e)) "\n")))
 
 
 ;;--------------------------------------------------------------
@@ -311,8 +293,7 @@
 ;; Return the environment exported from a module, given its ID.
 ;;
 (define (modid-import id all)
-  (env-strip-imports (env-parse (modid-read-lines id 4))
-                     all))
+  (env-parse (modid-read-lines id 4) all))
 
 
 ;; Construct the ID corresponding to a module origin.
@@ -322,10 +303,6 @@
     (if *is-boot*
         (basename e)
         e)))
-
-
-(define (module-object-file orgn)
-  (modid-file (module-id orgn)))
 
 
 ;; Get the "origin" of the module.  This is either the path of a SCAM
@@ -358,28 +335,27 @@
   (memo-io (native-name locate-module) source-dir name))
 
 
-;; Skip initial comment lines.
+;; Skip initial comment lines, retaining comment lines that match
+;; the pattern RETAIN-PAT.
 ;;
-(define (skip-comments lines)
+(define (skip-comments lines retain-pat)
   (if (filter ["#%" ""] (word 1 lines))
-      (skip-comments (rest lines))
+      (append (filter retain-pat (word 1 lines))
+              (skip-comments (rest lines) retain-pat))
       lines))
 
 
 ;; Construct a bundle for a compiled module.
 ;;
 (define (construct-bundle id keep-syms)
-  (let ((lines (modid-read-lines id))
-        (var (modid-var id))
-        (keep-syms keep-syms))
-    (define `headers (wordlist 1 4 lines))
-    (define `env (env-parse headers))
-    (define `req (concat (first (filter ["# Req%"] headers)) "\n"))
-    (concat "\ndefine " var "\n"
-            (if keep-syms
-                (concat req (env-export-line env "x")))
-            (concat-vec (skip-comments lines) "\n")
-            "\nendef\n")))
+  (define `body
+    (skip-comments (modid-read-lines id)
+                   (if keep-syms
+                       ["# Req%" "# Exp%"])))
+
+  (concat "\ndefine " (modid-var id) "\n"
+          (concat-vec body "\n") "\n"
+          "endef\n"))
 
 
 ;; This preamble makes the resulting file both a valid shell script and a
@@ -580,7 +556,7 @@ SHELL:=/bin/bash
         (begin
           (define `content
             (concat "# Requires: " reqs "\n"
-                    (env-export-line env-out "p x")
+                    (env-export-lines env-out)
                     exe))
 
           (mkdir-p (dir outfile))
@@ -688,7 +664,7 @@ SHELL:=/bin/bash
   &public
 
   (define `exe-file
-    (basename (module-object-file src-file)))
+    (basename (modid-file (module-id src-file))))
 
   ;; Option 1: link and run via rule
 

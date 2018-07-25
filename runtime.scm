@@ -213,7 +213,7 @@ endef
           ")")))
 
 ;;--------------------------------------------------------------
-;; Support for fundamental data types
+;; Support for fundamental data types, and utility functions
 
 (define `(apply a b) &public (^apply a b))
 (define `(promote a) &public (^u a))
@@ -254,6 +254,13 @@ endef
 (define `(bound? var-name)
   &public
   (if (filter-out "u%" (flavor var-name)) 1))
+
+
+;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
+;;
+(define (filtersub pat repl str)
+  &public
+  (patsubst pat repl (filter pat str)))
 
 
 ;;--------------------------------------------------------------
@@ -326,10 +333,6 @@ endef
 
 (define (trace-info a ?b ?c ?d)
   (info (concat "TRACE: " a b c d)))
-
-
-(define `(filtersub pat-match pat-repl list)
-  (patsubst pat-match pat-repl (filter pat-match list)))
 
 
 ;; Initialize count variables to this representation of 0.
