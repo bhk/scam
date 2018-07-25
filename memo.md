@@ -143,6 +143,20 @@ session will return immediately without re-validation of IO.
     caching is the avoidance of IO re-validation during a session.
 
 
+### Proxy IO Operations
+
+Since `read-file` may have very large return values, and `write-file` may
+have very large input values, treating them as IO dependencies in the most
+straightforward manner (as described above) would result in a very large
+persistent memoization database.
+
+Instead, we rely on `hash-file` as a proxy for these operations.  The
+reasoning is that if `hash-file` returns the same value on replay, then
+`read-file` would return the same value on replay.  Likewise, if `hash-file`
+returns the same value as earlier (after a `write-file` operation), then the
+`write-file` results are still valid.
+
+
 ### Dropping Memoization
 
 A memoized function may choose to "drop" memoization for the current call.

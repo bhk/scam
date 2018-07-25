@@ -330,7 +330,7 @@ $(call ~concat-vec,$(wordlist 2,99999999,$(call ~split,
 ),$1)
 endef
 define ~compile-module
-$(or $(if $(call ~vec-filter,filter,$(call ^d,$1),$(~*compiling*)),$(call ~bail-if,dependency loop: $(call ~concat-vec,$(call ~conj,$(~*compiling*),$1), -> ))),$(call ^set,~*compiling*,$(call ^set,~*compiling*,$(call ~conj,$(~*compiling*),$1),$(~*compiling*)),$(and $(call ~build-message,compiling,$1)1,$(call ^Y,$(call ~compile-text,$(call ~trim-hashbang,$(call ~memo-read-file,$1)),$(call ~compile-prelude,$1),$1,$(call ~modid-file,$(call ~module-id,$1))),$1,$(call ~modid-file,$(call ~module-id,$1)),,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach e,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`e),$`(call ~trim-hashbang,$`(call ~memo-read-file,$(call ^E,$1))),$`2))))1,$`(call ~memo-drop)1,1),$`(and $`(and $`(call ~mkdir-p,$`(dir $`3))1,$`(call ~bail-if,$`(call ~memo-write-file,$`3,# Requires: $`(call ~dict-get,require,$`1)
+$(or $(if $(call ~vec-filter,filter,$(call ^d,$1),$(~*compiling*)),$(call ~bail-if,dependency loop: $(call ~concat-vec,$(call ~conj,$(~*compiling*),$1), -> ))),$(call ^set,~*compiling*,$(call ^set,~*compiling*,$(call ~conj,$(~*compiling*),$1),$(~*compiling*)),$(and $(call ~build-message,compiling,$1)1,$(call ^Y,$(call ~compile-text,$(call ~trim-hashbang,$(call ~memo-read-file,$1)),$(call ~compile-prelude,$1),$1,$(call ~modid-file,$(call ~module-id,$1))),$1,$(call ~modid-file,$(call ~module-id,$1)),,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach e,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`e),$`(call ~trim-hashbang,$`(call ~memo-read-file,$(call ^E,$1))),$`2))))1,$`(call ~memo-drop)1,1),$`(and $`(and $`(call ~memo-call,~memo-mkdir-p,$`(dir $`3))1,$`(call ~bail-if,$`(call ~memo-write-file,$`3,# Requires: $`(call ~dict-get,require,$`1)
 $`(call ~env-export-lines,$`(call ~dict-get,env,$`1))$`(call ~dict-get,code,$`1))))1,))))))
 endef
 define ~link
@@ -692,7 +692,7 @@ endef
 
 define [mod-memo]
 # Requires: core io string
-# Exports: memo-write-file_2 memo-read-file_1 memo-hash-file_1 memo-on&i;2;\.;\>;~memo-minus`<]if],1:IL1|~*%*],1'|,1.],1:IL7|@>}~memo-start-session}@1[@01@00|@'}1`[]2]0 memo-blob-call_1]or]more memo-call_1]or]more memo-apply_2 memo-io_1]or]more memo-drop_0
+# Exports: memo-mkdir-p_1 memo-write-file_2 memo-read-file_1 memo-hash-file_1 memo-on&i;2;\.;\>;~memo-minus`<]if],1:IL1|~*%*],1'|,1.],1:IL7|@>}~memo-start-session}@1[@01@00|@'}1`[]2]0 memo-blob-call_1]or]more memo-call_1]or]more memo-apply_2 memo-io_1]or]more memo-drop_0
 $(call ^require,core)
 $(call ^require,io)
 $(call ^require,string)
@@ -710,13 +710,13 @@ $(call ^add-tags,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
 ~memo-add-entry = $(call ^set,~*memo-log*,$(call ~append,$(~*memo-log*),$(call ^k,$(~*memo-key*))!=$(call ^d,$1)))
 ~memo-record = $(call ^set,~*memo-key*,$(call ^set,~*memo-key*,$1,$(~*memo-key*)),$(call ^set,~*memo-log*,$(call ^set,~*memo-log*,,$(~*memo-log*)),$(call ^Y,$(call ~name-apply,$2,$3),$1,,,,,,,,$`(and $`(if $`(~*memo-key*),$`(and $`(call ~memo-add-entry,!:PMDB0 $`(call ^d,$`1))1,$`(call ^set,~*memo-db*,$`(call ~append,$`(~*memo-db*),$`(~*memo-log*)))))1,$`1))))
 ~memo-drop = $(call ^set,~*memo-key*,)
-~get-io-tag = $(if $1,$(and $(call ~expect-x,$1,!:PMDB1 $(call ^d,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))) $(call ^d,$2) $3,memo.scm:105)1,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))))
+~get-io-tag = $(if $1,$(and $(call ~expect-x,$1,!:PMDB1 $(call ^d,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))) $(call ^d,$2) $3,memo.scm:106)1,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1))))
 ~memo-log-io = $(and $(if $(~*memo-key*),$(call ^set,~*memo-key*,$(call ^d,$(or $(call ~get-io-tag,$(call ~dict-get,$(~*memo-key*),$(~*memo-db*)),$1,$2),$(and $(call ~memo-add-entry,!:PMDB1 $(call ^d,$(~*memo-tag*)) $(call ^d,$1) $2)1,$(call ^set,~*memo-tag*,$(call ~1+,$(~*memo-tag*)),$(~*memo-tag*))))) $(call ^d,$3)))1,$3)
 ~memo-io = $(call ~memo-log-io,$1,$(foreach N,2,$(^v)),$(call ~name-apply,$1,$(foreach N,2,$(^v))))
 ~memo-do-apply = $(call ^Y,$(call ~dict-find,$1 $2,$(~*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ^n,2,$`(subst !=, ,$`1)),$`(call ^Y,$`(call ^Y,$`(call ~memo-playback,$`2 $`3),$`2,$`3,,,,,,,$``(if $``(filter !:PMDB0,$``(word 1,$``1)),$``(call ^n,2,$``1),$``(call ~memo-record,$``2 $``3,$``2,$``3))),$`2 $`3,,,,,,,,$``(and $``(call ^set,~*memo-cache*,$``(call ~append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(~*memo-cache*)))1,$``1))))
 ~memo-apply = $(if $(~*memo-on*),$(call ~memo-log-io,:$1,$2,$(call ~memo-do-apply,$1,$2)),$(and $(info WARNING: memo-not-init: ($1 $2))1,$(call ~name-apply,$1,$2)))
 ~memo-call = $(call ~memo-apply,$1,$(foreach N,2,$(^v)))
-~blobify = $(call ~save-blob,$(dir $(~*memo-db-file*)),$(call ~name-apply,$1,$(foreach N,2,$(^v))))
+~blobify = $(and $(call ~memo-call,~memo-mkdir-p,$(dir $(~*memo-db-file*)))1,$(call ~save-blob,$(dir $(~*memo-db-file*)),$(call ~name-apply,$1,$(foreach N,2,$(^v)))))
 ~read-blob = $(call ~read-file,$1)
 $(if $(call ~memoize,~read-blob),)
 ~memo-blob-call = $(if $(~*memo-on*),$(call ~read-blob,$(call ~memo-apply,~blobify,$(call ~cons,$1,$(foreach N,2,$(^v))))),$(call ~name-apply,$1,$(foreach N,2,$(^v))))
@@ -730,13 +730,14 @@ $(and $(if $1,$(and $(call ^set,~*memo-on*,)1,$(call ^set,~*memo-cache*,)1,$(cal
 $(subst !0, ,$(subst $  ,
 ,$(subst 
 ,!n,$(~*memo-db*))))
-),memo.scm:250)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))))1,$2)
+),memo.scm:254)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))))1,$2)
 endef
 ~hash-add = $(call ^set,~*memo-hashes*,$(call ~append,$(~*memo-hashes*),$1))
 ~do-memo-hash-file = $(if $(~*memo-on*),$(call ^n,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ^n,2,$(subst !=, ,$(pair))))),$(if $(call ~eq?,$(call ^n,3,$(call ^n,2,$(subst !=, ,$(pair)))),~do-memo-hash-file),$(word 1,$(wordlist 4,99999999,$(call ^n,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
 ~memo-hash-file = $(call ~memo-io,~do-memo-hash-file,$1)
 ~memo-read-file = $(and $(call ~memo-hash-file,$1)1,$(call ~read-file,$1))
 ~memo-write-file = $(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$1,$(~*memo-hashes*)))1,$(call ^Y,$(call ~write-file,$1,$2),$1,,,,,,,,$`(and $`(call ~memo-hash-file,$`2)1,$`1)))
+~memo-mkdir-p = $(call ~memo-io,~mkdir-p,$1)
 
 endef
 

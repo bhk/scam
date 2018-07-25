@@ -33,6 +33,7 @@
 (define *memo-log* nil)       ;; DB entries for currently-recording function
 (define *memo-hashes* nil)    ;; hash results during the current session
 
+(declare (memo-mkdir-p dir))
 
 ;; The database key to use for a call initiation
 (define `(call-key fname args)
@@ -171,7 +172,10 @@
   (memo-apply fname args))
 
 
+;; Store the result of (FNAME ...ARGS) in a BLOB and return the BLOB name.
+;;
 (define (blobify fname ...args)
+  (memo-call (native-name memo-mkdir-p) (dir *memo-db-file*))
   (save-blob (dir *memo-db-file*) (name-apply fname args)))
 
 
@@ -319,3 +323,10 @@
         (filename filename))
     (memo-hash-file filename)
     result))
+
+
+;; Create directory DIR, logging the operation as a dependency.
+;;
+(define (memo-mkdir-p dir)
+  &public
+  (memo-io (native-name mkdir-p) dir))
