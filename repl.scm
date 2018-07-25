@@ -120,7 +120,7 @@
         (state state))
 
     (define `(typed str)
-      (eq? line (concat str "\n")))
+      (eq? (strip line) str))
 
     (cond ((typed "?")    (begin (help) state))
           ((typed ":")    ["" env]) ; reset input state

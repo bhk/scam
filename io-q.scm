@@ -7,8 +7,11 @@
 
 ;; shell!
 
-(expect "  \t \n "
-        (shell! "echo $'  \\t \\n '"))
+(expect "" (shell! "false"))
+(expect "\n" (shell! "echo"))
+;; When using sed we cannot distinguish between a line ending in newline and
+;; one not ending in newline:
+(expect "  \t \n \n" (shell! "echo $'  \\t \\n '"))
 
 ;; write
 

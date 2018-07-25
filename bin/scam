@@ -111,8 +111,7 @@ endef
 
 define [mod-core]
 # Requires: 
-# Exports: intersperse_2 foldr_3 foldl_3 index-of_2 assoc&i;2;\.;\>;~%-initial`<]subst],1'|@],1'|@1],1>|^d|@[}1}0`[]2]0 assoc-vec&i;2;\.;\>;~assoc-initial`>]^d],1[|1|0`[]2]0 assoc-initial_2 sort-by_2 memoize_1 1!S_1 split_2 uniq_1 see_2 fexpect&i;2;\.;\>;~expect-x`>]~format],1[|1|0`>]~format],1[|2|0`:IL9]4535 assert&i;1;\.;\>;~%-x`[]1]0`:IL9]4486 expect&i;2;\.;\>;~%-x`[]1]0`[]2]0`:IL9]4419 expect-x_3 printf_1]or]more sprintf_1]or]more vsprintf_2 format_1 format-add_1 dict-collate_1 dict-values_1 dict-keys_1 dict-compact_1]or]2 dict-set_3 dict-remove_2 dict-get_2]or]3 dict-find_2 dict-value&i;1;\.;\>;^n`']2`<]subst],1'|@=],1'|}],1[|1|0 dict-key_1 append_0]or]more word-index?_1 numeric?_1 while_3 reverse_1 indices&i;1;\.;\>;~%-a`<]words],1[|1|0 vec-subtract&i;2;\.;\>;~vec-filter`']filter-out`[]2]0`[]1]0 vec-intersect&i;2;\.;\>;~vec-filter`']filter`[]2]0`[]1]0 vec-or&i;1;\.;\>;^u`<]word],1'|1],1<|filter-out|@'}@1.|@[}1}0 select-words_2 select-vec_2 butlast_1 strip-vec&i;1;\.;\<;filter`']!p`[]1]0 last&i;1;\.;\>;^u`<]%word],1[|1|0 conj_2 cons_2 concat-vec_1]or]2 xor_2 identity&i;1;\.;\[;1;0 eq?_2 filtersub_3
-~filtersub = $(patsubst $1,$2,$(filter $1,$3))
+# Exports: intersperse_2 foldr_3 foldl_3 index-of_2 assoc&i;2;\.;\>;~%-initial`<]subst],1'|@],1'|@1],1>|^d|@[}1}0`[]2]0 assoc-vec&i;2;\.;\>;~assoc-initial`>]^d],1[|1|0`[]2]0 assoc-initial_2 sort-by_2 memoize_1 1!S_1 split_2 uniq_1 see_2 fexpect&i;2;\.;\>;~expect-x`>]~format],1[|1|0`>]~format],1[|2|0`:IL9]4500 assert&i;1;\.;\>;~%-x`[]1]0`:IL9]4451 expect&i;2;\.;\>;~%-x`[]1]0`[]2]0`:IL9]4384 expect-x_3 printf_1]or]more sprintf_1]or]more vsprintf_2 format_1 format-add_1 dict-collate_1 dict-values_1 dict-keys_1 dict-compact_1]or]2 dict-set_3 dict-remove_2 dict-get_2]or]3 dict-find_2 dict-value&i;1;\.;\>;^n`']2`<]subst],1'|@=],1'|}],1[|1|0 dict-key_1 append_0]or]more word-index?_1 numeric?_1 while_3 reverse_1 indices&i;1;\.;\>;~%-a`<]words],1[|1|0 vec-subtract&i;2;\.;\>;~vec-filter`']filter-out`[]2]0`[]1]0 vec-intersect&i;2;\.;\>;~vec-filter`']filter`[]2]0`[]1]0 vec-or&i;1;\.;\>;^u`<]word],1'|1],1<|filter-out|@'}@1.|@[}1}0 select-words_2 select-vec_2 butlast_1 strip-vec&i;1;\.;\<;filter`']!p`[]1]0 last&i;1;\.;\>;^u`<]%word],1[|1|0 conj_2 cons_2 concat-vec_1]or]2 xor_2 identity&i;1;\.;\[;1;0 eq?_2
 ~eq? = $(if $(findstring 1$1,$(findstring 1$2,1$1)),1)
 ~xor = $(if $1,$(if $2,,$1),$2)
 ~concat-vec = $(call ^u,$(subst $  ,$(call ^d,$2),$1))
@@ -223,11 +222,11 @@ endef
 ~describe-env = $(foreach w,$(call ~reverse,$(call ~dict-compact,$1)),$(call ^Y,$(call ~dict-key,$w),$(call ~describe-binding,$(call ~dict-key,$w),$(call ^n,2,$(subst !=, ,$w)),$2),,,,,,,,$`(if $`2,$`(call ~printf,  %s : %s,$`1,$`2))))
 ~eval-and-print = $(call ^Y,$(call ~compile-text,$1,$2,[console],),$2,$1,,,,,,,$`(if $`(filter $`[ [ {,$`(if $`(filter !:P8,$`(word 1,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))),$`(word 1,$`(call ^n,3,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))))),$`(call ^d,$`3) $`(call ^d,$`2),$`(if $`(filter .,$`(if $`(filter !:P8,$`(word 1,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))),$`(word 1,$`(call ^n,3,$`(call ^u,$`(word 1,$`(call ~dict-get,errors,$`1))))))),!. $`(call ^d,$`2),$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$`3,[stdin]))))1,!. $`(call ^d,$`2)),$`(and $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)),,,,,,,,,$``(if $``1,$``(and $``(call ^set,*2,$``(*1))1,$``(call ^set,*1,$``1)1,$``(info $``(call ~format,$``1)))))1,!. $`(call ^d,$`(call ~dict-get,env,$`1)))))))
 define ~read-eval-print
-$(call ^Y,$(call ~getline,$(if $(call ^u,$(word 1,$1)),+ ,> )),$(call ^n,1,$1),$(call ^n,2,$1),$1,,,,,,$`(if $`(call ~eq?,$`1,?
-),$`(and $`(call ~help)1,$`4),$`(if $`(call ~eq?,$`1,:
-),!. $`(call ^d,$`3),$`(if $`(call ~eq?,$`1,:q
-),,$`(if $`(call ~eq?,$`1,),,$`(if $`(call ~eq?,$`1,:e
-),$`(and $`(call ~describe-env,$`3,)1,$`4),$`(if $`(call ~eq?,$`1,:E
+$(call ^Y,$(call ~getline,$(if $(call ^u,$(word 1,$1)),+ ,> )),$(call ^n,1,$1),$(call ^n,2,$1),$1,,,,,,$`(if $`(call ~eq?,$`(strip $`1),?
+),$`(and $`(call ~help)1,$`4),$`(if $`(call ~eq?,$`(strip $`1),:
+),!. $`(call ^d,$`3),$`(if $`(call ~eq?,$`(strip $`1),:q
+),,$`(if $`(call ~eq?,$`1,),,$`(if $`(call ~eq?,$`(strip $`1),:e
+),$`(and $`(call ~describe-env,$`3,)1,$`4),$`(if $`(call ~eq?,$`(strip $`1),:E
 ),$`(and $`(call ~describe-env,$`3,1)1,$`4),$`(call ~eval-and-print,$`2$`1,$`3))))))))
 endef
 ~repl = $(and $(call ~do-not-trace,~repl ~eval-and-print ~while ~while-0 ~while-N)1,$(call ~while,$`1,$(value ~read-eval-print),$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "$(lib)"))(declare *1)(declare *2),$(call ~append,$(call ~compile-prelude,))))1,$(info ))
@@ -297,7 +296,7 @@ $(if $(or $(filter %.scm,$1),$(~*is-boot*)),$(and $(call ~memo-hash-file,$(call 
 ,$(value [mod-$1]))))
 endef
 define ~modid-deps
-$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:285)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
+$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:289)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
 endef
 define ~modid-import
 $(subst !n,
@@ -395,8 +394,8 @@ $(call ^require,core)
 ~quote-sh-arg = '$(subst ','\'',$1)'
 ~quote-sh-file = $(call ~quote-sh-arg,$(if $(filter -%,$(call ^d,$1)),./)$1)
 define ~shell!
-$(call ~concat-vec,$(call ~logshell,( $1 ) | sed -e '$(if ,$(if ,,,!d;))s/!/!1/g;s/ /!0/g;s/	/!+/g;s/^$`/!./'),
-)
+$(call ~concat-vec,$(addsuffix 
+,$(call ~logshell,( $1 ) | sed -e '$(if ,$(if ,,,!d;))s/!/!1/g;s/ /!0/g;s/	/!+/g;s/^$`/!./')))
 endef
 define ~echo-command
 printf '%b' $(call ~quote-sh-arg,$(subst 

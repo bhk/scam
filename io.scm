@@ -48,7 +48,7 @@
 ;;
 (define (shell! cmd)
   &public
-  (concat-vec (logshell (concat "( " cmd " ) | " (wrap-filter))) "\n"))
+  (concat-vec (addsuffix "\n" (logshell (concat "( " cmd " ) | " (wrap-filter))))))
 
 
 ;; Construct a command line to echo STR.
