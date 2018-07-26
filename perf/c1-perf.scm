@@ -16,7 +16,9 @@
 
 (define (clock-gen1 file)
   (define text (read-file-assert file))
-  (set text (subst "require \"" "require \"'" text))
+  ;; convert source references to builtin lib references to
+  ;; avoid building other files:
+  (set text (subst ".scm\")" "\")" text))
   (define asts (parse-text text))
   (define env (compile-prelude file))
   (define nodes (c0-block-cc env asts (lambda (e n) n)))
@@ -29,8 +31,11 @@
 
 
 (define (main argv)
+  (define `default-sources
+    (addprefix (dir (current-file)) "../num.scm"))
+
   (print "c1 benchmarks")
-  (let ((totals (foreach file (or argv "../num.scm")
+  (let ((totals (foreach file (or argv default-sources)
                          (clock-gen1 file))))
     (printf "total: %s  (%s)" (sum totals) (concat-vec totals " + ")))
 

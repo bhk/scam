@@ -17,9 +17,12 @@
 
 
 (define (main argv)
+  (define `default-sources
+    (addprefix (dir (current-file)) "../macros.scm"))
+
   (set default-duration 50)
   (print "parse benchmarks (source files as arguments)")
-  (let ((totals (foreach w (or argv "../macros.scm")
+  (let ((totals (foreach w (or argv default-sources)
                          (clock-parse w))))
     (printf "total: %s  (%s)" (sum totals) (concat-vec totals " + ")))
 
