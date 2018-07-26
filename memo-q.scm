@@ -4,8 +4,11 @@
 (require "memo.scm" &private)
 
 
-(define dbfile (concat (assert (value "TEST_DIR")) "memo-q-db.txt"))
+(define TMPDIR
+  (define `test-dir (assert (value "TEST_DIR")))
+  (concat (shell (concat "mktemp -d " test-dir "memo-q.XXXX")) "/"))
 
+(define db-file (concat TMPDIR "db.txt"))
 
 ;; Utilities
 
@@ -24,15 +27,15 @@
 (define (log-count evt) (words (filter evt *log*)))
 
 
-;; Construct a session on DBFILE and clear *log*
+;; Construct a session on DB-FILE and clear *log*
 ;;
 (define `(memo-session expr)
   (let-global ((*log* nil))
-    (memo-on dbfile expr)))
+    (memo-on db-file expr)))
 
 
 (define (reset-cache)
-  (write-file dbfile nil)
+  (write-file db-file nil)
   (set *memo-db* nil)
   (set *memo-db-disk* nil)
   (set *memo-tag* 0))
@@ -57,9 +60,9 @@
    (set *memo-tag* 23)
    (set *memo-db* {xyz:789})))
 
-(expect 1 (see 23 (read-file dbfile)))
+(expect 1 (see 23 (read-file db-file)))
 (set *memo-tag* nil)
-(memo-read-db dbfile)
+(memo-read-db db-file)
 (expect 23 *memo-tag*)
 (expect {xyz:789} *memo-db*)
 
@@ -73,7 +76,7 @@
    ;; top-level does).
    (set *memo-tag* 77)
    (memo-session (expect 77 *memo-tag*))
-   (expect nil (findstring 77 (read-file dbfile)))))
+   (expect nil (findstring 77 (read-file db-file)))))
 
 
 ;;----------------------------------------------------------------
@@ -363,20 +366,19 @@
 ;; File IO
 ;;----------------------------------------------------------------
 
-(define memo-file (subst "-q" "" (current-file)))
-(define tmp-file (concat (value "TEST_DIR") "memo-q.tmp"))
+(define xyz-file (concat TMPDIR "xyz"))
 
 ;; memo-hash-file
 
-(write-file tmp-file "xyz")
-(define xyz (hash-file tmp-file))
+(write-file xyz-file "xyz")
+(define xyz (hash-file xyz-file))
 
 (define (hash-two-files-test)
-   (expect xyz (memo-hash-file tmp-file))
-   (memo-hash-file memo-file))
+   (expect xyz (memo-hash-file xyz-file))
+   (memo-hash-file db-file))
 
 ;; Assert: Calls to memo-hash-file outside a memo session are NOT cached.
-(memo-hash-file tmp-file)
+(memo-hash-file xyz-file)
 (expect nil *memo-hashes*)
 
 ;; Assert: Calls to memo-hash-file within a session are cached.
@@ -390,7 +392,7 @@
    (memo-call (native-name hash-two-files-test))
    (expect 2 (words *memo-hashes*))
    (expect xyz (let-global ((hash-file (lambda (f) (assert nil))))
-                 (memo-hash-file tmp-file)))))
+                 (memo-hash-file xyz-file)))))
 
 ;; Assert: Cached hash values are flushed on session end.
 (expect nil *memo-hashes*)
@@ -403,13 +405,13 @@
    (memo-hash-file (current-file))
    (expect 3 (words *memo-hashes*))
    (expect xyz (let-global ((hash-file (lambda (f) (assert nil))))
-                 (memo-hash-file tmp-file)))))
+                 (memo-hash-file xyz-file)))))
 
 
 ;; memo-read-file
 
-(define tmpfile (concat (assert (value "TEST_DIR")) "memo-q-test"))
-(write-file tmpfile "1 2 3")
+(define abc-file (concat TMPDIR "abc"))
+(write-file abc-file "A B C")
 
 (define (file-words name)
   (log "file-words")
@@ -420,24 +422,24 @@
 (memo-session
  (begin
    ;; Assert: memo-read-file functions like read-file.
-   (expect 3 (memo-call (native-name file-words) tmpfile))
+   (expect 3 (memo-call (native-name file-words) abc-file))
    (expect 1 (log-count "file-words"))
    ;; Assert: memo-read-file does not trigger re-evaluate when file does not
    ;; change.
-   (expect 3 (memo-call (native-name file-words) tmpfile))
+   (expect 3 (memo-call (native-name file-words) abc-file))
    (expect 1 (log-count "file-words"))))
 
  (memo-session
   (begin
     ;; Assert: memo-read-file *does* trigger re-evaluate when file changes
     ;; (in a subsequent session).
-    (write-file tmpfile "1 2")
-    (expect 2 (memo-call (native-name file-words) tmpfile))
+    (write-file abc-file "A B")
+    (expect 2 (memo-call (native-name file-words) abc-file))
     (expect 1 (log-count "file-words"))))
 
 ;; memo-write-file
 
-(define tmpfile-out (concat tmpfile ".out"))
+(define out-file (concat TMPDIR "out"))
 (define (copy-file in out)
   (log "copy-file")
   (memo-write-file out (memo-read-file in)))
@@ -445,19 +447,19 @@
 (memo-session
  (begin
    ;; Assert: memo-write-file functions like write-file.
-   (expect nil (memo-call (native-name copy-file) tmpfile tmpfile-out))
+   (expect nil (memo-call (native-name copy-file) abc-file out-file))
    (expect 1 (log-count "copy-file"))
-   (expect "1 2" (strip (read-file tmpfile-out)))
+   (expect "A B" (read-file out-file))
    ;; Assert: memo-write-file does not trigger re-evaluate when the output
    ;; file has not changed.
-   (expect nil (memo-call (native-name copy-file) tmpfile tmpfile-out))
+   (expect nil (memo-call (native-name copy-file) abc-file out-file))
    (expect 1 (log-count "copy-file"))))
 
  (memo-session
   (begin
-    ;; Assert: memo-write-file *does* trigger re-evaluate when the output
-    ;; file has changed (in a subsequent session).
-    (write-file tmpfile-out "xyz")
-    (expect nil (memo-call (native-name copy-file) tmpfile tmpfile-out))
-    (expect 1 (log-count "copy-file"))
-    (expect "1 2" (strip (read-file tmpfile-out)))))
+    ;; Assert: When output file has changed, memo-write-file playback
+    ;; will restore the intended value without re-invoking.
+    (write-file out-file "different")
+    (expect nil (memo-call (native-name copy-file) abc-file out-file))
+    (expect 0 (log-count "copy-file"))
+    (expect "A B" (strip (read-file out-file)))))

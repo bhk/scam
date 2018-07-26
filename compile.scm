@@ -587,8 +587,7 @@ SHELL:=/bin/bash
   (define `exe-code
     (concat prologue bundles (epilogue main-id main-func)))
 
-  (or (bail-if (memo-write-file exe-file exe-code))
-      (bail-if (shell (concat "chmod +x " (quote-sh-arg exe-file))))))
+  (bail-if (memo-write-file exe-file exe-code "+x")))
 
 
 (define (m-link exe-file main-id)
@@ -614,7 +613,7 @@ SHELL:=/bin/bash
                   (quote-sh-arg cmd-name) " >&2 ;"
                   "echo \" $?\""))
 
-        (drop-if (filter-out 0 (lastword (logshell cmd-line)))))))
+        (drop-if (filter-out 0 (lastword (ioshell cmd-line)))))))
 
 
 ;; Compile a module and test it.

@@ -2,8 +2,12 @@
 (require "string.scm")
 (require "io.scm" &private)
 
-(define SOURCE_DIR (dir (current-file)))
-(define TMP_DIR (assert (value "TEST_DIR")))
+(define SOURCEDIR
+  (dir (current-file)))
+
+(define TMPDIR
+  (define `test-dir (assert (value "TEST_DIR")))
+  (concat (shell (concat "mktemp -d " test-dir "io-q.XXXX")) "/"))
 
 ;; shell!
 
@@ -28,12 +32,12 @@
 (define `thisfile (lastword MAKEFILE_LIST))
 
 (expect " a\\b\n\t cX"
-        (let ((tmpfile (concat thisfile "-rwtest")))
+        (let ((tmpfile (concat TMPDIR "rwtest")))
           (expect nil (write-file tmpfile " a\\b\n\t c"))
           (shell (concat "echo -n X >> " tmpfile))
           (read-file tmpfile)))
 
-(define `non-file (concat TMP_DIR "io-q-dir"))
+(define `non-file (concat TMPDIR "io-q-dir"))
 (shell (concat "mkdir -p " (quote-sh-arg non-file)))
 (expect 1 (see "directory" (write-file non-file "xyz")))
 ;; ensure it cleaned up the temp file
@@ -53,25 +57,33 @@
 
 (define io-q (concat-vec io-q-lines "\n"))
 
-(define `test-file (concat SOURCE_DIR "test/io-q.txt"))
+(define `test-file (concat SOURCEDIR "test/io-q.txt"))
 
 (expect io-q (read-file test-file))
 (expect io-q-lines (read-lines test-file))
 (expect (wordlist 2 5 io-q-lines) (read-lines test-file 2 5))
 
-(expect nil (read-lines (concat SOURCE_DIR "does-not-exist")))
+(expect nil (read-lines (concat SOURCEDIR "does-not-exist")))
 
 ;; file-exists?
 
 (expect (current-file) (file-exists? (current-file)))
-(expect nil (file-exists? (concat SOURCE_DIR "does-not-exist")))
+(expect nil (file-exists? (concat SOURCEDIR "does-not-exist")))
+
+;; cp-file
+
+(expect 1 (see "No such" (cp-file "does-not-exist" "shall-not-exist")))
+(expect nil (file-exists? "shall-not-exist"))
+(expect nil (cp-file test-file (concat test-file ".2")))
+(expect io-q (read-file (concat test-file ".2")))
+
 
 ;; hash-file & hash-files
 
-(define TMP_XYZ (concat TMP_DIR "io-q-hash"))
+(define TMP_XYZ (concat TMPDIR "io-q-hash"))
 (write-file TMP_XYZ "xyz")
 ;; Exercise multiple files and space within a file name.
-(define TMP_XYZ2 (concat TMP_DIR " io-q! hash"))
+(define TMP_XYZ2 (concat TMPDIR " io-q! hash"))
 (write-file TMP_XYZ2 "xyz2")
 
 (expect nil *hash-cmd*)
@@ -84,10 +96,10 @@
 
 ;; blob functions
 
-(expect "" (read-file (save-blob TMP_DIR "")))
-(expect " x " (read-file (save-blob TMP_DIR " x ")))
-(expect "a\nx" (read-file (save-blob TMP_DIR "a\nx")))
-(expect "a\nb\n" (read-file (save-blob TMP_DIR "a\nb\n")))
+(expect "" (read-file (save-blob TMPDIR "")))
+(expect " x " (read-file (save-blob TMPDIR " x ")))
+(expect "a\nx" (read-file (save-blob TMPDIR "a\nx")))
+(expect "a\nb\n" (read-file (save-blob TMPDIR "a\nb\n")))
 
 ;; clean-path
 

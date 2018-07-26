@@ -321,16 +321,35 @@
   (read-file filename))
 
 
+;; Copy a BLOB onto a given file, unless the file is already known to match
+;; the BLOB.  Return nil on success.
+;;
+(define (do-memo-cp-blob src dst mode)
+  (define `hash (notdir src))
+
+  ;; Remove any cached hash for this file.  Memoized code must not write a
+  ;; file after reading/hashing it, but the cache may have been populated
+  ;; speculatively (see above), so it might hold a match for FILENAME.
+  (or (if (not (eq? hash (dict-get dst *memo-hashes*)))
+          (begin
+            (set *memo-hashes* (dict-remove dst *memo-hashes*))
+            (cp-file src dst)))
+      (if mode
+          (chmod-file dst mode))))
+
+
 ;; Write data to FILENAME, logging the IO transaction for playback.
 ;;
-(define (memo-write-file filename data)
+(define (memo-write-file filename data ?mode)
   &public
-  ;; Remove any previously-read hash.
-  (set *memo-hashes* (dict-remove filename *memo-hashes*))
-  (let ((result (write-file filename data))
-        (filename filename))
-    (memo-hash-file filename)
-    result))
+  (if *memo-on*
+      (let ((blob (save-blob (dir *memo-db-file*) data)))
+        (memo-io (native-name do-memo-cp-blob) blob filename mode))
+      ;; not in a memo session
+      (begin
+        (write-file filename data)
+        (if mode
+            (chmod-file filename mode)))))
 
 
 ;; Create directory DIR, logging the operation as a dependency.

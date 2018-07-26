@@ -7,8 +7,10 @@
 
 (declare SCAM_DEBUG &native)
 
-
-(define (logshell cmd)
+;; We route shell commands through this function for the sake of debugging
+;; via tracing or SCAM_DEBUG.
+;;
+(define (ioshell cmd)
   &public
   (if (filter "S" SCAM_DEBUG)
       (print "shell: " cmd))
@@ -48,7 +50,7 @@
 ;;
 (define (shell! cmd)
   &public
-  (concat-vec (addsuffix "\n" (logshell (concat "( " cmd " ) | " (wrap-filter))))))
+  (concat-vec (addsuffix "\n" (ioshell (concat "( " cmd " ) | " (wrap-filter))))))
 
 
 ;; Construct a command line to echo STR.
@@ -69,7 +71,7 @@
 (define (write fd data)
   &public
   (rest
-   (logshell (concat (echo-command data)
+   (ioshell (concat (echo-command data)
                      (if (filter 2 fd)
                          ;; swap 1 and 2
                          " 3>&2 2>&1 1>&3 3>&-"
@@ -124,14 +126,22 @@
 
   (or
    ;; ensure filename is not a directory and create empty tmpfile
-   (rest (logshell (concat "rm -f " file-arg " 2>&1 && 2>&1 > " temp-arg)))
+   (rest (ioshell (concat "rm -f " file-arg " 2>&1 && 2>&1 > " temp-arg)))
 
    ;; initial write succeeded
    (begin
      (for line (concat-groups (subst "\n" "\n " [data]) 50)
-          (logshell (concat (echo-command line) " >> " temp-arg)))
-     (rest (logshell (concat "mv " temp-arg " " file-arg " 2>&1"
+          (ioshell (concat (echo-command line) " >> " temp-arg)))
+     (rest (ioshell (concat "mv " temp-arg " " file-arg " 2>&1"
                              " || rm " temp-arg " 2>&1"))))))
+
+
+;; Modify file mode.
+;;
+(define (chmod-file filename mode)
+  &public
+  (ioshell (concat "chmod " (quote-sh-arg mode)
+                   " " (quote-sh-file filename) " 2>&1")))
 
 
 ;; Read contents of file FILENAME and return a vector of lines.  The number
@@ -142,7 +152,7 @@
 ;;
 (define (read-lines filename ?start ?end)
   &public
-  (logshell (concat "(( cat " (quote-sh-file filename) " && echo ) | "
+  (ioshell (concat "(( cat " (quote-sh-file filename) " && echo ) | "
                     (wrap-filter start end) " ) 2>/dev/null")))
 
 
@@ -155,19 +165,26 @@
       (print "error: read-file: nil filename")))
 
 
+;; Copy file SRC to DST.  Return nil on success, description on error.
+;;
+(define (cp-file src dst)
+  &public
+  (ioshell (concat "cp " (quote-sh-file src) " " (quote-sh-file dst) " 2>&1")))
+
+
 ;; Return FILENAME if file FILENAME exists.  The `wildcard` built-in
 ;; function is a faster alternative, but it caches results and will not
 ;; reflect files created/deleted when the program is running.
 ;;
 (define (file-exists? filename)
   &public
-  (if (logshell (concat "[[ -f " (quote-sh-file filename) " ]] && echo t"))
+  (if (ioshell (concat "[[ -f " (quote-sh-file filename) " ]] && echo t"))
       filename))
 
 
 (define (mkdir-p dir)
   &public
-  (logshell (concat "mkdir -p " (quote-sh-file dir) " 2>&1")))
+  (ioshell (concat "mkdir -p " (quote-sh-file dir) " 2>&1")))
 
 
 (define *hash-cmd*
@@ -203,7 +220,7 @@
   ;; by one space (md5 -r) or two spaces (all others).
   (define `extra (if (filter "s%" (hash-cmd)) "!0"))
 
-  (foreach dline (logshell cmd)
+  (foreach dline (ioshell cmd)
            (foreach hash (word 1 (subst "!0" " " dline))
                     (define `dfile
                       (patsubst (concat hash "!0" extra "%") "%" dline))
@@ -231,7 +248,7 @@
             "mv -f \"$t\" " (quote-sh-file obj-dir) "\"$n\" && "
             "echo \"$n\""
             ") 2>/dev/null"))
-  (addprefix obj-dir (logshell cmd)))
+  (addprefix obj-dir (ioshell cmd)))
 
 
 ;; clean-path-x: Helper for clean-path
