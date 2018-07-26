@@ -3,13 +3,11 @@
 ;;----------------------------------------------------------------
 
 ;; When a SCAM source file is compiled, the generated code will contain
-;; embedded references to the runtime.  The runtime must therefore be loaded
-;; before any SCAM module can execute; in fact, the runtime itself initiates
-;; execution of the program (see Program Execution, below).
-;;
-;; *This* file is itself compiled from SCAM source, so we have to take care
-;; not to use SCAM constructs that depend upon runtime functions before
-;; those functions are defined.
+;; embedded references to functions and variables defined in the runtime
+;; (this module).  The runtime must therefore be loaded before any SCAM
+;; module can execute, and since it is implemented as SCAM source, we
+;; must take care to avoid SCAM constructs that depend upon runtime
+;; functions before those functions are defined.
 
 ;; Variables not to be instrumented.
 (define *do-not-trace*
@@ -25,10 +23,9 @@ endef
 ' := $'
 ` := $$
 & := ,
+$(if ,, ) :=
 ")
 
-;; Most runtime exports are declared as "&native" so that the code generation
-;; phase does not have to take namespacing into account.
 
 ;; (^d string) => "down" = encode as word
 ;;
@@ -36,17 +33,20 @@ endef
   &native
   (or (subst "!" "!1" "\t" "!+" " " "!0" str) "!."))
 
-;; (^u string) => "up" = recover string from word
+;; (up string) => recover string from word
 ;;
+(define `(up str)
+  (subst "!." "" "!0" " " "!+" "\t" "!1" "!" str))
+
 (define (^u str)
   &native
-  (subst "!." "" "!0" " " "!+" "\t" "!1" "!" str))
+  (up str))
 
 ;; (^n n vec) => Nth member of vector VEC
 ;;
 (define (^n n vec)
   &native
-  (^u (word n vec)))
+  (up (word n vec)))
 
 ;; Encode dictionary key
 ;;
@@ -88,7 +88,7 @@ endef
 
 ;; Call FN with elements of vector ARGV as arguments.
 
-(declare (^apply fn argv))
+(declare (^apply fn argv) &native)
 
 (set ^apply (concat "$(call ^Y,$(call ^n,1,$2),$(call ^n,2,$2),$(call ^n,3,$2),"
                     "$(call ^n,4,$2),$(call ^n,5,$2),$(call ^n,6,$2),"
@@ -96,8 +96,8 @@ endef
 
 ;; Call function named NAME with elements of vector ARGV as arguments.
 ;;
-(define (name-apply name argv)
-  &public
+(define (^na name argv)
+  &native
   (define `call-expr
     (concat "$(call " name
             (subst " ," ","
@@ -187,8 +187,6 @@ endef
   (eval (concat "define " qname "\n" qbody "endef\n"))
   retval)
 
-(^set " " "")  ;; "$ " --> empty string
-
 
 ;; Escape a value for inclusion in a lambda expression.  Return a value
 ;; that, after N expansions (one or more), will yield STR, where N is
@@ -215,6 +213,7 @@ endef
 ;;--------------------------------------------------------------
 ;; Support for fundamental data types, and utility functions
 
+(define `(name-apply a b) &public (^na a b))
 (define `(apply a b) &public (^apply a b))
 (define `(promote a) &public (^u a))
 (define `(demote a)  &public (^d a))
@@ -235,7 +234,7 @@ endef
 
 (define `(first vec)
   &public
-  (^u (word 1 vec)))
+  (^n 1 vec))
 
 (define `(rest vec)
   &public
@@ -271,13 +270,15 @@ endef
   &public
   "")
 
-(define (^add-tags str)
+;; Add items to ^tags.
+;;
+(define (^at str)
   &native
   (set ^tags (concat ^tags " " (filter-out ^tags str))))
 
 
 ;;--------------------------------------------------------------
-;; ^require
+;; ^R : runtime require
 
 (define *required* nil)
 
@@ -304,7 +305,7 @@ endef
 
 ;; Execute a module if it hasn't been executed yet.
 ;;
-(define (^require id)
+(define (^R id)
   &native
   (or (filter id *required*)
       (begin
@@ -423,7 +424,7 @@ endef
 ;;
 (define (trace-match pat variables)
   (define `avoid-pats
-    (foreach p "^% ~% ~trace% ~esc-% ~set-native-fn"
+    (foreach p "^% ~% ~trace% ~esc-% ~set-native-fn ~filtersub"
              (if (filter-out p pat)
                  p)))
   (filter-out avoid-pats (filter pat variables)))
@@ -612,10 +613,10 @@ endef
 
   ;; Allow module loading to be traced.
   (start-trace main-mod)
-  ;; Now it's dangerous...
-  (do-not-trace (concat "^require ^load " (native-name load-ext)))
+  ;; Now it's dangerous to trace...
+  (do-not-trace (concat "^R ^load " (native-name load-ext)))
 
-  (^require main-mod)
+  (^R main-mod)
   (start-trace main-mod)
 
   ;; Run main, *then* read .DEFAULT_GOAL, *then* re-assign it.  We call

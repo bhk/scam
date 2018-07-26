@@ -108,6 +108,12 @@
         (notdir (fl0)))
 
 
+;; builtins as functions
+
+(expect "by bz" ((or filter) "b%" "ax by bz"))
+(expect 2 ((first [or]) nil 2 3))
+
+
 ;; TODO: Reenable these tests.  Buring bootstrapping, the first-gen compiler
 ;; cannot reliably load its own compiled code.  Unless that can be resolved,
 ;; this should be moved to second-stage test.

@@ -184,13 +184,13 @@
 
 ;; require with get-module
 
-(declare ^require &native)
+(declare ^R &native)
 
 (let-global ((locate-module (lambda (f name) name))
-             (^require (lambda () nil))
+             (^R (lambda () nil))
              (modid-import (lambda () nil)))
   (let ((o (compile-text "(require \"r.scm\")" "" "(test)" "test.tmp")))
     (expect "" (dict-get "errors" o))
     (expect "r.scm" (dict-get "require" o))
-    (expect 1 (see "$(call ^require,r.scm)\n"
+    (expect 1 (see "$(call ^R,r.scm)\n"
                    (dict-get "code" o)))))

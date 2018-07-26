@@ -233,7 +233,7 @@
    (if max-argc
        (IBuiltin name (for n (wordlist 1 max-argc "1 2 3")
                           (ILocal n 0)))
-       (ICall "^apply" [ (IString name) (IVar "^av") ]))))
+       (ICall "^na" [ (IString name) (IVar "^av") ]))))
 
 
 (define (c0-S-error sym defn)
@@ -652,7 +652,7 @@
 
 (data Mod
   &public
-  ;; ID = string to be passed to ^require
+  ;; ID = string to be passed to ^R
   ;; ENV = exported environment entries
   (ModSuccess id env)
   (ModError message))
@@ -683,7 +683,7 @@
            (gen-error module "require: %s" message))
           ((ModSuccess id exports)
            (define `arg (IConcat [(IString id) (ICrumb "require" id)]))
-           (IEnv exports (ICall "^require" [arg]))))))
+           (IEnv exports (ICall "^R" [arg]))))))
      (else
       (err-expected "Q" module sym "STRING" "(require STRING)")))))
 

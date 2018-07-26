@@ -237,7 +237,7 @@
 ;;    source file, ending in ".scm".  If NAME identifies a builtin
 ;;    module, it will be that module's ID (which begins with `'`).
 ;;
-;; ID: This is passed to ^require at run-time.  The bundle variable name
+;; ID: This is passed to ^R at run-time.  The bundle variable name
 ;;    and the compiled module name are based on this string, which is
 ;;    escaped using `escape-path`.  Modules that are bundled with the
 ;;    compiler are named differently to avoid conflicts with user
@@ -380,7 +380,7 @@ SHELL:=/bin/bash
           "$(call ^start," main-id "," main-func ",$(value SCAM_ARGS))\n"))
 
 
-;; Extend the runtime's ^require to handle file-based modules during
+;; Extend the runtime's ^R to handle file-based modules during
 ;; compilation.
 ;;
 (define (load-ext id)
@@ -441,7 +441,7 @@ SHELL:=/bin/bash
                       ;; do not require at run-time, and
                       (ModError "module has executable macros (boot=true)")
                       ;; require module and continue
-                      (call "^require" id)))
+                      (call "^R" id)))
               (ModSuccess id exports))))))
 
 

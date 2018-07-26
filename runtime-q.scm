@@ -124,7 +124,7 @@
 (expect nil (not "x"))
 
 (expect nil (bound? "_xya13"))
-(expect "1" (bound? (native-name ^require)))
+(expect "1" (bound? (native-name ^R)))
 
 (expect "4 5" (nth-rest 4 "1 2 3 4 5"))
 

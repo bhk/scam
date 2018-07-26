@@ -155,7 +155,7 @@
 ;;
 (define `(voidify node)
   (define `void-fns
-    "error eval info ^require ^add-tags")
+    "error eval info ^R ^at")
   (if (case node
         ((IBuiltin name args) (filter void-fns name))
         ((ICall name args) (filter void-fns name))

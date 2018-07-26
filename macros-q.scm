@@ -301,9 +301,9 @@
  (lambda (env sil)
    (expect (dict-get "CA" env)
            (ERecord "S W L" "p" "!:T0"))
-   ;; ^add-tags is &native
+   ;; ^at is &native
    (expect sil
-           "(^add-tags !1:T0!=CA!0S!0W!0L !1:T1!=CB)")))
+           "(^at !1:T0!=CA!0S!0W!0L !1:T1!=CB)")))
 
 (p1-block-cc
  "(data T &public (CA a &word b &list c))"

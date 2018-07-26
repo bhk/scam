@@ -664,7 +664,7 @@
 
       ;; Add tag/pattern bindings to ^tags
       (define `node
-        (ICall "^add-tags" [(IString tag-defs)]))
+        (ICall "^at" [(IString tag-defs)]))
 
       (or (case types ((PError _ _) types))
           (IEnv bindings node)))))

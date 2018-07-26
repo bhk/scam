@@ -263,7 +263,7 @@
 (expect (il-ser (c0-builtin nil "word" "2 or 1"))
         "`(.word {1},{2})")
 (expect (il-ser (c0-builtin nil "or" "%"))
-        "`(^apply or,{^av})")
+        "`(^na or,{^av})")
 
 ;; ': quote
 
@@ -470,4 +470,4 @@
 (let-global ((get-module mock-get-module))
   ;; get-module success
   (expect (c0-ser "(require \"mod.scm\")")
-          "(^require mod!(ICrumb 'require' 'mod'))"))
+          "(^R mod!(ICrumb 'require' 'mod'))"))
