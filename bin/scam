@@ -17,7 +17,7 @@ $(and $(call ~fprintf,2,scam: $1
 ,$(foreach N,2,$(^v)))1,1)
 endef
 ~set-obj-dir = $(call ^set,~*obj-dir*,$(patsubst %//,%/,$(or $1,$(if $2,$(dir $2),.scam/))/))
-~main = $(call ^Y,$(call ~getopts,$1,-o= -e= -v --version -h -x -i --quiet --obj-dir= --boot),,,,,,,,,$`(and $`(call ^set,~*is-quiet*,$`(call ~dict-get,quiet,$`1))1,$`(call ^set,~*is-boot*,$`(call ~dict-get,boot,$`1))1,$`(call ~set-obj-dir,$`(call ^u,$`(lastword $`(call ~dict-get,obj-dir,$`1))),$`(call ^u,$`(lastword $`(call ~dict-get,o,$`1))))1,$`(if $`(call ~dict-get,!,$`1),$`(and $`(foreach e,$`(call ~dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(word 1,$`(call ^u,$`e))),$`(call ~perror,'%s' is missing an argument,$`(call ^n,2,$`(call ^u,$`e))),$`(if $`(filter !:GetoptsError1,$`(word 1,$`(call ^u,$`e))),$`(call ~perror,'%s' is not a recognized option,$`(call ^n,2,$`(call ^u,$`e))),$`(call ~perror,[internal error])))))1,$`(call ~perror,try 'scam -h' for help)),$`(if $`(call ~dict-get,h,$`1),$`(info $`(~usage-string)),$`(if $`(call ~dict-get,o,$`1),$`(if $`(word 2,$`(call ~dict-get,*,$`1)),$`(call ~perror,to many input files were given with `-o`),$`(call ~compile-program,$`(call ^u,$`(lastword $`(call ~dict-get,o,$`1))),$`(call ^n,1,$`(call ~dict-get,*,$`1)))),$`(if $`(call ~dict-get,e,$`1),$`(and $`(foreach expr,$`(call ~dict-get,e,$`1),$`(call ^d,$`(call ~repl-rep,$`(call ^u,$`(expr)),)))1,),$`(if $`(or $`(call ~dict-get,v,$`1),$`(call ~dict-get,version,$`1)),$`(info SCAM version 1.4x),$`(if $`(call ~dict-get,x,$`1),$`(if $`(if $`(call ~dict-get,*,$`1),,1),$`(call ~perror,no FILE was given with '-x'),$`(call ~compile-and-run,$`(call ^n,1,$`(call ~dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call ~dict-get,*,$`1)))),$`(if $`(if $`(call ~dict-get,*,$`1),,1),$`(and $`(info SCAM v1.4x interactive mode. Type '?' for help.)1,$`(call ~repl)),$`(if $`(call ~dict-get,i,$`1),$`(call ~perror,extraneous arguments were provided with -i),$`(call ~compile-and-run,$`(call ^n,1,$`(call ~dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call ~dict-get,*,$`1)))))))))))))
+~main = $(call ^Y,$(call ~getopts,$1,-o= -e= -v --version -h -x -i --quiet --obj-dir= --boot),,,,,,,,,$`(and $`(call ^set,~*is-quiet*,$`(call ~dict-get,quiet,$`1))1,$`(call ^set,~*is-boot*,$`(call ~dict-get,boot,$`1))1,$`(call ~set-obj-dir,$`(call ^u,$`(lastword $`(call ~dict-get,obj-dir,$`1))),$`(call ^u,$`(lastword $`(call ~dict-get,o,$`1))))1,$`(if $`(call ~dict-get,!,$`1),$`(and $`(foreach e,$`(call ~dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(word 1,$`(call ^u,$`e))),$`(call ~perror,'%s' is missing an argument,$`(call ^n,2,$`(call ^u,$`e))),$`(if $`(filter !:GetoptsError1,$`(word 1,$`(call ^u,$`e))),$`(call ~perror,'%s' is not a recognized option,$`(call ^n,2,$`(call ^u,$`e))),$`(call ~perror,[internal error])))))1,$`(call ~perror,try 'scam -h' for help)),$`(if $`(call ~dict-get,h,$`1),$`(info $`(~usage-string)),$`(if $`(call ~dict-get,o,$`1),$`(if $`(word 2,$`(call ~dict-get,*,$`1)),$`(call ~perror,to many input files were given with `-o`),$`(call ~build-program,$`(call ^n,1,$`(call ~dict-get,*,$`1)),$`(call ^u,$`(lastword $`(call ~dict-get,o,$`1))))),$`(if $`(call ~dict-get,e,$`1),$`(and $`(foreach expr,$`(call ~dict-get,e,$`1),$`(call ^d,$`(if $`(call ~repl-rep,$`(call ^u,$`(expr))),$`(error Error))))1,),$`(if $`(or $`(call ~dict-get,v,$`1),$`(call ~dict-get,version,$`1)),$`(info SCAM version 1.4x),$`(if $`(call ~dict-get,x,$`1),$`(if $`(if $`(call ~dict-get,*,$`1),,1),$`(call ~perror,no FILE was given with '-x'),$`(call ~run-program,$`(call ^n,1,$`(call ~dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call ~dict-get,*,$`1)))),$`(if $`(if $`(call ~dict-get,*,$`1),,1),$`(and $`(info SCAM v1.4x interactive mode. Type '?' for help.)1,$`(call ~repl)),$`(if $`(call ~dict-get,i,$`1),$`(call ~perror,extraneous arguments were provided with -i),$`(call ~run-program,$`(call ^n,1,$`(call ~dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call ~dict-get,*,$`1)))))))))))))
 
 endef
 
@@ -194,7 +194,7 @@ endef
 
 define [mod-repl]
 # Requires: core io parse compile gen num
-# Exports: repl-file_1 repl-rep_2 repl_0
+# Exports: repl-rep_1 repl_0
 $(call ^R,core)
 $(call ^R,io)
 $(call ^R,parse)
@@ -220,11 +220,10 @@ Global variables in REPL:
 endef
 ~describe-binding = $(if $(or $3,$(if $(filter i%,$(word 3,$2)),,1)),$(if $(filter !:EDefn5,$(word 1,$2)),built-in function,$(if $(filter !:EDefn1,$(word 1,$2)),$(if $(call ~eq?,$(call ^n,2,$2),:),compound macro,function)$(if $(wordlist 5,99999999,$2),$(call ~sprintf, (%s arguments),$(call ^n,4,$2))),$(if $(filter !:EDefn0,$(word 1,$2)),variable,$(if $(filter !:EDefn2,$(word 1,$2)),symbol macro: $(call ~format,$(wordlist 4,99999999,$2)),$(if $(filter !:EDefn3,$(word 1,$2)),executable macro,$(if $(filter !:EDefn4,$(word 1,$2)),constructor,)))))))
 ~describe-env = $(foreach w,$(call ~reverse,$(call ~dict-compact,$1)),$(call ^Y,$(call ~dict-key,$w),$(call ~describe-binding,$(call ~dict-key,$w),$(call ^n,2,$(subst !=, ,$w)),$2),,,,,,,,$`(if $`2,$`(call ~printf,  %s : %s,$`1,$`2))))
-~eval-and-print = $(call ^Y,$(call ~compile-text,$1,$2,[console],),$2,$1,,,,,,,$`(if $`(filter $`[ [ {,$`(if $`(filter !:P8,$`(word 1,$`(call ^n,1,$`(call ~dict-get,errors,$`1)))),$`(word 1,$`(call ^n,3,$`(call ^n,1,$`(call ~dict-get,errors,$`1)))))),$`(call ^d,$`3) $`(call ^d,$`2),$`(if $`(filter .,$`(if $`(filter !:P8,$`(word 1,$`(call ^n,1,$`(call ~dict-get,errors,$`1)))),$`(word 1,$`(call ^n,3,$`(call ^n,1,$`(call ~dict-get,errors,$`1)))))),!. $`(call ^d,$`2),$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$`3,[stdin]))))1,!. $`(call ^d,$`2)),$`(and $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)),,,,,,,,,$``(if $``1,$``(and $``(call ^set,*2,$``(*1))1,$``(call ^set,*1,$``1)1,$``(info $``(call ~format,$``1)))))1,!. $`(call ^d,$`(call ~dict-get,env,$`1)))))))
-~read-eval-print = $(call ^Y,$(call ~getline,$(if $(call ^n,1,$1),+ ,> )),$(call ^n,1,$1),$(call ^n,2,$1),$1,,,,,,$`(if $`(call ~eq?,$`(strip $`1),?),$`(and $`(call ~help)1,$`4),$`(if $`(call ~eq?,$`(strip $`1),:),!. $`(call ^d,$`3),$`(if $`(call ~eq?,$`(strip $`1),:q),,$`(if $`(call ~eq?,$`1,),,$`(if $`(call ~eq?,$`(strip $`1),:e),$`(and $`(call ~describe-env,$`3,)1,$`4),$`(if $`(call ~eq?,$`(strip $`1),:E),$`(and $`(call ~describe-env,$`3,1)1,$`4),$`(call ~eval-and-print,$`2$`1,$`3))))))))
-~repl = $(and $(call ~do-not-trace,~repl ~eval-and-print ~while ~while-0 ~while-N)1,$(call ~while,$`1,$(value ~read-eval-print),$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "$(lib)"))(declare *1)(declare *2),$(call ~append,$(call ~compile-prelude,))))1,$(info ))
-~repl-rep = $(call ^Y,$(call ~compile-text,$1,$(call ^n,2,$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "$(lib)"))(declare *1)(declare *2),$(call ~append,$(call ~compile-prelude,)))),$(or $2,[commandline]),),$1,,,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$`2,))))1,1),$`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)),,,,,,,,,$``(if $``1,$``(info $``(call ~format,$``1))))))
-~repl-file = $(call ^Y,$(call ~read-file,$1),$1,,,,,,,,$`(if $`1,$`(call ^Y,$`(call ~compile-text,$`1,$`(call ~compile-prelude,),$`2,///~),$`1,$`2,,,,,,,$``(if $``(call ~dict-get,errors,$``1),$``(and $``(foreach err,$``(call ~dict-get,errors,$``1),$``(call ^d,$``(info $``(call ~describe-error,$``(call ^u,$``(err)),$``2,$``3))))1,1),$``(eval $``(call ~dict-get,code,$``1)))),$`(and $`(call ~printf,error: empty/missing file %q,$`2)1,1)))
+~eval-and-print = $(call ^Y,$(call ~compile-text,$1,[stdin],$2),$2,$1,,,,,,,$`(if $`(and $(call ^E,$3),$`(filter $`[ [ {,$`(if $`(filter !:P8,$`(word 1,$`(call ^n,1,$`(call ~dict-get,errors,$`1)))),$`(word 1,$`(call ^n,3,$`(call ^n,1,$`(call ~dict-get,errors,$`1))))))),$`(call ^d,$`3) $`(call ^d,$`2),$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach err,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`(err)),$`3,[stdin]))))1,!. $`(call ^d,$`2) 1),$`(and $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ~dict-get,code,$`1)),,,,,,,,,$``(if $``1,$``(and $``(call ^set,*2,$``(*1))1,$``(call ^set,*1,$``1)1,$``(info $``(call ~format,$``1)))))1,!. $`(call ^d,$`(call ~dict-get,env,$`1))))))
+~read-eval-print = $(call ^Y,$(call ~getline,$(if $(call ^n,1,$1),+ ,> )),$(call ^n,1,$1),$(call ^n,2,$1),$1,,,,,,$`(if $`(call ~eq?,$`(strip $`1),?),$`(and $`(call ~help)1,$`4),$`(if $`(call ~eq?,$`(strip $`1),:),!. $`(call ^d,$`3),$`(if $`(call ~eq?,$`(strip $`1),:q),,$`(if $`(call ~eq?,$`1,),,$`(if $`(call ~eq?,$`(strip $`1),:e),$`(and $`(call ~describe-env,$`3,)1,$`4),$`(if $`(call ~eq?,$`(strip $`1),:E),$`(and $`(call ~describe-env,$`3,1)1,$`4),$`(call ~eval-and-print,$`2$`1,$`3,1))))))))
+~repl = $(and $(call ~do-not-trace,~repl ~eval-and-print ~while ~while-0 ~while-N)1,$(call ~while,$`1,$(value ~read-eval-print),$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "$(lib)"))(declare *1)(declare *2),))1,$(info ))
+~repl-rep = $(word 3,$(call ~eval-and-print,$1,$(call ^n,2,$(call ~eval-and-print,$(foreach lib,$(~LIBS),(require "$(lib)"))(declare *1)(declare *2),))))
 
 endef
 
@@ -241,7 +240,7 @@ endef
 
 define [mod-compile]
 # Requires: core parse gen gen0 gen1 io memo macros utf8
-# Exports: compile-and-run_2 compile-program_2 compile-text_4 compile-prelude_1 get-module_3 *is-quiet*#0;~%;i *obj-dir*#0;~%;i
+# Exports: compile-text_2]or]3 run-program_2 build-program_2 *is-quiet*#0;~%;i *obj-dir*#0;~%;i
 $(call ^R,core)
 $(call ^R,parse)
 $(call ^R,gen)
@@ -289,7 +288,7 @@ $(if $(or $(filter %.scm,$1),$(~*is-boot*)),$(and $(call ~memo-hash-file,$(call 
 ,$(value [mod-$1]))))
 endef
 define ~modid-deps
-$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:289)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
+$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:294)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
 endef
 define ~modid-import
 $(subst !n,
@@ -312,10 +311,10 @@ $ endef
 
 endef
 ~load-ext = $(and $(eval include $(call ~modid-file,$1))1,1)
-~get-module = $(call ^Y,$(call ~m-locate-module,$(dir $2),$1),$3,,,,,,,,$`(or $`(if $`(if $`1,,1),!:Mod1 $`(call ^d,$`(call ~sprintf,cannot find %q,$(call ^E,$1)))),$`(if $`(filter %.scm,$`(call ^d,$`1)),$`(if $`(call ~memo-minus,$`(if $`(~*memo-on*),,$`(and $`(call ~memo-start-session,$`(call ~compile-cache-file))1,1)),$`(call ~memo-call,~compile-module-and-test,$`1,$`2)),!:Mod1 $`(call ^d,$`(call ~sprintf,compilation of %q failed,$`1)),)),$`(call ^Y,$`(call ~memo-blob-call,~modid-import,$`(call ~module-id,$`1),$`2),$`(call ~module-id,$`1),$`1,,,,,,,$``(or $``(if $``(word 1,$``(foreach pair,$``1,$``(if $``(filter !:EDefn3,$``(word 1,$``(call ^n,2,$``(subst !=, ,$``(pair))))),1))),$``(if $``(~*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$``(call ^R,$``2))),!:Mod0 $``(call ^d,$``2) $``(call ^d,$``1)))))
+~get-module = $(call ^Y,$(call ~m-locate-module,$(dir $2),$1),$3,,,,,,,,$`(or $`(if $`(if $`1,,1),!:Mod1 $`(call ^d,$`(call ~sprintf,cannot find %q,$(call ^E,$1)))),$`(if $`(filter %.scm,$`(call ^d,$`1)),$`(if $`(call ~memo-call,~compile-and-test-module,$`1,$`2),!:Mod1 $`(call ^d,$`(call ~sprintf,compilation of %q failed,$`1)),)),$`(call ^Y,$`(call ~memo-blob-call,~modid-import,$`(call ~module-id,$`1),$`2),$`(call ~module-id,$`1),$`1,,,,,,,$``(or $``(if $``(word 1,$``(foreach pair,$``1,$``(if $``(filter !:EDefn3,$``(word 1,$``(call ^n,2,$``(subst !=, ,$``(pair))))),1))),$``(if $``(~*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$``(call ^R,$``2))),!:Mod0 $``(call ^d,$``2) $``(call ^d,$``1)))))
 ~runtime-module-name = $(if $(~*is-boot*),$(filter-out $(subst -q.scm,.scm,$(call ^d,$1)),runtime.scm),runtime)
 ~compile-prelude = $(foreach m,$(call ~runtime-module-name,$1),$(call ^Y,$(call ~get-module,$m,.,),,,,,,,,,$`(if $`(filter !:Mod0,$`(word 1,$`1)),$`(call ^n,3,$`1),$`(if $`(filter !:Mod1,$`(word 1,$`1)),$`(error $`(call ^n,2,$`1))))))
-~compile-text = $(call ^set,~*compile-subject*,$(call ^set,~*compile-subject*,$(call ~penc,$1),$(~*compile-subject*)),$(call ^set,~*compile-file*,$(call ^set,~*compile-file*,$3,$(~*compile-file*)),$(call ~c0-block-cc,$2,$(call ~parse-subject,$(~*compile-subject*)),$`(call ~gen1,$`2,$(call ^E,$4)) env!=$`(call ^d,$`1))))
+~parse-and-gen = $(call ^set,~*compile-subject*,$(call ^set,~*compile-subject*,$(call ~penc,$1),$(~*compile-subject*)),$(call ^set,~*compile-file*,$(call ^set,~*compile-file*,$3,$(~*compile-file*)),$(call ^Y,$(call ~gen0,$(call ~parse-subject,$(~*compile-subject*)),$2),$4,,,,,,,,$`(call ~gen1,$`(wordlist 2,99999999,$`1),$`2) env!=$`(call ^d,$`(call ^n,1,$`1)))))
 define ~trim-hashbang
 $(if $(filter #%,$(word 1,$1)),
 $(call ~concat-vec,$(wordlist 2,99999999,$(call ~split,
@@ -323,28 +322,29 @@ $(call ~concat-vec,$(wordlist 2,99999999,$(call ~split,
 ),$1)
 endef
 define ~compile-module
-$(or $(if $(call ~vec-filter,filter,$(call ^d,$1),$(~*compiling*)),$(call ~bail-if,dependency loop: $(call ~concat-vec,$(call ~conj,$(~*compiling*),$1), -> ))),$(call ^set,~*compiling*,$(call ^set,~*compiling*,$(call ~conj,$(~*compiling*),$1),$(~*compiling*)),$(and $(call ~build-message,compiling,$1)1,$(call ^Y,$(call ~compile-text,$(call ~trim-hashbang,$(call ~memo-read-file,$1)),$(call ~compile-prelude,$1),$1,$(call ~modid-file,$(call ~module-id,$1))),$1,$(call ~modid-file,$(call ~module-id,$1)),,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach e,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`e),$`(call ~trim-hashbang,$`(call ~memo-read-file,$(call ^E,$1))),$`2))))1,$`(call ~memo-drop)1,1),$`(and $`(and $`(call ~memo-call,~memo-mkdir-p,$`(dir $`3))1,$`(call ~bail-if,$`(call ~memo-write-file,$`3,# Requires: $`(call ~dict-get,require,$`1)
+$(or $(if $(call ~vec-filter,filter,$(call ^d,$1),$(~*compiling*)),$(call ~bail-if,dependency loop: $(call ~concat-vec,$(call ~conj,$(~*compiling*),$1), -> ))),$(call ^set,~*compiling*,$(call ^set,~*compiling*,$(call ~conj,$(~*compiling*),$1),$(~*compiling*)),$(and $(call ~build-message,compiling,$1)1,$(call ^Y,$(call ~parse-and-gen,$(call ~trim-hashbang,$(call ~memo-read-file,$1)),$(call ~compile-prelude,$1),$1,$(call ~modid-file,$(call ~module-id,$1))),$1,$(call ~modid-file,$(call ~module-id,$1)),,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach e,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`e),$`(call ~trim-hashbang,$`(call ~memo-read-file,$(call ^E,$1))),$`2))))1,$`(call ~memo-drop)1,1),$`(and $`(and $`(call ~memo-call,~memo-mkdir-p,$`(dir $`3))1,$`(call ~bail-if,$`(call ~memo-write-file,$`3,# Requires: $`(call ~dict-get,require,$`1)
 $`(call ~env-export-lines,$`(call ~dict-get,env,$`1))$`(call ~dict-get,code,$`1))))1,))))))
 endef
 define ~link
-$(and $(call ~build-message,linking,$1)1,$(call ~bail-if,$(call ~memo-write-file,$1,#!/bin/bash
+$(and $(call ~build-message,linking,$1)1,$(call ~bail-if,$(or $(call ~memo-write-file,$1,#!/bin/bash
 :; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -f"$`0" 9>&1
 SHELL:=/bin/bash
 $(call ^Y,$(call ~descendants,$(value ~modid-deps),$(call ~uniq,$(call ~append,$2,$(foreach m,$(call ~runtime-module-name,),$(call ~module-id,$m))))),,,,,,,,,$`(subst |1,|,$`(subst |0, ,$`(subst $`  ,,$`(foreach id,$`1,$`(subst $`  ,|0,$`(subst |,|1,$`(call ~construct-bundle,$`(call ^u,$`(id)),$`(filter compile,$`1)))))))))$`(eval $`(value [mod-runtime]))
 $`(call ^start,$2,$(call ~gen-native-name,main,),$`(value SCAM_ARGS))
-,+x)))
+),$(call ~memo-chmod-file,$1,+x))))
 endef
 ~m-link = $(call ~memo-call,~link,$1,$2)
 ~run-test = $(or $(call ~m-link,$1,$2),$(and $(call ~build-message,running,$1)1,$(call ~memo-hash-file,$1)1,$(if $(filter-out 0,$(lastword $(call ~ioshell,TEST_DIR=$(call ~quote-sh-arg,$(~*obj-dir*)) $(call ~quote-sh-arg,$(dir $1)$(notdir $1)) >&2 ;echo " $`?"))),$(and 1,$(call ~memo-drop)1,1),$(and 1,))))
-~compile-module-and-test = $(or $(call ~memo-call,~compile-module,$1),$(and $(if $2,,1),$(call ~file-exists?,$(subst .scm,-q.scm,$1)),$(or $(call ~memo-call,~compile-module,$(subst .scm,-q.scm,$1)),$(if $(call ~memo-call,~run-test,$(basename $(call ~modid-file,$(call ~module-id,$(subst .scm,-q.scm,$1)))),$(call ~module-id,$(subst .scm,-q.scm,$1))),$(call ~bail-if,$(subst .scm,-q.scm,$1) failed)))))
-define ~compile-program
-$(if $(call ~file-exists?,$2),$(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(or $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(call ~memo-call,~compile-module-and-test,$2,)),$(call ~m-link,$1,$(call ~module-id,$2)))),$(and $(call ~fprintf,2,scam: file '%s' does not exist
-,$2)1,1))
+~compile-and-test-module = $(or $(call ~memo-call,~compile-module,$1),$(and $(if $2,,1),$(call ~file-exists?,$(subst .scm,-q.scm,$1)),$(or $(call ~memo-call,~compile-module,$(subst .scm,-q.scm,$1)),$(if $(call ~memo-call,~run-test,$(basename $(call ~modid-file,$(call ~module-id,$(subst .scm,-q.scm,$1)))),$(call ~module-id,$(subst .scm,-q.scm,$1))),$(call ~bail-if,$(subst .scm,-q.scm,$1) failed)))))
+define ~build-program
+$(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(if $(if $(call ~memo-hash-file,$1),,1),$(and $(call ~fprintf,2,scam: file '%s' does not exist
+,$1)1,1),$(or $(call ~memo-call,~compile-and-test-module,$1,),$(call ~m-link,$2,$(call ~module-id,$1)))))
 endef
-define ~compile-and-run
-$(or $(call ~compile-program,$(basename $(call ~modid-file,$(call ~module-id,$1))),$1),$(call ~compile-eval,.PHONY: [run]
+define ~run-program
+$(or $(call ~build-program,$1,$(basename $(call ~modid-file,$(call ~module-id,$1)))),$(call ~compile-eval,.PHONY: [run]
 [run]: ; @$(subst $`,$`$`,SCAM_ARGS=$(call ~quote-sh-arg,$2) make -f $(call ~quote-sh-arg,$(basename $(call ~modid-file,$(call ~module-id,$1)))))))
 endef
+~compile-text = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(call ~parse-and-gen,$1,$(or $3,$(call ~compile-prelude,)),$2,))
 
 endef
 
@@ -577,7 +577,7 @@ endef
 
 define [mod-gen0]
 # Requires: core parse escape gen num
-# Exports: c0_2 c0-block_2 c0-block-cc_3]or]4]or]5 ModSuccess#4;S]S;i`:Mod0 ModError#4;S;i`:Mod1 get-module_3 c0-vec_2 skip-flags_2 get-flags_2
+# Exports: gen0_2 c0_2 c0-block_2 ModSuccess#4;S]S;i`:Mod0 ModError#4;S;i`:Mod1 get-module_3 c0-vec_2 skip-flags_2 get-flags_2
 $(call ^R,core)
 $(call ^R,parse)
 $(call ^R,escape)
@@ -629,6 +629,7 @@ $(call ^at,!1:Mod0!=ModSuccess!0S!0S !1:Mod1!=ModError!0S)
 ~c0-qq = $(if $(filter !:P6,$(word 1,$2)),$(if $3,$(call ~c0-qq-form,!:P6 $(word 2,$2) *!*,$(call ~c0-qq,$1,$(wordlist 3,99999999,$2),$(wordlist 2,99999999,$3))),$(call ~c0,$(wordlist 3,99999999,$2),$1)),$(if $(filter !:P5,$(word 1,$2)),$(call ~c0-qq-form,!:P5 $(word 2,$2) *!*,$(call ~c0-qq,$1,$(wordlist 3,99999999,$2),$(call ~cons,1,$3))),$(if $(filter !:P0,$(word 1,$2)),$(call ~c0-qq-form,!:P0 $(word 2,$2) *!*,$(call ~il-concat,$(call ~intersperse,!:IL0 !0,$(foreach c,$(wordlist 3,99999999,$2),$(call ^d,$(if $(filter !:P7,$(word 1,$(call ^u,$c))),$(call ~c0,$(wordlist 3,99999999,$(call ^u,$c)),$1),$(call ~il-demote,$(call ~c0-qq,$1,$(call ^u,$c),$3)))))))),$(if $(filter !:P8,$(word 1,$2)),$2,!:IL0 $(call ^d,$2)))))
 ~c0-error = $(call ~gen-error,$1,$(if $(filter !:P6,$(word 1,$1)),unquote (,) outside of a quasiquoted (`) form,$(if $(filter !:P7,$(word 1,$1)),splice (,@) outside of a quasiquoted (`) form,bad AST node: %q)),$1)
 ~c0 = $(if $(filter !:P2,$(word 1,$1)),$(call ~c0-S,$2,$1,$(call ^n,3,$1),$(call ~resolve,$1,$2)),$(if $(filter !:P1,$(word 1,$1)),!:IL0 $(call ^d,$(call ^n,3,$1)),$(if $(filter !:P0,$(word 1,$1)),$(call ~c0-L,$2,$(word 2,$1),$(call ^n,1,$(wordlist 3,99999999,$1)),$(wordlist 2,99999999,$(wordlist 3,99999999,$1)),$(call ~resolve,$(call ^n,1,$(wordlist 3,99999999,$1)),$2)),$(if $(filter !:P3,$(word 1,$1)),$(call ~c0-D,$2,$(word 2,$1),$(wordlist 3,99999999,$1)),$(if $(filter !:P4,$(word 1,$1)),!:IL0 $(call ^d,$(wordlist 3,99999999,$1)),$(if $(filter !:P5,$(word 1,$1)),$(call ~c0-qq,$2,$(wordlist 3,99999999,$1)),$(if $(filter !:P8,$(word 1,$1)),$1,$(call ~c0-error,$1))))))))
+~gen0 = $(call ~c0-block-cc,$2,$1,$`(call ~cons,$`1,$`2))
 
 endef
 
@@ -687,7 +688,7 @@ endef
 
 define [mod-memo]
 # Requires: core io string
-# Exports: memo-mkdir-p_1 memo-write-file_2]or]3 memo-read-file_1 memo-hash-file_1 memo-on&i;2;\.;\>;~memo-minus`<]if],1:IL1|~*%*],1'|,1.],1:IL7|@>}~memo-start-session}@1[@01@00|@'}1`[]2]0 memo-blob-call_1]or]more memo-call_1]or]more memo-apply_2 memo-io_1]or]more memo-drop_0
+# Exports: memo-chmod-file_2 memo-mkdir-p_1 memo-write-file_2 memo-read-file_1 memo-hash-file_1 memo-on&i;2;\.;\>;~memo-minus`<]if],1:IL1|~*%*],1'|,1.],1:IL7|@>}~memo-start-session}@1[@01@00|@'}1`[]2]0 memo-blob-call_1]or]more memo-call_1]or]more memo-apply_2 memo-io_1]or]more memo-drop_0
 $(call ^R,core)
 $(call ^R,io)
 $(call ^R,string)
@@ -709,7 +710,7 @@ $(call ^at,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
 ~memo-log-io = $(and $(if $(~*memo-key*),$(call ^set,~*memo-key*,$(call ^d,$(or $(call ~get-io-tag,$(call ~dict-get,$(~*memo-key*),$(~*memo-db*)),$1,$2),$(and $(call ~memo-add-entry,!:PMDB1 $(call ^d,$(~*memo-tag*)) $(call ^d,$1) $2)1,$(call ^set,~*memo-tag*,$(call ~1+,$(~*memo-tag*)),$(~*memo-tag*))))) $(call ^d,$3)))1,$3)
 ~memo-io = $(call ~memo-log-io,$1,$(foreach N,2,$(^v)),$(call ^na,$1,$(foreach N,2,$(^v))))
 ~memo-do-apply = $(call ^Y,$(call ~dict-find,$1 $2,$(~*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ^n,2,$`(subst !=, ,$`1)),$`(call ^Y,$`(call ^Y,$`(call ~memo-playback,$`2 $`3),$`2,$`3,,,,,,,$``(if $``(filter !:PMDB0,$``(word 1,$``1)),$``(call ^n,2,$``1),$``(call ~memo-record,$``2 $``3,$``2,$``3))),$`2 $`3,,,,,,,,$``(and $``(call ^set,~*memo-cache*,$``(call ~append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(~*memo-cache*)))1,$``1))))
-~memo-apply = $(if $(~*memo-on*),$(call ~memo-log-io,:$1,$2,$(call ~memo-do-apply,$1,$2)),$(and $(info WARNING: memo-not-init: ($1 $2))1,$(call ^na,$1,$2)))
+~memo-apply = $(and $(call ~assert-x,$(~*memo-on*),memo.scm:164)1,$(call ~memo-log-io,:$1,$2,$(call ~memo-do-apply,$1,$2)))
 ~memo-call = $(call ~memo-apply,$1,$(foreach N,2,$(^v)))
 ~blobify = $(and $(call ~memo-call,~memo-mkdir-p,$(dir $(~*memo-db-file*)))1,$(call ~save-blob,$(dir $(~*memo-db-file*)),$(call ^na,$1,$(foreach N,2,$(^v)))))
 ~read-blob = $(call ~read-file,$1)
@@ -720,7 +721,7 @@ $(if $(if $(call ~eq?,$(~*memo-db*),$(~*memo-db-disk*)),,1),$(and $(call ~expect
 $(subst !0, ,$(subst $  ,
 ,$(subst 
 ,!n,$(~*memo-db*))))
-),memo.scm:235)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))
+),memo.scm:231)1,$(call ^set,~*memo-db-disk*,$(~*memo-db*))))
 endef
 define ~memo-start-session
 $(and $(call ^set,~*memo-on*,1)1,$(if $(if $(call ~eq?,$(~*memo-db-file*),$1),,1),$(and $(call ^set,~*memo-db-file*,$1)1,$(call ^set,~*memo-db*,$(filter %,$(subst !n,
@@ -732,9 +733,10 @@ endef
 ~do-memo-hash-file = $(if $(~*memo-on*),$(call ^n,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ^n,2,$(subst !=, ,$(pair))))),$(if $(call ~eq?,$(call ^n,3,$(call ^n,2,$(subst !=, ,$(pair)))),~do-memo-hash-file),$(word 1,$(wordlist 4,99999999,$(call ^n,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
 ~memo-hash-file = $(call ~memo-io,~do-memo-hash-file,$1)
 ~memo-read-file = $(and $(call ~memo-hash-file,$1)1,$(call ~read-file,$1))
-~do-memo-cp-blob = $(or $(if $(if $(call ~eq?,$(notdir $1),$(call ~dict-get,$2,$(~*memo-hashes*))),,1),$(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$2,$(~*memo-hashes*)))1,$(call ~cp-file,$1,$2))),$(if $3,$(call ~chmod-file,$2,$3)))
-~memo-write-file = $(if $(~*memo-on*),$(call ^Y,$(call ~save-blob,$(dir $(~*memo-db-file*)),$2),,,,,,,,,$`(call ~memo-io,~do-memo-cp-blob,$`1,$(call ^E,$1),$(call ^E,$3))),$(and $(call ~write-file,$1,$2)1,$(if $3,$(call ~chmod-file,$1,$3))))
+~do-memo-cp-blob = $(if $(if $(call ~eq?,$(notdir $1),$(call ~dict-get,$2,$(~*memo-hashes*))),,1),$(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$2,$(~*memo-hashes*)))1,$(call ~cp-file,$1,$2)))
+~memo-write-file = $(if $(~*memo-on*),$(call ^Y,$(call ~save-blob,$(dir $(~*memo-db-file*)),$2),,,,,,,,,$`(call ~memo-io,~do-memo-cp-blob,$`1,$(call ^E,$1))),$(call ~write-file,$1,$2))
 ~memo-mkdir-p = $(call ~memo-io,~mkdir-p,$1)
+~memo-chmod-file = $(call ~memo-io,~chmod-file,$1,$2)
 
 endef
 

@@ -26,24 +26,10 @@
   { g: (EFunc "F" "x" 1 nil),
     q: (EFunc "Q" "p" 1 nil) })
 
-;; no imports to trim
-;;(expect (env-filter-scope mod-A-env "x p")
-;;        mod-A-env)
-
-;; reconstruct A (include)
-;;(expect (env-strip-imports mod-A-env 1)
-;;        mod-A-env)
-
-;; get public bindinds (import)
-;;(fexpect (env-strip-imports mod-A-env nil)
-;;         {g: (EFunc "F" "i" 1 nil)})
-
-
 ;; env-compress
 
 (for s [",.;[]\\!1!0!11!10!021!10 !. !@#$%^&*()_+=|}{\\][/.,?><';\":`~,i x!=F!0x v!=V!0x"]
      (expect s (env-expand (env-compress s))))
-
 
 ;; tokenize-key, detokenize-key:
 
@@ -54,15 +40,7 @@
 (expect 1 (tok-test {a: "a%a!p!P!%"}))
 (expect 1 (tok-test {"%": "a%a!p!P!%"}))
 
-
-;; import only public members
-
-;;(fexpect (import-binding "f" (EFunc "F" "x" 2 nil))
-;;         {f: (EFunc "F" "i" 2 nil)})
-
-;;(fexpect (import-binding "f" (EFunc "F" "p" 2 nil))
-;;         nil)
-
+;; exporting and importing bindings
 
 (define (export-round-trip env all)
   (env-parse (split "\n"
@@ -145,7 +123,6 @@
 (set-native "[mod-cqtest]" 1)
 (expect "cqtest" (locate-module "./" "cqtest"))
 
-
 ;; module-id
 
 (let-global ((*is-boot* 1))
@@ -158,18 +135,18 @@
 
 
 ;;--------------------------------------------------------------
-;; compile-text
+;; parse-and-gen
 ;;--------------------------------------------------------------
 
 ;; for file
-(let ((o (compile-text "(define a &native 1)" "" "(test)" "test.tmp")))
+(let ((o (parse-and-gen "(define a &native 1)" "" "(test)" "test.tmp")))
   (expect "" (dict-get "errors" o))
   (expect "a := 1\n" (dict-get "code" o))
   (expect (dict-get "a" (dict-get "env" o))
           (EVar "a" "p")))
 
 ;; for eval
-(let ((o (compile-text "(define a &native 1)" "" "(test)" "")))
+(let ((o (parse-and-gen "(define a &native 1)" "" "(test)" "")))
   (expect "" (dict-get "errors" o))
   (expect "$(call ^set,a,1)" (dict-get "code" o))
   (expect { a: (EVar "a" "p") }
@@ -178,7 +155,7 @@
 
 (expect "a := 1\nb := 2\n"
         (dict-get "code"
-                  (compile-text (concat "(define a &native 1) "
+                  (parse-and-gen (concat "(define a &native 1) "
                                         "(define b &native 2)")
                                 "" "(test)" "test.tmp")))
 
@@ -186,11 +163,13 @@
 
 (declare ^R &native)
 
-(let-global ((locate-module (lambda (f name) name))
-             (^R (lambda () nil))
-             (modid-import (lambda () nil)))
-  (let ((o (compile-text "(require \"r.scm\")" "" "(test)" "test.tmp")))
-    (expect "" (dict-get "errors" o))
-    (expect "r.scm" (dict-get "require" o))
-    (expect 1 (see "$(call ^R,r.scm)\n"
-                   (dict-get "code" o)))))
+(memo-on
+ (concat (assert (value "TEST_DIR")) "compile-q-db.txt")
+ (let-global ((locate-module (lambda (f name) name))
+              (^R (lambda () nil))
+              (modid-import (lambda () nil)))
+   (let ((o (parse-and-gen "(require \"r.scm\")" "" "(test)" "test.tmp")))
+     (expect "" (dict-get "errors" o))
+     (expect "r.scm" (dict-get "require" o))
+     (expect 1 (see "$(call ^R,r.scm)\n"
+                    (dict-get "code" o))))))

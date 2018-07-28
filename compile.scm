@@ -82,6 +82,11 @@
           (hash-file (word 1 (value "MAKEFILE_LIST")))
           ".cache"))
 
+;; Evaluate EXPR within a memo session for compilation.
+;;
+(define `(compile-memo-on expr)
+  (memo-on (compile-cache-file) expr))
+
 
 (define (compile-eval text)
   (eval text))
@@ -394,15 +399,13 @@ SHELL:=/bin/bash
 ;;----------------------------------------------------------------
 
 (declare (compile-module src-file))
-(declare (compile-module-and-test src-file is-test))
+(declare (compile-and-test-module src-file is-test))
 
 (define `(m-compile-module infile)
   (memo-call (native-name compile-module) infile))
 
-(define `(m-compile-module-and-test src-file untested)
-  (memo-on (compile-cache-file)
-           (memo-call (native-name compile-module-and-test) src-file untested)))
-
+(define `(m-compile-and-test-module src-file untested)
+  (memo-call (native-name compile-and-test-module) src-file untested))
 
 
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
@@ -422,7 +425,6 @@ SHELL:=/bin/bash
 ;; Returns: a CMod record
 ;;
 (define (get-module name base private)
-  &public
   (let ((orgn (m-locate-module (dir base) name))
         (private private))
     (define `id (module-id orgn))
@@ -430,7 +432,7 @@ SHELL:=/bin/bash
     (or (if (not orgn)
             (ModError (sprintf "cannot find %q" name)))
         (if (filter "%.scm" [orgn])
-            (if (m-compile-module-and-test orgn private)
+            (if (m-compile-and-test-module orgn private)
                 (ModError (sprintf "compilation of %q failed" orgn))
                 ;; success => nil => proceed to ordinary result
                 nil))
@@ -445,18 +447,14 @@ SHELL:=/bin/bash
               (ModSuccess id exports))))))
 
 
-;;----------------------------------------------------------------
-
-;; Get the name of the runtime module.
+;; Get the name of the runtime module, or nil if the runtime should not
+;; be used with SOURCE.  When booting, we build the runtime from source.
+;; To avoid a circular dependencies, we skip the runtime as an implicit
+;; dependency of runtime.scm or runtime-q.scm.
 ;;
 (define (runtime-module-name source)
   (if *is-boot*
-      ;; When booting, build runtime from source, and avoid a circular
-      ;; dependency.  Avoid treating "runtime.scm" as an implicit
-      ;; dependency of runtime-q.scm to avoid a circular dependency on
-      ;; testing.
       (filter-out (subst "-q.scm" ".scm" [source]) "runtime.scm")
-      ;; Normal compilation: use builtin
       "runtime"))
 
 
@@ -468,8 +466,6 @@ SHELL:=/bin/bash
 ;; this will ensure compilation of these modules from source.
 ;;
 (define (compile-prelude source)
-  &public
-
   (define `(get-module-env name)
     (let ((o (get-module name "." nil)))
       (case o
@@ -496,15 +492,17 @@ SHELL:=/bin/bash
 ;; IS-FILE = When nil, code will be compiled for function syntax.  When
 ;;           non-nil, code will be compiled for file syntax.
 ;;
-(define (compile-text text env infile is-file)
-  &public
+(define (parse-and-gen text env infile is-file)
   (let-global ((*compile-subject*  (penc text))
                (*compile-file*     infile))
+    (define `forms
+      (parse-subject *compile-subject*))
 
-    (c0-block-cc env
-                 (parse-subject *compile-subject*)
-                 (lambda (env-out nodes)
-                   (concat (gen1 nodes is-file) " " {env: env-out})))))
+    (let ((o (gen0 forms env))
+          (is-file is-file))
+      (define `env-out (first o))
+      (define `nodes (rest o))
+      (concat (gen1 nodes is-file) " " {env: env-out}))))
 
 
 ;; Replace the first line with a blank line if it begins with "#".
@@ -538,7 +536,7 @@ SHELL:=/bin/bash
 
      (build-message "compiling" infile)
 
-     (let ((o (compile-text text imports infile outfile))
+     (let ((o (parse-and-gen text imports infile outfile))
            (infile infile)
            (outfile outfile))
        (define `errors (dict-get "errors" o))
@@ -621,7 +619,7 @@ SHELL:=/bin/bash
 ;; On success, return nil.
 ;; On failure, display message and return 1.
 ;;
-(define (compile-module-and-test src-file untested)
+(define (compile-and-test-module src-file untested)
   (define `test-src (subst ".scm" "-q.scm" src-file))
   (define `test-mod (module-id test-src))
   (define `test-exe (basename (modid-file test-mod)))
@@ -634,7 +632,7 @@ SHELL:=/bin/bash
                    (bail-if (concat test-src " failed")))))))
 
 
-;; Compile a SCAM program.
+;; Compile SCAM source and write an executable file.
 ;; On success, return nil.
 ;; On failure, display message and return 1.
 ;;
@@ -642,25 +640,24 @@ SHELL:=/bin/bash
 ;; SRC-FILE = source file of the main module
 ;; OPTS = command-line options
 ;;
-(define (compile-program exe-file src-file)
+(define (build-program src-file exe-file)
   &public
   (define `main-id (module-id src-file))
 
-  (if (file-exists? src-file)
-      (memo-on (compile-cache-file)
-               (or (m-compile-module-and-test src-file nil)
-                   (m-link exe-file main-id)))
-      ;; file does not exist
-      (begin
-        (fprintf 2 "scam: file '%s' does not exist\n" src-file)
-        1)))
+  (compile-memo-on
+   (if (not (memo-hash-file src-file))
+       (begin
+         (fprintf 2 "scam: file '%s' does not exist\n" src-file)
+         1)
+       (or (m-compile-and-test-module src-file nil)
+           (m-link exe-file main-id)))))
 
 
-;; Compile a program and then execute it.
+;; Compile and execute a SCAM source file.
 ;; On success, return nil.
 ;; On failure, display message and return 1.
 ;;
-(define (compile-and-run src-file argv)
+(define (run-program src-file argv)
   &public
 
   (define `exe-file
@@ -672,6 +669,23 @@ SHELL:=/bin/bash
     (concat "SCAM_ARGS=" (quote-sh-arg argv)
             " make -f " (quote-sh-arg exe-file)))
 
-  (or (compile-program exe-file src-file)
+  (or (build-program src-file exe-file)
       (compile-eval (concat ".PHONY: [run]\n"
                             "[run]: ; @" (subst "$" "$$" run-cmd)))))
+
+
+;; Compile SCAM source code to a function.
+;;
+;; TEXT = SCAM source
+;; FILE = the file from which the source was obtained; this will be
+;;        available to the compiled code via `(current-file)`.
+;; ENV = Initial environment.  If nil, SCAM's initial bindings will be
+;;       supplied.  Otherwise, it must begin with the initial bindings.
+;;
+;; Returns: { code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }
+;;
+(define (compile-text text file ?env-in)
+  &public
+  (define `env (or env-in (compile-prelude nil)))
+  (compile-memo-on
+   (parse-and-gen text env file nil)))

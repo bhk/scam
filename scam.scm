@@ -79,11 +79,13 @@ Options:
      ((opt "o")
       (if (word 2 names)
           (perror "to many input files were given with `-o`")
-          (compile-program (last (opt "o")) (first names))))
+          (build-program (first names) (last (opt "o")))))
 
      ((opt "e")
+      ;; eval with the REPL's initial env & output formatting
       (for expr (opt "e")
-           (repl-rep expr nil))
+           (if (repl-rep expr)
+               (error "Error")))
       nil)
 
      ((or (opt "v")
@@ -93,7 +95,7 @@ Options:
      ((opt "x")
       (if (not names)
           (perror "no FILE was given with '-x'")
-          (compile-and-run (first names) (rest names))))
+          (run-program (first names) (rest names))))
 
      ((not names) ;; handles valid `-i` case as well
       (print "SCAM v" version " interactive mode. Type '?' for help.")
@@ -103,4 +105,4 @@ Options:
       (perror "extraneous arguments were provided with -i"))
 
      (else
-      (compile-and-run (first names) (rest names))))))
+      (run-program (first names) (rest names))))))

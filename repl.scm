@@ -32,10 +32,6 @@
   (printf "LIBS = %s\n" LIBS))
 
 
-;;
-;; Display environment entries
-;;
-
 (define (describe-binding bound-name defn all)
   (if (or all (not (filter "i%" (EDefn.scope defn))))
       (case defn
@@ -58,6 +54,8 @@
         (else ""))))
 
 
+;; Print descriptions of all environment entries.
+;;
 (define (describe-env env all)
   (foreach w (reverse (dict-compact env))
            (let ((name (dict-key w))
@@ -65,37 +63,31 @@
              (if desc
                  (printf "  %s : %s" name desc)))))
 
-;;
-;; Read, eval, print
-;;
-
 
 ;; Parse and evaluate text, displaying errors or result.
-;; Return:  [ incomplete-text newenv ]
+;; Return:  [ INCOMPLETE-TEXT NEWENV ERROR? ]
 ;;
-(define (eval-and-print text env)
-  (let ((o (compile-text text env "[console]" ""))
+(define (eval-and-print text env ?is-interactive)
+  (let ((o (compile-text text "[stdin]" env))
         (env env)
         (text text))
     (define `errors (dict-get "errors" o))
     (define `exe    (dict-get "code" o))
     (define `newenv (dict-get "env" o))
     (define `(is-error codes)
-      (filter codes (case (first errors)
-                      ((PError n desc) (word 1 desc)))))
+      (and is-interactive
+           (filter codes (case (first errors)
+                           ((PError n desc) (word 1 desc))))))
 
     (cond
      ;; unterminated expr: append more text
      ((is-error "( [ {") [text env])
 
-     ;; no expressions found: start fresh at ">" prompt
-     ((is-error ".") ["" env])
-
      ;; error?
      (errors (begin
                (for err errors
                     (info (describe-error err text "[stdin]")))
-               ["" env]))
+               ["" env 1]))
 
      ;; execute & display result
      (else (begin
@@ -110,8 +102,8 @@
 
 ;; Collect another line of input and process it.
 ;;
-;; On entry: state = [text env]    (text = previous incomplete expression)
-;; Return value: next state; or nil to terminate loop.
+;; STATE = [TEXT ENV]    (TEXT = previous incomplete expression)
+;; Returns next state; or nil to terminate loop.
 ;;
 (define (read-eval-print state)
   (let ((line (getline (if (first state) "+ " "> ")))
@@ -125,23 +117,24 @@
     (cond ((typed "?")    (begin (help) state))
           ((typed ":")    ["" env]) ; reset input state
           ((typed ":q")   nil)      ; exit
-          ((eq? line "")   nil)      ; exit (Ctrl-D)
+          ((eq? line "")  nil)      ; exit (Ctrl-D)
           ((typed ":e")   (begin (describe-env env nil) state))
           ((typed ":E")   (begin (describe-env env 1) state))
-          (else           (eval-and-print (concat text line) env)))))
+          (else           (eval-and-print (concat text line) env 1)))))
 
-
-;;
-;; main
-;;
 
 (define `initial-state
   (eval-and-print
-   (concat (foreach lib LIBS (concat "(require \"" lib "\")"))
-           "(declare *1)(declare *2)")
-   (append (compile-prelude nil))))
+   (concat (foreach lib LIBS
+                    (concat "(require \"" lib "\")"))
+           "(declare *1)"
+           "(declare *2)")
+   nil))
 
 
+;; Read lines of text from stdin, evaluating expressions and displaying
+;; results and errors.
+;;
 (define (repl)
   &public
   ;; These functions will be "on the stack" in the REPL and should not be
@@ -153,45 +146,7 @@
 
 ;; Evaluate 'text' and print results (without looping).
 ;;
-(define (repl-rep text filename)
+(define (repl-rep text)
   &public
   (define `env (nth 2 initial-state))
-
-  (let ((o (compile-text text env (or filename "[commandline]") ""))
-        (text text))
-    (define `errors (dict-get "errors" o))
-    (define `exe    (dict-get "code" o))
-
-    (if errors
-        (begin
-          (for err errors
-               (info (describe-error err text nil)))
-          1)
-
-        ;; execute & display result
-        (let ((result (exe)))
-          (if result
-              (print (format result)))))))
-
-
-;; Load and execute file 'file'
-;;
-(define (repl-file file)
-  &public
-  (let ((text (read-file file))
-        (file file))
-    (if text
-        (let ((o (compile-text text (compile-prelude nil) file "///~"))
-              (text text)
-              (file file))
-          (define `errors (dict-get "errors" o))
-          (define `exe    (dict-get "code" o))
-
-          (if errors
-              (begin
-                (for err errors
-                     (info (describe-error err text file)))
-                1)
-              (eval exe)))
-        (begin (printf "error: empty/missing file %q" file)
-               1))))
+  (word 3 (eval-and-print text env)))

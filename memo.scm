@@ -161,12 +161,8 @@
 ;;
 (define (memo-apply fname args)
   &public
-  (if *memo-on*
-      (memo-log-call fname args (memo-do-apply fname args))
-      (begin
-        ;; TODO: allow or forbid, don't warn
-        (print "WARNING: memo-not-init: (" fname " " args ")")
-        (name-apply fname args))))
+  (assert *memo-on*)
+  (memo-log-call fname args (memo-do-apply fname args)))
 
 
 ;; Call (FNAME ...ARGS), or return cached results.

@@ -147,8 +147,8 @@ $B-x.ok: $B/scam test/*.scm
 
 $B-e.ok: $B/scam
 	@ echo '... test scam -e EXPR'
-	$(_@) $B/scam --obj-dir .out/tbx -e '(print [""])' -e '[""]' | tr '\n' '/' > .out/tb/dash-e.out
-	$(_@) $(call guard,BE1,grep '\!\./\[\"\"\]' .out/tb/dash-e.out)
+	$(_@) $B/scam --obj-dir .out/tbx -e '(print [""])' -e '[""]' > .out/tb/dash-e.out
+	$(_@) $(call guard,BE1,cat .out/tb/dash-e.out | tr  '\n' '/' | grep '\!\./\[\"\"\]' -)
 	$(_@) touch $@
 
 

@@ -698,7 +698,6 @@
 ;;       this function is called, when it is nil.
 ;;
 (define (c0-block-cc env forms k ?results ?o)
-  &public
   (define `new-results
     (concat results (if o (concat " " [o]))))
 
@@ -862,3 +861,11 @@
     ((PQQuote n subform) (c0-qq env subform))
     ((PError n code) form)
     (else (c0-error form))))
+
+
+;; Compile a list of forms, returning [ENV-OUT ...NODES].
+;;
+(define (gen0 forms env)
+  &public
+  (c0-block-cc env forms (lambda (env-out nodes)
+                           (cons env-out nodes))))
