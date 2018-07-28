@@ -136,7 +136,8 @@
                              " || rm " temp-arg " 2>&1"))))))
 
 
-;; Modify file mode.
+;; Modify file mode.  Return nil on success, description on error.
+;; MODE is as defined by the `chmod` command.
 ;;
 (define (chmod-file filename mode)
   &public

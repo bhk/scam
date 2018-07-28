@@ -587,7 +587,8 @@ SHELL:=/bin/bash
   (define `exe-code
     (concat prologue bundles (epilogue main-id main-func)))
 
-  (bail-if (memo-write-file exe-file exe-code "+x")))
+  (bail-if (or (memo-write-file exe-file exe-code)
+               (memo-chmod-file exe-file "+x"))))
 
 
 (define (m-link exe-file main-id)
