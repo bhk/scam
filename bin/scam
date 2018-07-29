@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MOD := scam
-^uid := 63f11b6f6f4ba481
+^uid := 96cb70caf176b0db
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -24,7 +24,7 @@ endef
 
 define [mod-runtime]
 # Requires: 
-# Exports: at-exit_1 tracing&i;2;\.;\>;~untrace`>]~trace],1[|1|0`[]2]0 do-not-trace_1 untrace_1]or]2 trace_1 *obj-dir*#0;~%;i ^tags#0;%;i filtersub_3 bound?&i;1;\.;\<;if`<]filter-out],1'|u!p],1<|flavor|@[}1}0`']1 rrest&i;1;\.;\<;wordlist`']3`']99999999`[]1]0 rest&i;1;\.;\<;wordlist`']2`']99999999`[]1]0 first&i;1;\.;\>;^n`']1`[]1]0 nth-rest&i;2;\.;\<;wordlist`[]1]0`']99999999`[]2]0 not&i;1;\.;\<;if`[]1]0`'],.`']1 nil#2;\.;i;\';\. set-native-fn&i;2]or]3;\.;\>;^fset`[]1]0`[]2]0`[]3]0 set-native&i;2]or]3;\.;\>;^set`[]1]0`[]2]0`[]3]0 nth&i;2;\.;\>;^n`[]1]0`[]2]0 demote&i;1;\.;\>;^d`[]1]0 promote&i;1;\.;\>;^u`[]1]0 apply&i;2;\.;\>;^%`[]1]0`[]2]0 name-apply&i;2;\.;\>;^na`[]1]0`[]2]0
+# Exports: at-exit#tracing(3;~untrace[:IL3'~trace',@\01\00[@'2'0 do-not-trace#untrace}1'or'2 trace#*obj-dir*{0;~%;i ^tags{0;%;i filtersub}3 bound?&1;!1.;!1:IL2;if[:IL2'filter-out',|\0u!p',:IL2\0flavor\0,1@,01,00[|'1 rrest&1;!1.;!1:IL2;wordlist[|'3[|'99999999[@'1'0 rest&1;!1.;!1:IL2;wordlist[|'2[|'99999999[@'1'0 first&1;!1.;!1:IL3;^n[|'1[@'1'0 nth-rest(2;wordlist[@'1'0[|'99999999[@'2'0 not&1;!1.;!1:IL2;if[@'1'0[|'\.[|'1 nil{2;!1.;i;!1|;!1. set-native-fn&2'or'3;!1.;!1:IL3;^fset[@'1'0[@'2'0[@'3'0 set-native&2'or'3;!1.;!1:IL3;^set[@'1'0[@'2'0[@'3'0 nth(3;^n[@'1'0[@'2'0 demote&1;!1.;!1:IL3;^d[@'1'0 promote&1;!1.;!1:IL3;^u[@'1'0 apply(3;^%[@'1'0[@'2'0 name-apply(3;^na[@'1'0[@'2'0
 ~*do-not-trace* := $(value .VARIABLES)
 define '
 
@@ -116,7 +116,7 @@ endef
 
 define [mod-core]
 # Requires: 
-# Exports: intersperse_2 foldr_3 foldl_3 index-of_2 assoc&i;2;\.;\>;~%-initial`<]subst],1'|@],1'|@1],1>|^d|@[}1}0`[]2]0 assoc-vec&i;2;\.;\>;~assoc-initial`>]^d],1[|1|0`[]2]0 assoc-initial_2 sort-by_2 memoize_1 1!S_1 split_2 uniq_1 see_2 fexpect&i;2;\.;\>;~expect-x`>]~format],1[|1|0`>]~format],1[|2|0`:IL9]4508 assert&i;1;\.;\>;~%-x`[]1]0`:IL9]4459 expect&i;2;\.;\>;~%-x`[]1]0`[]2]0`:IL9]4392 expect-x_3 printf_1]or]more sprintf_1]or]more vsprintf_2 format_1 format-add_1 dict-collate_1 dict-values_1 dict-keys_1 dict-compact_1]or]2 dict-set_3 dict-remove_2 dict-get_2]or]3 dict-find_2 dict-value&i;1;\.;\>;^n`']2`<]subst],1'|@=],1'|}],1[|1|0 dict-key_1 append_0]or]more word-index?_1 numeric?_1 while_3 reverse_1 indices&i;1;\.;\>;~%-a`<]words],1[|1|0 vec-subtract&i;2;\.;\>;~vec-filter`']filter-out`[]2]0`[]1]0 vec-intersect&i;2;\.;\>;~vec-filter`']filter`[]2]0`[]1]0 vec-or&i;1;\.;\>;^n`']1`<]filter-out],1'|@.],1[|1|0 select-words_2 select-vec_2 butlast_1 strip-vec&i;1;\.;\<;filter`']!p`[]1]0 last&i;1;\.;\>;^u`<]%word],1[|1|0 conj_2 cons_2 concat-vec_1]or]2 xor_2 identity&i;1;\.;\[;1;0 eq?_2
+# Exports: intersperse"foldr}3 foldl}3 index-of"assoc(3;~%-initial[:IL2'subst',|\0,1',|\0,11',:IL3\0^d\0,1@,01,00[@'2'0 assoc-vec(3;~assoc-initial[:IL3'^d',@\01\00[@'2'0 assoc-initial"sort-by"memoize#1+#split"uniq#see"fexpect(3;~expect-x[:IL3'~format',@\01\00[:IL3'~format',@\02\00[:IL9'4508 assert&1;!1.;!1:IL3;~%-x[@'1'0[:IL9'4459 expect(3;~%-x[@'1'0[@'2'0[:IL9'4392 expect-x}3 printf}1'or'more sprintf}1'or'more vsprintf"format#format-add#dict-collate#dict-values#dict-keys#dict-compact}1'or'2 dict-set}3 dict-remove"dict-get}2'or'3 dict-find"dict-value&1;!1.;!1:IL3;^n[|'2[:IL2'subst',|\0,1=',|\0,0',@\01\00 dict-key#append}0'or'more word-index?#numeric?#while}3 reverse#indices&1;!1.;!1:IL3;~%-a[:IL2'words',@\01\00 vec-subtract(3;~vec-filter[|'filter-out[@'2'0[@'1'0 vec-intersect(3;~vec-filter[|'filter[@'2'0[@'1'0 vec-or&1;!1.;!1:IL3;^n[|'1[:IL2'filter-out',|\0,1.',@\01\00 select-words"select-vec"butlast#strip-vec&1;!1.;!1:IL2;filter[|'!p[@'1'0 last&1;!1.;!1:IL3;^u[:IL2'%word',@\01\00 conj"cons"concat-vec}1'or'2 xor"identity&1;!1.;!1@;1;0 eq?}2
 ~eq? = $(if $(findstring 1$1,$(findstring 1$2,1$1)),1)
 ~xor = $(if $1,$(if $2,,$1),$2)
 ~concat-vec = $(call ^u,$(subst $  ,$(call ^d,$2),$1))
@@ -199,7 +199,7 @@ endef
 
 define [mod-repl]
 # Requires: core io parse compile gen num
-# Exports: repl-rep_1 repl_0
+# Exports: repl-rep#repl}0
 $(call ^R,core)
 $(call ^R,io)
 $(call ^R,parse)
@@ -234,7 +234,7 @@ endef
 
 define [mod-getopts]
 # Requires: core
-# Exports: getopts_2 MissingArg#4;S;i`:GetoptsError0 BadOption#4;S;i`:GetoptsError1
+# Exports: getopts"MissingArg{4;S]GetoptsError0 BadOption{4;S]GetoptsError1
 $(call ^R,core)
 $(call ^at,!1:GetoptsError0!=MissingArg!0S !1:GetoptsError1!=BadOption!0S)
 ~opt-pair = $(call ^k,$(patsubst -%,%,$(patsubst -%,%,$1)))!=$(call ^d,$2)
@@ -245,7 +245,7 @@ endef
 
 define [mod-compile]
 # Requires: core parse gen gen0 gen1 io memo macros utf8
-# Exports: compile-text_2]or]3 run-program_2 build-program_2 *is-quiet*#0;~%;i
+# Exports: compile-text}2'or'3 run-program"build-program"*is-quiet*{0;~%;i
 $(call ^R,core)
 $(call ^R,parse)
 $(call ^R,gen)
@@ -266,9 +266,20 @@ $(if $1,$(and $(call ~fprintf,2,scam: %s
 ,$1)1,$(call ~memo-drop)1,1),$(and 1,))
 endef
 ~descendants = $(if $2,$(call ~descendants,$1,$(call ~append,$(wordlist 2,99999999,$2),$(call ~vec-filter,filter-out,$2 $3,$(call ^Y,$(call ^n,1,$2),,,,,,,,,$1))),$(call ~append,$3,$(word 1,$2))),$3)
+define ~env-cmp
+$(subst &2;!1.;!1:IL,$[,$(subst {1;:;i;,&,$(subst }2 ,",$(subst }1 ,#,$(subst {1;~%;i;,},$(subst !=!1:EDefn,{,$(subst :IL4,@,$(subst :IL0,|,$(subst ;i[:,],$(subst ;\,[,$(subst !10,',$(subst \1,$(if ,,,),$(subst !11,\,$(subst !0,;,$(subst $[,!N,$(subst &,!M,$(subst ",!L,$(subst #,!K,$(subst },!J,$(subst {,!I,$(subst @,!H,$(subst |,!G,$(subst ],!F,$(subst [,!E,$(subst ',!D,$(subst $(if ,,,),!C,$(subst \,!B,$(subst ;,!A,$1))))))))))))))))))))))))))))
+endef
+define ~env-exp
+$(subst !A,;,$(subst !B,\,$(subst !C,$(if ,,,),$(subst !D,',$(subst !E,[,$(subst !F,],$(subst !G,|,$(subst !H,@,$(subst !I,{,$(subst !J,},$(subst !K,#,$(subst !L,",$(subst !M,&,$(subst !N,$[,$(subst ;,!0,$(subst \,!11,$(subst $(if ,,,),\1,$(subst ',!10,$(subst [,;\,$(subst ],;i[:,$(subst |,:IL0,$(subst @,:IL4,$(subst {,!=!1:EDefn,$(subst },{1;~%;i;,$(subst #,}1 ,$(subst ",}2 ,$(subst &,{1;:;i;,$(subst $[,&2;!1.;!1:IL,$1))))))))))))))))))))))))))))
+endef
 define ~env-compress
-$(subst "i;,_,$(subst $]1 ,+,$(subst "p;,$],$(subst $  ml.special-,$[,$(subst #1;:;,&,$(subst #1;~%;,",$(subst !=\:EDefn,#,$(subst $(if ,,,10),},$(subst 111,{,$(subst $(if ,,,11),@,$(subst $(if ,,,0),|,$(subst \0,],$(subst :IL4,[,$(subst :IL3,>,$(subst :IL2,<,$(subst :IL0,',$(subst $(if ,,;,),`,$(subst \1,$(if ,,,),$(subst !1,\,$(subst !0,;,$(subst _,!T,$(subst +,!S,$(subst $],!R,$(subst $[,!Q,$(subst &,!P,$(subst ",!O,$(subst #,!N,$(subst },!M,$(subst {,!L,$(subst @,!K,$(subst |,!J,$(subst ],!I,$(subst [,!H,$(subst >,!G,$(subst <,!F,$(subst ',!E,$(subst `,!D,$(subst $(if ,,,),!C,$(subst \,!B,$(subst ;,!A,$(foreach w,$(patsubst %!0,%,$(subst 
-,!n,$1)),$(word 1,$(subst !=,!= ,$w))$(subst $(word 1,$(subst !=, ,$w)),%,$(subst %,!p,$(word 2,$(subst !=,!= ,$w)))))))))))))))))))))))))))))))))))))))))))))
+$(call ~env-cmp,$(foreach w,$(patsubst %!0,%,$(subst 
+,!n,$1)),$(word 1,$(subst !=,!= ,$w))$(subst $(word 1,$(subst !=, ,$w)),%,$(subst %,!p,$(word 2,$(subst !=,!= ,$w))))))
+endef
+define ~env-parse
+$(subst !n,
+,$(subst !n,
+,$(foreach w,$(call ~env-exp,$(foreach prefix,$(call ~append,Exports,$(if $2,Private)),$(call ^u,$(call ~filtersub,#!0$(prefix):!0%,%,$1)))),$(word 1,$(subst !=,!= ,$w))$(subst !p,%,$(subst %,$(word 1,$(subst !=, ,$w)),$(word 2,$(subst !=,!= ,$w)))))))
 endef
 ~export-defn = $(word 3,$2):$(call ^k,$1)!=$(call ^d,$(call ~append,$(wordlist 1,2,$2),i,$(wordlist 4,99999999,$2)))
 define ~modid-read-lines
@@ -276,13 +287,9 @@ $(if $(or $(filter %.scm,$1),$(~*is-boot*)),$(and $(call ~memo-hash-file,$(~*obj
 ,$(value [mod-$1]))))
 endef
 define ~modid-deps
-$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:293)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
+$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:289)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
 endef
-define ~modid-import
-$(subst !n,
-,$(subst !n,
-,$(foreach w,$(subst !A,;,$(subst !B,\,$(subst !C,$(if ,,,),$(subst !D,`,$(subst !E,',$(subst !F,<,$(subst !G,>,$(subst !H,[,$(subst !I,],$(subst !J,|,$(subst !K,@,$(subst !L,{,$(subst !M,},$(subst !N,#,$(subst !O,",$(subst !P,&,$(subst !Q,$[,$(subst !R,$],$(subst !S,+,$(subst !T,_,$(subst ;,!0,$(subst \,!1,$(subst $(if ,,,),\1,$(subst `,$(if ,,;,),$(subst ',:IL0,$(subst <,:IL2,$(subst >,:IL3,$(subst [,:IL4,$(subst ],\0,$(subst |,$(if ,,,0),$(subst @,$(if ,,,11),$(subst {,111,$(subst },$(if ,,,10),$(subst #,!=\:EDefn,$(subst ",#1;~%;,$(subst &,#1;:;,$(subst $[, ml.special-,$(subst $],"p;,$(subst +,$]1 ,$(subst _,"i;,$(foreach prefix,$(call ~append,Exports,$(if $2,Private)),$(call ^u,$(call ~filtersub,#!0$(prefix):!0%,%,$(call ~modid-read-lines,$1,4)))))))))))))))))))))))))))))))))))))))))))),$(word 1,$(subst !=,!= ,$w))$(subst !p,%,$(subst %,$(word 1,$(subst !=, ,$w)),$(word 2,$(subst !=,!= ,$w)))))))
-endef
+~modid-import = $(call ~env-parse,$(call ~modid-read-lines,$1,4),$2)
 ~module-id = $(call ^Y,$(call ~escape-path,$1),,,,,,,,,$`(if $`(~*is-boot*),$`(basename $`1),$`1))
 ~locate-module = $(or $(and $(filter %.scm,$(call ^d,$2)),$(call ^n,1,$(filter-out !.,$(foreach dir,$(call ~cons,$1,$(addsuffix /,$(call ~split,:,$(value SCAM_LIBPATH)))),$(call ^d,$(wildcard $(call ~resolve-path,$(call ^u,$(dir)),$2))))))),$(and $(if $(~*is-boot*),,1),$(if $(if $(filter-out u%,$(flavor [mod-$2])),1),$2)))
 $(if $(call ~memoize,~locate-module),)
@@ -337,7 +344,7 @@ endef
 
 define [mod-gen]
 # Requires: core parse
-# Exports: resolve_2 builtin-names#0;~%;i check-argc_3 err-expected_5]or]6]or]7 gen-error_2]or]more gensym_2 current-depth_1 gensym-name_3 gen-native-name_2 il-subst_3 il-promote_1 il-demote_1 il-concat_1 NoOp#2;\.;i;\:IL6`'],1'`']|`'],1. LambdaMarkerKey#2;\.;i;\';: NoGlobalName#2;\.;i;\';: EDefn.scope&i;1;\.;\<;word`']3`[]1]0 EVar#4;S]W;i`:EDefn0 EFunc#4;S]W]S]L;i`:EDefn1 EIL#4;S]W]L;i`:EDefn2 EXMacro#4;S]W;i`:EDefn3 ERecord#4;S]W]S;i`:EDefn4 EBuiltin#4;S]W]S;i`:EDefn5 EArg#4;W;i`:EDefn6 EMarker#4;W;i`:EDefn7 IString#4;S;i`' IVar#4;W;i`:IL1 IBuiltin#4;W]L;i`< ICall#4;W]L;i`> ILocal#4;W]W;i`[ IFuncall#4;L;i`:IL5 IConcat#4;L;i`:IL6 IBlock#4;L;i`:IL7 ILambda#4;S;i`:IL8 IWhere#4;W;i`:IL9 ICrumb#4;W]S;i`:IL10 IEnv#4;S]L;i`:IL11 *is-boot*#0;~%;i *compile-file*#0;~%;i *compile-subject*#0;~%;i
+# Exports: resolve"builtin-names{0;~%;i check-argc}3 err-expected}5'or'6'or'7 gen-error}2'or'more gensym"current-depth#gensym-name}3 gen-native-name"il-subst}3 il-promote#il-demote#il-concat#NoOp{2;!1.;i;!1:IL6[|',|[|'\0[|',. LambdaMarkerKey{2;!1.;i;!1|;: NoGlobalName{2;!1.;i;!1|;: EDefn.scope&1;!1.;!1:IL2;word[|'3[@'1'0 EVar{4;S'W]EDefn0 EFunc{4;S'W'S'L]EDefn1 EIL{4;S'W'L]EDefn2 EXMacro{4;S'W]EDefn3 ERecord{4;S'W'S]EDefn4 EBuiltin{4;S'W'S]EDefn5 EArg{4;W]EDefn6 EMarker{4;W]EDefn7 IString{4;S]IL0 IVar{4;W]IL1 IBuiltin{4;W'L]IL2 ICall{4;W'L]IL3 ILocal{4;W'W]IL4 IFuncall{4;L]IL5 IConcat{4;L]IL6 IBlock{4;L]IL7 ILambda{4;S]IL8 IWhere{4;W]IL9 ICrumb{4;W'S]IL10 IEnv{4;S'L]IL11 *is-boot*{0;~%;i *compile-file*{0;~%;i *compile-subject*{0;~%;i
 $(call ^R,core)
 $(call ^R,parse)
 ~*is-boot* := 
@@ -368,7 +375,7 @@ endef
 
 define [mod-io]
 # Requires: core
-# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 save-blob_2 hash-output_1 hash-file_1 hash-files_1 mkdir-p_1 file-exists?_1 cp-file_2]or]3 read-file_1 read-lines_1]or]2]or]3 chmod-file_2 write-file_2 getline_1 fprintf_2]or]more write_2 echo-command_1 shell\#1;~%1;i;1 quote-sh-file_1 quote-sh-arg_1 ioshell_1
+# Exports: unescape-path#escape-path#resolve-path"clean-path#save-blob"hash-output#hash-file#hash-files#mkdir-p#file-exists?#cp-file}2'or'3 read-file#read-lines}1'or'2'or'3 chmod-file"write-file"getline#fprintf}2'or'more write"echo-command#shell!1{1;~%1;i;1 quote-sh-file#quote-sh-arg#ioshell}1
 $(call ^R,core)
 ~ioshell = $(and $(if $(filter S,$(SCAM_DEBUG)),$(info shell: $1))1,$(shell $1))
 ~quote-sh-arg = '$(subst ','\'',$1)'
@@ -421,7 +428,7 @@ endef
 
 define [mod-parse]
 # Requires: core string
-# Exports: describe-error_3 get-subject-line_2 parse-text_1 parse-subject_1 pdec_1 penc_1 format-form_1 form-typename_1 form-index_1 PList-is-empty?_1 string-value_1 symbol-to-string_1 symbol-name_1 PList#4;W]L;i`:P0 PString#4;W]S;i`:P1 PSymbol#4;W]S;i`:P2 PDict#4;W]L;i`:P3 PQuote#4;W]L;i`:P4 PQQuote#4;W]L;i`:P5 PUnquote#4;W]L;i`:P6 PSplice#4;W]L;i`:P7 PError#4;W]S;i`:P8
+# Exports: describe-error}3 get-subject-line"parse-text#parse-subject#pdec#penc#format-form#form-typename#form-index#PList-is-empty?#string-value#symbol-to-string#symbol-name#PList{4;W'L]P0 PString{4;W'S]P1 PSymbol{4;W'S]P2 PDict{4;W'L]P3 PQuote{4;W'L]P4 PQQuote{4;W'L]P5 PUnquote{4;W'L]P6 PSplice{4;W'L]P7 PError{4;W'S]P8
 $(call ^R,core)
 $(call ^R,string)
 $(call ^at,!1:P0!=PList!0W!0L !1:P1!=PString!0W!0S !1:P2!=PSymbol!0W!0S !1:P3!=PDict!0W!0L !1:P4!=PQuote!0W!0L !1:P5!=PQQuote!0W!0L !1:P6!=PUnquote!0W!0L !1:P7!=PSplice!0W!0L !1:P8!=PError!0W!0S)
@@ -503,7 +510,7 @@ endef
 
 define [mod-num]
 # Requires: core
-# Exports: num-format_2]or]3]or]4 range_2 sum_1 min_2 max_2 \=&i;2;\.;\<;if`>]~num-cmp],1[|1|0],1[|2|0`']1 =&i;2;\.;\<;if`>]~num-cmp],1[|1|0],1[|2|0`'],.`']1 !F=&i;2;\.;\<;filter`']1`<]or],1>|~num-cmp|@[}2}0|@[}1}0],1'|1 !G=&i;2;\.;\<;filter`']1`<]or],1>|~num-cmp|@[}1}0|@[}2}0],1'|1 !F&i;2;\.;\<;filter`']1`>]~num-cmp],1[|2|0],1[|1|0 !G&i;2;\.;\<;filter`']1`>]~num-cmp],1[|1|0],1[|2|0 mod&i;2;\.;\>;~i-%`[]1]0`[]2]0 ^&i;2;\.;\>;~num%`[]1]0`[]2]0 /&i;2]or]3;\.;\>;~f-dec`>]~f%],1>|~f-enc|@[}1}0],1>|~f-enc|@[}2}0],1[|3|0 *&i;2;\.;\>;~num%`[]1]0`[]2]0 -&i;2;\.;\>;~num%`[]1]0`[]2]0 !S&i;2;\.;\>;~num%`[]1]0`[]2]0 num^_2 div-rem_2 i!S_2 0-&i;1;\.;\<;subst`'\%-`'],.`:IL6],1',%],1<|subst|@'}!S|@'}@.|@[}1}0 abs&i;1;\.;\<;patsubst`']-!p`']!p`<]subst],1'|!S],1'|,1.],1[|1|0
+# Exports: num-format}2'or'3'or'4 range"sum#min"max"!1=(2;if[:IL3'~num-cmp',@\01\00',@\02\00[|'1 =(2;if[:IL3'~num-cmp',@\01\00',@\02\00[|'\.[|'1 <=(2;filter[|'1[:IL2'or',:IL3\0~num-cmp\0,1@,02,00\0,1@,01,00',|\01 >=(2;filter[|'1[:IL2'or',:IL3\0~num-cmp\0,1@,01,00\0,1@,02,00',|\01 <(2;filter[|'1[:IL3'~num-cmp',@\02\00',@\01\00 >(2;filter[|'1[:IL3'~num-cmp',@\01\00',@\02\00 mod(3;~i-%[@'1'0[@'2'0 ^(3;~num%[@'1'0[@'2'0 /&2'or'3;!1.;!1:IL3;~f-dec[:IL3'~f%',:IL3\0~f-enc\0,1@,01,00',:IL3\0~f-enc\0,1@,02,00',@\03\00 *(3;~num%[@'1'0[@'2'0 -(3;~num%[@'1'0[@'2'0 +(3;~num%[@'1'0[@'2'0 num^"div-rem"i+"0-&1;!1.;!1:IL2;subst[|!1%-[|'\.[:IL6',|\%',:IL2\0subst\0,1|,0+\0,1|,0,1.\0,1@,01,00 abs&1;!1.;!1:IL2;patsubst[|'-!p[|'!p[:IL2'subst',|\0+',|\0,.',@\01\00
 $(call ^R,core)
 ~nwords-loop = $(if $(subst 0,,$1),$(if $(word $1,$2),$(wordlist 1,$1,$2),$(call ~nwords-loop,$1,$2 $2 $2)))
 ~tail = $(if $(subst 0,,$1),$(if $(word $1,$2),$(wordlist $(words $(wordlist $1,99999999,$2)),99999999,$2),$2))
@@ -565,7 +572,7 @@ endef
 
 define [mod-gen0]
 # Requires: core parse escape gen num
-# Exports: gen0_2 c0_2 c0-block_2 ModSuccess#4;S]S;i`:Mod0 ModError#4;S;i`:Mod1 get-module_3 c0-vec_2 skip-flags_2 get-flags_2
+# Exports: gen0"c0"c0-block"ModSuccess{4;S'S]Mod0 ModError{4;S]Mod1 get-module}3 c0-vec"skip-flags"get-flags}2
 $(call ^R,core)
 $(call ^R,parse)
 $(call ^R,escape)
@@ -623,7 +630,7 @@ endef
 
 define [mod-gen1]
 # Requires: core escape parse gen
-# Exports: gen1_2
+# Exports: gen1}2
 $(call ^R,core)
 $(call ^R,escape)
 $(call ^R,parse)
@@ -676,7 +683,7 @@ endef
 
 define [mod-memo]
 # Requires: core io string
-# Exports: memo-chmod-file_2 memo-write-file_2 memo-read-file_1 memo-hash-file_1 memo-on&i;2;\.;\>;~memo-minus`<]if],1:IL1|~*%*],1'|,1.],1:IL7|@>}~memo-start-session}@1[@01@00|@'}1`[]2]0 memo-blob-call_1]or]more memo-call_1]or]more memo-apply_2 memo-io_1]or]more memo-drop_0
+# Exports: memo-chmod-file"memo-write-file"memo-read-file#memo-hash-file#memo-on(3;~memo-minus[:IL2'if',:IL1\0~*%*',|\0,.',:IL7\0,1:IL3,0~memo-start-session,0,11@,101,100\0,1|,01[@'2'0 memo-blob-call}1'or'more memo-call}1'or'more memo-apply"memo-io}1'or'more memo-drop}0
 $(call ^R,core)
 $(call ^R,io)
 $(call ^R,string)
@@ -792,7 +799,7 @@ endef
 
 define [mod-utf8]
 # Requires: core num
-# Exports: utf8-decode_1 utf8-encode_1
+# Exports: utf8-decode#utf8-encode}1
 $(call ^R,core)
 $(call ^R,num)
 ~utf-seq = $(if $2,$(call ^Y,$(call ~div-rem,$1,64),$(wordlist 2,99999999,$2),$(word 1,$2),,,,,,,$`(call ~append,$`(call ~utf-seq,$`(word 1,$`1),$`2),$`(call ~num+,$`3,$`(word 2,$`1)))))
@@ -807,7 +814,7 @@ endef
 
 define [mod-string]
 # Requires: core
-# Exports: string-repeat_2 string-from-bytes_1 strings-from-bytes_1 string-to-bytes_1 string-lower_1 string-upper_1 string-slice_3 string-len_1 string-to-chars_1
+# Exports: string-repeat"string-from-bytes#strings-from-bytes#string-to-bytes#string-lower#string-upper#string-slice}3 string-len#string-to-chars}1
 $(call ^R,core)
 ~all-bytes :=           !+ $'                        !0   !1 " \# $` % & ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w x y z { | } ~  Ä Å Ç É Ñ Ö Ü á à â ä ã å ç é è ê ë í ì î ï ñ ó ò ô ö õ ú ù û ü † ° ¢ £ § • ¶ ß ® © ™ ´ ¨ ≠ Æ Ø ∞ ± ≤ ≥ ¥ µ ∂ ∑ ∏ π ∫ ª º Ω æ ø ¿ ¡ ¬ √ ƒ ≈ ∆ « » …   À Ã Õ Œ œ – — “ ” ‘ ’ ÷ ◊ ÿ Ÿ ⁄ € ‹ › ﬁ ﬂ ‡ · ‚ „ ‰ Â Ê Á Ë È Í Î Ï Ì Ó Ô  Ò Ú Û Ù ı ˆ ˜ ¯ ˘ ˙ ˚ ¸ ˝ ˛ ˇ
 ~gen-polysub = $(if $1,$(call ~gen-polysub,$(wordlist 2,99999999,$1),$(wordlist 2,99999999,$2),$`(subst $(subst $(if ,,,),$`&,$(subst $],$`],$(subst $[,$`[,$(subst $`,$`$`,$(call ^n,1,$1))))),$(subst $(if ,,,),$`&,$(subst $],$`],$(subst $[,$`[,$(subst $`,$`$`,$(call ^n,1,$2))))),$(or $3,$`1))),$3)
@@ -832,7 +839,7 @@ endef
 
 define [mod-escape]
 # Requires: core
-# Exports: protect-define_1 protect-rhs_1 protect-lhs_1 protect-expr_1 protect-arg_1 protect-trim_1 protect-ltrim_1 escape&i;1;\.;\<;subst`']$`']$!D`[]1]0
+# Exports: protect-define#protect-rhs#protect-lhs#protect-expr#protect-arg#protect-trim#protect-ltrim#escape&1;!1.;!1:IL2;subst[|'$[|'$`[@'1'0
 $(call ^R,core)
 define ~protect-hash2
 $(if $(findstring \.#,$1),$(call ~protect-hash2,$(subst \.#,.#\\,$1)),$(subst .#,,$1))
