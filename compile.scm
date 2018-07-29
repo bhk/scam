@@ -399,13 +399,16 @@ SHELL:=/bin/bash
 ;;----------------------------------------------------------------
 
 (declare (compile-module src-file))
-(declare (compile-and-test-module src-file is-test))
+(declare (compile-and-test-module src-file))
 
-(define `(m-compile-module infile)
-  (memo-call (native-name compile-module) infile))
+(define `(m-compile-module file)
+  (memo-call (native-name compile-module) file))
 
-(define `(m-compile-and-test-module src-file untested)
-  (memo-call (native-name compile-and-test-module) src-file untested))
+(define `(m-compile-and-maybe-test-module file untested)
+  (memo-call (if untested
+                 (native-name compile-module)
+                 (native-name compile-and-test-module))
+             file))
 
 
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
@@ -432,7 +435,7 @@ SHELL:=/bin/bash
     (or (if (not orgn)
             (ModError (sprintf "cannot find %q" name)))
         (if (filter "%.scm" [orgn])
-            (if (m-compile-and-test-module orgn private)
+            (if (m-compile-and-maybe-test-module orgn private)
                 (ModError (sprintf "compilation of %q failed" orgn))
                 ;; success => nil => proceed to ordinary result
                 nil))
@@ -488,15 +491,17 @@ SHELL:=/bin/bash
 ;;       It includes exports from implicit modules, unless the file being
 ;;       compiled is itself an implicit module.  When called from the REPL,
 ;;       this will contain additional bindings from the user's session.
-;; INFILE = Input file name (or '[command line]').
+;; FILE = Input file name (or '[command line]').
+;; FORMS-IN = if non-nil, the results of (parse-text text).
 ;; IS-FILE = When nil, code will be compiled for function syntax.  When
 ;;           non-nil, code will be compiled for file syntax.
 ;;
-(define (parse-and-gen text env infile is-file)
+(define (parse-and-gen text env file is-file ?forms-in)
   (let-global ((*compile-subject*  (penc text))
-               (*compile-file*     infile))
+               (*compile-file*     file))
     (define `forms
-      (parse-subject *compile-subject*))
+      (or forms-in
+          (parse-subject *compile-subject*)))
 
     (let ((o (gen0 forms env))
           (is-file is-file))
@@ -519,25 +524,36 @@ SHELL:=/bin/bash
                        (concat-vec (conj *compiling* file) " -> ")))))
 
 
+;; Return parsed form of file.  This is a separate function for the sake
+;; of memoizing it separately, so we can avoid re-parsing unchanged
+;; sources even when they need to be recompiled due to changing imports.
+;;
+(define (parse-file file)
+  (parse-text (trim-hashbang (memo-read-file file))))
+
+
 ;; Compile a SCAM source file and all ites dependencies.
 ;; On success, return nil.
 ;; On failure, display message and return 1.
 ;;
-;; INFILE = source file name (to be read)
+;; FILE = source file name (to be read)
 ;;
-(define (compile-module infile)
-  (define `text (trim-hashbang (memo-read-file infile)))
-  (define `outfile (modid-file (module-id infile)))
-  (define `imports (compile-prelude infile))
+(define (compile-module file)
+  (define `text (trim-hashbang (memo-read-file file)))
+  (define `outfile (modid-file (module-id file)))
+  (define `imports (compile-prelude file))
 
   (or
-   (check-cycle infile)
-   (let-global ((*compiling* (conj *compiling* infile)))
+   (check-cycle file)
+   (let-global ((*compiling* (conj *compiling* file)))
 
-     (build-message "compiling" infile)
+     (build-message "compiling" file)
 
-     (let ((o (parse-and-gen text imports infile outfile))
-           (infile infile)
+     (define `forms
+       (memo-blob-call (native-name parse-file) file))
+
+     (let ((o (parse-and-gen text imports file outfile forms))
+           (file file)
            (outfile outfile))
        (define `errors (dict-get "errors" o))
        (define `exe (dict-get "code" o))
@@ -548,7 +564,7 @@ SHELL:=/bin/bash
         errors
         ;; Error case
         (for e errors
-             (info (describe-error e text infile)))
+             (info (describe-error e text file)))
 
         ;; Success
         (begin
@@ -619,14 +635,13 @@ SHELL:=/bin/bash
 ;; On success, return nil.
 ;; On failure, display message and return 1.
 ;;
-(define (compile-and-test-module src-file untested)
+(define (compile-and-test-module src-file)
   (define `test-src (subst ".scm" "-q.scm" src-file))
   (define `test-mod (module-id test-src))
   (define `test-exe (basename (modid-file test-mod)))
 
   (or (m-compile-module src-file)
-      (and (not untested)
-           (file-exists? test-src)
+      (and (file-exists? test-src)
            (or (m-compile-module test-src)
                (if (memo-call (native-name run-test) test-exe test-mod)
                    (bail-if (concat test-src " failed")))))))
@@ -649,7 +664,7 @@ SHELL:=/bin/bash
        (begin
          (fprintf 2 "scam: file '%s' does not exist\n" src-file)
          1)
-       (or (m-compile-and-test-module src-file nil)
+       (or (m-compile-and-maybe-test-module src-file nil)
            (m-link exe-file main-id)))))
 
 
