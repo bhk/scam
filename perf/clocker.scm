@@ -6,14 +6,11 @@
 (require "num")
 (require "io")
 
-(define TIMEMS
-  (concat (or (value "TEST_DIR") ".scam/") "timems"))
-
 
 ;; Default duration in milliseconds
 (define default-duration
   &public
-  250)
+  200)
 
 
 (define `timems.c
@@ -29,18 +26,40 @@ int main(int argc, char **argv)
 ")
 
 
+(define *timems* nil)
+
+
 ;; Build timems if it isn't there...
 (define (build-timems)
-  (or (wildcard TIMEMS)
-      (begin
-        (expect "" (mkdir-p (dir TIMEMS)))
-        (expect "" (shell! (concat (echo-command timems.c) " | "
-                                   " cc -o " TIMEMS " -x c - 2>&1"))))))
+  (define timems-loc
+    (concat (or (value "SCAM_DIR") ".scam/") "timems"))
+
+  (set *timems*
+       (or (wildcard timems-loc)
+           (begin
+             (expect "" (mkdir-p (dir timems-loc)))
+             (expect "" (ioshell (concat (echo-command timems.c) " | "
+                                         " cc -o " timems-loc " -x c - 2>&1")))
+             timems-loc)))
+  *timems*)
+
+
+(define `timems-exe
+  (or *timems*
+      (build-timems)))
 
 
 (define (get-time-ms)
   &public
-  (subst "." "" (shell TIMEMS)))
+  (define `output
+    ;; bypass shell invocation, doubling performance
+    (declare SHELL &native)
+    (let-global ((SHELL timems-exe))
+      ;; Provide non-empty argument or else `shell` does nothing
+      (shell "-")))
+
+  ;; remove the decimal point => return milliseconds
+  (subst "." "" output))
 
 
 (define (floor n)
@@ -68,25 +87,30 @@ int main(int argc, char **argv)
 (define t-time 0)
 
 
+(declare (clk-time-loop fn duration reps))
+
+(define (clk-time-loop-next fn duration reps time)
+  (if (or (>= time duration)
+          (> reps 100000))
+      [reps time]
+      ;; t-low = lowest estimate for actual time taken
+      ;;  -1 for resolution inaccuracy; *1.5 for t-time duration
+      (let& ((t-low (- time (+ (* t-time 1.5) 1)))
+             (max-mul (/ (+ duration 20) t-low))
+             (mul (cond ((< time 5) 20)
+                        ((< t-low 10) 6)
+                        ((< t-low 20) 3)
+                        ;; too much of a reach => shoot for 15%
+                        ((> max-mul 10) (* 0.15 max-mul))
+                        ;; larger mulitples => less accuracy
+                        ;; smaller t-low => less accuracy
+                        (else (* max-mul
+                                 (* (+ 1 (* max-mul 0.007))
+                                    (+ 1 (/ 2 t-low))))))))
+        (clk-time-loop fn duration (floor (+ 1 (* reps mul)))))))
+
 (define (clk-time-loop fn duration reps)
-  (let ((t-reps (clk-time-iter fn reps)))
-    (if (or (>= t-reps duration)
-            (> reps 100000))
-        [reps t-reps]
-        ;; -1 for resolution inaccuracy; *1.5 for t-time duration
-        (let& ((t-min (- t-reps (+ (* t-time 1.5) 1)))
-               (max-mul (/ (+ duration 20) t-min))
-               (mul (cond ((< t-reps 5) 20)
-                          ((< t-min 10) 6)
-                          ((< t-min 20) 3)
-                          ;; too much of a reach => shoot for 10%
-                          ((> max-mul 20) (* 0.1 max-mul))
-                          ;; larger mulitples => less accuracy
-                          ;; smaller t-min => less accuracy
-                          (else (* max-mul
-                                   (* (+ 1 (* max-mul 0.007))
-                                      (+ 1 (/ 2 t-min))))))))
-          (clk-time-loop fn duration (floor (+ 1 (* reps mul))))))))
+  (clk-time-loop-next fn duration reps (clk-time-iter fn reps)))
 
 
 (define (calibrate ?duration)
@@ -96,7 +120,6 @@ int main(int argc, char **argv)
   (define `(.time o) (word 2 o))
 
   ;; build timems and get it warm in the cache
-  (build-timems)
   (get-time-ms)
   (set t-time (clk-time-once (lambda () nil)))
 
