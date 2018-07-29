@@ -170,9 +170,12 @@
 
 ;; Copy file SRC to DST.  Return nil on success, description on error.
 ;;
-(define (cp-file src dst)
+(define (cp-file src dst ?make-dst-dir)
   &public
-  (ioshell (concat "cp " (quote-sh-file src) " " (quote-sh-file dst) " 2>&1")))
+  (ioshell (concat
+            (if make-dst-dir
+                (concat "mkdir -p " (quote-sh-file (dir dst)) " 2>&1 && "))
+            "cp " (quote-sh-file src) " " (quote-sh-file dst) " 2>&1")))
 
 
 ;; Return FILENAME if file FILENAME exists.  The `wildcard` built-in

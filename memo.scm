@@ -278,6 +278,7 @@
 
 
 (declare (do-memo-hash-file))
+(declare (do-memo-write-blob))
 
 
 ;; Get vector of all filenames hashed in IO ops in the DB
@@ -286,7 +287,8 @@
   (foreach pair *memo-db*
            (case (dict-value pair)
              ((IO tag op args)
-              (if (eq? op (native-name do-memo-hash-file))
+              (if (filter op (concat (native-name do-memo-hash-file) " "
+                                     (native-name do-memo-write-blob)))
                   (word 1 args))))))
 
 
@@ -321,8 +323,10 @@
 ;; Copy a BLOB onto a given file, unless the file is already known to match
 ;; the BLOB.  Return nil on success.
 ;;
-(define (do-memo-cp-blob src dst)
-  (define `hash (notdir src))
+;; Note: DST comes first to simplify files-in-db.
+;;
+(define (do-memo-write-blob dst blob)
+  (define `hash (notdir blob))
 
   ;; Remove any cached hash for this file.  Memoized code must not write a
   ;; file after reading/hashing it, but the cache may have been populated
@@ -330,7 +334,7 @@
   (if (not (eq? hash (dict-get dst *memo-hashes*)))
       (begin
         (set *memo-hashes* (dict-remove dst *memo-hashes*))
-        (cp-file src dst))))
+        (cp-file blob dst 1))))
 
 
 ;; Write data to FILENAME, logging the IO transaction for playback.
@@ -339,7 +343,7 @@
   &public
   (if *memo-on*
       (let ((blob (save-blob (dir *memo-db-file*) data)))
-        (memo-io (native-name do-memo-cp-blob) blob filename))
+        (memo-io (native-name do-memo-write-blob) filename blob))
       ;; not in a memo session
       (write-file filename data)))
 
