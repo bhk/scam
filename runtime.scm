@@ -280,25 +280,40 @@ $(if ,, ) :=
 ;;--------------------------------------------------------------
 ;; ^R : runtime require
 
+;; A list of modules that have been loaded
 (define *required* nil)
+
+
+;; This is overridden on the make command line -- along with SCAM_MOD and
+;; SCAM_MAIN -- when running tests.
+;;
+(define SCAM_DIR
+  &native
+  nil)
+
+;; Root directory for loading modules from files.
+(define *obj-dir*
+  &public
+  ".scam/")
+
 
 (define `(mod-var id)
   (concat "[mod-" id "]"))
 
 
-;; This will be overridden by compiler modules.
-;;
-(declare (load-ext mod-id))
-
-
 ;; Load the module identified by ID.
+;; Try, in order:
+;;  - bundle
+;;  - SCAM_DIR
+;;  - *obj-dir*
 ;;
 (define (^load id)
   &native
   (if (bound? (mod-var id))
       (eval (value (mod-var id)))
-      (or (load-ext id)
-          (error (concat "module " id " not found!"))))
+      (eval (concat "include "
+                    (or (and SCAM_DIR (wildcard (concat SCAM_DIR id ".o")))
+                        (concat *obj-dir* id ".o")))))
   ;; return value is useful when viewing trace of load sequence
   id)
 
@@ -617,13 +632,15 @@ $(if ,, ) :=
       (or code 0)))
 
 
-(define (^start main-mod main-func args)
+(define (^start main-mod args)
   &native
+  (define `main-func
+    (concat (if (filter ".scm" (suffix main-mod)) nil "~") "main"))
 
   ;; Allow module loading to be traced.
   (start-trace main-mod)
   ;; Now it's dangerous to trace...
-  (do-not-trace (concat "^R ^load " (native-name load-ext)))
+  (do-not-trace (concat "^R ^load"))
 
   (^R main-mod)
   (start-trace main-mod)
@@ -642,6 +659,19 @@ $(if ,, ) :=
 
   (eval rules))
 
+
 ;; these will be on the stack
 (do-not-trace (concat (native-name ^start) " " (native-name start-trace)))
 (at-exit (lambda () (trace-dump known-names)))
+
+
+;; In a bundled executable, the runtime module loads the "main" module
+;; (defined elsewhere in the program) and calls the function named "main"
+;; that it exports.  When unit tests are run during compilation, SCAM_MOD is
+;; overridden to point to a file-resident module (thereby avoiding the need
+;; to link an executable just for the test).  Ordinarily, the SCAM
+;; executable itself is used to "host" these unit tests; during compiler
+;; bootstrapping the runtime by itself does this.
+;;
+(declare SCAM_MOD &native)
+(^start SCAM_MOD (value "SCAM_ARGS"))

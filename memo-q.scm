@@ -5,7 +5,7 @@
 
 
 (define TMPDIR
-  (define `test-dir (assert (value "TEST_DIR")))
+  (define `test-dir (assert (value "SCAM_DIR")))
   (concat (shell (concat "mktemp -d " test-dir "memo-q.XXXX")) "/"))
 
 (define db-file (concat TMPDIR "db.txt"))

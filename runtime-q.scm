@@ -5,7 +5,7 @@
 ;; private symbols, so it requires runtime explicitly.  We set *require* to
 ;; prevent runtime from being eval'ed again.
 (declare *required*)
-(set *required* "'runtime")
+(set *required* "runtime")
 (require "runtime.scm" &private)
 
 

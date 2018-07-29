@@ -1,6 +1,6 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
-SHELL:=/bin/bash
+SCAM_MOD := scam
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -23,7 +23,7 @@ endef
 
 define [mod-runtime]
 # Requires: 
-# Exports: at-exit_1 tracing&i;2;\.;\>;~untrace`>]~trace],1[|1|0`[]2]0 do-not-trace_1 untrace_1]or]2 trace_1 ^tags#0;%;i filtersub_3 bound?&i;1;\.;\<;if`<]filter-out],1'|u!p],1<|flavor|@[}1}0`']1 rrest&i;1;\.;\<;wordlist`']3`']99999999`[]1]0 rest&i;1;\.;\<;wordlist`']2`']99999999`[]1]0 first&i;1;\.;\>;^n`']1`[]1]0 nth-rest&i;2;\.;\<;wordlist`[]1]0`']99999999`[]2]0 not&i;1;\.;\<;if`[]1]0`'],.`']1 nil#2;\.;i;\';\. set-native-fn&i;2]or]3;\.;\>;^fset`[]1]0`[]2]0`[]3]0 set-native&i;2]or]3;\.;\>;^set`[]1]0`[]2]0`[]3]0 nth&i;2;\.;\>;^n`[]1]0`[]2]0 demote&i;1;\.;\>;^d`[]1]0 promote&i;1;\.;\>;^u`[]1]0 apply&i;2;\.;\>;^%`[]1]0`[]2]0 name-apply&i;2;\.;\>;^na`[]1]0`[]2]0
+# Exports: at-exit_1 tracing&i;2;\.;\>;~untrace`>]~trace],1[|1|0`[]2]0 do-not-trace_1 untrace_1]or]2 trace_1 *obj-dir*#0;~%;i ^tags#0;%;i filtersub_3 bound?&i;1;\.;\<;if`<]filter-out],1'|u!p],1<|flavor|@[}1}0`']1 rrest&i;1;\.;\<;wordlist`']3`']99999999`[]1]0 rest&i;1;\.;\<;wordlist`']2`']99999999`[]1]0 first&i;1;\.;\>;^n`']1`[]1]0 nth-rest&i;2;\.;\<;wordlist`[]1]0`']99999999`[]2]0 not&i;1;\.;\<;if`[]1]0`'],.`']1 nil#2;\.;i;\';\. set-native-fn&i;2]or]3;\.;\>;^fset`[]1]0`[]2]0`[]3]0 set-native&i;2]or]3;\.;\>;^set`[]1]0`[]2]0`[]3]0 nth&i;2;\.;\>;^n`[]1]0`[]2]0 demote&i;1;\.;\>;^d`[]1]0 promote&i;1;\.;\>;^u`[]1]0 apply&i;2;\.;\>;^%`[]1]0`[]2]0 name-apply&i;2;\.;\>;^na`[]1]0`[]2]0
 ~*do-not-trace* := $(value .VARIABLES)
 define '
 
@@ -78,7 +78,9 @@ endef
 ^tags := 
 ^at = $(call ^set,^tags,$(^tags) $(filter-out $(^tags),$1))
 ~*required* := 
-^load = $(and $(if $(if $(filter-out u%,$(flavor [mod-$1])),1),$(eval $(value [mod-$1])),$(or $(call ~load-ext,$1),$(error module $1 not found!)))1,$1)
+SCAM_DIR := 
+~*obj-dir* := .scam/
+^load = $(and $(if $(if $(filter-out u%,$(flavor [mod-$1])),1),$(eval $(value [mod-$1])),$(eval include $(or $(and $(SCAM_DIR),$(wildcard $(SCAM_DIR)$1.o)),$(~*obj-dir*)$1.o)))1,$1)
 ^R = $(and $(or $(filter $1,$(~*required*)),$(and $(call ^set,~*required*,$(~*required*) $1)1,$(call ^load,$1)))1,)
 ~trace-info = $(info TRACE: $1$2$3$4)
 ~trace-digits = $(if $(findstring /1111111111,$1),$(call ~trace-digits,$(subst /1111111111,1/,$1)),$(subst !:,,$(subst :!,0!,$(subst :0,::,$(subst :00,:::,$(subst :0000,:::::,$(subst $  ,,!:$(foreach d,/$(subst /, /,$1),$(words $(subst /,,$(subst 1, 1,$d))))!:)))))))
@@ -95,17 +97,19 @@ endef
 ~untrace = $(and $(call ~trace-dump,$(foreach name,$(filter $1,$(filter-out :%,$(subst :, :,$(~*trace-ids*)))),$(foreach id,$(call ~trace-id,$(name)),$(and $(call ^fset,$(name),$(value [S-$(id)]),)1,$(name)))))1,$2)
 ~do-not-trace = $(call ^set,~*do-not-trace*,$(~*do-not-trace*) $1)
 ~start-trace = $(call ~trace,$(value $(if $(filter scam,$1),_)SCAM_TRACE))
+SHELL := /bin/bash
 ~*atexits* := 
 ~at-exit = $(call ^set,~*atexits*,$(call ^d,$1) $(~*atexits*))
 ~run-at-exits = $(and $(foreach fn,$(~*atexits*),$(call ^d,$(call ^Y,,,,,,,,,,$(call ^u,$(fn)))))1,)
 ~check-exit = $(if $(subst 0,,$(subst 9,,$(subst 8,,$(subst 7,,$(subst 6,,$(subst 5,,$(subst 4,,$(subst 3,,$(subst 2,,$(subst 1,,$(patsubst -%,%,$(subst $ 	,x,$(subst $  ,x,$1))))))))))))),$(error scam: main returned '$1'),$(or $1,0))
 define ^start
-$(and $(call ~start-trace,$1)1,$(call ~do-not-trace,^R ^load ~load-ext)1,$(call ^R,$1)1,$(call ~start-trace,$1)1,$(eval $(call ^Y,$(call ~check-exit,$(call ^Y,$3,,,,,,,,,$(value $2))),,,,,,,,,.DEFAULT_GOAL :=
+$(and $(call ~start-trace,$1)1,$(call ~do-not-trace,^R ^load)1,$(call ^R,$1)1,$(call ~start-trace,$1)1,$(eval $(call ^Y,$(call ~check-exit,$(call ^Y,$2,,,,,,,,,$(value $(if $(filter .scm,$(suffix $1)),,~)main))),,,,,,,,,.DEFAULT_GOAL :=
 .PHONY: [exit]
 [exit]: $`(.DEFAULT_GOAL);@exit $`1$``(call ~run-at-exits))))
 endef
 $(if $(call ~do-not-trace,^start ~start-trace),)
 $(if $(call ~at-exit,$`(call ~trace-dump,$`(filter-out :%,$`(subst :, :,$`(~*trace-ids*))))),)
+$(if $(call ^start,$(SCAM_MOD),$(value SCAM_ARGS)),)
 
 endef
 
@@ -240,7 +244,7 @@ endef
 
 define [mod-compile]
 # Requires: core parse gen gen0 gen1 io memo macros utf8
-# Exports: compile-text_2]or]3 run-program_2 build-program_2 *is-quiet*#0;~%;i *obj-dir*#0;~%;i
+# Exports: compile-text_2]or]3 run-program_2 build-program_2 *is-quiet*#0;~%;i
 $(call ^R,core)
 $(call ^R,parse)
 $(call ^R,gen)
@@ -250,7 +254,6 @@ $(call ^R,io)
 $(call ^R,memo)
 $(call ^R,macros)
 $(if $(and ,$(call ^R,utf8)),)
-~*obj-dir* := .scam/
 ~*is-quiet* := 
 ~*compiling* := 
 define ~build-message
@@ -262,38 +265,23 @@ $(if $1,$(and $(call ~fprintf,2,scam: %s
 ,$1)1,$(call ~memo-drop)1,1),$(and 1,))
 endef
 ~compile-cache-file = $(~*obj-dir*)$(call ~hash-file,$(word 1,$(value MAKEFILE_LIST))).cache
-~compile-eval = $(eval $1)
 ~descendants = $(if $2,$(call ~descendants,$1,$(call ~append,$(wordlist 2,99999999,$2),$(call ~vec-filter,filter-out,$2 $3,$(call ^Y,$(call ^n,1,$2),,,,,,,,,$1))),$(call ~append,$3,$(word 1,$2))),$3)
-define ~env-cmp
-$(subst "i;,_,$(subst $]1 ,+,$(subst "p;,$],$(subst $  ml.special-,$[,$(subst #1;:;,&,$(subst #1;~%;,",$(subst !=\:EDefn,#,$(subst $(if ,,,10),},$(subst 111,{,$(subst $(if ,,,11),@,$(subst $(if ,,,0),|,$(subst \0,],$(subst :IL4,[,$(subst :IL3,>,$(subst :IL2,<,$(subst :IL0,',$(subst $(if ,,;,),`,$(subst \1,$(if ,,,),$(subst !1,\,$(subst !0,;,$(subst _,!T,$(subst +,!S,$(subst $],!R,$(subst $[,!Q,$(subst &,!P,$(subst ",!O,$(subst #,!N,$(subst },!M,$(subst {,!L,$(subst @,!K,$(subst |,!J,$(subst ],!I,$(subst [,!H,$(subst >,!G,$(subst <,!F,$(subst ',!E,$(subst `,!D,$(subst $(if ,,,),!C,$(subst \,!B,$(subst ;,!A,$1))))))))))))))))))))))))))))))))))))))))
-endef
-define ~env-exp
-$(subst !A,;,$(subst !B,\,$(subst !C,$(if ,,,),$(subst !D,`,$(subst !E,',$(subst !F,<,$(subst !G,>,$(subst !H,[,$(subst !I,],$(subst !J,|,$(subst !K,@,$(subst !L,{,$(subst !M,},$(subst !N,#,$(subst !O,",$(subst !P,&,$(subst !Q,$[,$(subst !R,$],$(subst !S,+,$(subst !T,_,$(subst ;,!0,$(subst \,!1,$(subst $(if ,,,),\1,$(subst `,$(if ,,;,),$(subst ',:IL0,$(subst <,:IL2,$(subst >,:IL3,$(subst [,:IL4,$(subst ],\0,$(subst |,$(if ,,,0),$(subst @,$(if ,,,11),$(subst {,111,$(subst },$(if ,,,10),$(subst #,!=\:EDefn,$(subst ",#1;~%;,$(subst &,#1;:;,$(subst $[, ml.special-,$(subst $],"p;,$(subst +,$]1 ,$(subst _,"i;,$1))))))))))))))))))))))))))))))))))))))))
-endef
-~tokenize-key = $(foreach w,$1,$(word 1,$(subst !=,!= ,$w))$(subst $(word 1,$(subst !=, ,$w)),%,$(subst %,!p,$(word 2,$(subst !=,!= ,$w)))))
-~detokenize-key = $(foreach w,$1,$(word 1,$(subst !=,!= ,$w))$(subst !p,%,$(subst %,$(word 1,$(subst !=, ,$w)),$(word 2,$(subst !=,!= ,$w)))))
 define ~env-compress
-$(call ~env-cmp,$(call ~tokenize-key,$(patsubst %!0,%,$(subst 
-,!n,$1))))
+$(subst "i;,_,$(subst $]1 ,+,$(subst "p;,$],$(subst $  ml.special-,$[,$(subst #1;:;,&,$(subst #1;~%;,",$(subst !=\:EDefn,#,$(subst $(if ,,,10),},$(subst 111,{,$(subst $(if ,,,11),@,$(subst $(if ,,,0),|,$(subst \0,],$(subst :IL4,[,$(subst :IL3,>,$(subst :IL2,<,$(subst :IL0,',$(subst $(if ,,;,),`,$(subst \1,$(if ,,,),$(subst !1,\,$(subst !0,;,$(subst _,!T,$(subst +,!S,$(subst $],!R,$(subst $[,!Q,$(subst &,!P,$(subst ",!O,$(subst #,!N,$(subst },!M,$(subst {,!L,$(subst @,!K,$(subst |,!J,$(subst ],!I,$(subst [,!H,$(subst >,!G,$(subst <,!F,$(subst ',!E,$(subst `,!D,$(subst $(if ,,,),!C,$(subst \,!B,$(subst ;,!A,$(foreach w,$(patsubst %!0,%,$(subst 
+,!n,$1)),$(word 1,$(subst !=,!= ,$w))$(subst $(word 1,$(subst !=, ,$w)),%,$(subst %,!p,$(word 2,$(subst !=,!= ,$w)))))))))))))))))))))))))))))))))))))))))))))
 endef
 ~export-defn = $(word 3,$2):$(call ^k,$1)!=$(call ^d,$(call ~append,$(wordlist 1,2,$2),i,$(wordlist 4,99999999,$2)))
-define ~env-export-lines
-$(call ^Y,$(filter p:% x:%,$(foreach b,$(call ~dict-compact,$1),$(call ~export-defn,$(call ~dict-key,$b),$(call ^n,2,$(subst !=, ,$b))))),,,,,,,,,# Exports: $`(call ~env-compress,$`(call ~filtersub,x:%,%,$`1))
-# Private: $`(call ~env-compress,$`(call ~filtersub,p:%,%,$`1))
-)
-endef
-~modid-file = $(~*obj-dir*)$1.o
 define ~modid-read-lines
-$(if $(or $(filter %.scm,$1),$(~*is-boot*)),$(and $(call ~memo-hash-file,$(call ~modid-file,$1))1,$(call ~read-lines,$(call ~modid-file,$1),$(and $2,1),$2)),$(wordlist 1,$(or $2,99999999),$(call ~split,
+$(if $(or $(filter %.scm,$1),$(~*is-boot*)),$(and $(call ~memo-hash-file,$(~*obj-dir*)$1.o)1,$(call ~read-lines,$(~*obj-dir*)$1.o,$(and $2,1),$2)),$(wordlist 1,$(or $2,99999999),$(call ~split,
 ,$(value [mod-$1]))))
 endef
 define ~modid-deps
-$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:290)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
+$(call ^Y,$(call ~modid-read-lines,$1,4),,,,,,,,,$`(and $`(call ~assert-x,$`1,compile.scm:287)1,$`(call ^u,$`(call ~filtersub,#!0Requires:!0%,%,$`1))))
 endef
 define ~modid-import
 $(subst !n,
 ,$(subst !n,
-,$(call ~detokenize-key,$(call ~env-exp,$(foreach prefix,$(call ~append,Exports,$(if $2,Private)),$(call ^u,$(call ~filtersub,#!0$(prefix):!0%,%,$(call ~modid-read-lines,$1,4))))))))
+,$(foreach w,$(subst !A,;,$(subst !B,\,$(subst !C,$(if ,,,),$(subst !D,`,$(subst !E,',$(subst !F,<,$(subst !G,>,$(subst !H,[,$(subst !I,],$(subst !J,|,$(subst !K,@,$(subst !L,{,$(subst !M,},$(subst !N,#,$(subst !O,",$(subst !P,&,$(subst !Q,$[,$(subst !R,$],$(subst !S,+,$(subst !T,_,$(subst ;,!0,$(subst \,!1,$(subst $(if ,,,),\1,$(subst `,$(if ,,;,),$(subst ',:IL0,$(subst <,:IL2,$(subst >,:IL3,$(subst [,:IL4,$(subst ],\0,$(subst |,$(if ,,,0),$(subst @,$(if ,,,11),$(subst {,111,$(subst },$(if ,,,10),$(subst #,!=\:EDefn,$(subst ",#1;~%;,$(subst &,#1;:;,$(subst $[, ml.special-,$(subst $],"p;,$(subst +,$]1 ,$(subst _,"i;,$(foreach prefix,$(call ~append,Exports,$(if $2,Private)),$(call ^u,$(call ~filtersub,#!0$(prefix):!0%,%,$(call ~modid-read-lines,$1,4)))))))))))))))))))))))))))))))))))))))))))),$(word 1,$(subst !=,!= ,$w))$(subst !p,%,$(subst %,$(word 1,$(subst !=, ,$w)),$(word 2,$(subst !=,!= ,$w)))))))
 endef
 ~module-id = $(call ^Y,$(call ~escape-path,$1),,,,,,,,,$`(if $`(~*is-boot*),$`(basename $`1),$`1))
 ~locate-module = $(or $(and $(filter %.scm,$(call ^d,$2)),$(call ^n,1,$(filter-out !.,$(foreach dir,$(call ~cons,$1,$(addsuffix /,$(call ~split,:,$(value SCAM_LIBPATH)))),$(call ^d,$(wildcard $(call ~resolve-path,$(call ^u,$(dir)),$2))))))),$(and $(if $(~*is-boot*),,1),$(if $(if $(filter-out u%,$(flavor [mod-$2])),1),$2)))
@@ -310,7 +298,6 @@ $(call ~concat-vec,$(call ~skip-comments,$(call ~modid-read-lines,$1),$(if $2,#!
 $ endef
 
 endef
-~load-ext = $(and $(eval include $(call ~modid-file,$1))1,1)
 ~get-module = $(call ^Y,$(call ~m-locate-module,$(dir $2),$1),$3,,,,,,,,$`(or $`(if $`(if $`1,,1),!:Mod1 $`(call ^d,$`(call ~sprintf,cannot find %q,$(call ^E,$1)))),$`(if $`(filter %.scm,$`(call ^d,$`1)),$`(if $`(call ~memo-call,$`(if $`2,~compile-module,~compile-and-test-module),$`1),!:Mod1 $`(call ^d,$`(call ~sprintf,compilation of %q failed,$`1)),)),$`(call ^Y,$`(call ~memo-blob-call,~modid-import,$`(call ~module-id,$`1),$`2),$`(call ~module-id,$`1),$`1,,,,,,,$``(or $``(if $``(word 1,$``(foreach pair,$``1,$``(if $``(filter !:EDefn3,$``(word 1,$``(call ^n,2,$``(subst !=, ,$``(pair))))),1))),$``(if $``(~*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$``(call ^R,$``2))),!:Mod0 $``(call ^d,$``2) $``(call ^d,$``1)))))
 ~runtime-module-name = $(if $(~*is-boot*),$(filter-out $(subst -q.scm,.scm,$(call ^d,$1)),runtime.scm),runtime)
 ~compile-prelude = $(foreach m,$(call ~runtime-module-name,$1),$(call ^Y,$(call ~get-module,$m,.,),,,,,,,,,$`(if $`(filter !:Mod0,$`(word 1,$`1)),$`(call ^n,3,$`1),$`(if $`(filter !:Mod1,$`(word 1,$`1)),$`(error $`(call ^n,2,$`1))))))
@@ -323,28 +310,26 @@ $(call ~concat-vec,$(wordlist 2,99999999,$(call ~split,
 endef
 ~parse-file = $(call ~parse-text,$(call ~trim-hashbang,$(call ~memo-read-file,$1)))
 define ~compile-module
-$(or $(if $(call ~vec-filter,filter,$(call ^d,$1),$(~*compiling*)),$(call ~bail-if,dependency loop: $(call ~concat-vec,$(call ~conj,$(~*compiling*),$1), -> ))),$(call ^set,~*compiling*,$(call ^set,~*compiling*,$(call ~conj,$(~*compiling*),$1),$(~*compiling*)),$(and $(call ~build-message,compiling,$1)1,$(call ^Y,$(call ~parse-and-gen,$(call ~trim-hashbang,$(call ~memo-read-file,$1)),$(call ~compile-prelude,$1),$1,$(call ~modid-file,$(call ~module-id,$1)),$(call ~memo-blob-call,~parse-file,$1)),$1,$(call ~modid-file,$(call ~module-id,$1)),,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach e,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`e),$`(call ~trim-hashbang,$`(call ~memo-read-file,$(call ^E,$1))),$`2))))1,$`(call ~memo-drop)1,1),$`(and $`(call ~bail-if,$`(call ~memo-write-file,$`3,# Requires: $`(call ~dict-get,require,$`1)
-$`(call ~env-export-lines,$`(call ~dict-get,env,$`1))$`(call ~dict-get,code,$`1)))1,))))))
+$(or $(if $(call ~vec-filter,filter,$(call ^d,$1),$(~*compiling*)),$(call ~bail-if,dependency loop: $(call ~concat-vec,$(call ~conj,$(~*compiling*),$1), -> ))),$(call ^set,~*compiling*,$(call ^set,~*compiling*,$(call ~conj,$(~*compiling*),$1),$(~*compiling*)),$(and $(call ~build-message,compile,$1)1,$(call ^Y,$(call ~parse-and-gen,$(call ~trim-hashbang,$(call ~memo-read-file,$1)),$(call ~compile-prelude,$1),$1,$(~*obj-dir*)$(call ~module-id,$1).o,$(call ~memo-blob-call,~parse-file,$1)),$1,$(~*obj-dir*)$(call ~module-id,$1).o,,,,,,,$`(if $`(call ~dict-get,errors,$`1),$`(and $`(foreach e,$`(call ~dict-get,errors,$`1),$`(call ^d,$`(info $`(call ~describe-error,$`(call ^u,$`e),$`(call ~trim-hashbang,$`(call ~memo-read-file,$(call ^E,$1))),$`2))))1,$`(call ~memo-drop)1,1),$`(and $`(call ~bail-if,$`(call ~memo-write-file,$`3,# Requires: $`(call ~dict-get,require,$`1)
+$`(call ^Y,$`(filter p:% x:%,$`(foreach b,$`(call ~dict-compact,$`(call ~dict-get,env,$`1)),$`(call ~export-defn,$`(call ~dict-key,$`b),$`(call ^n,2,$`(subst !=, ,$`b))))),,,,,,,,,# Exports: $``(call ~env-compress,$``(call ~filtersub,x:%,%,$``1))
+# Private: $``(call ~env-compress,$``(call ~filtersub,p:%,%,$``1))
+)$`(call ~dict-get,code,$`1)))1,))))))
 endef
+~modid-deps-all = $(call ~descendants,$(value ~modid-deps),$(call ~uniq,$(call ~append,$1,$(foreach m,$(call ~runtime-module-name,),$(call ~module-id,$m)))))
 define ~link
-$(and $(call ~build-message,linking,$1)1,$(call ~bail-if,$(or $(call ~memo-write-file,$1,#!/bin/bash
+$(and $(call ~build-message,link,$1)1,$(call ~bail-if,$(or $(call ~memo-write-file,$1,#!/bin/bash
 :; for v in "$`{@//!/!1}" ; do v=$`{v// /!0} ; v=$`{v//	/!+}; a[++n]=$`{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$`{a[*]} exec make -Rr --no-print-directory -f"$`0" 9>&1
-SHELL:=/bin/bash
-$(call ^Y,$(call ~descendants,$(value ~modid-deps),$(call ~uniq,$(call ~append,$2,$(foreach m,$(call ~runtime-module-name,),$(call ~module-id,$m))))),,,,,,,,,$`(subst |1,|,$`(subst |0, ,$`(subst $`  ,,$`(foreach id,$`1,$`(subst $`  ,|0,$`(subst |,|1,$`(call ~construct-bundle,$`(call ^u,$`(id)),$`(filter compile,$`1)))))))))$`(eval $`(value [mod-runtime]))
-$`(call ^start,$2,$(call ~gen-native-name,main,),$`(value SCAM_ARGS))
-),$(if $(if $3,,1),$(call ~memo-chmod-file,$1,+x)))))
+SCAM_MOD := $2
+$(call ^Y,$(call ~modid-deps-all,$2),,,,,,,,,$`(subst |1,|,$`(subst |0, ,$`(subst $`  ,,$`(foreach id,$`1,$`(subst $`  ,|0,$`(subst |,|1,$`(call ~construct-bundle,$`(call ^u,$`(id)),$`(filter compile,$`1)))))))))$`(eval $`(value [mod-runtime]))
+),$(call ~memo-chmod-file,$1,+x))))
 endef
-~m-link = $(call ~memo-call,~link,$1,$2,$3)
-~run-test = $(or $(call ~m-link,$1,$2,1),$(and $(call ~build-message,running,$1)1,$(call ~memo-hash-file,$1)1,$(if $(filter-out 0,$(lastword $(call ~ioshell,TEST_DIR=$(call ~quote-sh-arg,$(~*obj-dir*)) $(MAKE) -f $(call ~quote-sh-file,$1) >&2 ;echo " $`?"))),$(and 1,$(call ~memo-drop)1,1),$(and 1,))))
-~compile-and-test-module = $(or $(call ~memo-call,~compile-module,$1),$(and $(call ~file-exists?,$(subst .scm,-q.scm,$1)),$(or $(call ~memo-call,~compile-module,$(subst .scm,-q.scm,$1)),$(if $(call ~memo-call,~run-test,$(basename $(basename $(call ~modid-file,$(call ~module-id,$(subst .scm,-q.scm,$1))))),$(call ~module-id,$(subst .scm,-q.scm,$1))),$(call ~bail-if,$(subst .scm,-q.scm,$1) failed)))))
+~run = $(and $(if $3,$(call ~build-message,run,$1))1,$(call ~modid-deps-all,$(call ~module-id,$1))1,$(if $(filter-out 0,$(lastword $(call ~ioshell,SCAM_ARGS=$(call ~quote-sh-arg,$2) $(MAKE) -f $(call ~quote-sh-arg,$(if $(~*is-boot*),$(~*obj-dir*)runtime.o,$(firstword $(MAKEFILE_LIST)))) SCAM_MOD=$(call ~quote-sh-arg,$(call ~module-id,$1)) SCAM_DIR=$(call ~quote-sh-arg,$(~*obj-dir*)) 1>&9 ; echo " $`?"))),$(and 1,$(call ~memo-drop)1,1),$(and 1,)))
+~compile-and-test-module = $(or $(call ~memo-call,~compile-module,$1),$(and $(call ~file-exists?,$(subst .scm,-q.scm,$1)),$(or $(call ~memo-call,~compile-module,$(subst .scm,-q.scm,$1)),$(if $(call ~memo-call,~run,$(subst .scm,-q.scm,$1),,1),$(call ~bail-if,$(subst .scm,-q.scm,$1) failed)))))
 define ~build-program
 $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(if $(if $(call ~memo-hash-file,$1),,1),$(and $(call ~fprintf,2,scam: file '%s' does not exist
-,$1)1,1),$(or $(call ~memo-call,$(if ,~compile-module,~compile-and-test-module),$1),$(call ~m-link,$2,$(call ~module-id,$1)))))
+,$1)1,1),$(or $(call ~memo-call,$(if ,~compile-module,~compile-and-test-module),$1),$(call ~memo-call,~link,$2,$(call ~module-id,$1)))))
 endef
-define ~run-program
-$(or $(call ~build-program,$1,$(basename $(basename $(call ~modid-file,$(call ~module-id,$1))))),$(call ~compile-eval,.PHONY: [run]
-[run]: ; @$(subst $`,$`$`,SCAM_ARGS=$(call ~quote-sh-arg,$2) make -f $(call ~quote-sh-arg,$(basename $(basename $(call ~modid-file,$(call ~module-id,$1))))))))
-endef
+~run-program = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(or $(call ~memo-call,$(if ,~compile-module,~compile-and-test-module),$1),$(call ~run,$1,$2,)))
 ~compile-text = $(call ~memo-minus,$(if $(~*memo-on*),,$(and $(call ~memo-start-session,$(call ~compile-cache-file))1,1)),$(call ~parse-and-gen,$1,$(or $3,$(call ~compile-prelude,)),$2,))
 
 endef
@@ -382,7 +367,7 @@ endef
 
 define [mod-io]
 # Requires: core
-# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 save-blob_2 hash-file_1 hash-files_1 mkdir-p_1 file-exists?_1 cp-file_2 read-file_1 read-lines_1]or]2]or]3 chmod-file_2 write-file_2 getline_1 fprintf_2]or]more write_2 echo-command_1 shell\#1;~%1;i;1 quote-sh-file_1 quote-sh-arg_1 ioshell_1
+# Exports: unescape-path_1 escape-path_1 resolve-path_2 clean-path_1 save-blob_2 hash-file_1 hash-files_1 mkdir-p_1 file-exists?_1 cp-file_2]or]3 read-file_1 read-lines_1]or]2]or]3 chmod-file_2 write-file_2 getline_1 fprintf_2]or]more write_2 echo-command_1 shell\#1;~%1;i;1 quote-sh-file_1 quote-sh-arg_1 ioshell_1
 $(call ^R,core)
 ~ioshell = $(and $(if $(filter S,$(SCAM_DEBUG)),$(info shell: $1))1,$(shell $1))
 ~quote-sh-arg = '$(subst ','\'',$1)'
@@ -410,7 +395,7 @@ define ~read-file
 $(if $1,$(call ~concat-vec,$(call ~read-lines,$1),
 ),$(info error: read-file: nil filename))
 endef
-~cp-file = $(call ~ioshell,cp $(call ~quote-sh-file,$1) $(call ~quote-sh-file,$2) 2>&1)
+~cp-file = $(call ~ioshell,$(if $3,mkdir -p $(call ~quote-sh-file,$(dir $2)) 2>&1 && )cp $(call ~quote-sh-file,$1) $(call ~quote-sh-file,$2) 2>&1)
 ~file-exists? = $(if $(call ~ioshell,[[ -f $(call ~quote-sh-file,$1) ]] && echo t),$1)
 ~mkdir-p = $(call ~ioshell,mkdir -p $(call ~quote-sh-file,$1) 2>&1)
 ~*hash-cmd* := 
@@ -731,11 +716,11 @@ $(and $(call ^set,~*memo-on*,1)1,$(if $(if $(call ~eq?,$(~*memo-db-file*),$1),,1
 endef
 ~memo-minus = $(and $(if $1,$(and $(call ^set,~*memo-on*,)1,$(call ^set,~*memo-cache*,)1,$(call ^set,~*memo-hashes*,)1,$(call ~memo-save-session)))1,$2)
 ~hash-add = $(call ^set,~*memo-hashes*,$(call ~append,$(~*memo-hashes*),$1))
-~do-memo-hash-file = $(if $(~*memo-on*),$(call ^n,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ^n,2,$(subst !=, ,$(pair))))),$(if $(call ~eq?,$(call ^n,3,$(call ^n,2,$(subst !=, ,$(pair)))),~do-memo-hash-file),$(word 1,$(wordlist 4,99999999,$(call ^n,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
+~do-memo-hash-file = $(if $(~*memo-on*),$(call ^n,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ^n,2,$(subst !=, ,$(pair))))),$(if $(filter $(call ^n,3,$(call ^n,2,$(subst !=, ,$(pair)))),~do-memo-hash-file ~do-memo-write-blob),$(word 1,$(wordlist 4,99999999,$(call ^n,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
 ~memo-hash-file = $(call ~memo-io,~do-memo-hash-file,$1)
 ~memo-read-file = $(and $(call ~memo-hash-file,$1)1,$(call ~read-file,$1))
-~do-memo-cp-blob = $(if $(if $(call ~eq?,$(notdir $1),$(call ~dict-get,$2,$(~*memo-hashes*))),,1),$(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$2,$(~*memo-hashes*)))1,$(call ~cp-file,$1,$2)))
-~memo-write-file = $(if $(~*memo-on*),$(call ^Y,$(call ~save-blob,$(dir $(~*memo-db-file*)),$2),,,,,,,,,$`(call ~memo-io,~do-memo-cp-blob,$`1,$(call ^E,$1))),$(call ~write-file,$1,$2))
+~do-memo-write-blob = $(if $(if $(call ~eq?,$(notdir $2),$(call ~dict-get,$1,$(~*memo-hashes*))),,1),$(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$1,$(~*memo-hashes*)))1,$(call ~cp-file,$2,$1,1)))
+~memo-write-file = $(if $(~*memo-on*),$(call ^Y,$(call ~save-blob,$(dir $(~*memo-db-file*)),$2),,,,,,,,,$`(call ~memo-io,~do-memo-write-blob,$(call ^E,$1),$`1)),$(call ~write-file,$1,$2))
 ~memo-chmod-file = $(call ~memo-io,~chmod-file,$1,$2)
 
 endef
@@ -886,4 +871,3 @@ endef
 
 endef
 $(eval $(value [mod-runtime]))
-$(call ^start,scam,~main,$(value SCAM_ARGS))

@@ -85,7 +85,7 @@
 ;; modid-deps & modid-read-lines
 
 (set-native "[mod-cqtx]" "# Requires: a!0b var\n# xyz")
-(define test-dir (assert (value "TEST_DIR")))
+(define test-dir (assert (value "SCAM_DIR")))
 (write-file (concat test-dir "cqtx.o") "# Requires: a!0b boot-file\n# xyz\n")
 (write-file (concat test-dir "cqtx.scm.o") "# Requires: a!0b file\n# xyz\n")
 
@@ -164,7 +164,7 @@
 (declare ^R &native)
 
 (memo-on
- (concat (assert (value "TEST_DIR")) "compile-q-db.txt")
+ (concat (assert (value "SCAM_DIR")) "compile-q-db.txt")
  (let-global ((locate-module (lambda (f name) name))
               (^R (lambda () nil))
               (modid-import (lambda () nil)))
