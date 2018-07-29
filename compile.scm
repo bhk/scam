@@ -188,10 +188,6 @@
 ;;
 (define `(env-expand str)
    (subst "!n" "\n"
-
-
-
-
           (detokenize-key
            (env-exp str))))
 
@@ -582,7 +578,7 @@ SHELL:=/bin/bash
 ;; MAIN-ID = module ID for the main module (previously compiled, so that
 ;;     object files for it and its dependencies are available).
 ;;
-(define (link exe-file main-id)
+(define (link exe-file main-id ?no-chmod)
   (build-message "linking" exe-file)
 
   (define `main-func (gen-native-name "main" nil))
@@ -601,11 +597,12 @@ SHELL:=/bin/bash
     (concat prologue bundles (epilogue main-id main-func)))
 
   (bail-if (or (memo-write-file exe-file exe-code)
-               (memo-chmod-file exe-file "+x"))))
+               (if (not no-chmod)
+                   (memo-chmod-file exe-file "+x")))))
 
 
-(define (m-link exe-file main-id)
-  (memo-call (native-name link) exe-file main-id))
+(define (m-link exe-file main-id ?no-chmod)
+  (memo-call (native-name link) exe-file main-id no-chmod))
 
 
 ;; Link and run a test module.
@@ -614,17 +611,19 @@ SHELL:=/bin/bash
 ;;
 (define (run-test exe mod)
   ;; ensure it begins with "./" or "/"
-  (or (m-link exe mod)
+  (or (m-link exe mod 1)
       (begin
         (build-message "running" exe)
 
         ;; track dependency for memoization
         (memo-hash-file exe)
 
-        (define `cmd-name (concat (dir exe) (notdir exe)))
+        ;; (value "MAKE") does not sem to provide the actual value
+        (declare MAKE &native)
+
         (define `cmd-line
           (concat "TEST_DIR=" (quote-sh-arg *obj-dir*) " "
-                  (quote-sh-arg cmd-name) " >&2 ;"
+                  MAKE " -f " (quote-sh-file exe) " >&2 ;"
                   "echo \" $?\""))
 
         (drop-if (filter-out 0 (lastword (ioshell cmd-line)))))))
@@ -637,7 +636,7 @@ SHELL:=/bin/bash
 (define (compile-and-test-module src-file)
   (define `test-src (subst ".scm" "-q.scm" src-file))
   (define `test-mod (module-id test-src))
-  (define `test-exe (basename (modid-file test-mod)))
+  (define `test-exe (basename (basename (modid-file test-mod))))
 
   (or (m-compile-module src-file)
       (and (file-exists? test-src)
@@ -675,7 +674,7 @@ SHELL:=/bin/bash
   &public
 
   (define `exe-file
-    (basename (modid-file (module-id src-file))))
+    (basename (basename (modid-file (module-id src-file)))))
 
   ;; Option 1: link and run via rule
 
