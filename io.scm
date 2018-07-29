@@ -37,7 +37,7 @@
   (concat "sed -e '"
           (if start
               (concat start "," end "!d;"))
-          "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/^$/!./'"))
+          "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/\x0d/!r/g;s/^$/!./'"))
 
 
 ;; Execute command CMD, returning data written to stdout.
@@ -50,7 +50,8 @@
 ;;
 (define (shell! cmd)
   &public
-  (concat-vec (addsuffix "\n" (ioshell (concat "( " cmd " ) | " (wrap-filter))))))
+  (define `raw-lines (ioshell (concat "( " cmd " ) | " (wrap-filter))))
+  (concat-vec (subst "!r" "\x0d" (addsuffix "\n" raw-lines))))
 
 
 ;; Construct a command line to echo STR.
@@ -153,8 +154,9 @@
 ;;
 (define (read-lines filename ?start ?end)
   &public
-  (ioshell (concat "(( cat " (quote-sh-file filename) " && echo ) | "
-                    (wrap-filter start end) " ) 2>/dev/null")))
+  (subst "!r" "\x0d"
+         (ioshell (concat "(( cat " (quote-sh-file filename) " && echo )"
+                          " | " (wrap-filter start end) " ) 2>/dev/null"))))
 
 
 ;; Read the contents of file FILENAME and return it as a string.

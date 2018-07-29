@@ -31,9 +31,17 @@
 
 (define `thisfile (lastword MAKEFILE_LIST))
 
-(expect " a\\b\n\t cX"
+(define `test-string
+  (concat (string-from-bytes
+           (concat "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19"
+                   " 20 21 22 23 24 25 26 27 28 29 30 31 32 127"))
+          "\na¢€￦\n"
+          ;; <CR><LF> required special handling
+          "abc\x0d\nxyz"))
+
+(expect (concat test-string "X")
         (let ((tmpfile (concat TMPDIR "rwtest")))
-          (expect nil (write-file tmpfile " a\\b\n\t c"))
+          (expect nil (write-file tmpfile test-string))
           (shell (concat "echo -n X >> " tmpfile))
           (read-file tmpfile)))
 

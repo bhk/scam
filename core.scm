@@ -459,7 +459,7 @@
           (format-vector str))
       (numeric? str)
       (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" "\t" "\\t"
-                          str) "\"")))
+                          "\x0d" "\\x0d" str) "\"")))
 
 
 ;; Expand FMT, replacing escape sequences with values from vector VALUES,
