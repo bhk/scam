@@ -580,6 +580,15 @@ $(if ,, ) :=
 ;; Program execution
 
 
+;; Some make distros (Ubuntu) ignore the environment's SHELL and set it to
+;; /bin/sh.  We set it to bash rather than bothering to test the `io` module
+;; with others.
+;;
+(define SHELL
+  &native
+  "/bin/bash")
+
+
 (define *atexits* nil)
 
 
