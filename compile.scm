@@ -573,7 +573,6 @@ SHELL:=/bin/bash
                     (env-export-lines env-out)
                     exe))
 
-          (memo-call (native-name memo-mkdir-p) (dir outfile))
           (bail-if (memo-write-file outfile content))))))))
 
 

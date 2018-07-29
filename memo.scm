@@ -34,7 +34,6 @@
 (define *memo-hashes* nil)    ;; hash results during the current session
 
 
-(declare (memo-mkdir-p dir))
 (declare (memo-save-session))
 
 
@@ -175,7 +174,6 @@
 ;; Store the result of (FNAME ...ARGS) in a BLOB and return the BLOB name.
 ;;
 (define (blobify fname ...args)
-  (memo-call (native-name memo-mkdir-p) (dir *memo-db-file*))
   (save-blob (dir *memo-db-file*) (name-apply fname args)))
 
 
@@ -235,7 +233,10 @@
   (set *memo-on* 1)
   (if (not (eq? *memo-db-file* dbfile))
       ;; load data from new (or initial) DB file
-      (memo-read-db dbfile)))
+      (begin
+        ;; blobify assumes this directory exists
+        (mkdir-p (dir dbfile))
+        (memo-read-db dbfile))))
 
 
 (define `(memo-end-session)
@@ -341,13 +342,6 @@
         (memo-io (native-name do-memo-cp-blob) blob filename))
       ;; not in a memo session
       (write-file filename data)))
-
-
-;; Create directory DIR, logging the operation as a dependency.
-;;
-(define (memo-mkdir-p dir)
-  &public
-  (memo-io (native-name mkdir-p) dir))
 
 
 ;; Call `chmod-file`, logging the IO as a dependency.  MODE is formatted as
