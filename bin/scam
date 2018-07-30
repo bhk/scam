@@ -716,11 +716,11 @@ $(and $(call ^set,~*memo-on*,1)1,$(if $(if $(call ~eq?,$(~*memo-db-file*),$1),,1
 endef
 ~memo-minus = $(and $(if $1,$(and $(call ^set,~*memo-on*,)1,$(call ^set,~*memo-cache*,)1,$(call ^set,~*memo-hashes*,)1,$(call ~memo-save-session)))1,$2)
 ~hash-add = $(call ^set,~*memo-hashes*,$(call ~append,$(~*memo-hashes*),$1))
-~do-memo-hash-file = $(if $(~*memo-on*),$(call ^n,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ^n,2,$(subst !=, ,$(pair))))),$(if $(filter $(call ^n,3,$(call ^n,2,$(subst !=, ,$(pair)))),~do-memo-hash-file ~do-memo-write-blob),$(word 1,$(wordlist 4,99999999,$(call ^n,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
-~memo-hash-file = $(call ~memo-io,~do-memo-hash-file,$1)
+~do-hash-file = $(if $(~*memo-on*),$(call ^n,2,$(subst !=, ,$(or $(call ~dict-find,$1,$(~*memo-hashes*)),$(and $(call ~hash-add,$(call ~hash-files,$(sort $(call ~cons,$1,$(if $(~*memo-hashes*),,$(foreach pair,$(~*memo-db*),$(if $(filter !:PMDB1,$(word 1,$(call ^n,2,$(subst !=, ,$(pair))))),$(if $(filter $(call ^n,3,$(call ^n,2,$(subst !=, ,$(pair)))),~do-hash-file ~do-write-blob),$(word 1,$(wordlist 4,99999999,$(call ^n,2,$(subst !=, ,$(pair)))))))))))))1,$(call ~dict-find,$1,$(~*memo-hashes*)))))),$(call ~hash-file,$1))
+~memo-hash-file = $(call ~memo-io,~do-hash-file,$1)
 ~memo-read-file = $(and $(call ~memo-hash-file,$1)1,$(call ~read-file,$1))
-~do-memo-write-blob = $(if $(if $(call ~eq?,$(notdir $2),$(call ~dict-get,$1,$(~*memo-hashes*))),,1),$(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$1,$(~*memo-hashes*)))1,$(call ~cp-file,$2,$1,1)))
-~memo-write-file = $(if $(~*memo-on*),$(call ^Y,$(call ~save-blob,$(dir $(~*memo-db-file*)),$2),,,,,,,,,$`(call ~memo-io,~do-memo-write-blob,$(call ^E,$1),$`1)),$(call ~write-file,$1,$2))
+~do-write-blob = $(if $(if $(call ~eq?,$(notdir $2),$(call ~dict-get,$1,$(~*memo-hashes*))),,1),$(and $(call ^set,~*memo-hashes*,$(call ~dict-remove,$1,$(~*memo-hashes*)))1,$(call ~cp-file,$2,$1,1)))
+~memo-write-file = $(if $(~*memo-on*),$(call ^Y,$(call ~save-blob,$(dir $(~*memo-db-file*)),$2),,,,,,,,,$`(call ~memo-io,~do-write-blob,$(call ^E,$1),$`1)),$(call ~write-file,$1,$2))
 ~memo-chmod-file = $(call ~memo-io,~chmod-file,$1,$2)
 
 endef
