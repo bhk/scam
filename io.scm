@@ -240,6 +240,16 @@
   (dict-value (hash-files [filename])))
 
 
+(define (hash-output cmd)
+  &public
+  (define `hashpipe
+    (if (filter "md5" (basename (hash-cmd)))
+        "md5 -q"
+        (concat (hash-cmd) " -")))
+  (ioshell (concat "( " cmd " ) | " hashpipe
+                   " | sed 's/\\(^................\\).*/\\1/'")))
+
+
 ;; Write DATA to a file in OBJ-DIR whose name is a function of DATA.
 ;; Returns the path to the new file.
 ;;

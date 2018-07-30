@@ -74,10 +74,10 @@
 
 ;; Return the name of the DB file for caching compilation results.
 ;;
-(define (compile-cache-file)
-  (concat *obj-dir*
-          (hash-file (word 1 (value "MAKEFILE_LIST")))
-          ".cache"))
+(define `(compile-cache-file)
+  (declare ^uid &native)
+  (concat *obj-dir* ^uid ".db"))
+
 
 ;; Evaluate EXPR within a memo session for compilation.
 ;;
@@ -267,10 +267,16 @@
   (concat "[mod-" id "]"))
 
 
+;; Non-nil when ID names a compiled module, not a bundled one.
+;;
+(define `(modid-is-file id)
+  (or (filter "%.scm" id) *is-boot*))
+
+
 ;; Return the first 4 lines of a compiled module as an array of lines.
 ;;
 (define (modid-read-lines id ?max)
-  (if (or (filter "%.scm" id) *is-boot*)
+  (if (modid-is-file id)
       ;; load file
       (begin
         (memo-hash-file (modid-file id))
@@ -363,7 +369,7 @@
 ;; LC_ALL=C allows makefiles to contain non-UTF-8 byte sequences, which is
 ;; needed to enable SCAM's UTF-8 support.
 ;;
-(define `(construct-file main-id bundles)
+(define `(construct-file main-id bundles uid)
   (concat
    "#!/bin/bash\n"
    ":; for v in \"${@//!/!1}\" ; "
@@ -372,6 +378,7 @@
    "SCAM_ARGS=${a[*]} "
    "exec make -Rr --no-print-directory -f\"$0\" 9>&1\n"
    "SCAM_MOD := " main-id "\n"
+   "^uid := " uid "\n"
    bundles
    "$(eval $(value " (modid-var "runtime") "))\n"))
 
@@ -577,15 +584,24 @@
 (define (link exe-file main-id)
   (build-message "link" exe-file)
 
-  (define `bundles
+  (define `exe-code
     (let ((mod-ids (modid-deps-all main-id)))
       ;; Symbols are valuable only if compile is present
-      (define `keep-syms (filter "compile" mod-ids))
-      (concat-for id mod-ids ""
-                  (construct-bundle id keep-syms))))
+      (define `keep-syms
+        (filter "compile" mod-ids))
 
-  (define `exe-code
-    (construct-file main-id bundles))
+      (define `bundles
+        (concat-for id mod-ids ""
+                    (construct-bundle id keep-syms)))
+
+      (define `uid
+        (hash-output (concat
+                      "cat "
+                      (foreach id mod-ids
+                               (if (modid-is-file id)
+                                   (quote-sh-arg (modid-file id)))))))
+
+      (construct-file main-id bundles uid)))
 
   (bail-if (or (memo-write-file exe-file exe-code)
                (memo-chmod-file exe-file "+x"))))

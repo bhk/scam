@@ -102,6 +102,13 @@
 (expect (hash-files [TMP_XYZ TMP_XYZ2])
         { =TMP_XYZ: xyz, =TMP_XYZ2: xyz2 })
 
+;; hash-output
+
+(expect "9aa85db27d6a074c"
+        ;; expect one (md5) or the other (sha1)
+        (subst "d3b07384d113edec" "9aa85db27d6a074c"
+               (hash-output "echo foo")))
+
 ;; blob functions
 
 (expect "" (read-file (save-blob TMPDIR "")))
