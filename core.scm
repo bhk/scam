@@ -237,12 +237,14 @@
       (if c "" s)))
 
 
-;; Return 1 if N is safe to pass to WORD or WORDLIST.  This means it
+;; Return non-nil if N is safe to pass to WORD or WORDLIST.  This means it
 ;; consists only of decimal digits and is non-zero.
 ;;
 (define (word-index? n)
   &public
-  (numeric? (subst "E" "~" "e" "~" "-" "~" "." "~" "0" "" n)))
+  (if (subst 0 nil 1 nil 2 nil 3 nil 4 nil 5 nil 6 nil 7 nil 8 nil 9 nil n)
+      nil
+      (subst 0 nil n)))
 
 
 ;; Join one or more (potentially empty) vectors, word lists, or
@@ -524,6 +526,14 @@
   (expect-x a b (current-file-line)))
 
 
+;; Like expect, but evaluation of A and B is done with tracing enabled.
+;;
+(define `(trace-expect a b)
+  &public
+  (let ((ab (tracing "%" [a b])))
+    (expect (nth 1 ab) (nth 2 ab))))
+
+
 (define (assert-x cond file-line)
   (or cond
       (error (print file-line ": error: assertion failed"))))
@@ -627,7 +637,8 @@
                        (mcache (concat varbase (memoenc a b c)) func a b c
                                (or d e f g h)))))))
 
-;; Sort a vector VALUES in order of increading (KEY-FUNC i) for each item i.
+
+;; Sort a vector VALUES in order of increasing (KEY-FUNC i) for each item i.
 (define (sort-by key-func values)
   &public
   (define `keyed

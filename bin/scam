@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MOD := scam
-^uid := 96cb70caf176b0db
+^uid := 9f3a215c8d623e1b
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -116,7 +116,7 @@ endef
 
 define [mod-core]
 # Requires: 
-# Exports: intersperse"foldr}3 foldl}3 index-of"assoc(3;~%-initial[:IL2'subst',|\0,1',|\0,11',:IL3\0^d\0,1@,01,00[@'2'0 assoc-vec(3;~assoc-initial[:IL3'^d',@\01\00[@'2'0 assoc-initial"sort-by"memoize#1+#split"uniq#see"fexpect(3;~expect-x[:IL3'~format',@\01\00[:IL3'~format',@\02\00[:IL9'4508 assert&1;!1.;!1:IL3;~%-x[@'1'0[:IL9'4459 expect(3;~%-x[@'1'0[@'2'0[:IL9'4392 expect-x}3 printf}1'or'more sprintf}1'or'more vsprintf"format#format-add#dict-collate#dict-values#dict-keys#dict-compact}1'or'2 dict-set}3 dict-remove"dict-get}2'or'3 dict-find"dict-value&1;!1.;!1:IL3;^n[|'2[:IL2'subst',|\0,1=',|\0,0',@\01\00 dict-key#append}0'or'more word-index?#numeric?#while}3 reverse#indices&1;!1.;!1:IL3;~%-a[:IL2'words',@\01\00 vec-subtract(3;~vec-filter[|'filter-out[@'2'0[@'1'0 vec-intersect(3;~vec-filter[|'filter[@'2'0[@'1'0 vec-or&1;!1.;!1:IL3;^n[|'1[:IL2'filter-out',|\0,1.',@\01\00 select-words"select-vec"butlast#strip-vec&1;!1.;!1:IL2;filter[|'!p[@'1'0 last&1;!1.;!1:IL3;^u[:IL2'%word',@\01\00 conj"cons"concat-vec}1'or'2 xor"identity&1;!1.;!1@;1;0 eq?}2
+# Exports: intersperse"foldr}3 foldl}3 index-of"assoc(3;~%-initial[:IL2'subst',|\0,1',|\0,11',:IL3\0^d\0,1@,01,00[@'2'0 assoc-vec(3;~assoc-initial[:IL3'^d',@\01\00[@'2'0 assoc-initial"sort-by"memoize#1+#split"uniq#see"fexpect(3;~expect-x[:IL3'~format',@\01\00[:IL3'~format',@\02\00[:IL9'4586 assert&1;!1.;!1:IL3;~%-x[@'1'0[:IL9'4537 trace-expect(5[:IL8',:IL3\0~expect-x\0,1:IL3,0^n,0,11|,101,0,11@,101,100\0,1:IL3,0^n,0,11|,102,0,11@,101,100\0,1:IL9,04454[:IL3'~untrace',:IL3\0~trace\0,1|,0!p',:IL6\0,1:IL3,0^d,0,11@,101,100\0,1|,0,10\0,1:IL3,0^d,0,11@,102,100 expect(3;~%-x[@'1'0[@'2'0[:IL9'4405 expect-x}3 printf}1'or'more sprintf}1'or'more vsprintf"format#format-add#dict-collate#dict-values#dict-keys#dict-compact}1'or'2 dict-set}3 dict-remove"dict-get}2'or'3 dict-find"dict-value&1;!1.;!1:IL3;^n[|'2[:IL2'subst',|\0,1=',|\0,0',@\01\00 dict-key#append}0'or'more word-index?#numeric?#while}3 reverse#indices&1;!1.;!1:IL3;~%-a[:IL2'words',@\01\00 vec-subtract(3;~vec-filter[|'filter-out[@'2'0[@'1'0 vec-intersect(3;~vec-filter[|'filter[@'2'0[@'1'0 vec-or&1;!1.;!1:IL3;^n[|'1[:IL2'filter-out',|\0,1.',@\01\00 select-words"select-vec"butlast#strip-vec&1;!1.;!1:IL2;filter[|'!p[@'1'0 last&1;!1.;!1:IL3;^u[:IL2'%word',@\01\00 conj"cons"concat-vec}1'or'2 xor"identity&1;!1.;!1@;1;0 eq?}2
 ~eq? = $(if $(findstring 1$1,$(findstring 1$2,1$1)),1)
 ~xor = $(if $1,$(if $2,,$1),$2)
 ~concat-vec = $(call ^u,$(subst $  ,$(call ^d,$2),$1))
@@ -135,7 +135,7 @@ define [mod-core]
 ~while-N = $(if $(filter 0,$(word 1,$3)),$3,$(if $(filter iii,$5),$(if $(filter 1,$4),$(call ~while-N,$1,$2,$3,$4 0,ii),$3),$(call ~while-N,$1,$2,$(if $4,$(call ~while-N,$1,$2,$3,$(wordlist 2,99999999,$4),),$(call ~while-0,$1,$2,$(call ^n,2,$3),)),$4,i$5)))
 ~while = $(if $(call ^Y,$3,,,,,,,,,$1),$(call ^Y,$(call ^Y,$3,,,,,,,,,$2),$1,$2,,,,,,,$`(call ^n,2,$`(call ~while-N,$`2,$`3,$`(call ~while-0,$`2,$`3,$`1,),1,ii))),$3)
 ~numeric? = $(if $(filter 0% 1% 2% 3% 4% 5% 6% 7% 8% 9%,$(subst -,,$1)),$(if $(patsubst .%,%,$(patsubst %e,%,$(subst 0,,$(patsubst -%,%,$(subst $  ,_,$(subst E0,e,$(subst E-,E,$(subst e,E,$(subst +,-,$(subst 9,0,$(subst 8,0,$(subst 7,0,$(subst 6,0,$(subst 5,0,$(subst 4,0,$(subst 3,0,$(subst 2,0,$(subst 1,0,$1)))))))))))))))))),,$1))
-~word-index? = $(call ~numeric?,$(subst 0,,$(subst .,~,$(subst -,~,$(subst e,~,$(subst E,~,$1))))))
+~word-index? = $(if $(subst 9,,$(subst 8,,$(subst 7,,$(subst 6,,$(subst 5,,$(subst 4,,$(subst 3,,$(subst 2,,$(subst 1,,$(subst 0,,$1)))))))))),,$(subst 0,,$1))
 ~append = $(filter %,$1 $2 $3 $4 $5 $6 $7 $8 $(if $9,$(call ^u,$9)))
 ~dict-key = $(call ^u,$(subst !8,%,$(word 1,$(subst !=, ,$1))))
 ~dict-find = $(word 1,$(filter $(subst %,!8,$(call ^d,$1))!=%,$2))
