@@ -1,6 +1,6 @@
 (require "core")
 (require "clocker.scm")
-(require "num")
+(require "math")
 
 
 ;; Categories & weighting:

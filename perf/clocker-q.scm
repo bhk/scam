@@ -1,4 +1,4 @@
-(require "num")
+(require "math")
 (require "core")
 (require "io")
 (require "clocker.scm" &private)

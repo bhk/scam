@@ -2,7 +2,7 @@
 ;; see http://projecteuler.net/problem=1
 
 (require "core")
-(require "num")
+(require "math")
 
 ;;----------------------------------------------------------------
 ;; Problem 1
@@ -29,7 +29,7 @@
 ;;   len = length of sequence
 (define (sum-seq first step len)
   (+ (* first len)
-     (* step (/ (* len (- len 1)) 2))))
+     (* step (/ (* len (- len 1)) 2 40))))
 
 ;; test
 (expect 6 (sum-seq 1 1 3))   ;; 1+2+3
@@ -62,8 +62,7 @@
 ;; test
 (expect 23 (ep1b 1 9))
 (expect 233168 (ep1b 1 999))
-(expect 233333333333166666666668
-        (ep1b 1 999999999999))
+(assert (= 233333333333166666666668 (ep1b 1 999999999999)))
 
 ;; main
 

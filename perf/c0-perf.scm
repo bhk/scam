@@ -6,7 +6,7 @@
 (require "gen1")
 (require "compile")
 (require "io")
-(require "num")
+(require "math")
 
 
 (define (read-file-assert file)

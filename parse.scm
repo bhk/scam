@@ -222,7 +222,7 @@
 
 
 ;; This makeshift arithmetic works only with numbers of limited size, but is
-;; faster than the general-purpose algorithms in the num module.
+;; faster than the general-purpose algorithms in the math module.
 ;;
 ;; DIGITS = [H H], two hex digits (MSB-first)
 ;;

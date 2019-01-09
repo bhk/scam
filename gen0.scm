@@ -6,7 +6,7 @@
 (require "parse.scm")
 (require "escape.scm")
 (require "gen.scm")
-(require "num.scm")
+(require "math.scm")
 
 (define *warn-upvals*
   (findstring "U" (value "SCAM_DEBUG")))

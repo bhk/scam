@@ -5,7 +5,7 @@
 (require "gen0")
 (require "compile")
 (require "io")
-(require "num")
+(require "math")
 (require "gen1")
 
 
@@ -32,7 +32,7 @@
 
 (define (main argv)
   (define `default-sources
-    (addprefix (dir (current-file)) "../num.scm"))
+    (addprefix (dir (current-file)) "../mcore.scm"))
 
   (print "c1 benchmarks")
   (let ((totals (foreach file (or argv default-sources)

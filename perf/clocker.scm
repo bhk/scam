@@ -3,7 +3,7 @@
 ;;--------------------------------
 
 (require "core")
-(require "num")
+(require "math")
 (require "io")
 
 

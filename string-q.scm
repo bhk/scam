@@ -1,5 +1,5 @@
 (require "core.scm")
-(require "num.scm")
+(require "math.scm")
 (require "string.scm" &private)
 
 

@@ -8,7 +8,7 @@
 ;;
 
 (require "core")
-(require "num")
+(require "math")
 
 (define (conc vec delim)
   (if vec

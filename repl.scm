@@ -9,12 +9,12 @@
 (require "gen.scm")
 (begin
   ;; treat as a dependency (for build system purposes)
-  (require "num.scm"))
+  (require "math.scm"))
 
 
 ;; Override this on the command line to automatically include a different
 ;; set of libraries.  repl supplies *1 and *2.
-(define LIBS "compile core getopts io num string utf8")
+(define LIBS "compile core getopts io math string utf8")
 
 (define *1 &native nil)  ; most recent evaluation result
 (define *2 &native nil)  ; previous result

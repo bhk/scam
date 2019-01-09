@@ -7,7 +7,7 @@
 (require "core")
 (require "gen")
 (require "io")
-(require "num")
+(require "math.scm")
 (require "string")
 (require "compile.scm" &private)
 
@@ -41,17 +41,18 @@
 ;;
 (define (freqs subs env)
   (reverse
-   (sort
+   (sort-by
+    (lambda (e) (num-lex (strip (first e))))
     (for c subs
          (let ((n (count c env)))
-           [ (num-format
+           [ (format-fixed
               (-
                ;; bytes saved by replacement
                (* n (- (string-len c) 1))
                ;; cost
                (* 2 (string-len c)))
-              5 0)
-             (num-format n 4 0)                      ; # occurrences
+              5)
+             (format-fixed n 4)                      ; # occurrences
              c ])))))                                ; substring
 
 
@@ -269,7 +270,7 @@
 ;;
 
 (define best-chars
-  (sort-by (lambda (c) (num-format (count c scam-env) 6 0))
+  (sort-by (lambda (c) (format-fixed (count c scam-env) 6))
            subchars))
 
 ;; (printf "best-chars: (%s)  %q " (words best-chars) best-chars)

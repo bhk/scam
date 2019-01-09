@@ -7,18 +7,19 @@
 ;;
 
 (require "core.scm")
-(require "num.scm")
+(require "math.scm")
 
 
 ;; Construct a multi-byte UTF-8 sequence.
 ;;
 (define (utf-seq code offsets)
   (if offsets
-      (let ((dr (div-rem code 64))
+      (let ((q (// code 64))
             (ro (rest offsets))
             (o1 (word 1 offsets)))
-        (append (utf-seq (word 1 dr) ro)
-                (+ o1 (word 2 dr))))))
+        (define `rem (- code (* q 64)))
+        (append (utf-seq q ro)
+                (+ o1 rem)))))
 
 
 ;; Convert Unicode character indices to UTF-8 encoded bytes.
