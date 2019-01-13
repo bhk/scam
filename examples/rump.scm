@@ -40,8 +40,9 @@
 ;;
 ;; --------------------------------
 ;;
-;; SCAM's arbitrary-precision floating point arithmetic produces (perfectly)
-;; as many digits of precision as desired.  Here are the first 200:
+;; SCAM's arbitrary-precision floating point arithmetic always yields the
+;; correct result to as many digits of precision as desired.  Here are the
+;; first 200:
 ;;
 ;;  -0.827396059946821368141165095479816291999033115784384819917814841672
 ;;  709693014261542180323906212231085327532028039642252840222383369591491
@@ -49,10 +50,12 @@
 
 (require "math")
 
-(define (f a b)
+(define (f a b digits)
   (sum (* (- 333.75 (^ a 2)) (^ b 6))
        (* (^ a 2) (- (- (* 11 (* (^ a 2) (^ b 2))) (* 121 (^ b 4))) 2))
        (* 5.5 (^ b 8))
-       (/ a (* 2 b) 200)))
+       (/ a (* 2 b) digits)))
 
-(print (f 77617 33096))
+
+(define (main argv)
+  (print (f 77617 33096 (or (first argv) 200))))
