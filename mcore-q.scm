@@ -182,9 +182,13 @@
 (expect (U -8) (u+1 (U -9)))
 (expect (U -9) (u+1 -10))
 
-;; u-add-ones
+;; u-carry-all
 
 (define T30 "111111111111111111111111111111")
+(expect (U -120) (u-carry-all (concat "-0" (subst 1 1111 T30))))
+
+;; u-add-ones
+
 (expect (U 1) (u-add-ones 0 "1"))
 (expect (U 9) (u-add-ones 0 T9))
 (expect (U 10) (u-add-ones 0 (concat T9 1)))
@@ -214,11 +218,12 @@
 
 (expect (UV 04001) (merge-and-carry "0 0010011001 00000 0 010"))
 
-;; not-longer?
+;; longer?
 
-(expect 9 (not-longer? "9 9 9" "9 9 9"))
-(expect nil (not-longer? "9 9" 9))
-(expect nil (not-longer? 9 nil))
+(expect 9 (longer? "9 9 9" "9 9"))
+(expect nil (longer? "9 9" "9 9"))
+(expect 1 (longer? 1 nil))
+(expect nil (longer? nil nil))
 
 ;; uf*digit
 
@@ -238,13 +243,12 @@
 
 ;; uf-mul-fixed
 
-
 (define (uf-mul-fixed-fn a b)
   (uf-mul-fixed a b))
 (fix-native-var (native-name uf-mul-fixed-fn))
 
 (define (umf a b)
-  (uv2d (uf-carry (uf-mul-fixed-fn (UV a) (UV b)))))
+  (u2d (smash (uf-carry (uf-mul-fixed-fn (UV a) (UV b))))))
 
 (expect 0246 (umf 123 2))
 (expect 02583 (umf 123 21))
@@ -273,8 +277,8 @@
 (foreach len-b "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19"
          (foreach len-a [1 2 len-b (1+ (1+ len-b))]
                   (uf-mul-check (uf-of-len len-a) (uf-of-len len-b))
-                  (uf-mul-check (uf-of-len len-a) (concat (uf-of-len len-b) " 0 0 0 0 0 0"))))
-
+                  (uf-mul-check (uf-of-len len-a) (concat (uf-of-len len-b)
+                                                          " 0 0 0 0 0 0"))))
 
 ;;------------------------------------------------------------------------
 ;; Division
@@ -397,6 +401,7 @@
 (expect "0 + 01"     (fp-norm "01 + 0 01"))
 (expect "-011 + 01"  (fp-norm "-01 + 0 01"))
 (expect "-0111 - 01" (fp-norm "01 - 0 0 0 0 01"))
+(expect "-0100 - 01" (fp-norm (concat "01 - " (repeat-words 0 101) " 01")))
 
 ;; u2fp
 
@@ -405,10 +410,12 @@
 (expect (FP 1) "01 + 01")
 (expect (FP 11) "011 + 01 01")
 (expect (FP 01) "01 + 01")
-(expect (FP 00) "01 + 0")
+(expect (FP 00) "0 + 0")
 ;; (word 10 (spread u))
 (expect (FP (concat 1 (smash (repeat-words 0 200))))
         (concat "011001 + 01 " (repeat-words 0 200)))
+(expect (FP (concat "0." (smash (repeat-words 0 200)) "1"))
+        (concat "-01100 + 01"))
 ;; cond: (findstring "E" (subst "e" "E" u))
 (expect (FP "1E1") "011 + 01")
 (expect (FP "1e1") "011 + 01")

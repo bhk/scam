@@ -39,11 +39,8 @@
            (UV (subst "-" nil m))))
 
 
-;; Normalize FP-encoded number N.
-;;
-(define (fp-norm n)
-  (if (findstring "0 0" (wordlist 3 4 n))
-      (fp-norm (make-fp (u-1 (fp-exp n)) (fp-sign n) (rest (fp-uf n))))
-      n))
 
-(expect "0111 + 01 011" (fp-norm "01111 + 0 01 011"))
+;; Convert an FP number to decimal.
+;;
+(define (fp2d x)
+  (u2d (fp2u x)))

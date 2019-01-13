@@ -1,5 +1,10 @@
 (require "core.scm")
-(require "mcore.scm")
+(require "mcore.scm") ;; ensure it's tested first
+(require "mcore.scm" &private) ;; get all symbols
+
+
+(define `(+_+ a b)
+  (concat a " " b))
 
 
 (define `(u2d-macro u)
@@ -32,8 +37,43 @@
 ;; FP operations
 ;;----------------------------------------------------------------
 
+(define `FP0 "0 + 0")
+(define `FP1 "01 + 01")
+
+;; True if POD (Place-or-Digits) contains a "place" value: the number of
+;; digits to the right of the decimal place, U-encoded.
+;;
+(define `(pod-is-place? pod)
+  (filter "0% -0%" pod))
+
+
 (define `(fp-negate n)
   (subst " +" " !" " -" " +" "!" "-" n))
+
+
+(define `(fp>0? fx)
+  (findstring "+ 01" (wordlist 2 3 (filter-out 0 (concat "." fx)))))
+
+
+(define `(fp<0? fx)
+  (findstring "- 01" (wordlist 2 3 (filter-out 0 (concat "." fx)))))
+
+
+(define `(fp!=0? fx)
+  (findstring 1 (fp.uf fx)))
+
+
+(define `(fp-abs fx)
+  (subst " -" " +" fx))
+
+
+(define `(d2fp dx)
+  (u2fp (d2u dx)))
+
+
+(define `(fp2d fx)
+  (u2d (fp2u fx)))
+
 
 ;; Construct FP number given frac>>1.
 ;;
@@ -67,18 +107,18 @@
       (make-fp<<1 ae as (uf-add (>>1 af) (>>1 (concat b-pad bf))))
 
       ;; difference
-      (concat ae " " (uf-sign-sub af (concat b-pad bf) (findstring "-" as)))))
+      (+_+ ae (uf-sign-sub af (concat b-pad bf) (findstring "-" as)))))
 
 
 ;; Add A to B.
 ;;
 (define (fp-add a b)
-  (define `ae (fp-exp a))
-  (define `as (fp-sign a))
-  (define `af (fp-uf a))
-  (define `be (fp-exp b))
-  (define `bs (fp-sign b))
-  (define `bf (fp-uf b))
+  (define `ae (fp.xpo a))
+  (define `as (fp.sign a))
+  (define `af (fp.uf a))
+  (define `be (fp.xpo b))
+  (define `bs (fp.sign b))
+  (define `bf (fp.uf b))
 
   (and a b
        (if (u-lt? ae be)
@@ -95,96 +135,138 @@
 (define `(sign-mul sign-a sign-b)
   (if (findstring sign-a sign-b) "+" "-"))
 
-(define `(sign-mul sign-a sign-b)
-  (if (findstring sign-a sign-b) "+" "-"))
-
 
 ;; Multiply A by B.
 ;;
 (define (fp-mul a b)
-  (define `exp (u-add (fp-exp a) (fp-exp b)))
-  (define `sgn (sign-mul (fp-sign a) (fp-sign b)))
-  (define `m (uf-mul (fp-uf a) (fp-uf b)))
+  (define `exp (u-add (fp.xpo a) (fp.xpo b)))
+  (define `sgn (sign-mul (fp.sign a) (fp.sign b)))
+  (define `m (uf-mul (fp.uf a) (fp.uf b)))
   (and a b (make-fp exp sgn m)))
 
 
-;; Divide A by B.
+;; fp-mulp: Compute X*Y to the precision given by POD (see fp-div).
 ;;
-;; A & B = dividend & divisor.  Must be normalized (no leading zeros in UF).
+;; X & Y must be normalized (no leading zeros in UF).
 ;;
-;; PREC = precision IN A DIFFERENT FORMAT THAN `/` ACCEPTS:
-;;    Begins with "0" => place, negated, and in signed U-encoded form
-;;    Begins with 1-0 => number of significant digits, in decimal
+(define (fp-mulp-x exp sgn uf pod num-digits)
+  ;; If pod is given in terms of *significant* digits and the first result
+  ;; digit is zero, use NUM-DIGITS digits *after* the first digit.
+  (define `skip-zero
+    (and (filter-out "-0% 0%" pod)
+         (filter 0 (word 1 uf))))
+
+  (make-fp exp sgn
+           (concat (wordlist 1 num-digits uf)
+                   (if skip-zero
+                       (addprefix " " (word 2 (nth-rest num-digits uf)))))))
+
+
+(define (fp-mulp x y pod)
+  (if (and pod x y)
+      (foreach
+          exp (u-add (fp.xpo x) (fp.xpo y))
+          (foreach
+              num-digits (if (pod-is-place? pod)
+                             (u2d (u-add exp pod))
+                             pod)
+
+              ;; get up to NUM_DIGITS+1 digits of A
+              (define `(in-digits a)
+                (concat (word 3 a)
+                        (if (word 4 a)
+                            (concat " " (wordlist 1 num-digits (nth-rest 4 a))))))
+
+              (if (filter "-% 0" num-digits)
+                  ;; Rounding place is to the left of EXP => 0
+                  FP0
+                  ;; Non-zero num-digits
+                  (fp-mulp-x exp
+                             (sign-mul (fp.sign x) (fp.sign y))
+                             (uf-mul (in-digits x) (in-digits y))
+                             pod
+                             num-digits))))))
+
+
+;; Divide X by Y.
+;;
+;; X & Y must be normalized (no leading zeros in UF).
+;;
+;; POD = precision in internal place-or-digits encoding:
+;;    Begins with "0" or "-0" => place, negated, and in signed U-encoded form
+;;    Begins with 1-9 => number of significant digits, in decimal
 ;;    nil => error (return nil)
 ;;
-;; ROUND = nearest (non-nil) or down (nil).  [When PREC=0, this means round
+;; ROUND = nearest (non-nil) or down (nil).  [When POD=0, this means round
 ;;         down to the largest integer <= the quotient.]
 ;;
 ;; Results are not normalized.
 ;;
 ;; Notes:
 ;;
-;; The numerical value of A/B is given simply:
+;; The numerical value of X/Y is given simply:
 ;;
-;;    Q = A/B = A.UF/B.UF * 10^(A.EXP-BE.EXP) * A.SGN*B.SGN
+;;    Q = X/Y = X.UF/X.UF * 10^(X.EXP-Y.EXP) * X.SGN * Y.SGN
 ;;
-;; Complications:
+;; But there are some complications:
 ;;
-;;  1. uf-div requires AF < BF, so we use AF/10 & AE+1 if necessary.
-;;  2. In order to count *significant* digits in QF, we need AF >= BF/10,
-;;     which ensures the first digit of QF is non-zero.
-;;  3. Rounding may result in QF==1 overflowing the UF value result.  The
-;;     rounding functions return QF/10 to avoid overflow.
+;;  1. uf-div requires X.UF < Y.UF, so we divide X.UF by 10 and increment
+;;     X.EXP when necessary.
+;;  2. In order to count *significant* digits in QF, we need X.UF >= Y.UF/10,
+;;     which ensures the first digit of Q.UF is non-zero.
+;;  3. Rounding may result in Q.UF==1 overflowing the UF value result.  The
+;;     rounding functions return Q.UF/10 to avoid overflow.
 ;;
 
-(define (fp-div-x qe qs af bf round prec)
-  ;; Now:   BF > AF > BF/10
+(define (fp-div-x q.exp q.sgn x.uf y.uf round pod)
+  ;; Now:   Y.UF > X.UF > Y.UF/10
 
   (define `mode
     (if round
         DIV-NEAREST
-        (if (filter "+" qs)
+        (if (filter "+" q.sgn)
             DIV-TRUNCATE
             DIV-CEILING)))
 
   (foreach
-      num-digits (if (filter "0% -0%" prec)
-                     (u2d (u-add qe prec))
-                     prec)
+      num-digits (if (pod-is-place? pod)
+                     (u2d (u-add q.exp pod))
+                     pod)
 
       (if (filter "-%" num-digits)
-          ;; Rounding place is to the left of QE => 0 unless mode=CEILING
+          ;; Rounding place is to the left of Q.EXP => 0 unless mode=CEILING
           (if (filter DIV-CEILING mode)
-              (make-fp (u-sub "01" prec) qs "01")
-              "0 + 0")
+              (make-fp (u-sub "01" pod) q.sgn "01")
+              FP0)
 
-          ;; Non-zero num-digits
-          (make-fp<<1 qe qs (uf-div af bf num-digits mode)))))
+          ;; Non-negative num-digits
+          (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits mode)))))
 
 
-(define (fp-div a b prec round)
-  (define `qe (u-sub (fp-exp a) (fp-exp b)))
-  (define `af (fp-uf a))
-  (define `bf (fp-uf b))
-  (define `qs (sign-mul (fp-sign a) (fp-sign b)))
+(define (fp-div x y pod round)
+  (define `x.uf (fp.uf x))
+  (define `y.uf (fp.uf y))
+  (define `q.exp (u-sub (fp.xpo x) (fp.xpo y)))
+  (define `q.exp+1 (u-sub (u+1 (fp.xpo x)) (fp.xpo y)))
+  (define `q.sgn (sign-mul (fp.sign x) (fp.sign y)))
 
   (cond
    ;; Normalized and non-zero?
-   ((not (findstring 101 (concat (word 3 a) (word 3 b))))
-    (if (findstring 1 (fp-uf b))
-        (if (findstring 1 (fp-uf a))
-            (fp-div (fp-norm a) (fp-norm b) prec round)
-            (if a "0 + 0" nil))
+   ((not (findstring 101 (concat (word 3 x) (word 3 y))))
+    (if (findstring 1 y.uf)
+        (if (findstring 1 x.uf)
+            (fp-div (fp-norm x) (fp-norm y) pod round)
+            (if x FP0 nil))
         nil))
 
-   ;; Now: A.UF >= 0.1
-   ;; Now: B.UF >= 0.1
-   (prec
-    (if (uf-lt? (fp-uf a) (fp-uf b))
-        ;; AF < BF
-        (fp-div-x qe qs af bf round prec)
-        ;; uf-div requires AF < BF
-        (fp-div-x (u+1 qe) qs (>>1 af) bf round prec)))))
+   ;; Now: X.UF >= 0.1
+   ;; Now: X.UF >= 0.1
+   (pod
+    (if (uf-lt? x.uf y.uf)
+        ;; X.UF < Y.UF
+        (fp-div-x q.exp q.sgn x.uf y.uf round pod)
+        ;; uf-div requires X.UF < Y.UF
+        (fp-div-x q.exp+1 q.sgn (>>1 x.uf) y.uf round pod)))))
 
 
 ;; Return the remainder after flooring division:  R = A - B*floor(A/B)
@@ -204,58 +286,96 @@
   (cond
    ;; Normalized and non-zero?
    ((not (findstring 101 (concat (word 3 a) (word 3 b))))
-    (if (findstring 1 (fp-uf b))
-        (if (findstring 1 (fp-uf a))
+    (if (findstring 1 (fp.uf b))
+        (if (findstring 1 (fp.uf a))
             (fp-mod (fp-norm a) (fp-norm b))
-            (if a "0 + 0" nil))
+            (if a FP0 nil))
         nil))
 
    ;; signs differ?
-   ((not (findstring (fp-sign a) (fp-sign b)))
+   ((not (findstring (fp.sign a) (fp.sign b)))
     (let ((m (fp-mod a (fp-negate b)))
           (b b))
-      (if (findstring 1 (fp-uf m))
+      (if (findstring 1 (fp.uf m))
           (fp-add b m)
           m)))
 
-   ((u-lt? (fp-exp a) (fp-exp b))
+   ((u-lt? (fp.xpo a) (fp.xpo b))
     a)
 
    (else
-    (make-fp (fp-exp b)
-             (fp-sign a)
-             (uf-div (>>1 (fp-uf a))
-                     (fp-uf b)
-                     (u2d (u-sub (u+1 (fp-exp a)) (fp-exp b)))
+    (make-fp (fp.xpo b)
+             (fp.sign a)
+             (uf-div (>>1 (fp.uf a))
+                     (fp.uf b)
+                     (u2d (u-sub (u+1 (fp.xpo a)) (fp.xpo b)))
                      DIV-REMAINDER)))))
 
 
-;; Truncate N (towards zero).
+;; Round X to specified precision
 ;;
-(define (fp-trunc n)
-  (if (u>0? (fp-exp n))
+(define (fp-round x pod dir)
+  ;; Convert signed rounding direction to unsigned direction
+  (define `udir
+    (or (filter [DIV-NEAREST DIV-TRUNCATE] dir)
+        ;; FLOOR or CEILING
+        (if (findstring (fp.sign x) (if (filter DIV-CEILING dir) "+" "-"))
+            DIV-CEILING
+            DIV-TRUNCATE)))
+
+  (cond
+   ((findstring 1 (word 3 x))
+    ;; return NIL if POD is NIL
+    (foreach
+        num-digits (if (pod-is-place? pod)
+                       (u2d (u-add (fp.xpo x) pod))
+                       pod)
+        (if (filter "-%" num-digits)
+            ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
+            (if (filter DIV-CEILING udir)
+                (make-fp (u-sub "01" pod) (fp.sign x) "01")
+                FP0)
+
+            (make-fp<<1 (fp.xpo x)
+                        (fp.sign x)
+                        (if (filter 0 num-digits)
+                            (rest (uf-round 1 udir (>>1 (fp.uf x))))
+                            (uf-round num-digits udir (fp.uf x)))))))
+
+   ((findstring 1 (fp.uf x))
+    (fp-round (fp-norm x) pod dir))
+
+   (x
+    ;; return NIL when X is NIL
+    FP0)))
+
+
+;; Truncate FX (towards zero).
+;;
+(define (fp-trunc fx)
+  (if (u>0? (fp.xpo fx))
       ;; Avoid using EXP as a word index if it's too large
-      (if (word 9 (spread (fp-exp n)))
-          n
-          (wordlist 1 (u2d (u-add-ones (fp-exp n) 11)) n))
-      (if n "0 + 0")))
+      (if (word 9 (spread (fp.xpo fx)))
+          fx
+          (wordlist 1 (u2d (u-add-ones (fp.xpo fx) 11)) fx))
+      (if fx FP0)))
 
 
 ;; Raise N to the next integer equal to or larger (away from zero).
 ;;
 (define (fp-mag-ceiling n)
-  (if (u>0? (fp-exp n))
+  (if (u>0? (fp.xpo n))
       (let ((tr (fp-trunc n))
             (n n))
         (if (findstring 1 (subst tr nil n))
             ;; round magnitude up
-            (make-fp<<1 (fp-exp tr)
-                        (fp-sign tr)
-                        (uf-carry (>>1 (concat (fp-uf tr) 1))))
+            (make-fp<<1 (fp.xpo tr)
+                        (fp.sign tr)
+                        (uf-carry (>>1 (concat (fp.uf tr) 1))))
             tr))
-      (if (findstring 1 (fp-uf n))
-          (make-fp "01" (fp-sign n) "01")
-          (if n "0 + 0"))))
+      (if (findstring 1 (fp.uf n))
+          (make-fp "01" (fp.sign n) "01")
+          (if n FP0))))
 
 
 (define (fp-floor n)
@@ -270,18 +390,14 @@
    (n (fp-trunc n))))
 
 
-(define `(fp<0? n)
-  (findstring "- 01" n))
-
-
-;; ASSERT: A and B are normalized (fp-uf >= 0.1)
+;; ASSERT: A and B are normalized (fp.uf >= 0.1)
 ;;
 (define (fp-cmp a b)
   (cond
    ;; Both are positive
    ((findstring (findstring "+ 01" a) b)
-    (or (u-cmp (fp-exp a) (fp-exp b))
-        (uf-cmp (fp-uf a) (fp-uf b))))
+    (or (u-cmp (fp.xpo a) (fp.xpo b))
+        (uf-cmp (fp.uf a) (fp.uf b))))
 
    ;; Treat NaN as less than everything else
    ((not (and a b))
@@ -290,12 +406,12 @@
    ;; A=0 ?
    ((not (findstring 1 (word 3 a)))
     (if (findstring 1 (word 3 b))
-        (if (filter "-" (fp-sign b)) 1 "~")
+        (if (filter "-" (fp.sign b)) 1 "~")
         nil))
 
    ;; B=0 ?
    ((not (findstring 1 (word 3 b)))
-    (if (filter "-" (fp-sign a)) "~" 1))
+    (if (filter "-" (fp.sign a)) "~" 1))
 
    ((fp<0? a)
     (if (fp<0? b)
@@ -303,6 +419,34 @@
         "~"))
 
    (else 1)))
+
+
+(define `(fp-lt? fa fb)
+  (findstring 1 (fp-cmp fb fa)))
+
+
+;; Return X*X.
+;;
+(define (fp-sq x)
+  (fp-mul x x))
+
+
+;; Raise X to the power of N.
+;;
+;; X = FP number
+;; N = U-encoded non-negative integer
+;;
+(define (fp-pwr x n)
+  (foreach
+      n/2 (subst "11" 2 "10" "022222" n)
+
+      (if (findstring 2 n/2)      ;; n > 1?
+          (if (findstring 1 n/2)  ;; n is odd?
+              (fp-mul (fp-sq (fp-norm (fp-pwr x (subst 1 nil 2 1 n/2)))) x)
+              (fp-sq (fp-norm (fp-pwr x (subst 2 1 n/2)))))
+          (if (findstring 1 n)
+              x
+              FP1))))
 
 
 ;;----------------------------------------------------------------
@@ -388,7 +532,7 @@
 ;;
 ;; "+NNN", "-NNN", "0", or positive integer.
 ;;
-(define (check-prec prec)
+(define (prec-to-pod prec)
   (if prec
       (if (filter "+% -%" prec)
           ;; If PREC contains spaces, return nil.
@@ -399,18 +543,10 @@
                        (subst "-" nil "+" "-" w)))
           (if (word-index? prec)
               (if (filter "0%" prec)
-                  (check-prec (patsubst "0%" "%" prec))
+                  (prec-to-pod (patsubst "0%" "%" prec))
                   prec)))
       ;; default
       16))
-
-
-;; Divide A by B, rounding down to the nearest integer.
-;;
-;; PREC = precision; nil => return NaN.
-;;
-(define `(raw-div wa wb prec)
-  (fp2u (fp-div (u2fp wa) (u2fp wb) prec 1)))
 
 
 ;; Divide A by B, rounding down to the nearest integer (flooring).
@@ -429,18 +565,23 @@
       (u-fdiv a b DIV-REMAINDER)))
 
 
-;; Returns UV.
+;; Round X
 ;;
-(define (raw-round u dir)
-  (declare (fp-))
-  (define `func-name
-    (concat (native-name fp-) dir))
+;; X is decimal (raw input from client).
+;; POD is in internal format (0% => place, else decimal)
+;; DIR = one of {DIV-TRUNCATE, -FLOOR, -NEAREST, -CEILING}
+;;
+;; Result is decimal.
+;;
+(define (raw-round x pod dir)
+  (fp2d (fp-round (d2fp x) pod dir)))
 
-  (u2d
-   (if (non-digit? (subst "9-0" nil "90" nil (concat 9 u)))
-       (fp2u (call func-name (u2fp u)))
-       ;; For any integer N, (ceil N) = (floor N) = (trun N) = N
-       (u-norm u))))
+
+(define `(check-dir dir)
+  (or (if dir
+          (filter [DIV-FLOOR DIV-CEILING DIV-TRUNCATE]
+                  (subst "-" DIV-FLOOR "+" DIV-CEILING "|" DIV-TRUNCATE dir)))
+      DIV-NEAREST))
 
 
 ;; Compare A to B.
@@ -459,6 +600,14 @@
   (raw-cmp (d2u-macro a) (d2u-macro b)))
 
 
+(define (raw-pwr a b)
+  (if (non-digit? b)
+      ;; B must be non-negative integer
+      NaN
+      ;;
+      (fp2u (fp-pwr (u2fp a) b))))
+
+
 (define (binop name a b)
   (u2d-macro
    (call (concat (native-name raw-) name)
@@ -466,34 +615,15 @@
          (d2u-macro b))))
 
 
-(define (math-div a b ?p)
+(define (prec-op name x y p ?arg4)
+  (declare (fp-))
   (u2d-macro
-   (raw-div (d2u-macro a) (d2u-macro b) (check-prec p))))
-
-
-(define (fp-sq x)
-  (fp-mul x x))
-
-
-(define (fp^ x n)
-  (foreach
-      n/2 (subst "11" 2 "10" "022222" n)
-
-      (if (findstring 2 n/2)      ;; n > 1?
-          (if (findstring 1 n/2)  ;; n is odd?
-              (fp-mul (fp-sq (fp-norm (fp^ x (subst 1 nil 2 1 n/2)))) x)
-              (fp-sq (fp-norm (fp^ x (subst 2 1 n/2)))))
-          (if (findstring 1 n)
-              x
-              (make-fp "01" (fp-sign x) "01")))))
-
-
-(define (raw-pwr a b)
-  (if (non-digit? b)
-      ;; B must be non-negative integer
-      NaN
-      ;;
-      (fp2u (fp^ (u2fp a) b))))
+   (fp2u
+    (call (concat (native-name fp-) name)
+          (u2fp (d2u-macro x))
+          (u2fp (d2u-macro y))
+          (prec-to-pod p)
+          arg4))))
 
 
 ;;----------------------------------------------------------------
@@ -554,27 +684,37 @@
 ;; Return X / Y to a precision specified by P.
 ;;
 ;; Precision can be specified in terms of a place or a number of digits.
-;; When P begins with "+" or "-" followed by an decimal integer N, the most
+;; When P begins with "+" or "-" followed by an decimal integer N, the least
 ;; significant digit in the result will be in the 1E<P> place.  When P is a
 ;; postive decimal integer, the result will contain P significant digits
 ;; (counting from the most significant non-zero digit).  [No "." or
 ;; E-notation is allowed within P.]
 ;;
-;; P defaults to 16.  16 significant digits provides slightly higher
+;; P defaults to 16.  16 significant digits will provide slightly higher
 ;; precision than 64-bit IEEE-754 floating point numbers.
 ;;
 ;; Examples:
 ;;
 ;;   (div 200 3 5)  ->  66.666
 ;;   (div 200 2 -1) ->  66.7
-;;   (div 200 2 +0) ->  67
-;;   (div 200 2 +1) ->  70
-;;   (div 200 2 +2) -> 100
-;;   (div 200 2 +3) ->   0
+;;   (div 200 2 "+0") ->  67
+;;   (div 200 2 "+1") ->  70
+;;   (div 200 2 "+2") -> 100
+;;   (div 200 2 "+3") ->   0
 ;;
 (define `(/ x y ?p)
   &public
-  (math-div x y p))
+  (prec-op "div" x y p 1))
+
+
+;; Compute X*Y to the precision given by P.
+;;
+;; The result should be within one unit of the least significant digit (as
+;; specified by P).  P is as documented for `/`.
+;;
+(define `(*~ x y ?p)
+  &public
+  (prec-op "mulp" x y p))
 
 
 ;; Raise X to the power of Y.  Y must be an non-negative integer
@@ -598,21 +738,34 @@
 ;;
 (define `(floor x)
   &public
-  (raw-round (d2u x) "floor"))
+  (raw-round x 0 DIV-FLOOR))
 
 
 ;; Return the smallest integer greater than or equal to X.
 ;;
 (define `(ceil x)
   &public
-  (raw-round (d2u x) "ceil"))
+  (raw-round x 0 DIV-CEILING))
 
 
 ;; Return the integer portion of X (rounding towards zero).
 ;;
 (define `(trunc x)
   &public
-  (raw-round (d2u x) "trunc"))
+  (raw-round x 0 DIV-TRUNCATE))
+
+
+;; Round X to a specified decimal place or number of significant
+;; digits.  PREC is as specified for `/`.
+;;
+;; DIR is one of the following:
+;;   "+" => round up to nearest unit (ceiling)
+;;   "-" => round down to nearest unit (floor)
+;;   "|" => round towards zero to nearest unit (truncate)
+;;
+(define (round x ?prec ?dir)
+  &public
+  (raw-round x (if prec (prec-to-pod prec) 0) (check-dir dir)))
 
 
 ;; Return 1 if X > Y, nil otherwise.
@@ -732,7 +885,7 @@
 
   (wordlist (u2d-digit (concat skip-start skip-end 1))
             (words lst)
-            (concat (subst 0 nil 1 "1 " skip-end) " " lst)))
+            (+_+ (subst 0 nil 1 "1 " skip-end) lst)))
 
 
 ;; MIN and MAX are unsigned UV numbers.
@@ -826,29 +979,9 @@
 ;;
 (define (zero-pad lst len)
   (strip
-   (concat (if len
-               (nth-rest (words (concat lst " 0")) (nzeros len)))
-           " " lst)))
-
-
-;; N = number of digits after the decimal point [U number]
-;;
-(define (round-at x n)
-  (define `e+n+1
-    (if n
-        (u-add (fp-exp x) (concat n 1))
-        (u-add-ones (fp-exp x) 1)))
-
-  (if x
-      (foreach
-          dn (u2d e+n+1)
-          (if (filter "0 -%" dn)
-              "0 + 0"
-              (if (word dn (fp-uf x))
-                  (make-fp<<1 (fp-exp x)
-                              (fp-sign x)
-                              (rest (uf-round dn DIV-NEAREST (>>1 (fp-uf x)))))
-                  x)))))
+   (+_+ (if len
+            (nth-rest (words (concat lst " 0")) (nzeros len)))
+        lst)))
 
 
 ;; Trim extraneous leading zeros from a fixed-point number.
@@ -867,20 +1000,20 @@
 ;; PU = (d2u PD)
 ;;
 (define (fp-fix x wd pd pu)
-  (define `uf (fp-uf x))
+  (define `uf (fp.uf x))
   (define `uf<<1 (nth-rest 4 x))
 
   (define `digits
     (foreach
-        e (u2d (fp-exp x))
+        e (u2d (fp.xpo x))
 
         (define `frac
           (if (n>0? e)
               ;; Skip digits left of the decimal point
               (nth-rest e uf<<1)
               ;; Pad with -E zeros on left... but watch out for VERY big -E.
-              (if (u-lt? (abs (fp-exp e)) pu)
-                  (concat (nzeros (abs e)) " " uf))))
+              (if (u-lt? (abs (fp.xpo e)) pu)
+                  (+_+ (nzeros (abs e)) uf))))
 
         (concat
          ;; left of decimal
@@ -890,7 +1023,7 @@
 
   (define `text
     (if x
-        (concat (filter "-" x) " " digits)
+        (+_+ (filter "-" x) digits)
         "n a n"))
 
   (u2d (ltrimz (smash (zero-pad text wd)))))
@@ -910,9 +1043,9 @@
       (if (non-naturals? (if precision p)
                          (if min-width (d2u min-width)))
           (if (and precision (non-digit? p))
-              "[invalid PRECISION]"
-              "[invalid MIN-WIDTH]")
-          (fp-fix (round-at (u2fp (d2u x)) (if precision p))
+              "[invalid_PRECISION]"
+              "[invalid_MIN-WIDTH]")
+          (fp-fix (fp-round (d2fp x) (if precision p 0) DIV-NEAREST)
                   min-width
                   precision
                   p))))
@@ -963,8 +1096,8 @@
 (define (fp-lex n)
   (if (fp<0? n)
       (concat "-" (u-complement-digits (fp-lex (fp-negate n))) ":")
-      (if (findstring 1 (fp-uf n))
-          (concat (lex-exp (fp-exp n)) (fp-uf n))
+      (if (findstring 1 (fp.uf n))
+          (concat (lex-exp (fp.xpo n)) (fp.uf n))
           "0")))
 
 
@@ -979,7 +1112,7 @@
 ;;
 (define (num-lex n)
   &public
-  (uv2d (fp-lex (u2fp (d2u n)))))
+  (u2d (smash (fp-lex (d2fp n)))))
 
 
 ;; Sort elements of V by the numeric order of the first sub-element.  V may

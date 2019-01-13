@@ -1,5 +1,5 @@
 (require "core.scm")
-(require "mcore.scm")
+(require "mcore.scm" &private)
 (require "math.scm" &private)
 (require "mcore-testutils.scm" &private)
 
@@ -29,6 +29,24 @@
 ;;----------------------------------------------------------------
 ;; FP operations
 ;;----------------------------------------------------------------
+
+
+;; fp>0?
+
+(expect nil (fp>0? "0 + 0"))
+(expect nil (fp>0? "0 - 0 01"))
+(assert (fp>0? "0 + 01"))
+(assert (fp>0? "0 + 0 0 0 011"))
+
+;; fp<0?
+(assert (fp<0? "0 - 0 01"))
+(expect nil (fp<0? "01 - 0"))
+
+;; fp!=0?
+
+(expect nil (fp!=0? "0 + 0"))
+(assert (fp!=0? "0 - 0 01"))
+(assert (fp!=0? "0 + 0 0 0 011"))
 
 ;; pad
 
@@ -138,27 +156,20 @@
 (expect 0.72 (fp2d (fp-mod (FP 45) (FP 1.23))))
 (expect 2.88 (fp2d (fp-mod (FP 12) (FP 4.56))))
 
-;; fp-trunc
+;; fp-round
 
-(expect "0 + 0" (fp-trunc "0 + 01 011 0111 01111 011111"))
-(expect "0 + 0" (fp-trunc "-01 + 01 011 0111 01111 011111"))
-(expect "0111 + 01 011 0111" (fp-trunc "0111 + 01 011 0111 01111 011111"))
-(expect "0100 + 01 011 0111" (fp-trunc "0100 + 01 011 0111"))
-(expect (FP 1.23e4294967296) (fp-trunc (FP 1.23e4294967296)))
-
-;; fp-floor
-
-(expect (FP 12) (fp-floor (FP 12.34)))
-(expect (FP 12) (fp-floor (FP 12)))
-(expect (FP -8) (fp-floor (FP -8.00)))
-(expect (FP -9) (fp-floor (FP -8.01)))
-
-;; fp-ceil
-
-(expect (FP 13) (fp-ceil (FP 12.34)))
-(expect (FP 12) (fp-ceil (FP 12)))
-(expect (FP -8) (fp-ceil (FP -8.00)))
-(expect (FP -8) (fp-ceil (FP -8.01)))
+;; significant digits
+(expect (FP 12e1) (fp-round "0111 + 01 011 0111" 2 DIV-NEAREST))
+(expect (FP 0.0012) (fp-round "-011 + 01 011 0111" 2 DIV-NEAREST))
+;; decimal place
+(expect (FP 123) (fp-round "0111 + 01 011 0111 01111 0111 01" 0 DIV-NEAREST))
+(expect (FP 12e1) (fp-round "0111 + 01 011 0111 01111 0111 01" -01 DIV-NEAREST))
+(expect (FP 123.4) (fp-round "0111 + 01 011 0111 01111 0111 01" 01 DIV-NEAREST))
+;; not normalized
+(expect (FP 12e1) (fp-round "01111 + 0 01 011 0111" 2 DIV-NEAREST))
+(expect "0 + 0" (fp-round "01111 + 0" 2 DIV-NEAREST))
+;; exponent with large magnitude
+(expect "0 + 0" (fp-round (FP 1e-999999999) 0111 DIV-NEAREST))
 
 ;; fp-cmp
 
@@ -194,13 +205,13 @@
 
 (expect 400 (fp2d (fp-sq (FP 20))))
 
-;; fp^
+;; fp-pwr
 
-(expect 1     (fp2d (fp^ (FP 2) (U 0))))
-(expect -1    (fp2d (fp^ (FP -2) (U 0))))
-(expect 2     (fp2d (fp^ (FP 2) (U 1))))
-(expect 4     (fp2d (fp^ (FP -2) (U 2))))
-(expect -2048 (fp2d (fp^ (FP -2) (U 11))))
+(expect 1     (fp2d (fp-pwr (FP 2) (U 0))))
+(expect 1     (fp2d (fp-pwr (FP -2) (U 0))))
+(expect 2     (fp2d (fp-pwr (FP 2) (U 1))))
+(expect 4     (fp2d (fp-pwr (FP -2) (U 2))))
+(expect -2048 (fp2d (fp-pwr (FP -2) (U 11))))
 
 ;;----------------------------------------------------------------
 ;; Binop
@@ -252,32 +263,24 @@
 (expect (U 63)  (raw-mul (U 21) (U 3)))
 (check-binop-spaces raw-mul)
 
-;; check-prec
+;; prec-to-pod
 
-(expect 16 (check-prec nil))
+(expect 16 (prec-to-pod nil))
 ;; +N -N
-(expect "011" (check-prec "-2"))
-(expect "-011" (check-prec "+2"))
-(expect "-0" (check-prec "+0"))
-(expect nil (check-prec " -1"))
-(expect nil (check-prec "-1-"))
-(expect (U "-91") (check-prec "+91"))
-(expect (U "91") (check-prec "-91"))
+(expect "011" (prec-to-pod "-2"))
+(expect "-011" (prec-to-pod "+2"))
+(expect "-0" (prec-to-pod "+0"))
+(expect nil (prec-to-pod " -1"))
+(expect nil (prec-to-pod "-1-"))
+(expect (U "-91") (prec-to-pod "+91"))
+(expect (U "91") (prec-to-pod "-91"))
 ;; word-index?
-(expect 1 (check-prec 1))
-(expect 1 (check-prec "001"))
-(expect 91 (check-prec 91))
-(expect 40 (check-prec 40))
-(expect nil (check-prec 0))
-(expect nil (check-prec " 01"))
-
-;; raw-div
-
-(expect (U 1.2) (raw-div (U 3.6) (U 3) 4))
-(expect (U 0.6667) (raw-div (U 2) (U 3) 4))
-(expect (U 0.667) (raw-div (U 2) (U 3) (check-prec "-3")))
-(expect NaN (raw-div (U 1.2) (U 3) nil))
-(check-binop-spaces raw-div)
+(expect 1 (prec-to-pod 1))
+(expect 1 (prec-to-pod "001"))
+(expect 91 (prec-to-pod 91))
+(expect 40 (prec-to-pod 40))
+(expect nil (prec-to-pod 0))
+(expect nil (prec-to-pod " 01"))
 
 ;; raw-fdiv
 
@@ -296,13 +299,9 @@
 
 ;; raw-round
 
-(expect 1 (raw-round (U 1.1) "floor"))
-(expect 2 (raw-round (U 1.1) "ceil"))
-(expect 1 (raw-round (U 1.1) "trunc"))
-(expect -2 (raw-round (U -1.1) "floor"))
-(expect -1 (raw-round (U -1.1) "ceil"))
-(expect -1 (raw-round (U -1.1) "trunc"))
-(expect NaN (raw-round " 1 " "floor"))
+(expect "NaN" (raw-round nil 0 DIV-NEAREST))
+(expect 120 (raw-round 123 -01 DIV-NEAREST))
+(expect 130 (raw-round 123 -01 DIV-CEILING))
 
 ;; raw-cmp & math-cmp
 
@@ -315,7 +314,7 @@
 (expect NaN (raw-pwr (U 2) nil))
 (expect NaN (raw-pwr (U 2) (U -2)))
 (expect (U 1) (raw-pwr (U 1e3) (U 0)))
-(expect (U -1) (raw-pwr (U -1e3) (U 0)))
+(expect (U 1) (raw-pwr (U -1e3) (U 0)))
 (expect (U 4294967296) (raw-pwr (U 2) (U 32)))
 
 ;;----------------------------------------------------------------
@@ -406,16 +405,6 @@
 (expect (UV 123) (zero-pad (UV 123) 0))
 (expect (UV 123) (zero-pad (UV 123) nil))
 
-;; round-at
-
-(expect (round-at (FP 1.234) (U 0)) (FP 1))
-(expect (round-at (FP 1.234) (U 1)) (FP 1.2))
-(expect (round-at (FP 1.234) (U 2)) (FP 1.23))
-(expect (round-at (FP 1.234) (U 3)) (FP 1.234))
-(expect (round-at (FP 1.234) (U 4)) (FP 1.234))
-(expect (round-at (FP 0.009) (U 2)) (FP 0.01))
-(expect (round-at (FP 9e-3) (U 2)) (FP 0.01))
-
 ;; ltrimz
 
 (expect (U "  123") (ltrimz (U "00123")))
@@ -455,8 +444,8 @@
 
 (expect (format-fixed nil nil nil) "nan")
 (expect (format-fixed nil 5 nil) "  nan")
-(expect (format-fixed 1 "x" nil) "[invalid MIN-WIDTH]")
-(expect (format-fixed 1 nil "x") "[invalid PRECISION]")
+(expect (format-fixed 1 "x" nil) "[invalid_MIN-WIDTH]")
+(expect (format-fixed 1 nil "x") "[invalid_PRECISION]")
 (expect (format-fixed 1e5 nil nil) "100000")
 (expect (format-fixed 1e5 nil 2) "100000.00")
 (expect (format-fixed 1 3 nil) "  1")
@@ -509,9 +498,33 @@
   { -2: "a", -0.91: "b", -0.01: "c", 0.9: "d", 2: "e", 10: "f"})
 (expect sort-test-vec (num-sort (sort sort-test-vec)))
 
-;;----------------------------------------------------------------
-;; Math operators
-;;----------------------------------------------------------------
+;; /
+
+(expect 1.2 (/ 3.6 3 4))
+(expect NaN (/ 1.2 3 "x"))
+(expect 6.67 (/ 20 3 3))
+(expect 6.6667 (/ 20 3 "-4"))
+
+;; *~
+
+;; not (prec and x and y)
+(expect NaN (*~ 1212 1001 "x"))
+(expect NaN (*~ "x" 1001 2))
+(expect NaN (*~ 1001 "x" 2))
+;; PREC=digits, most-significant-digit>0
+(expect 147000 (*~ 333 444 3))
+;; PREC=digits, most-significant-digit==0
+(expect 73900 (*~ 333 222 3))
+;; PREC=place,  place much left of result
+(expect 0 (*~ 333 222 "+7"))
+(expect 0 (*~ 333 222 "+5"))
+;; PREC=place,  place in result
+(expect 73926 (*~ 333 222 "+0"))
+(expect 73920 (*~ 333 222 "+1"))
+(expect 70000 (*~ 333 222 "+4"))
+(expect 73926 (*~ 333 222 -1))
+
+;; `binop` functions
 
 (foreach
     op [+ - * // mod]
@@ -524,31 +537,40 @@
     (expect NaN (+ "1 " 1)))
 
 
-;; binary ops
-
 (expect 5 (+ 3 2))
 (expect 4 (- 13 9))
 (expect 6 (* 3 2))
 (expect 4 (// 9 2))
 (expect 2 (mod 29 9))
-(expect 6.67 (/ 20 3 3))
-(expect 6.6667 (/ 20 3 "-4"))
 (expect 9.261 (^ 2.1 3))
 
-;; math-floor
+;; floor
 
 (expect 3 (floor 3.001))
 (expect -4 (floor -3.001))
 
-;; math-ceil
+;; ceil
 
 (expect 4 (ceil 3.001))
 (expect -3 (ceil -3.001))
 
-;; math-trunc
+;; trunc
 
 (expect 3 (trunc 3.001))
 (expect -3 (trunc -3.001))
+
+;; round
+
+(expect "NaN" (round "x"))
+(expect 120 (round 123 2))
+(expect 123 (round 123.456))
+(expect 123.46 (round 123.456 -2))
+(expect 123.45 (round 123.456 -2 "-"))
+(expect 123.45 (round 123.456 -2 "|"))
+(expect 123.46 (round 123.451 -2 "+"))
+(expect -123.46 (round -123.456 -2 "-"))
+(expect -123.45 (round -123.456 -2 "|"))
+(expect -123.45 (round -123.456 -2 "+"))
 
 ;; relational operators
 ;; <, >, =, !=, <=, >=

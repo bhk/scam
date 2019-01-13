@@ -9,29 +9,20 @@
 
 
 (define (d2u d)
-  &public
   (subst 1 "01" 2 "011" 4 "31" 5 "311"
          7 "61" 9 "81" 8 "611" 6 "3111" 3 "0111" (or d "?")))
 
 
 (define (u2d u)
-  &public
   (subst "0111" 3 "3111" 6 "611" 8 "81" 9 "61" 7
          "311" 5 "31" 4 "011" 2 "01" 1 u))
 
 
-(define `(uv2d uv)
-  &public
-  (u2d (subst " " nil uv)))
-
-
 (define `(spread u)
-  &public
   (subst 0 " 0" u))
 
 
 (define `(smash uv)
-  &public
   (subst " " nil uv))
 
 
@@ -43,11 +34,11 @@
 (define `U6 "0111111")
 (define `U7 "01111111")
 (define `U8 "011111111")
-(define `U9 &public "0111111111")
-(define `U10 &public "01111111111")
-(define `T9 &public "111111111")
-(define `T10 &public "1111111111")
-(define `NaN &public "NaN")
+(define `U9 "0111111111")
+(define `U10 "01111111111")
+(define `T9 "111111111")
+(define `T10 "1111111111")
+(define `NaN "NaN")
 
 
 ;;----------------------------------------------------------------
@@ -56,12 +47,10 @@
 
 
 (define `(u-negate n)
-  &public
   (subst "--" "" (concat "-" n)))
 
 
 (define `(non-digit? u)
-  &public
   (subst 0 "" 1 "" u))
 
 
@@ -87,13 +76,12 @@
 ;; (u-carry n)
 ;;
 ;; Return a well-formed U value (with digit values 0...9) that has the same
-;; numeric value of N.  N may have digits with values from 0 to 27, but MUST
+;; numeric value as U.  U may have digits with values from 0 to 27, but MUST
 ;; already have enough digits to hold the resulting value.  If carry is
 ;; propagated from the top digit, a mal-formed result beginning with "1"
 ;; (not "01") will result.
 ;;
 (define `(u-carry u)
-  &public
   (foreach w (subst "01111111111" "10" u)
            ;; Now digits in W are <= 18.
            (if (findstring "01111111111" w)
@@ -107,21 +95,18 @@
 ;; numeric value of N, which may have digits with values from 0 to 27.
 ;;
 (define `(uf-carry uf)
-  &public
   (filter "0%" (spread (u-carry (smash uf)))))
 
 
 ;; Add A to B.  A, B, and result are UF-encoded.  Result is modulo 1.
 ;;
 (define `(uf-add a b)
-  &public
   (uf-carry (subst "10" "1" "00" 0 (join a b))))
 
 
 ;; Remove extraneous leading zeros from a U-encoded non-negative integer.
 ;;
 (define `(u-norm-uns u)
-  &public
   (concat 0 (smash (rest (subst "01" "0 1" u)))))
 
 
@@ -134,7 +119,6 @@
 ;; if present.
 ;;
 (define `(u-norm u)
-  &public
   (u-norm-x (subst "-" "- " u)))
 
 
@@ -149,7 +133,6 @@
 ;; Combine 1's with adjacent ~'s (anti-1's).
 ;;
 (define `(neg-rreduce u)
-  &public
   (subst "111111~~~~~~" nil
          "111~~~" nil
          "11~~" nil
@@ -201,7 +184,6 @@
 
 
 (define (u-sub-unsigned a b)
-  &public
   ;; add "unary negative" B to A
   (define `x
     (subst "10" "1" "00" 0
@@ -239,7 +221,6 @@
 ;; Add two U-values.
 ;;
 (define (u-add a b)
-  &public
   (define `ua (subst "-" nil a))
   (define `ub (subst "-" nil b))
 
@@ -259,7 +240,6 @@
 
 
 (define `(u-sub a b)
-  &public
   (u-add a (u-negate b)))
 
 
@@ -286,7 +266,6 @@
 
 
 (define `(u-cmp-unsigned a b)
-  &public
   (word 1 (cmp-reduce (join (lzpad a b) (lzpad (neg-digits b) a)))))
 
 
@@ -297,7 +276,6 @@
 ;;   If A<B, return "~..."  (word consisting of ~'s)
 ;;
 (define (u-cmp a b)
-  &public
   (if (findstring "-" (concat a b))
       (if (findstring 1 (concat a b))
           (if (findstring "-" a)
@@ -312,7 +290,6 @@
 ;; A and B may contain extraneous spaces.
 ;;
 (define (uf-cmp a b)
-  &public
   (word 1 (cmp-reduce (join a (neg-digits b)))))
 
 
@@ -321,7 +298,6 @@
 ;;   RESULT = UF-encoded number [0...1)
 ;;
 (define (uf-sign-sub a b negate?)
-  &public
   ;; expect normalized numbers
   (define `prefix+ (concat (if negate? "-" "+") " "))
   (define `prefix- (concat (if negate? "+" "-") " "))
@@ -350,33 +326,33 @@
                (concat prefix+ (strip (spread u))))))
 
 
-(define (u-carry-unsigned u)
+;; Propagate carry until all digits are proper (9 or less).
+;;
+(define (u-carry-all u)
   (if (findstring "01111111111" u)
-      (u-carry-unsigned
-       (patsubst "00%" "0%" (subst T10 "X0" "0X" 1 (concat 0 u))))
+      (u-carry-all
+       (patsubst "-1%" "-01%"
+                 (patsubst "1%" "01%" (subst T10 "X0" "0X" 1 u))))
       u))
 
 
 ;; Increment U by one for each "1" in ONES.  ONES is a string containing
-;; only zero or more "1" characters.
+;; an arbitrary number of "1" characters.
 ;;
 (define (u-add-ones e ones)
-  &public
   (or (filter-out "-% %1111111111" (concat e ones))
-      (u-add e (u-carry-unsigned (concat "0" ones)))))
+      (u-add e (u-carry-all (concat "0" ones)))))
 
 
 ;; Subtract 1 from a U-value (possibly include a "-" sign).
 ;;
 (define (u-1 e)
-  &public
   (or (patsubst "%1" "%" (filter-out "-% %0" e))
       (filter-out "0% %1111111111" (concat e 1))
       (u-add e "-01")))
 
 
 (define `(u+1 u)
-  &public
   (or (filter-out "-% %1111111111" (concat u 1))
       (u-add u "01")))
 
@@ -427,7 +403,6 @@
 
 
 (define `(>>1 uf)
-  &public
   (concat "0 " uf))
 
 (define `(j>>1 a b)
@@ -457,10 +432,10 @@
   (concat 0 (subst " " " 0" (space-carry (subst 0 nil u)))))
 
 
-;; True when A's length <= B's length.  A must be non-empty!
+;; True when A's length > B's length.
 ;;
-(define `(not-longer? a b)
-  (word (words a) b))
+(define `(longer? a b)
+  (word (words (concat "1 " b)) a))
 
 
 ;; Multiply by single digit (UF values in & out), and do not carry.
@@ -634,12 +609,11 @@
 ;; B) digits.
 ;;
 (define (uf-mul a b)
-  &public
-  (if (not-longer? b a)
+  (if (longer? b a)
+      (uf-mul b a)
       (uf-carry
        (or (uf-mul-fixed a b)
-           (vmul a b)))
-      (uf-mul b a)))
+           (vmul a b)))))
 
 
 (fix-native-var (native-name uf-mul))
@@ -657,10 +631,6 @@
 
 (define `(merge2 w1 w2)
   (concat (subst 1 T10 w1) w2))
-
-
-(define `(tally2 x)
-  (subst 0 nil (merge2 (word 1 x) (word 2 x))))
 
 
 ;; Compute second argument for `guess-digit`.
@@ -686,10 +656,11 @@
   (concat 0 (subst T10 T9 q)))
 
 
-(define `DIV-TRUNCATE  &public 1)
-(define `DIV-NEAREST   &public 2)
-(define `DIV-CEILING   &public 3)
-(define `DIV-REMAINDER &public 4)
+(define `DIV-TRUNCATE  1)
+(define `DIV-NEAREST   2)
+(define `DIV-CEILING   3)
+(define `DIV-REMAINDER 4)
+(define `DIV-FLOOR     9)  ;; only for signed values
 
 
 ;; (div-post POST Q REM B) : Called with results of (uf-div a b num-digits).
@@ -795,7 +766,6 @@
 
 
 (define `(is-odd? digit)
-  &public
   (findstring 1 (subst "11" nil digit)))
 
 
@@ -855,8 +825,6 @@
 ;; N is in decimal.  N > 0.
 ;;
 (define (uf-round n mode u)
-  &public
-
   (define `q/10
     (>>1 (wordlist 1 n u)))
 
@@ -1081,7 +1049,6 @@
 ;;   UF-number.  This is the reason why Q{x}/10 is returned instead of Q{x}.
 ;;
 (define (uf-div a b n mode)
-  &public
   ;;(assert (findstring 1 (word 1 b)))
   (cond
    ((uf-ends-in-0? b)
@@ -1113,7 +1080,6 @@
 ;;        DIV-REMAINDER => remainder
 ;;
 (define (u-fdiv ua ub mode)
-  &public
   (cond
    ;; extraneous leading zeros
    ((filter "00%" (concat ua " " ub))
@@ -1150,13 +1116,12 @@
 ;; Construct an FP number
 ;;
 (define `(make-fp exp sgn frac)
-  &public
   (concat exp " " sgn " " frac))
 
 
-(define `(fp-exp n) &public (word 1 n))
-(define `(fp-sign n) &public (word 2 n))
-(define `(fp-uf n) &public (nth-rest 3 n))
+(define `(fp.xpo n) (word 1 n))
+(define `(fp.sign n) (word 2 n))
+(define `(fp.uf n) (nth-rest 3 n))
 
 
 ;; U-strings cannot contain 2; they have been converted to "011".
@@ -1178,19 +1143,18 @@
 ;; Normalize N (ensure that UF >= 0.1 unless N is zero).
 ;;
 (define (fp-norm x)
-  &public
   (if (filter 0 (word 3 x))
       (foreach
-          zeros (word 1 (subst "001" "0 01" (smash (fp-uf x))))
+          zeros (word 1 (subst "001" "0 01" (smash (fp.uf x))))
 
           (define `zeros-tally
             (subst 0 1 zeros))
 
           (define `norm-uf
-            (subst (concat 9 (spread zeros)) nil (concat "9 " (fp-uf x))))
+            (subst (concat 9 (spread zeros)) nil (concat "9 " (fp.uf x))))
 
-        (concat (u-sub (fp-exp x) (u-carry (concat 0 zeros-tally)))
-                " " (fp-sign x) (or norm-uf " 0")))
+        (concat (u-sub (fp.xpo x) (u-add-ones "0" zeros-tally))
+                " " (fp.sign x) (or norm-uf " 0")))
       x))
 
 
@@ -1216,7 +1180,6 @@
 ;; Syntax for valid numbers:   "-"? DIGITS ("." DIGITS)? ([Ee] SIGN? DIGITS)?
 ;;
 (define (u2fp u ?n-exp ?n-sign ?n-frac)
-  &public
   (cond
    ;; simple integer
    ((not (non-digit? u))
@@ -1255,18 +1218,14 @@
 ;; exponent may also appear.
 ;;
 (define (fp2u fp)
-  &public
   (define `exp (word 1 fp))
   (define `sgn (word 2 fp))
   (define `frac (nth-rest 3 fp))
+  (define `frac-msd (word 3 fp))
   (define `frac*10 (nth-rest 4 fp))
 
   (cond
-   ;; normalized?
-   ((findstring "0 0" (wordlist 3 4 fp))
-    (fp2u (concat (u-1 exp) " " sgn " " frac*10)))
-
-   ((findstring 1 frac)
+   ((findstring 1 frac-msd)
     ;; We use fixed point when 1e-6 <= FP < 1e21; "E" notiation otherwise.
     ;; FP is in this range when -5 <= EXP <= 21.  We reduce EXP to a string
     ;; with which we can quickly check that range.  We also use the string
@@ -1274,19 +1233,19 @@
 
     (define `uv-result
       (foreach
-          et (or (subst "10" "091" "10" "091" 0 nil exp)
+          et (or (subst "10" "091" "10" "91" 0 nil exp)
                  "-")
 
           (if (findstring et "-11111 91911 91111111111")
-              ;; Fixed point
+              ;; Fixed point  (-5 <= EXP <= 21)
               (if (filter "-%" et)
                   ;; -5...0 => EXP is number of zeros left of first digit
-                  (concat "0. " (subst 9 T9 1 "0 " "-" nil et) frac)
+                  (concat "0. " (subst 1 "0 " "-" nil et) frac)
                   ;; 1..21 => EXP is number of digits left of decimal
                   (subst "10" "1" "00" "0"
                          (join frac (concat (subst 9 T9 1 " 0" et) "."))))
               ;; "E" notation
-              (concat (join frac ".")
+              (concat frac-msd ". " frac*10
                       ;; Two spaces before "e" allow preceding redundant
                       ;; zeros to be trimmed; "." after the exponent
                       ;; preserves its trailing zeros.
@@ -1294,17 +1253,16 @@
 
 
     (concat (findstring "-" sgn)
-            ;; Remove redundant "0" and "." characters and all spaces.
+            ;; Remove trailing 0's after "." and trailing "." after digits
+            ;; (and possible preceding "e+/+XX").  Remove spaces.
             (subst ". 0" ".0" ". " nil " " nil
                    (concat (filter-out "%0" (subst "0 " "0" uv-result))
                            " "))))
 
+   ;; normalized?
+   ((findstring 1 frac)
+    (fp2u (concat (u-1 exp) " " sgn " " frac*10)))
+
    (fp 0)
+
    (else NaN)))
-
-
-;; Convert FP to decimal.
-;;
-(define `(fp2d fp)
-  &public
-  (u2d (fp2u fp)))
