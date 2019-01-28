@@ -690,13 +690,13 @@ Example:
           ((filter "baz" a)  (print "BAZ") "Found BAZ")
           (else              "Found NOTHING"))
 
-#### `(and EXPR...)
+#### `(and EXPR...)`
 
 Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
 encountered.  The value of the `and` expression is that of the last
 sub-expression evaluated, or `nil` if no expressions were evaluated.
 
-#### `(or EXPR...)
+#### `(or EXPR...)`
 
 Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
 is encountered.  The value of the `and` expression is that of the last
@@ -707,7 +707,7 @@ sub-expression evaluated, or `nil` if no expressions were evaluated.
 Terminate execution of the program with a non-zero status code, writing
 `MESSAGE` to stderr.
 
-#### `(begin EXPR...)
+#### `(begin EXPR...)`
 
 Encloses a *block* of expressions.  A block is a sequence of expressions
 that are evaluated in order.  The result of that last expression is
@@ -1070,16 +1070,19 @@ Tracing can be activated at run-time in two different ways:
     SPEC is a string that specifies the kind of tracing to be done, as
     described below.
 
- 2. Set the `SCAM_TRACE` environment variable before running a SCAM program.
-    Its value takes the same form as the SPEC argument to `trace`.
+ 2. Set the `SCAM_TRACE` environment variable before running a SCAM program
+    in order to trace execution that happens during the program's `main`
+    function.
+
+    `SCAM_TRACE` takes the same form as the `SPEC` argument to `trace`.
 
     Functions cannot be instrumented until after they have been defined, so
     `SCAM_TRACE` will activate tracing once before requiring the main module
     (chiefly so the `^load` function can be traced), and again after the
     main module is loaded, at which point all modules typically have been
     loaded.  If you want to trace execution that happens during module
-    loading -- e.g. top-level expressions in a `-q.scm` test -- use `trace`
-    or `tracing`.
+    loading prior to `main` -- e.g. top-level expressions in a `-q.scm` test
+    -- modify the program to call `(trace SPEC)` or `(tracing ...)`.
 
 The text string used to specify tracing is, in its simplest form, a list of
 function names.  Further, these may be suffixed with a `:` and then an
