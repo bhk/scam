@@ -1,6 +1,39 @@
 (require "core.scm")
-(require "mcore.scm" &private)
-(require "mcore-testutils.scm" &private)
+(require "math0.scm" &private)
+
+;;--------------------------------
+;; Utilities
+;;--------------------------------
+
+(define `U18 (concat U9 T9))
+(define `U27 (concat U18 T9))
+
+(define (repeat-words lst len)
+  (if (subst 0 nil len)
+      (if (word len lst)
+          (wordlist 1 len lst)
+          (repeat-words (concat lst " " lst) len))))
+
+;; Decimal digits to U:  (U 123) --> "01 011 0111"
+;;
+(define (U d)
+  (subst "A" U10 "I" U18 "R" U27 (d2u d)))
+
+;; Decimal digits to UV:  (UV "123") --> "01 011 0111"
+;;
+(define (UV d)
+  (strip (spread (U d))))
+
+;; Digit sizes to UV:  (UD 1 2) --> "01 011"
+;;
+(define (UD ...values)
+  (for n values
+       (concat 0 (smash (repeat-words "1 1 1 1 1 1" n)))))
+
+
+;;--------------------------------
+;; Tests
+;;--------------------------------
 
 ;; u2d & d2u
 
@@ -10,16 +43,22 @@
 
 (expect 761 (u2d (d2u 761)))
 
+;; u>0?
+
+(expect nil (u>0? 0))
+(expect 11 (u>0? "011"))
+(expect nil (u>0? "-01"))
+
+;; u<0?
+
+(expect nil (u<0? 0))
+(expect nil (u<0? -0))
+(assert (u<0? -01))
+
 ;; u-negate
 
 (expect -123 (u-negate 123))
 (expect 123 (u-negate -123))
-
-;; non-digit
-
-(assert (non-digit? " "))
-(assert (non-digit? 2))
-(expect nil (non-digit? "01"))
 
 ;; u-carry
 
@@ -50,29 +89,12 @@
 
 ;; u-norm-uns
 
-(expect (U 0)      (u-norm (U 0)))
-(expect (U 0)      (u-norm (U 00)))
-(expect (U 1)      (u-norm (U 1)))
-(expect (U 10)     (u-norm (U 10)))
-(expect (U 1)      (u-norm (U 01)))
-(expect (U 100300) (u-norm (U 00100300)))
-
-;; u-norm
-
-(expect (U 0)      (u-norm (U 0)))
-(expect (U 0)      (u-norm (U -0)))
-(expect (U 0)      (u-norm (U 00)))
-(expect (U 1)      (u-norm (U 1)))
-(expect (U 101)    (u-norm (U 101)))
-(expect (U 10200)  (u-norm (U 0010200)))
-(expect (U 1)      (u-norm (U 01)))
-(expect (U -1)     (u-norm (U -01)))
-(expect (U -2)     (u-norm (U -2)))
-
-;; u-norm-x
-
-(expect (U 10200) (u-norm (U 0010200)))
-(expect (U -10200) (u-norm (U "- 0010200")))
+(expect (U 0)      (u-norm-uns (U 0)))
+(expect (U 0)      (u-norm-uns (U 00)))
+(expect (U 1)      (u-norm-uns (U 1)))
+(expect (U 10)     (u-norm-uns (U 10)))
+(expect (U 1)      (u-norm-uns (U 01)))
+(expect (U 100300) (u-norm-uns (U 00100300)))
 
 ;; uv-complement-digits
 
@@ -144,6 +166,11 @@
 (expect ">" (u-cmp-redux 2 -3))
 (expect "=" (u-cmp-redux -0 -0))
 
+;; u-lt?
+
+(expect 1 (u-lt? U1 U9))
+(expect nil (u-lt? U1 U1))
+
 ;; uf-cmp
 
 (define (uf-cmp-redux a b)
@@ -153,6 +180,11 @@
 (expect "=" (uf-cmp-redux "124" "124"))
 (expect ">" (uf-cmp-redux "1245" "124"))
 (expect "<" (uf-cmp-redux "1235" "124"))
+
+;; uf-lt?
+
+(expect 1 (uf-lt? (UV 19) (UV 30)))
+(expect nil (uf-lt? (UV 12) (UV 12)))
 
 ;; uf-sign-sub
 
@@ -208,7 +240,7 @@
 
 (expect (UV "1A9") (uf-carry_19_10 (UD 0 19 19)))
 (expect (UD 0 11 27 11 25) (uf-carry_45_27 (UD 0 9 45 29 45)))
-(expect (UD 0 8 9 1) (uf-carry_81_10 (UD 0 0 81 81)))
+(expect (UD 1 7 9 1) (uf-carry_81_10 (UD 0 9 81 81)))
 
 ;; uf-add-x
 
@@ -382,92 +414,3 @@
 (expect (UV 10) (uf-div (UV 19) (UV 2) 1 DIV-NEAREST))       ;; 9.5 --> 10
 (expect (UV 06) (uf-div (UV 12) (UV 2) 1 DIV-CEILING))
 (expect (UV 07) (uf-div (UV 1201) (UV 2) 1 DIV-CEILING))
-
-
-;;------------------------------------------------------------------------
-;; FP encode/decode
-;;------------------------------------------------------------------------
-
-;; u-begins, u-rm-prefix, u-rm-suffix
-
-(assert (u-begins? "011" "0111"))
-(expect "  abc " (u-rm-prefix " 0 0 0 " " 0 0 0   abc "))
-(expect "  abc " (u-rm-suffix " 0 0 0 " "  abc  0 0 0 "))
-
-;; fp-norm
-
-(expect "01 + 01"    (fp-norm "011 + 0 01"))
-(expect "-0111 + 01" (fp-norm "-011 + 0 01"))
-(expect "0 + 01"     (fp-norm "01 + 0 01"))
-(expect "-011 + 01"  (fp-norm "-01 + 0 01"))
-(expect "-0111 - 01" (fp-norm "01 - 0 0 0 0 01"))
-(expect "-0100 - 01" (fp-norm (concat "01 - " (repeat-words 0 101) " 01")))
-
-;; u2fp
-
-;; cond: (not (non-digit? u))
-(expect (FP nil) nil)
-(expect (FP 1) "01 + 01")
-(expect (FP 11) "011 + 01 01")
-(expect (FP 01) "01 + 01")
-(expect (FP 00) "0 + 0")
-;; (word 10 (spread u))
-(expect (FP (concat 1 (smash (repeat-words 0 200))))
-        (concat "011001 + 01 " (repeat-words 0 200)))
-(expect (FP (concat "0." (smash (repeat-words 0 200)) "1"))
-        (concat "-01100 + 01"))
-;; cond: (findstring "E" (subst "e" "E" u))
-(expect (FP "1E1") "011 + 01")
-(expect (FP "1e1") "011 + 01")
-(expect (FP "1e1 ") nil)
-(expect (FP "1e 1") nil)
-(expect (FP "1E") nil)
-(expect (FP "E1") nil)
-(expect (FP "1e+1") "011 + 01")
-(expect (FP "1e++1") nil)
-(expect (FP "1e+21") "011011 + 01")
-(expect (FP "1e-1") "0 + 01")
-(expect (FP "1e+-1") nil)
-(expect (FP "1ee1") nil)
-(expect (FP "1e+e3") nil)
-;; cond: (u-begins? "-0")
-(expect (FP "-1") "01 - 01")
-(expect (FP "--1") nil)
-;; cond: (findstring "." u)
-(expect (FP "1.") nil)
-(expect (FP "1.x") nil)
-(expect (FP ".1") nil)
-(expect (FP "1.2") "01 + 01 011")
-(expect (FP "1.2.2") nil)
-;; misc.
-(expect (FP "+1") nil)
-(expect (FP -12.34e-3) "-01 - 01 011 0111 01111")
-;; disallow extraneous spaces
-(for n [1 -1 "1.2" "1e3" "1.2e3" "1.2e+3" "1.2e-3" ]
-     (expect nil (FP (concat " " n)))
-     (expect nil (FP (concat n " "))))
-
-;; fp2d & fp2u
-
-;; cond: (findstring ... "0")
-(expect 0.2 (fp2d "01 + 0 011"))
-(expect 0.02 (fp2d "0 + 0 011"))
-(expect 20 (fp2d "0111 + 0 011"))
-(expect 0 (fp2d "0111 + 0 0 0"))
-;; cond: (findstring 1 frac)
-;; if: EXP in -5..21
-(expect 0.000001 (fp2d (FP 1e-6)))
-(expect 100000000000000000000 (fp2d (FP 1e20)))
-(expect 123 (fp2d (make-fp (U 3) "+" (UV 123))))
-(expect 120 (fp2d (make-fp (U 3) "+" (UV 12000))))
-(expect 123.4 (fp2d (make-fp (U 3) "+" (UV 1234))))
-;; if EXP not in -5..21
-(expect 1e-7 (fp2d (FP 1e-7)))
-(expect 9.99e-7 (fp2d (FP 9.99e-7)))
-(expect 1e+21 (fp2d (FP 1e21)))
-(expect 1e+99 (fp2d (make-fp (U 100) "+" (UV 1))))
-(expect 1.23e+100 (fp2d (make-fp (U 101) "+" (UV 123000))))
-;; cond: fp & else
-(expect "NaN" (fp2d nil))
-(expect 0 (fp2d "-011 + 0 0 0 0"))
-(expect 0 (fp2d "-011 - 0 0 0 0"))
