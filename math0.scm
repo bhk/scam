@@ -52,28 +52,47 @@
 (define `T10 "1111111111")
 
 
-(define `(u>0? u)
-  (filter "1%" (subst 0 nil u)))
+;; Non-nil if X > 0.  X may be in decimal *or* (perhaps signed) U format.
+;;
+(define `(n>0? x)
+  (subst 0 nil (filter-out "-%" x)))
 
 
 (define `(u<0? u)
-  (findstring "-1" (subst 0 nil u)))
+  (findstring 1 (filter "-%" u)))
 
 
-(define `(u-negate n)
-  (subst "--" "" (concat "-" n)))
+;; This is exported later in math.scm
+(define `(0- x)
+  (subst "--" "" (concat "-" x)))
+
+
+;; Get leading zeros in UF value U.
+;;
+(define (uf-get-lz u)
+  (subst ":" " " (filter-out "01%" (subst " " ":" ":01" " 01" u))))
+
+
+;; Trim leading zeros from UF value U.
+;;
+(define (uf-trim-lz u)
+  (subst ":" " " (filter "01%" (subst " " ":" ":01" " 01" u))))
+
+
+;; Get trailing zeros in UF value U.
+;;
+(define `(uf-get-tz u)
+  (subst "." " " (filter "%0" (subst "0 " "0." u))))
+
+
+;; Trim trailing zeros from UF value U.
+;;
+(define `(uf-trim-tz u)
+  (subst "." " " (filter-out "%0" (subst "0 " "0." u))))
 
 
 (define `(uf-ends-in-0? u)
   (filter "09" (concat u "9")))
-
-
-(define `(uf-trim-trailing-0s u)
-  (subst "." " " (filter-out "%0" (subst "0 " "0." u))))
-
-
-(define `(uf-get-trailing-0s u)
-  (subst "." " " (filter "%0" (subst "0 " "0." u))))
 
 
 (define (u-carry-fn u nines zeros)
@@ -216,7 +235,8 @@
   (u-add-unsigned a b))
 
 
-;; Add two U-values.
+;; Add two U-values, returning a normalized U-value (no extraneous leading
+;; zeros, and no "-0" value).
 ;;
 (define (u-add a b)
   (define `ua (subst "-" nil a))
@@ -238,7 +258,7 @@
 
 
 (define `(u-sub a b)
-  (u-add a (u-negate b)))
+  (u-add a (0- b)))
 
 
 ;; Subtract B from A.  Result is modulo 1.
@@ -551,7 +571,7 @@
 ;;
 (define (vmul-0 a b)
   (if (findstring 1 b)
-      (concat (vmul a (uf-trim-trailing-0s b)) " " (uf-get-trailing-0s b))
+      (concat (vmul a (uf-trim-tz b)) " " (uf-get-tz b))
       (concat (patsubst "%" 0 a) " " b)))
 
 
@@ -1052,7 +1072,7 @@
   ;;(assert (findstring 1 (word 1 b)))
   (cond
    ((uf-ends-in-0? b)
-    (uf-div a (uf-trim-trailing-0s b) n mode))
+    (uf-div a (uf-trim-tz b) n mode))
 
    ((filter "0 -%" n)
     (div-post mode 0 a b))

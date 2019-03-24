@@ -5,6 +5,7 @@
 (require "core.scm")
 (require "math0.scm" &private)
 (require "math1.scm" &private)
+(require "math2.scm" &private)
 
 ;;--------------------------------
 ;; Operators
@@ -543,7 +544,7 @@
 
 
 (define (lex-exp u)
-  (if (u>0? u)
+  (if (n>0? u)
       (patsubst "0111111111%" "%" (lex-uns u))
       (u-complement-digits (lex-uns (subst "-" nil u)))))
 
@@ -583,3 +584,101 @@
                      "!#"
                      elem)))
   (filter-out "%!#" (subst "!#" "!# " (sort prefixed-v))))
+
+
+;;--------------------------------
+;; Transcendentals
+;;--------------------------------
+
+
+;; Calculate the natural logarithm of X.
+;; For X<=0, the result is NaN.
+;;
+;; PREC is as documented for `/`.
+;;
+(define (log x ?b ?prec)
+  &public
+  (fp2d
+   (if b
+      (fp-log-x-b (d2fp x) (d2fp b) (prec-to-pod prec))
+      (fp-log (d2fp x) (prec-to-pod prec)))))
+
+
+;; Calculate eˣ.
+;;
+;; PREC is as documented for `/`.
+;;
+(define (exp x ?prec)
+  &public
+  (u2d (fp2u (fp-exp (u2fp (d2u x)) (prec-to-pod prec)))))
+
+
+;; Compute xʸ
+;;
+;; X must be non-negative.
+;; PREC is as documented for `/`.
+;;
+(define (pow x y ?prec)
+  &public
+  (fp2d (fp-pow (d2fp x) (d2fp y) (prec-to-pod prec))))
+
+;; Compute the sine of X.
+;;
+;; PREC is as documented for `/`.
+;;
+(define `(sin x ?prec)
+  &public
+  (xsin 1 x prec))
+
+
+;; Compute the consine of X.
+;;
+;; PREC is as documented for `/`.
+;;
+(define `(cos x ?prec)
+  &public
+  (xsin nil x prec))
+
+
+;; Compute π.
+;;
+;; PREC is as documented for `/`.
+;;
+(define (get-pi ?prec)
+  &public
+  (or (foreach
+          pod (prec-to-pod prec)
+
+          (define `count
+            (if (pod-is-place? pod)
+                (u-zeros (u-add-ones pod 1))
+                (nzeros pod)))
+
+          (or (patsubst "31%" "3.1%"
+                        (u2d (smash (uf-trim-tz (const-pi count)))))
+              0))
+
+      "NaN:PREC"))
+
+
+;; Return the angle between the X axis and the line from the origin to
+;; the point (x,y).  Clockwise = positive.  Result is in range (-π,π).
+;;
+;; PREC is as documented for `/`.
+;;
+(define (atan2 y x ?prec)
+  &public
+  (or (foreach
+          pod (prec-to-pod prec)
+          (fp2d (fp-round (fp-atan2 (d2fp y) (d2fp x) pod)
+                          (or result-pod pod) DIV-NEAREST)))
+      "NaN:PREC"))
+
+
+;; Return the arctangent of M.  Result is in range (-π/2,π/2).
+;;
+;; PREC is as documented for `/`.
+;;
+(define (atan m ?prec)
+  &public
+  (atan2 m 1 prec))

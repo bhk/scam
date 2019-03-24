@@ -43,11 +43,14 @@
 
 (expect 761 (u2d (d2u 761)))
 
-;; u>0?
+;; n>0?
 
-(expect nil (u>0? 0))
-(expect 11 (u>0? "011"))
-(expect nil (u>0? "-01"))
+(expect nil (n>0? 0))
+(expect nil (n>0? "-0"))
+(expect 11 (n>0? "011"))
+(expect nil (n>0? "-01"))
+(expect nil (n>0? "-3"))
+(expect 3 (n>0? "3"))
 
 ;; u<0?
 
@@ -55,10 +58,24 @@
 (expect nil (u<0? -0))
 (assert (u<0? -01))
 
-;; u-negate
+;; 0-
 
-(expect -123 (u-negate 123))
-(expect 123 (u-negate -123))
+(expect -123 (0- 123))
+(expect 123 (0- -123))
+
+;; uf-get-lz
+
+(expect 0 (uf-get-lz 0))
+(expect nil (uf-get-lz (UV 123)))
+(expect 0 (uf-get-lz (UV 0123)))
+(expect "0 0" (uf-get-lz (UV 00123)))
+
+;; uf-trim-lz
+
+(expect nil (uf-trim-lz 0))
+(expect (UV 123) (uf-trim-lz (UV 123)))
+(expect (UV 123) (uf-trim-lz (UV 0123)))
+(expect (UV 123) (uf-trim-lz (UV 00123)))
 
 ;; u-carry
 

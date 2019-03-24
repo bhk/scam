@@ -221,11 +221,11 @@
 
 
 (define `(fp>0? fx)
-  (findstring "+ 01" (wordlist 2 3 (filter-out 0 (concat "." fx)))))
+  (findstring "+ 01" (filter-out 0 (concat "." fx))))
 
 
 (define `(fp<0? fx)
-  (findstring "- 01" (wordlist 2 3 (filter-out 0 (concat "." fx)))))
+  (findstring "- 01" (filter-out 0 (concat "." fx))))
 
 
 (define `(fp!=0? fx)
@@ -517,7 +517,7 @@
 ;; Truncate FX (towards zero).
 ;;
 (define (fp-trunc fx)
-  (if (u>0? (fp.xpo fx))
+  (if (n>0? (fp.xpo fx))
       ;; Avoid using EXP as a word index if it's too large
       (if (word 9 (spread (fp.xpo fx)))
           fx
@@ -528,7 +528,7 @@
 ;; Raise N to the next integer equal to or larger (away from zero).
 ;;
 (define (fp-mag-ceiling n)
-  (if (u>0? (fp.xpo n))
+  (if (n>0? (fp.xpo n))
       (let ((tr (fp-trunc n))
             (n n))
         (if (findstring 1 (subst tr nil n))
@@ -616,9 +616,6 @@
 ;;--------------------------------
 ;; fp-fix
 ;;--------------------------------
-
-(define `(n>0? n)
-  (filter-out "-%" (subst 0 nil n)))
 
 
 (define (extend-fn lst len zs)
