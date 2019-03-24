@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MOD := scam
-^uid := 7551dd9fb105cfca
+^uid := 4052b9d56b96de1c
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -510,7 +510,7 @@ endef
 
 define [mod-math]
 # Requires: core math0 math1 math2
-# Exports: atan}1'or'2 atan2}2'or'3 get-pi}0'or'1 cos&1'or'2;!1.;!1:IL3;~xsin[|'\.[@'1'0[@'2'0 sin&1'or'2;!1.;!1:IL3;~x%[|'1[@'1'0[@'2'0 pow}2'or'3 exp}1'or'2 log}1'or'2'or'3 num-sort#num-lex#format-fixed}1'or'2'or'3 range"sum}0'or'more min"max"abs&1;!1.;!1:IL2;patsubst[|'-!p[|'!p[@'1'0 0-&1;!1.;!1:IL2;subst[|!1%-[|'\.[:IL6',|\%',@\01\00 <=(2;if[:IL2'findstring',|\01',:IL3\0~math-cmp\0,1@,01,00\0,1@,02,00[|'\.[|'1 >=(2;if[:IL2'findstring',|\01',:IL3\0~math-cmp\0,1@,02,00\0,1@,01,00[|'\.[|'1 =(2;if[:IL3'~math-cmp',@\01\00',@\02\00[|'\.[|'1 !1=(2;if[:IL3'~math-cmp',@\01\00',@\02\00[|'1 <(2;findstring[|'1[:IL3'~math-cmp',@\02\00',@\01\00 >(2;findstring[|'1[:IL3'~math-cmp',@\01\00',@\02\00 round}1'or'2'or'3 trunc&1;!1.;!1:IL3;~raw-round[@'1'0[|'0[|'1 ceil&1;!1.;!1:IL3;~raw-round[@'1'0[|'0[|'3 floor&1;!1.;!1:IL3;~raw-round[@'1'0[|'0[|'9 mod(3;~binop[|'%[@'1'0[@'2'0 ^(3;~binop[|'pwr[@'1'0[@'2'0 *~&2'or'3;!1.;!1:IL3;~prec-op[|'mulp[@'1'0[@'2'0[@'3'0 /&2'or'3;!1.;!1:IL3;~prec-op[|'div[@'1'0[@'2'0[@'3'0[|'1 //(3;~binop[|'fdiv[@'1'0[@'2'0 *(3;~binop[|'mul[@'1'0[@'2'0 -(3;~binop[|'sub[@'1'0[@'2'0 +(3;~binop[|'add[@'1'0[@'2'0
+# Exports: atan}1'or'2 atan2}2'or'3 get-pi}0'or'1 cos&1'or'2;!1.;!1:IL3;~xsin[|'\.[@'1'0[@'2'0 sin&1'or'2;!1.;!1:IL3;~x%[|'1[@'1'0[@'2'0 pow}2'or'3 exp}1'or'2 log}1'or'2'or'3 num-sort#num-lex#format-fixed}1'or'2'or'3 range"frexp10#sum}0'or'more min"max"abs&1;!1.;!1:IL2;patsubst[|'-!p[|'!p[@'1'0 0-&1;!1.;!1:IL2;subst[|!1%-[|'\.[:IL6',|\%',@\01\00 <=(2;if[:IL2'findstring',|\01',:IL3\0~math-cmp\0,1@,01,00\0,1@,02,00[|'\.[|'1 >=(2;if[:IL2'findstring',|\01',:IL3\0~math-cmp\0,1@,02,00\0,1@,01,00[|'\.[|'1 =(2;if[:IL3'~math-cmp',@\01\00',@\02\00[|'\.[|'1 !1=(2;if[:IL3'~math-cmp',@\01\00',@\02\00[|'1 <(2;findstring[|'1[:IL3'~math-cmp',@\02\00',@\01\00 >(2;findstring[|'1[:IL3'~math-cmp',@\01\00',@\02\00 round}1'or'2'or'3 trunc&1;!1.;!1:IL3;~raw-round[@'1'0[|'0[|'1 ceil&1;!1.;!1:IL3;~raw-round[@'1'0[|'0[|'3 floor&1;!1.;!1:IL3;~raw-round[@'1'0[|'0[|'9 mod(3;~binop[|'%[@'1'0[@'2'0 ^(3;~binop[|'pwr[@'1'0[@'2'0 *~&2'or'3;!1.;!1:IL3;~prec-op[|'mulp[@'1'0[@'2'0[@'3'0 /&2'or'3;!1.;!1:IL3;~prec-op[|'div[@'1'0[@'2'0[@'3'0[|'1 //(3;~binop[|'fdiv[@'1'0[@'2'0 *(3;~binop[|'mul[@'1'0[@'2'0 -(3;~binop[|'sub[@'1'0[@'2'0 +(3;~binop[|'add[@'1'0[@'2'0
 $(call ^R,core)
 $(call ^R,math0)
 $(call ^R,math1)
@@ -533,6 +533,7 @@ $(call ^R,math2)
 ~fp-sum = $(if $(word 2,$1),$(call ~fp-add,$(call ^n,1,$1),$(call ~fp-sum,$(wordlist 2,99999999,$1))),$(call ^n,1,$1))
 ~sum-vec = $(if $(findstring !,$1),$(if $(findstring !0,$(subst !1,!0,$1)),$(call ~sum-vec,$(call ^u,$1))),$(call ~u2d,$(call ~fp2u,$(call ~fp-sum,$(foreach u,$(call ~d2u,$1),$(call ^d,$(call ~u2fp,$(call ^u,$u))))))))
 ~sum = $(call ~sum-vec,$(call ^u,$(foreach N,1,$(^v))))
+~frexp10 = $(call ^Y,$(subst ., ,$(filter-out %0,$(subst 0 ,0.,$(call ~u2fp,$(call ~d2u,$1))))),,,,,,,,,$`(if $`(word 3,$`1),$`(call ~u2d,$`(findstring -,$`(word 2,$`1))0.$`(subst $`  ,,$`(wordlist 3,99999999,$`1)) $`(word 1,$`1)),$`(if $`1,0 0)))
 ~uv-trim = $(wordlist $(words $(subst 1,1 ,$(subst 0,,$1$21))),$(words $3),$(subst 1,1 ,$(subst 0,,$2)) $3)
 ~uv-range = $(if $(findstring 1,$(call ~u-cmp,$1,$2)),,$(call ~uv-trim,$(lastword $1),$(subst $(lastword $2),0,0111111111),$(if $(if $(word 2,$1),,1),0 1 2 3 4 5 6 7 8 9 )$(foreach n,$(call ~uv-range,$(or $(filter-out %x,$1x),01),$(filter-out %x,$2x)),$n0 $n1 $n2 $n3 $n4 $n5 $n6 $n7 $n8 $n9 )))
 ~uv-sign-range = $(if $3,$(addprefix -,$(call ~reverse,$(call ~uv-range,$(if $4,$2,1),$1))) )$(if $4,,$(call ~uv-range,$(if $3,0,$1),$2))
