@@ -290,7 +290,8 @@
 
 
 ;; Round X to a specified decimal place or number of significant
-;; digits.  PREC is as specified for `/`.
+;; digits.  PREC is as specified for `/`, *except* it defaults
+;; to "+0".
 ;;
 ;; DIR is one of the following:
 ;;   "+" => round up to nearest unit (ceiling)
@@ -403,6 +404,25 @@
 (define (sum ...args)
   &public
   (sum-vec (promote args)))
+
+
+;; Return the fraction and exponent portions of X.
+;;
+;; Result = [M E] where X = M * 10ᴱ and E is an integer.
+;;   When X ≠ 0, 0.1 ≤ abs(M) < 1.
+;;   When X = 0, Result is [0 0].
+;;   When X is not a number, Result is nil.
+;;
+(define (frexp10 x)
+  &public
+  (let ((fx (uf-trim-tz (d2fp x))))
+    (if (word 3 fx)
+        (u2d (concat (findstring "-" (fp.sign fx))
+                     (concat "0." (smash (fp.uf fx)))
+                     " "
+                     (fp.xpo fx)))
+        (if fx
+            "0 0"))))
 
 
 ;;--------------------------------

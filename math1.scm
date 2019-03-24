@@ -179,7 +179,7 @@
 ;; Validate PREC (providing default when nil) and return POD value.
 ;;
 ;; PREC = positive integer => number of digits of precision
-;;        "+NNN", "-NNN", "0" => place of lest significant digit
+;;        "+NNN", "-NNN" => place of lest significant digit
 ;; Result = place-or-digits (POD) encoding:
 ;;   Begins with "0" or "-0" => place, negated, and in signed U-encoded form
 ;;   Begins with 1-9 => number of significant digits, in decimal
