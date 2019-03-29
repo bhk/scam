@@ -1,48 +1,6 @@
-;;--------------------------------
-;; getopts.scm: parse command-line options
-;;--------------------------------
+;; # getopts: Command Line Options Parser
 
 (require "core.scm")
-
-;; (getopts argv opts)
-;;
-;;    ARGV = arguments vector
-;;    OPTS = string of option specifiers
-;;
-;;    Result: Dictionary mapping option names to option values, "*" to
-;;            non-option arguments, and "!" to errors.
-;;
-;; Option specifiers may begin with "-" or "--".  Leading dashes are not
-;; included in the dictionary keys.  Option names may not contain `%`, `!`,
-;; `*`, or whitespace.
-;;
-;; Options can appear zero or more times.  If not seen, the option name will
-;; not appear in the result dictionary.  Otherwise, it will map to a vector
-;; that contains one value per occurrence:
-;;
-;;    If an option specifier ends in "=", this indicates that the option
-;;    consumes an argument.  Its values will be the consumed arguments.
-;;
-;;    If an option does not end in "=", its values will all be `1`.
-;;
-;; If `--` is seen in argv, all elements following `--` are treated as
-;; non-option arguments.  Otherwise, options can appear in any order, before
-;; and after non-option arguments.
-;;
-;; If errors are encountered, a "!" entry in the dictionary will exist,
-;; containing GetoptsError records.
-;;
-;;   (MissingArg OPT) : Option specifier OPT takes an argument but was found
-;;                      in last element of argv.
-;;   (BadOption ARG) : Argument ARG began with "-" but did not match any
-;;                     option specifiers.
-;;
-;; Example:
-;;
-;;    (getopts ["a" "-f" "--g" "x" "b"]      ;; command line as in `argv`
-;;             "-f --g= -h")                 ;; option description
-;;    {f: 1, g: "x", *: ["a" "b"] }          ;; result
-;;
 
 (data GetoptsError
   &public
@@ -100,6 +58,47 @@
     (recur {*: (promote opt)} 2))))
 
 
+;; Parse command line options.
+;;
+;; ARGV = arguments vector\
+;; OPTS = a string of option specifiers\
+;; Result = a dictionary describing options, non-option arguments, and errors.
+;;
+;; Any non-option command-line arguments will appear in the result in a
+;; vector bound to the key `"*"`.  In other words, `(dict-get "*" RESULT)`
+;; yields all of the non-option arguments.
+;;
+;; Option specifiers in OPTS may begin with `"-"` or `"--"`.  Leading dashes
+;; are not included in the dictionary keys.  Option names may not contain
+;; `%`, `!`, `*`, or whitespace.
+;;
+;; Options can appear multiple more times.  If not seen, the option name
+;; will not appear in the result.  Otherwise, it will be bound to a vector
+;; that contains one value per occurrence:
+;;
+;;  - If an option specifier ends in `"="`, this indicates that the option
+;;    consumes an argument.  Its values will be the consumed arguments.
+;;
+;;  - If an option does not end in `"="`, its values will all be `1`.
+;;
+;; If `--` is seen in ARGV, all elements following `--` are treated as
+;; non-option arguments.  Otherwise, options can appear in any order, before
+;; and after non-option arguments.
+;;
+;; If errors are encountered, a `"!"` entry in the dictionary will exist,
+;; containing `GetoptsError` records.
+;;
+;;  - `(MissingArg OPT)` : Option specifier OPT takes an argument but was found
+;;    in last element of argv.
+;;  - `(BadOption ARG)` : Argument ARG began with "-" but did not match any
+;;    option specifiers.
+;;
+;; Example:
+;;
+;;     (getopts ["a" "-f" "--g" "x" "b"]      ;; command line as in `argv`
+;;              "-f --g= -h")                 ;; option description
+;;     {f: 1, g: "x", *: ["a" "b"] }          ;; result
+;;
 (define (getopts argv opts)
   &public
   (dict-collate

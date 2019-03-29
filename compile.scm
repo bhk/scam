@@ -1,27 +1,17 @@
-;;----------------------------------------------------------------
-;; compile.scm
-;;----------------------------------------------------------------
-
-(require "core.scm")
-(require "parse.scm")
-(require "gen.scm")
-(require "gen0.scm")
-(require "gen1.scm")
-(require "io.scm")
-(require "memo.scm")
-
+;; # compile: SCAM Compilation
+;;
 ;; The following diagram summarizes the stages of compiling a SCAM
 ;; expression:
 ;;
-;;               pos                 env
-;;                |                   |
-;;                v                   v
-;;   text    +---------+   form   +------+    IL    +------+   exe
-;;  -------->|  parse  |--------->|  c0  |--------->|  c1  |-------->
-;;           +---------+          +------+          +------+
-;;                |                   |                 |    errors
-;;                v                   v                 +----------->
-;;               pos                 env
+;;                  pos                 env
+;;                   |                   |
+;;                   v                   v
+;;      text    +---------+   form   +------+    IL    +------+   exe
+;;     -------->|  parse  |--------->|  c0  |--------->|  c1  |-------->
+;;              +---------+          +------+          +------+
+;;                   |                   |                 |    errors
+;;                   v                   v                 +----------->
+;;                  pos                 env
 ;;
 ;; Each expression begins at a position "pos" (a numeric index into the
 ;; sequence of tokens in the subject text).  Parsing emits a "form" (an AST
@@ -36,6 +26,15 @@
 ;; (hopefully empty) vector of errors.  The form and IL data structures can
 ;; convey errors as well as successful results; c1 must output a separate
 ;; value for error information.
+
+
+(require "core.scm")
+(require "parse.scm")
+(require "gen.scm")
+(require "gen0.scm")
+(require "gen1.scm")
+(require "io.scm")
+(require "memo.scm")
 
 
 (begin
@@ -518,7 +517,8 @@
 
 
 ;; Compile a SCAM source file and all ites dependencies.
-;; On success, return nil.
+;;
+;; On success, return `nil`.
 ;; On failure, display message and return 1.
 ;;
 ;; FILE = source file name (to be read)
@@ -604,7 +604,7 @@
 
 
 ;; Link and run a test module.
-;; On success, return nil.
+;; On success, return `nil`.
 ;; On failure, return 1.
 ;;
 (define (run src argv show-status)
@@ -636,7 +636,7 @@
 
 
 ;; Compile a module and test it.
-;; On success, return nil.
+;; On success, return `nil`.
 ;; On failure, display message and return 1.
 ;;
 (define (compile-and-test-module src-file)
@@ -649,13 +649,13 @@
                    (bail-if (concat test-src " failed")))))))
 
 
-;; Compile SCAM source and write an executable file.
-;; On success, return nil.
+;; Compile SCAM source text and write an executable file.
+;;
+;; On success, return `nil`.\
 ;; On failure, display message and return 1.
 ;;
-;; EXE-FILE = exectuable file to create
-;; SRC-FILE = source file of the main module
-;; OPTS = command-line options
+;; EXE-FILE = name of an exectuable file to create.\
+;; SRC-FILE = name of the source file of the main module.
 ;;
 (define (build-program src-file exe-file)
   &public
@@ -671,7 +671,8 @@
 
 
 ;; Compile and execute a SCAM source file.
-;; On success, return nil.
+;;
+;; On success, return `nil`.\
 ;; On failure, display message and return 1.
 ;;
 (define (run-program src-file argv)
@@ -683,13 +684,13 @@
 
 ;; Compile SCAM source code to a function.
 ;;
-;; TEXT = SCAM source
+;; TEXT = SCAM source\
 ;; FILE = the file from which the source was obtained; this will be
-;;        available to the compiled code via `(current-file)`.
+;;        available to the compiled code via `(current-file)`.\
 ;; ENV = Initial environment.  If nil, SCAM's initial bindings will be
 ;;       supplied.  Otherwise, it must begin with the initial bindings.
 ;;
-;; Returns: { code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }
+;; Returns: `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
 ;;
 (define (compile-text text file ?env-in)
   &public

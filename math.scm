@@ -1,6 +1,57 @@
-;;----------------------------------------------------------------
-;; math : numeric library
-;;----------------------------------------------------------------
+;; # math: Numeric Operations
+;;
+;; The `math` library implements operations on numbers.
+;;
+;; Arbitrary-precision arithmetic is supported.  There is no *a priori*
+;; limit imposed on the size of numbers.
+;;
+;; ## Numbers
+;;
+;; Numbers are represented as strings of decimal digits, with an optional
+;; sign, decimal point, and E-notation suffix.  More precisely:
+;;
+;;     Number  := "-"? Integer ("." Integer)? Exp?
+;;     Integer := ( "0" | "1" | ... | "9" )+
+;;     Exp     := ("E" | "e") ("+" | "-" | "") Digit+
+;;
+;; Strings not conforming to the above syntax are treated as non-number
+;; values.  Functions in this library typically return `"NaN"` when a
+;; numeric argument was given a non-number value, or when the results are
+;; otherwise undefined.  `"NaN:P"` may be returned when an invalid precision
+;; parameter is provided.
+;;
+;; Comparison operators treat non-number values as less than all numeric
+;; values, but equivalent to all other non-number values.
+;;
+;; ## Precision
+;;
+;; For many operators -- such as `+`, `-`, `*`, `//`, `mod`, and `^` -- the
+;; result is always numerically exact.  Some functions -- like `/`, `log`,
+;; `sin`, etc. -- yield an approximation with a finite number of digits.
+;; These functions provide an optional precision argument that may be
+;; provided by the caller; otherwise the default is 16 significant digits
+;; (slightly more precise than 64-bit IEEE-754 binary floating point) unless
+;; otherwise specified.
+;;
+;; Precision can be specified in two ways: significant digits, or place.
+;;
+;; 1. A positive decimal integer specifies a number of significant digits in the
+;;    result.
+;;
+;; 2. An integer N preceded by a `+` or `-` character specifies the *place*
+;;    (relative to the decimal point) of the least significant digit as the
+;;    place with with value of 10^N.  (Note that SCAM numeric literals may
+;;    not begin with "+", so places beginning with "+" must be quoted.)
+;;
+;; Examples:
+;;
+;;     (/ 200 3 5)    ->  66.666
+;;     (/ 200 2 -1)   ->  66.7
+;;     (/ 200 2 "+0") ->  67
+;;     (/ 200 2 "+1") ->  70
+;;     (/ 200 2 "+2") -> 100
+;;     (/ 200 2 "+3") ->   0
+
 
 (require "core.scm")
 (require "math0.scm" &private)
@@ -164,29 +215,6 @@
 ;; Exports
 ;;--------------------------------
 
-;; Arithmetic Functions
-;;
-;; Numbers are represented as strings of decimal digits, with an optional
-;; sign, decimal point, and E-notation suffix.  More precisely:
-;;
-;;    Number := "-"? Digit+ ("." Digit+)? Exp?
-;;    Digit  := "0" | "1" | ... | "9"
-;;    Exp    := ("E" | "e") ("+" | "-" | "") Digit+
-;;
-;; Strings not conforming to the above syntax are treated as non-number
-;; values.  When numeric operators are given non-number values, they return
-;; "NaN".  Passing a zero divisor to the division or modulo functions
-;; results in a "NaN" result.  Comparison operators accept non-number values
-;; and treat them as less than all numeric values, but equivalent to other
-;; non-number values.
-;;
-;; The `math` library implements arbitrary-precision arithmetic.  There is
-;; no limit imposed on the size of numbers -- except for the memory required
-;; to represent them in the above format.  For most operators -- +, -, *,
-;; mod -- the result is always numerically exact.  The division operator
-;; returns a specified maximum of digits.
-;;
-
 ;; Return X + Y.
 ;;
 (define `(+ x y)
@@ -215,44 +243,24 @@
   (binop "fdiv" x y))
 
 
-;; Return X / Y to a precision specified by P.
-;;
-;; Precision can be specified in terms of a place or a number of digits.
-;; When P begins with "+" or "-" followed by an decimal integer N, the least
-;; significant digit in the result will be in the 1E<P> place.  When P is a
-;; postive decimal integer, the result will contain P significant digits
-;; (counting from the most significant non-zero digit).  [No "." or
-;; E-notation is allowed within P.]
-;;
-;; P defaults to 16.  16 significant digits will provide slightly higher
-;; precision than 64-bit IEEE-754 floating point numbers.
-;;
-;; Examples:
-;;
-;;   (div 200 3 5)  ->  66.666
-;;   (div 200 2 -1) ->  66.7
-;;   (div 200 2 "+0") ->  67
-;;   (div 200 2 "+1") ->  70
-;;   (div 200 2 "+2") -> 100
-;;   (div 200 2 "+3") ->   0
+;; Return X / Y to the [precision specified by P](#precision).  The answer
+;; will be rounded to the *nearest* unit in the least significant digit.
 ;;
 (define `(/ x y ?p)
   &public
   (prec-op "div" x y p 1))
 
 
-;; Compute X*Y to the precision given by P.
-;;
-;; The result should be within one unit of the least significant digit (as
-;; specified by P).  P is as documented for `/`.
+;; Compute X*Y to the [precision specified by P](#precision).  The result
+;; will be within one unit of the least significant digit.
 ;;
 (define `(*~ x y ?p)
   &public
   (prec-op "mulp" x y p))
 
 
-;; Raise X to the power of Y.  Y must be an non-negative integer
-;; in "simple" format (without a decimal point or E-notation).
+;; Raise X to the power of Y.  Y must be an non-negative integer in "simple"
+;; format (without a decimal point or E-notation).
 ;;
 (define `(^ x y)
   &public
@@ -261,7 +269,7 @@
 
 ;; Return the remainder of floor(X/Y).
 ;;
-;;   (mod X Y) = (- X (* (// X Y) Y))
+;; `(mod X Y)` is equal to `(- X (* (// X Y) Y))`.
 ;;
 (define `(mod x y)
   &public
@@ -289,18 +297,19 @@
   (raw-round x 0 DIV-TRUNCATE))
 
 
-;; Round X to a specified decimal place or number of significant
-;; digits.  PREC is as specified for `/`, *except* it defaults
-;; to "+0".
+;; Round X to the [precision given by P](#precision).
+;;
+;; **Note:** P defaults to `"+0"`, unlike other functions accepting
+;; precision values.
 ;;
 ;; DIR is one of the following:
-;;   "+" => round up to nearest unit (ceiling)
-;;   "-" => round down to nearest unit (floor)
-;;   "|" => round towards zero to nearest unit (truncate)
+;;  - `"+"` ⇒ round up (ceiling)
+;;  - `"-"` ⇒ round down (floor)
+;;  - `"|"` ⇒ round towards zero (truncate)
 ;;
-(define (round x ?prec ?dir)
+(define (round x ?p ?dir)
   &public
-  (raw-round x (if prec (prec-to-pod prec) 0) (check-dir dir)))
+  (raw-round x (if p (prec-to-pod p) 0) (check-dir dir)))
 
 
 ;; Return 1 if X > Y, nil otherwise.
@@ -366,22 +375,22 @@
   (patsubst "-%" "%" x))
 
 
-;; Return the larger of A or B.
+;; Return the larger of X or Y.
 ;;
-(define (max a b)
+(define (max x y)
   &public
-  (if (< a b)
-      b
-      a))
+  (if (< x y)
+      y
+      x))
 
 
-;; Return the smaller of A or B.
+;; Return the smaller of X or Y.
 ;;
-(define (min a b)
+(define (min x y)
   &public
-  (if (> a b)
-      b
-      a))
+  (if (> x y)
+      y
+      x))
 
 
 (define (fp-sum v)
@@ -398,8 +407,8 @@
       (fp2d (fp-sum (for u (d2u nums) (u2fp u))))))
 
 
-;; Return the sum of all arguments.  Arguments may be numbers, or vectors of
-;; numbers, or vectors or vectors of numbers, and so on.
+;; Sum all numbers in ARGS.  Each argument may be a number, or a vector of
+;; numbers, or a vector of vectors of numbers, and so on.
 ;;
 (define (sum ...args)
   &public
@@ -409,9 +418,9 @@
 ;; Return the fraction and exponent portions of X.
 ;;
 ;; Result = [M E] where X = M * 10ᴱ and E is an integer.
-;;   When X ≠ 0, 0.1 ≤ abs(M) < 1.
-;;   When X = 0, Result is [0 0].
-;;   When X is not a number, Result is nil.
+;;  - When X ≠ 0, 0.1 ≤ abs(M) < 1.
+;;  - When X = 0, Result is [0 0].
+;;  - When X is not a number, Result is nil.
 ;;
 (define (frexp10 x)
   &public
@@ -492,12 +501,12 @@
        (uv-sign-range (u-to-uv a) (u-to-uv b) (u<0? a) (u<0? b)))))
 
 
-;; Return a vector of numbers ranging from A to B.  A and B must be integers
+;; Return a vector of numbers ranging from X to Y.  X and Y must be integers
 ;; in "simple" format (without a decimal point or E-notation).
 ;;
-(define (range a b)
+(define (range x y)
   &public
-  (raw-range (d2u a) (d2u b)))
+  (raw-range (d2u x) (d2u y)))
 
 
 ;;--------------------------------
@@ -508,22 +517,22 @@
 ;; Convert X to a fixed-point representation.
 ;;
 ;; MIN-WIDTH = if non-nil, minimum field width.  Padding with spaces on the
-;;    left will be added as necessary.
-;; PRECISION = if non-nil, number of digits to the right of the decimal.
+;;    left will be added as necessary.\
+;; DECIMALS = if non-nil, number of digits to the right of the decimal.
 ;;
-(define (format-fixed x ?min-width ?precision)
+(define (format-fixed x ?min-width ?decimals)
   &public
   (foreach
-      p (if precision (d2u precision) "?")
+      p (if decimals (d2u decimals) "?")
 
-      (if (non-naturals? (if precision p)
+      (if (non-naturals? (if decimals p)
                          (if min-width (d2u min-width)))
-          (if (and precision (non-digit? p))
-              "[invalid_PRECISION]"
+          (if (and decimals (non-digit? p))
+              "[invalid_DECIMALS]"
               "[invalid_MIN-WIDTH]")
-          (fp-fix (fp-round (d2fp x) (if precision p 0) DIV-NEAREST)
+          (fp-fix (fp-round (d2fp x) (if decimals p 0) DIV-NEAREST)
                   min-width
-                  precision
+                  decimals
                   p))))
 
 
@@ -577,14 +586,16 @@
           "0")))
 
 
-;; Convert numbers to strings such that the lexical sort order of the output
-;; strings corresponds to the numeric sort order of the input numbers.
+;; Convert a number to a string.  The *lexical* sort order of multiple
+;; results corresponds to the *numeric* sort order of the numbers.  In other
+;; words, for two numbers X and Y, LX = `(num-lex X)`, and LY = `(num-lex
+;; Y)`, then:
 ;;
-;;    (< a b) <==> (string< (num-lex a) (num-lex b))
+;;     (< X Y)  <==>  (sort [LX LY]) == [LX LY]
 ;;
 ;; This can be used with `sort-by` to obtain numeric sort order.  E.g.:
 ;;
-;;   (sort-by (lambda (i) (num-lex (nth 2 i))) ...)
+;;     (sort-by (lambda (i) (num-lex (nth 2 i))) ...)
 ;;
 (define (num-lex n)
   &public
@@ -611,63 +622,56 @@
 ;;--------------------------------
 
 
-;; Calculate the natural logarithm of X.
-;; For X<=0, the result is NaN.
+;; Calculate the logarithm of X to the [precision given by P](#precision).
 ;;
-;; PREC is as documented for `/`.
+;; B, if given, is the base; if nil, the natural logarithm of X will be
+;; returned.
 ;;
-(define (log x ?b ?prec)
+;; X and B must be be greater than 0.
+;;
+(define (log x ?b ?p)
   &public
   (fp2d
    (if b
-      (fp-log-x-b (d2fp x) (d2fp b) (prec-to-pod prec))
-      (fp-log (d2fp x) (prec-to-pod prec)))))
+      (fp-log-x-b (d2fp x) (d2fp b) (prec-to-pod p))
+      (fp-log (d2fp x) (prec-to-pod p)))))
 
 
-;; Calculate eˣ.
+;; Calculate eˣ to the [precision given by P](#precision).
 ;;
-;; PREC is as documented for `/`.
-;;
-(define (exp x ?prec)
+(define (exp x ?p)
   &public
-  (u2d (fp2u (fp-exp (u2fp (d2u x)) (prec-to-pod prec)))))
+  (u2d (fp2u (fp-exp (u2fp (d2u x)) (prec-to-pod p)))))
 
 
-;; Compute xʸ
+;; Compute xʸ to the [precision given by P](#precision).
 ;;
 ;; X must be non-negative.
-;; PREC is as documented for `/`.
 ;;
-(define (pow x y ?prec)
+(define (pow x y ?p)
   &public
-  (fp2d (fp-pow (d2fp x) (d2fp y) (prec-to-pod prec))))
+  (fp2d (fp-pow (d2fp x) (d2fp y) (prec-to-pod p))))
 
-;; Compute the sine of X.
+;; Compute the sine of X to the [precision given by P](#precision).
 ;;
-;; PREC is as documented for `/`.
-;;
-(define `(sin x ?prec)
+(define `(sin x ?p)
   &public
-  (xsin 1 x prec))
+  (xsin 1 x p))
 
 
-;; Compute the consine of X.
+;; Compute the cosine of X to the [precision given by P](#precision).
 ;;
-;; PREC is as documented for `/`.
-;;
-(define `(cos x ?prec)
+(define `(cos x ?p)
   &public
-  (xsin nil x prec))
+  (xsin nil x p))
 
 
-;; Compute π.
+;; Compute π to the [precision given by P](#precision).
 ;;
-;; PREC is as documented for `/`.
-;;
-(define (get-pi ?prec)
+(define (get-pi ?p)
   &public
   (or (foreach
-          pod (prec-to-pod prec)
+          pod (prec-to-pod p)
 
           (define `count
             (if (pod-is-place? pod)
@@ -678,27 +682,30 @@
                         (u2d (smash (uf-trim-tz (const-pi count)))))
               0))
 
-      "NaN:PREC"))
+      "NaN:P"))
 
 
-;; Return the angle between the X axis and the line from the origin to
-;; the point (x,y).  Clockwise = positive.  Result is in range (-π,π).
+;; Return the angle between the X axis and the line from the origin to the
+;; point (X,Y).  (**Note** that Y is the first argument and X is the
+;; second.)
 ;;
-;; PREC is as documented for `/`.
+;; The result is in the range (-π,π).
 ;;
-(define (atan2 y x ?prec)
+;; The [precision is given by P](#precision).
+;;
+(define (atan2 y x ?p)
   &public
   (or (foreach
-          pod (prec-to-pod prec)
+          pod (prec-to-pod p)
           (fp2d (fp-round (fp-atan2 (d2fp y) (d2fp x) pod)
                           (or result-pod pod) DIV-NEAREST)))
-      "NaN:PREC"))
+      "NaN:P"))
 
 
-;; Return the arctangent of M.  Result is in range (-π/2,π/2).
+;; Return the arctangent of M to the [precision given by P](#precision).
 ;;
-;; PREC is as documented for `/`.
+;; The result is in the range (-π/2,π/2).
 ;;
-(define (atan m ?prec)
+(define (atan m ?p)
   &public
-  (atan2 m 1 prec))
+  (atan2 m 1 p))

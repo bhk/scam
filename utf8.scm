@@ -1,10 +1,4 @@
-;;----------------------------------------------------------------
-;; utf8: Convert between UTF-8 encodings and code points.
-;;----------------------------------------------------------------
-;;
-;;   utf8-encode
-;;   utf8-decode
-;;
+;; # utf8: UTF-8 Coding
 
 (require "core.scm")
 (require "math.scm")
@@ -24,7 +18,7 @@
 
 ;; Convert Unicode character indices to UTF-8 encoded bytes.
 ;;
-;; CODES = vector of Unicode code points
+;; CODES = vector of Unicode code points\
 ;; Result = vector of code points
 ;;
 (define (utf8-encode codes)
@@ -65,7 +59,7 @@
 
 ;; Convert UTF-8 encoded bytes to Unicode code points.
 ;;
-;; BYTES = vector of numeric byte values
+;; BYTES = vector of numeric byte values\
 ;; Result = vector of code points
 ;;
 (define (utf8-decode bytes)

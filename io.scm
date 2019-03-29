@@ -1,14 +1,12 @@
-;;--------------------------------------------------------------
-;; io : File I/O and shell interaction
-;;--------------------------------------------------------------
+;; # io: File I/O and Shell Interaction
 
 (require "core.scm")
 
 
 (declare SCAM_DEBUG &native)
 
-;; We route shell commands through this function for the sake of debugging
-;; via tracing or SCAM_DEBUG.
+
+;; Perform a shell command CMD, logging results if `S` appears in SCAM_DEBUG.
 ;;
 (define (ioshell cmd)
   &public
@@ -24,7 +22,7 @@
   (concat "'" (subst "'" "'\\''" arg) "'"))
 
 
-;; Quote FILENAME for POSIX shells and ensure it does not begin with '-'
+;; Quote FILENAME for POSIX shells and ensure it does not begin with '-'.
 ;;
 (define (quote-sh-file filename)
   &public
@@ -40,7 +38,7 @@
           "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/\x0d/!r/g;s/^$/!./'"))
 
 
-;; Execute command CMD, returning data written to stdout.
+;; Execute command CMD, returning data written to `stdout`.
 ;;
 ;; Unlike `shell`, which trims trailing newlines and then converts newlines
 ;; to spaces, `shell!` preserves newline and space characters, but does not
@@ -54,20 +52,21 @@
   (concat-vec (subst "!r" "\x0d" (addsuffix "\n" raw-lines))))
 
 
-;; Construct a command line to echo STR.
+;; Construct a command line that will echo STR.
+;;
 (define (echo-command str)
   &public
   (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str))))
 
 
-;; Write data to a file descriptor.  Since `shell` captures stdout for the
+;; Write data to a file descriptor.  Since `shell` captures `stdout` for the
 ;; command it invokes, we replace 1 with 9, which has been redirected to
-;; *actual* stdout (see the prologue in build.scm).
+;; *actual* `stdout` (see the prologue in build.scm).
 ;;
-;; We redirect stderr to stdout, so that `shell` will capture error
+;; We redirect `stderr` to `stdout`, so that `shell` will capture error
 ;; messages. Special care must be taken when fd is 2.
 ;;
-;; Returns `nil` on success; non-nil if the file descriptor is bad.
+;; Result is `nil` on success; non-nil if the file descriptor is bad.
 ;;
 (define (write fd data)
   &public
@@ -80,15 +79,15 @@
                          (concat " 2>&1 >&" (patsubst 1 9 fd)))))))
 
 
-;; Format string and write to a file.  Unlike printf: (A) no trailing
-;; newline is appended, and (B) a file descriptor is specified.
+;; Format text and write to a file.  See `vsprintf` for handling of FORMAT
+;; and VALUES.  Unlike `printf`, no trailing newline is appended.
 ;;
 (define (fprintf fd format ...values)
   &public
   (write fd (vsprintf format values)))
 
 
-;; Read one line from stdin.
+;; Read one line from `stdin`.
 ;;
 ;; Note: On MacOS, input lines longer than 1023 characters will cause bad
 ;; things to happen.
@@ -150,7 +149,7 @@
 ;; of elements in the resulting vector is one more than the number of
 ;; newlines in the file.
 ;;
-;; Return nil if the file is not readable.
+;; Return `nil` if the file is not readable.
 ;;
 (define (read-lines filename ?start ?end)
   &public
@@ -188,6 +187,8 @@
       filename))
 
 
+;; Create directory DIR and parent directories, if necessary.
+;;
 (define (mkdir-p dir)
   &public
   (ioshell (concat "mkdir -p " (quote-sh-file dir) " 2>&1")))
@@ -240,6 +241,9 @@
   (dict-value (hash-files [filename])))
 
 
+;; Execute shell command CMD, has what it writes to `stdout`, and return the
+;; hash.
+;;
 (define (hash-output cmd)
   &public
   (define `hashpipe
@@ -315,12 +319,11 @@
 ;;  - safe to use in a make rule without escaping
 ;;  - unique (the encoding can be reversed)
 ;;
-;; Encoding summarized:
-;;    +   ! # \ $ : ; = % ~ * ? |  "\t"  "\n"  ".."  "/"
-;;    2 0 1 H B D C S E P T A Q V   -     _     .     /
-;;
 (define (escape-path path)
   &public
+  ;; Encoding summarized:
+  ;;     +   ! # \ $ : ; = % ~ * ? |  "\t"  "\n"  ".."  "/"
+  ;;     2 0 1 H B D C S E P T A Q V   -     _     .     /
   (define `a
     (subst "+" "+2" " " "+0" "!" "+1" "#" "+H" "\\" "+B" "$" "+D"
            ":" "+C" ";" "+S" "=" "+E" "%" "+P" "~" "+T" "*" "+A"
@@ -328,7 +331,8 @@
            path))
   (patsubst "/%" "+/%" a))
 
-;; Undo `escape-path`
+
+;; Undo `escape-path`.
 ;;
 (define (unescape-path loc)
   &public

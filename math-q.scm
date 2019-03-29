@@ -180,7 +180,7 @@
 (expect (format-fixed nil nil nil) "nan")
 (expect (format-fixed nil 5 nil) "  nan")
 (expect (format-fixed 1 "x" nil) "[invalid_MIN-WIDTH]")
-(expect (format-fixed 1 nil "x") "[invalid_PRECISION]")
+(expect (format-fixed 1 nil "x") "[invalid_DECIMALS]")
 (expect (format-fixed 1e5 nil nil) "100000")
 (expect (format-fixed 1e5 nil 2) "100000.00")
 (expect (format-fixed 1 3 nil) "  1")
@@ -590,13 +590,13 @@
 (expect 3 (get-pi "+0"))
 (expect 0 (get-pi "+1"))
 (expect 3.14159265359 (get-pi 13))  ;; trim trailing zero
-(expect "NaN:PREC" (get-pi "blah"))
+(expect "NaN:P" (get-pi "blah"))
 
 ;; atan2
 
 (expect "NaN" (atan2 0 0))
 (expect "NaN" (atan2 "x" 1))
-(expect "NaN:PREC" (atan2 0 0 "x"))
+(expect "NaN:P" (atan2 0 0 "x"))
 (expect (atan2 0 2) 0)
 (expect (atan2 0 -2 6) (get-pi 6))
 
@@ -623,7 +623,7 @@
 
 (expect "NaN" (atan "x"))
 (expect "NaN" (atan nil))
-(expect "NaN:PREC" (atan 1 "x"))
+(expect "NaN:P" (atan 1 "x"))
 
 (define (atan+ x prec)
   (round-to (prec+ prec 4) (atan x prec)))

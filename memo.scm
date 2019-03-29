@@ -1,9 +1,11 @@
-;;--------------------------------
-;; Persistent memoization
-;;--------------------------------
-
-;; This module implements memoization (caching of function results) that
-;; suports IO operations and persists across program invocations.
+;; # memo: Persistent Memoization
+;;
+;; The `memo` module implements a form of memoization (caching of function
+;; results) that supports IO operations and persists across program
+;; invocations.
+;;
+;; SCAM uses persistent memoization to rebuild SCAM programs accurately with
+;; with minimal repeated work.
 ;;
 ;; The `memo-on` macro enters a context within which memoized functions
 ;; may be called.  It loads previously cached results (if any) from a
@@ -14,7 +16,7 @@
 ;; Functions that perform IO operations can be memoized when those
 ;; operations are replayable: that is, modification of external state is
 ;; idempotent.  In order to perform IO, memoized functions may call
-;; operations provided herein (memo-read-file, memo-write-file), or
+;; operations provided herein (`memo-read-file`, `memo-write-file`), or
 ;; construct more custom IO using `memo-io`.
 
 
@@ -89,6 +91,9 @@
       value)))
 
 
+;; Discard memoization results from the current session, preventing them
+;; from being persisted.
+;;
 (define (memo-drop)
   &public
   (set *memo-key* nil)
@@ -156,7 +161,7 @@
           value))))
 
 
-;; Call (FNAME ...ARGS), or return cached results.
+;; Call `(FNAME ...ARGS)`, or return cached results.
 ;;
 (define (memo-apply fname args)
   &public
@@ -164,7 +169,7 @@
   (memo-log-call fname args (memo-do-apply fname args)))
 
 
-;; Call (FNAME ...ARGS), or return cached results.
+;; Call `(FNAME ...ARGS)`, or return cached results.
 ;;
 (define (memo-call fname ...args)
   &public
