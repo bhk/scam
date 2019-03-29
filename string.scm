@@ -1,17 +1,7 @@
-;;----------------------------------------------------------------
-;; string.scm
-;;----------------------------------------------------------------
+;; # string: String Manipulation
 ;;
-;;   string-len
-;;   string-upper
-;;   string-lower
-;;   string-repeat
-;;   string-slice
-;;   string-to-chars
-;;   string-to-bytes
-;;   strings-from-bytes
-;;   string-from-bytes
-;;
+;; The `string` library provides some common string manipulation functions
+;; that are not available as builtins.
 
 (require "core.scm")
 
@@ -52,10 +42,19 @@
    "\xF8 \xF9 \xFA \xFB \xFC \xFD \xFE \xFF"))
 
 
-;; Construct a function that accepts one argument and substitutes all
-;; strings in FROMS with corresponding strings in TOS in that argument.
+;; Construct a function that performs a number of substitutions.  The
+;; returned function accepts one argument and returns the result of the
+;; substitutions.
 ;;
-(define (gen-polysub froms tos ?arg)
+;; FROMS = a vector of substrings to be replaced.\
+;; TOS = a vector of corresponding replacements.\
+;; INPUT = if non-nil, a lambda expression that will transform the
+;;   input string before the substitutions.
+;;
+(define (gen-polysub froms tos ?input)
+  &public
+  (define `arg
+    (or input (lambda (s) s)))
 
   (define `(enc s)
     (subst "$" "$$" "(" "$[" ")" "$]" "," "$&" s))
@@ -65,7 +64,7 @@
 
   (if froms
       (gen-polysub (rest froms) (rest tos)
-                   (gen-subst (first froms) (first tos) (or arg (lambda (s) s))))
+                   (gen-subst (first froms) (first tos) arg))
       arg))
 
 
@@ -91,6 +90,7 @@
 (set split-utf8-esc (gen-split utf8-esc ["% "]))
 (set split-utf8-cont (gen-split utf8-cont ["!.% "]))
 
+
 ;; Group UTF-8 continuation characters with UTF-8 initial bytes *if* the
 ;; string contains any initial bytes.  Just in case we have non-UTF8,
 ;; don't leave any "!." strings behind.
@@ -104,10 +104,10 @@
 ;; Get all characters in STR.  The result is a vector of strings, each
 ;; containing one character. `concat-vec` reverses this operation.
 ;;
-;; UTF-8 encoding of STR is assumed; if STR is not a well-formed UTF8
+;; UTF-8 encoding of STR is assumed.  If STR is not a well-formed UTF8
 ;; string, the result will contain all *bytes* in STR (so `concat-vec` will
-;; still reverse the operation) but grouping into vector elements will be
-;; undefined.
+;; still reverse the operation) but the bytes may not grouped at character
+;; boundaries.
 ;;
 (define (string-to-chars s)
   &public
@@ -116,29 +116,31 @@
   (filter "%" (split-ascii u8)))
 
 
+;; Return the number of *characters* in S.  UTF-8 encoding is assumed.
+;;
 (define (string-len s)
   &public
   (words (string-to-chars s)))
 
 
-;; Extract a substring specified by a range of character indices.  The range
-;; is inclusive, and 1-based.  When LAST is less than FIRST, and empty
-;; string is returned.
+;; Extract a substring, given start and end character indices.  The range is
+;; inclusive and 1-based.  When LAST is less than FIRST, an empty string is
+;; returned.
 ;;
-;; FIRST = index of first character to include (1 or greater)
-;; LAST = index of last character to include (0 or greater)
+;; FIRST = index of first character to include (1 or greater).\
+;; LAST = index of last character to include (0 or greater).
 ;;
 (define (string-slice first last str)
   &public
   (promote (subst " " "" (wordlist first last (string-to-chars str)))))
 
 
-;; Get the upper-cased version of STR.  Only ASCII letters are supported.
+;; Convert letters to upper case.  Only ASCII letters are supported.
 ;;
 (declare (string-upper str) &public)
 
 
-;; Get the lower-cased version of STR.  Only ASCII letters are supported.
+;; Convert letters to lower case.  Only ASCII letters are supported.
 ;;
 (declare (string-lower str) &public)
 
@@ -150,7 +152,7 @@
   (set string-lower (gen-polysub uppers lowers)))
 
 
-;; Get the numeric indices of all bytes in STR.  The results is a vector of
+;; Get the numeric indices of all *bytes* in STR.  The result is a vector of
 ;; numbers from 1 to 255.
 ;;
 (define (string-to-bytes str)
@@ -172,9 +174,12 @@
   (filter "%" (s2b-sub (num-enc [str]))))
 
 
-;; Get single-byte strings describe by numeric indices in BYTES.  The result
-;; is a vector of same length as BYTES.  Zero values are represented as the
-;; empty string in the resulting vector.
+;; Convert byte values into single-byte strings.
+;;
+;; BYTES = a vector of byte values (numbers from 0 to 255).
+;;
+;; The result is a vector the same length as bytes.  Each zero value in
+;; BYTES will result in a corresponding empty string in the result.
 ;;
 (define (strings-from-bytes bytes)
   &public

@@ -11,6 +11,8 @@
 (expect "((" ( (gen-polysub [")"] ["("]) "()" ))
 (expect "2.3.1" ( (gen-polysub "a b c" "1 2 3") "b.c.a"))
 (expect "4444" ( (gen-polysub "1 2 3" "2 3 4") "1234"))
+(expect "4.6" ( (gen-polysub "5" "." (lambda (a b) b)) "123" "456"))
+(expect "456" ( (gen-polysub nil nil (lambda (a b) b)) "123" "456"))
 
 ;; string-to-chars
 
