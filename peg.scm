@@ -1,7 +1,6 @@
 ;; # peg: PEG Parser Generator
 ;;
-;; The peg module exports parsing functions, and *generators* that create
-;; parsing functions and combine parsing functions.
+;; The peg module exports *generators* that create parsing functions.
 ;;
 ;; A *parsing* function attempts to "recognize" or "match" a syntactic
 ;; construct (a "pattern") within a subject (a sequence of symbols).  On

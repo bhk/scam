@@ -41,10 +41,10 @@
 ;; Execute command CMD, returning data written to `stdout`.
 ;;
 ;; Unlike `shell`, which trims trailing newlines and then converts newlines
-;; to spaces, `shell!` preserves newline and space characters, but does not
-;; guarantee complete fidelity: NUL characters will not be preserved, and
-;; the last line of output will be terminated with a newline (whether it was
-;; present or not in the command out).
+;; to spaces, `shell!` preserves newline and space characters.  It does
+;; guarantee complete fidelity, however: NUL characters will not be
+;; preserved, and the last line of output will be terminated with a newline
+;; (whether it was present or not in the command output).
 ;;
 (define (shell! cmd)
   &public
@@ -114,8 +114,8 @@
 ;;
 ;; In order to handle large values, the data is written line-by-line, using
 ;; multiple shell invocations, to a temporary file that is moved to FILENAME
-;; only on success, so that if the operation is interrupted (e.g. our
-;; process is terminated) then FILENAME will not be left with partial data.
+;; only on success, so that if the operation is interrupted (e.g. the SCAM
+;; process is killed) then FILENAME will not be left with partial data.
 ;;
 ;; On success, nil is returned.  Otherwise, an error description is returned.
 ;;

@@ -45,12 +45,12 @@
 ;;
 ;; Examples:
 ;;
-;;     (/ 200 3 5)    ->  66.666
-;;     (/ 200 2 -1)   ->  66.7
-;;     (/ 200 2 "+0") ->  67
+;;     (/ 200 3 5)    ->  66.666        5 significant digits
+;;     (/ 200 2 -1)   ->  66.7          10⁻¹ is least significant place
+;;     (/ 200 2 "+0") ->  67            10⁰ is least signifcant place
 ;;     (/ 200 2 "+1") ->  70
-;;     (/ 200 2 "+2") -> 100
-;;     (/ 200 2 "+3") ->   0
+;;     (/ 200 2 "+2") -> 100            rounding to nearest 10²
+;;     (/ 200 2 "+3") ->   0            rounding to nearest 10³
 
 
 (require "core.scm")
