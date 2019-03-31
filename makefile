@@ -67,6 +67,17 @@ bench: ; bin/scam --obj-dir .out/ -x bench.scm $(ARGS)
 $$%: ; 	@true $(info $$$* --> "$(call if,,,$$$*)")
 
 #----------------------------------------------------------------
+# Docs
+
+DOCLIBS = $(patsubst %,%.scm,core getopts io math peg string utf8 memo) intrinsics.txt
+
+docs: .out/libs.txt
+
+promote-docs: .out/libs.txt ; cp .out/libs.txt libraries.md
+
+.out/libs.txt: $(DOCLIBS) ; bin/scam examples/scamdoc.scm -- -o $@ $(DOCLIBS)
+
+#----------------------------------------------------------------
 
 qarg = '$(subst ','\'',$1)'# ' balanced for emacs
 target-line = $(shell sed -n '/guard,$1,/=' makefile)

@@ -1,0 +1,452 @@
+;; -*- mode: scheme -*-
+
+;; # Intrinsics
+;;
+;; There is not an "intrinsics" module; all these exports are defined by the
+;; SCAM language itself and are available to program without any `require`
+;; statement.
+;;
+;; Intrinsic symbols fall into three different categories:
+;;
+;;  - Special forms
+;;  - Manifest functions
+;;  - Manifest macros
+;;
+;; Manifest functions are like other functions in SCAM, except that they are
+;; provided by the language itself.  Special forms are not functions, so
+;; they do not have values and cannot be passed to other functions.
+
+
+
+;; This special form conditionally executes either THEN-EXPR or ELSE-EXPR.
+;; First, COND is evaluated.  If non-nil, THEN-EXPR will be evaluated and used
+;; are the value for the `if` expression.  Otherwise, if ELSE-EXPR is present
+;; it is evaluated and used, and if not `nil` is used.
+;;
+(define (if cond then-expr [else-expr]) &public)
+
+
+;; This special form expresses conditional execution of an arbitrary number
+;; of possible blocks of code.
+;;
+;; Example:
+;;
+;;     (cond ((filter "foo" a)  "Found FOO")
+;;           ((filter "bar" a)  "Found BAR")
+;;           ((filter "baz" a)  (print "BAZ") "Found BAZ")
+;;           (else              "Found NOTHING"))
+;;
+(define (cond (condition body)... [(else ...exprs)] ) &public)
+
+
+;; Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
+;; encountered.  The value of the `and` expression is that of the last
+;; sub-expression evaluated, or `nil` if no expressions were evaluated.
+;;
+(define (and expr...) &public)
+
+
+;; Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
+;; is encountered.  The value of the `and` expression is that of the last
+;; sub-expression evaluated, or `nil` if no expressions were evaluated.
+;;
+(define (or expr...) &public)
+
+
+;; The `foreach` special form iterates over a list, evaluates BODY (a sequence
+;; of expressions) once for each word, and constructs a new word list from the
+;; results of each evaluation.
+;;
+;; Each word is bound to the name `VAR` while `BODY` is evaluated.
+;;
+;;     > (foreach x "1 2 3" (1+ x))
+;;     "2 3 4"
+;;
+(define (foreach var list body) &public)
+
+
+;; `for` iterates over items in a vector, evaluating BODY for with VAR bound to
+;; an item, constructing a new vector with the results of BODY. Example:
+;;
+;;     > (for x [[1 2] [3 4]]
+;;     +     (reverse x))
+;;     [[2 1] [4 3]]
+;;
+(define (for var vector body) &public)
+
+
+;; `append-for` is similar to `for` but it appends together all of the (vector)
+;; values of BODY.  This is functionally similar to what is called `concat-map`
+;; in some other languages.
+;;
+;;     > (append-for x [[1 2] [3 4]]
+;;     +     x)
+;;     "1 2 3 4"
+;;     > (append-for x [7 1 5 3]
+;;     +    (if (> x 3) [x]))
+;;     "7 5"
+;;
+(define (append-for var vector body) &public)
+
+
+;; `concat-for` is similar to `for` but it concatenates the values of BODY.
+;;
+;;     > (concat-for x [1 2 3] ";" (wordlist 1 x "a b c"))
+;;     "a;a b;a b c"
+;;
+(define (concat-for var vector delim body) &public)
+
+
+;; Terminate execution of the program with a non-zero status code, writing
+;; `MESSAGE` to stderr.
+;;
+(define (error message) &public)
+
+
+;; Encloses a *block* of expressions.  A block is a sequence of expressions
+;; that are evaluated in order.  The result of that last expression is
+;; returned (or nil if no expressions are given).
+;;
+(define (begin expr...) &public)
+
+
+;; The `require` special form provides access to functionality defined in other
+;; modules.  `MODULE` is a literal string that names either a SCAM source file
+;; or a standard SCAM module.  Symbols are exported by the module (those
+;; declared "&public") will be are visible to all expressions that follow in
+;; the current block.  At run-time, the required module will be loaded and
+;; executed, unless it has already been required by the program.
+;;
+;; The `&private` flag is intended for use by unit test modules.  When present,
+;; private symbols will be imported in addition to `&public` ones, and the
+;; qualification step will not be required.  (See "qualification", below.)
+;;
+;; When `MODULE` is one of the [standard library names](#libraries), the
+;; standard library will be supplied by the compiler.  Otherwise, `MODULE` is
+;; names a SCAM source file.  If it is a relative path, it is treated as
+;; relative to the directory containing the requiring file, or, if no such file
+;; exists, the directories listed in `SCAM_LIBPATH` (colon-delimited) until a
+;; matching file is found.
+;;
+;; When `MODULE` identifies a source file, that source file will be compiled to
+;; determine its exports before compilation can continue.  In turn, modules
+;; required by `MODULE` will also have to be compiled in order to build
+;; `MODULE`, and so on.
+;;
+;; **Qualification:** Each module can be accompanied by a qualification test: a
+;; module with the same name except for an added `-q` before the extension.
+;; For example, `foo-q.scm` is the qualification test for `foo.scm`.  When a
+;; module is required, its qualification test (if present) will be built and
+;; executed before compilation of the requiring module continues.  If the
+;; qualification test terminates with a non-zero exit code, it is considered a
+;; test failure and compilation stops.  (Note that qualification test files
+;; must use the `&private` flag when requiring the module they test in order to
+;; avoid a dependency loop.)
+;;
+;; **Object directory:** During compilation, SCAM writes intermediate build
+;; results under a directory called the object directory, and on subsequent
+;; compilations it will reuse those files if they remain valid, compiling and
+;; testing modules only when necessary.  The object directory is determined as
+;; follows:
+;;
+;;   - The object directory defaults to `./.scam`.
+;;   - If `scam -o EXE SRC` is invoked and `EXE` is *not* in the current
+;;     working directory, the object directory will be set to the directory
+;;     containing `EXE`.
+;;   - If the option `--obj-dir=DIR` is given, it will override the above two
+;;     possibilities.
+;;
+(define (require module &private?) &public)
+
+
+;; Declare and define a function, variable, or macro.
+;;
+;; This special form takes several forms:
+;;
+;;     (define NAME FLAG... VALUE)            ; global data variable
+;;     (define (NAME ARG...) FLAG... BODY)    ; global function variable
+;;     (define `NAME EXPR)                    ; symbol macro
+;;     (define `(NAME ARG...) FLAG... BODY)   ; compound macro
+;;
+;; The `define` special form adds a name to the environment and associates
+;; it with a definition.  The defined name will be visible to subsequent
+;; expressions in the same block, and the definition supersedes any
+;; previous definitions associated with the same name.
+;;
+;; The `&public` flag may be included in `FLAG...`.  This indicates that the
+;; symbol should be visible outside of the file in which it is declared.
+;;
+;;
+(define (define ...) &public)
+
+
+;; Declare a function, variable, or macro.
+;;
+;; This special form takes two forms:
+;;
+;;     (declare NAME FLAG...)             ; global data variable
+;;     (declare (NAME ARG...) FLAG...)    ; global function variable
+;;
+;; The `declare` special form declares a global variable without assigning
+;; a value.  This is usually used to access non-SCAM functions, or when
+;; mutually recursive functions are defined.
+;;
+;;
+(define (declare ...) &public)
+
+
+;; Declare an *executable macro*.  An executable macro is a function that
+;; transforms syntax.  It takes one argument, a form, and returns a
+;; different form.
+;;
+(define (defmacro (name argname) body) &public)
+
+
+;; This special form assigns names to values.  The VALUE expressions are
+;; evaluated, in order.  Then BODY (a block of expressions) is evaluated in
+;; an environment in which each NAME is bound to its corresponding value.
+;; The `let` expression returns the value of the last form in BODY.
+;;
+;; `let` is implemented in terms of `lambda` in this manner:
+;;
+;;     ((lambda (NAME...) BODY) (VALUE...))
+;;
+(define (let ( (NAME VALUE)... ) BODY) &public)
+
+
+;; Declare symbol macros.
+;;
+;; `let&` is a "lazy" let.  It binds the names to symbol macros instead of
+;; local variables.  It also differs from `let` in that each expression is
+;; evaluated in the context of the previous bindings -- more like Scheme's
+;; `let*`.  It is equivalent to the following:
+;;
+;;     (begin
+;;       (define `NAME EXPR)...
+;;       BODY)
+;;
+;; Since `let&` constructs symbol macros, each bound expression is not
+;; always evaluated exactly once, as with `let`.  Instead, each expression
+;; is evaluated once each time its associated name is evaluated within
+;; `BODY` -- perhaps zero times, perhaps many more.
+;;
+;; Aside from the potential for multiple re-evaluations of expressions, `let&`
+;; generally has lower overhead than `let`, since it does not involve an
+;; anonymous function call (as does `let`).
+;;
+(define (let& ( (name expr)... ) body) &public)
+
+
+;; This form modifies the value of some number of global variables *during
+;; the execution of BODY*. Afterwards, the original values are restored.
+;;
+;; This expression evaluates to the value of the last expression in BODY.
+;;
+(define (let-global ( (name value)... ) body) &public)
+
+
+;; The `set` special form assigns a value to a previously declared global
+;; variable.
+;;
+;; NAME is given as a symbol, not a string. For example:
+;;
+;;     (set var 12 nil)
+;;
+;; The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
+;;
+(define (set name value retval) &public)
+
+
+;; A `lambda` expression evaluates to a function value.
+;;
+;; `...PARAMS` is zero or more symbols that name the formal arguments.
+;;
+;; `BODY` is a block of one or more expressions (see [`begin`](#begin) )
+;; that will be executed when the function is called. The initial environment
+;; of `BODY` contains bindings for the arguments names to the values passed
+;; to the function.
+;;
+(define (lambda (...params) body) &public)
+
+
+;; Call LAMBDA, passing as arguments the members of the vector VEC.
+;;
+;; Example:
+;;
+;;     > (apply nth [3 "a b c d"])
+;;     "c"
+;;
+(define (apply lambda vec) &public)
+
+
+;; This special form concatenates all of its arguments.
+;;
+(define (concat ...values) &public)
+
+
+;; This special form replaces substrings with replacement strings within the
+;; given VALUE.  For example:
+;;
+;;     > (subst 2 3 1 2 12)
+;;     23
+;;
+(define (subst from to {from to}... value) &public)
+
+
+;; If SUB occurs within STR, return SUB.  Otherwise return the empty string.
+;;
+(define (findstring sub str) &public)
+
+
+;; `demote` encodes any value as a word so that it may be embedded in a word
+;; list.  It is used internally to construct vectors.
+;;
+(define (demote value) &public)
+
+
+;; `promote` reverses the encoding done by `demote`.
+;;
+(define (promote value) &public)
+
+
+;; Returns the value stored at index INDEX (1-based) in vector VEC.
+;;
+(define (nth index vec) &public)
+
+
+;; This constructs a vector.  It is equivalent to `[A B C ...]`.
+;;
+(define (vector a b c ...) &public)
+
+
+;; Concatenate all values and write them to stdout.
+;;
+(define (print VALUE...) &public)
+
+
+;; This performs call-site tracing of `FUNCNAME`, described below in the
+;; [Debugging](#debugging) section.
+;;
+(define (? funcname arg...) &public)
+
+
+;; Add FUNC to a list of functions that will be run when the program exits.
+;; Functions will be run in the reverse of the order that they were registered.
+;;
+(define (at-exit func) &public)
+
+
+;; This special form evaluates to the data structure that describes the lexical
+;; environment at the point where it is invoked.  (See `gen.scm` for details of
+;; this structure.)
+;;
+(define (current-env) &public)
+
+
+;; This special form evaluates to the file name and line number of where it was
+;; invoked, in this format:  `FILENAME:LINE`
+;;
+(define (current-file-line) &public)
+
+
+;; Add PREFIX to the start of each word in LIST.
+;;
+(define (addprefix prefix list) &public)
+
+
+;; Add SUFFIX to the end of each word in LIST.
+;;
+(define (addsuffix suffix list) &public)
+
+
+;; Remove the file extension ("suffix") from each word in LIST
+;;
+(define (basename list) &public)
+
+
+;; Get the directory of each file in LIST.
+;;
+;;     (dir "a/b c")  -->  "a/ ./"
+;;
+;; See also `notdir`.
+;;
+(define (dir list) &public)
+
+
+;; Get all words in LIST that match PATTERNS.  Each word in PATTERNS is
+;; compared against the words in LIST, and is considered a match when it is
+;; equal, treating the first `%` character in a pattern as a wildcard.
+;;
+(define (filter patterns list) &public)
+
+
+;; Get all words in LIST that do *not* match PATTERNS.
+;;
+(define (filter-out patterns list) &public)
+
+
+;; Get the first word in LIST.
+;;
+(define (firstword list) &public)
+
+
+;; Concatenate the respective words in LIST-A and LIST-B.
+;;
+(define (join list-a list-b) &public)
+
+
+;; Get the last word in LIST.
+;;
+(define (lastword list) &public)
+
+
+;; Return the filename portion of each path in PATHS.
+;;
+;;     (notdir "a/b c")  -->  "b c"
+;;
+;; See also `dir`.
+;;
+(define (notdir paths) &public)
+
+
+;; Replace PAT with REPL in LIST.  Patterns use the first `%` as a wildcard,
+;; and a corresponding `%` in REPL will be replace with what the wildcard in
+;; PAT matched.  See the GNU make documentation for subtleties.
+;;
+(define (patsubst pat repl list) &public)
+
+
+;; Sort the words in LIST in increasing lexicographical order.
+;;
+(define (sort list) &public)
+
+
+;; Convert newlines to spaces and then remove redundant spaces in LIST.
+;;
+(define (strip list) &public)
+
+
+;; Return the file extensions of all file names in PATHS.
+;;
+(define (suffix paths) &public)
+
+
+;; Return the Nth word in LIST.  If N is greater than the lenght of the
+;; list, return `nil`.  If N is less than 1, terminate the program with an
+;; error message.
+;;
+(define (word n list) &public)
+
+
+;; Extract the words in LIST from index A to index B, inclusive.  Extraneous
+;; spaces between words are retained.  If B is less than A, `nil` is returned.
+;;
+;; If A is less than 1 or B is less than zero, the program will be
+;; terminated with an error message.
+;;
+(define (wordlist a b list) &public)
+
+
+;; Return the number of words in LIST.
+;;
+(define (words list) &public)

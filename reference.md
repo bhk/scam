@@ -4,54 +4,53 @@
 
  * [Overview](#overview)
  * [Syntax](#syntax)
+   * [String Literals](#string-literals)
+   * [Numeric Literals](#numeric-literals)
+   * [Symbols](#symbols)
+   * [Compound Expressions](#compound-expressions)
+   * [Vector Constructors](#vector-constructors)
+   * [Dictionary Constructors](#dictionary-constructors)
+   * [Syntax Quoting](#syntax-quoting)
  * [Data Types](#data-types)
    * [Booleans](#booleans)
    * [Numbers](#numbers)
-   * [Vectors](#vectors)
+   * [Word Lists and Vectors](#word-lists-and-vectors)
    * [Dictionaries](#dictionaries)
    * [Records](#records)
    * [Functions](#functions)
  * [Variables](#variables)
+   * [Scope](#scope)
  * [Macros](#macros)
  * [Special Forms](#special-forms)
- * [Intrinsics](#intrinsics)
  * [Libraries](#libraries)
  * [Command Line Syntax](#command-line-syntax)
  * [Debugging](#debugging)
-
+   * [Call Site Tracing](#call-site-tracing)
+   * [Run-time Tracing](#run-time-tracing)
+   * [Profiling](#profiling)
 
 ## Overview
 
-A SCAM program consists of a **main** module.  When the program is run, that
-module will be loaded.  This module may, in turn, load other modules.  After
-the main module finishes loading, if a "main" function has been defined, it
-will be called with a vector that contains the command-line arguments.  The
-value returned by `main` will be treated as the exit status for the program
-(with `nil` being treated as `0`).  If `main` is not defined, the program
-will exit with a `0` status.
+If you run the SCAM executable without any arguments it will enter REPL
+(Read-Eval-Print Loop) mode.  In this mode, you can type **expressions** and
+SCAM will immediately **evaluate** them (compute a value) and display the
+resulting value. Expressions are described in the [Syntax](#syntax) section,
+below.
 
-SCAM modules (source files) contain sequences of **expressions**.  These
-expressions are **evaluated** when the module is **loaded**.  Evaluation
-computes a **value** described by the expression.  The following section,
-[Syntax](#syntax), describes the different kinds of expressions in SCAM.  As
-in other Lisp-family languages, everything in SCAM is an expression.
-Control flow and variable "binding" and "assignment" operations are handled
-in expressions.  Many expressions include sub-expressions that may be
-evaluated in the course of evaluating the parent.
+SCAM can also read expressions from source files, called **modules**.  In
+the REPL you can load a module using `(require "FILENAME")`.  The first time
+a file is required by a program, the module will be **loaded**, which means
+that all expressions in the module will be executed.  Typically, these
+expressions store function values (or other values) in global variables.
+Symbols that are exported from the module will be available to the caller of
+`require`.
 
-Expressions may occur in **block** or non-block contexts.  A block is a
-sequence of expressions that are evaluated in order.  The values of these
-expressions are discarded except for the last expression, which supplies the
-value for the entire block.  The sequence of top-level expressions in a
-module are a block.  Expressions such as the `begin` special form can
-contain blocks.
-
-Blocks are important in SCAM because expressions that occur in a block may
-define or declare symbols that are visible to expressions that follow them
-within the block.  These lexically scoped definitions do not require deeper
-nesting.  This enables a programming style that flows down the page
-vertically as new definitions are introduced, rather than down and to the
-right.
+If you run SCAM with a module (file) name as an argument, SCAM will invoke
+the module a **program**.  This will load the module and then run a function
+called "main" if the module has defined such a function.  Alternatively, you
+can compile a program and then invoke the resulting executable file
+directly.  See [command line syntax](#command-line-syntax) for more details on
+the SCAM command.
 
 
 ## Syntax
@@ -82,7 +81,7 @@ SCAM string values are sequences of non-NUL bytes.  Any `\x00` escape
 sequences in string literals are silently discarded.  Where character
 encoding is a factor, UTF-8 is assumed.
 
-### Numbers
+### Numeric Literals
 
 Numbers consist entirely of digits, optionally preceded with a `-`
 character, and optionally including one decimal point after the first digit,
@@ -161,7 +160,7 @@ expressions evaluated when constructing the dictionary, but symbols used as
 keys are treated differently.  A symbol not beginning with `=` is treated
 literally; the name of the symbol becomes the key.  When a symbol begins
 with `=`, another symbol is constructed from the characters that follow the
-initial `=`, and that symbol is evaulated to determine the key.  For
+initial `=`, and that symbol is evaluated to determine the key.  For
 example, `{ a: 1 }` is equivalent to `{ "a": 1 }`, and `{ =a: 1 }` is
 equivalent to `{ (or a): 1 }`.
 
@@ -584,6 +583,31 @@ variables can store any value.  At the same time, calling functions stored
 in function values is somewhat more efficient than calling functions stored
 in data variables.
 
+### Scope
+
+SCAM has lexical scoping rules.  Variables names are valid expressions only
+when the variables declaration is in scope.  Variables are introduced into
+scope in one of the following ways:
+
+ - A let expression -- `let`, `let&`, or `let-global` -- introduces names
+   whose scope extends to the end of the let expression.
+
+ - Each function parameter appearing in an argument list -- in a function
+   definition or in a `lambda` expression -- introduces a name whose scope
+   extends to the end of the function.
+
+ - The `define` and `require` forms, when appearing in a **block** context,
+   introduce names whose scope extends to the end of the block.
+
+A block is a sequence of expressions that are evaluated in order.  The
+values of these expressions are discarded except for the last expression,
+which supplies the value for the entire block.  The sequence of top-level
+expressions in a module are a block.  The sequence of expressions in a
+function body constitute a block.  Other expressions such as the `begin`
+special form contain blocks.  Lists of arguments passed to functions or
+macros are *not* blocks.  One argument cannot introduce a variable name for
+a subsequent expressions to use.
+
 
 ## Macros
 
@@ -656,353 +680,14 @@ Examples:
 
     (declare foo)
 
-## Intrinsics
-
-The following symbols are defined by the SCAM language.  They call into
-three different categories:
-
- - Special forms
- - Manifest functions
- - Manifest macros
-
-Manifest functions are like other functions in SCAM, except that they are
-provided by the language itself.  Special forms, built-ins, and macros are
-not functions, so they do not have values and cannot be passed to other
-functions; they can only be invoked like a function.
-
-### Control Flow
-
-#### `(if COND THEN-EXPR [ELSE-EXPR])`
-
-First, COND is evaluated.  If non-nil, THEN-EXPR will be evaluated and used
-are the value for the `if` expression.  Otherwise, if ELSE-EXPR is present
-it is evaluated and used, and if not `nil` is used.
-
-#### `(cond (CONDITION BODY)... [(else BODY)] )`
-
-`cond` expresses conditional execution of an arbitrary number of possible
-blocks of code.
-
-Example:
-
-    (cond ((filter "foo" a)  "Found FOO")
-          ((filter "bar" a)  "Found BAR")
-          ((filter "baz" a)  (print "BAZ") "Found BAZ")
-          (else              "Found NOTHING"))
-
-#### `(and EXPR...)`
-
-Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
-encountered.  The value of the `and` expression is that of the last
-sub-expression evaluated, or `nil` if no expressions were evaluated.
-
-#### `(or EXPR...)`
-
-Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
-is encountered.  The value of the `and` expression is that of the last
-sub-expression evaluated, or `nil` if no expressions were evaluated.
-
-#### `(error MESSAGE)`
-
-Terminate execution of the program with a non-zero status code, writing
-`MESSAGE` to stderr.
-
-#### `(begin EXPR...)`
-
-Encloses a *block* of expressions.  A block is a sequence of expressions
-that are evaluated in order.  The result of that last expression is
-returned (or nil if no expressions are given).
-
-
-
-### Declarations and Definitions
-
-#### `(require MODULE &private?)`
-
-The `require` special form provides access to functionality defined in other
-modules.  `MODULE` is a literal string that names either a SCAM source file
-or a standard SCAM module.  Symbols are exported by the module (those
-declared "&public") will be are visible to all expressions that follow in
-the current block.  At run-time, the required module will be loaded and
-executed, unless it has already been required by the program.
-
-The `&private` flag is intended for use by unit test modules.  When present,
-private symbols will be imported in addition to `&public` ones, and the
-qualification step will not be required.  (See "qualification", below.)
-
-When `MODULE` is one of the [standard library names](#libraries), the
-standard library will be supplied by the compiler.  Otherwise, `MODULE` is
-names a SCAM source file.  If it is a relative path, it is treated as
-relative to the directory containing the requiring file, or, if no such file
-exists, the directories listed in `SCAM_LIBPATH` (colon-delimited) until a
-matching file is found.
-
-When `MODULE` identifies a source file, that source file will be compiled to
-determine its exports before compilation can continue.  In turn, modules
-required by `MODULE` will also have to be compiled in order to build
-`MODULE`, and so on.
-
-**Qualification:** Each module can be accompanied by a qualification test: a
-module with the same name except for an added `-q` before the extension.
-For example, `foo-q.scm` is the qualification test for `foo.scm`.  When a
-module is required, its qualification test (if present) will be built and
-executed before compilation of the requiring module continues.  If the
-qualification test terminates with a non-zero exit code, it is considered a
-test failure and compilation stops.  (Note that qualification test files
-must use the `&private` flag when requiring the module they test in order to
-avoid a dependency loop.)
-
-**Object directory:** During compilation, SCAM writes intermediate build
-results under a directory called the object directory, and on subsequent
-compilations it will reuse those files if they remain valid, compiling and
-testing modules only when necessary.  The object directory is determined as
-follows:
-
-  - The object directory defaults to `./.scam`.
-  - If `scam -o EXE SRC` is invoked and `EXE` is *not* in the current
-    working directory, the object directory will be set to the directory
-    containing `EXE`.
-  - If the option `--obj-dir=DIR` is given, it will override the above two
-    possibilities.
-
-#### `define`
-
-    (define NAME FLAG... VALUE)            ; global data variable
-    (define (NAME ARG...) FLAG... BODY)    ; global function variable
-    (define `NAME EXPR)                    ; symbol macro
-    (define `(NAME ARG...) FLAG... BODY)   ; compound macro
-
-The `define` special form adds a name to the environment and associates
-it with a definition.  The defined name will be visible to subsequent
-expressions in the same block, and the definition supersedes any
-previous definitions associated with the same name.
-
-The `&public` flag may be included in `FLAG...`.  This indicates that the
-symbol should be visible outside of the file in which it is declared.
-
-
-#### `declare`
-
-    (declare NAME FLAG...)             ; global data variable
-    (declare (NAME ARG...) FLAG...)    ; global function variable
-
-The `declare` special form declares a global variable without assigning
-a value.  This is usually used to access non-SCAM functions, or when
-mutually recursive functions are defined.
-
-
-#### `(defmacro (NAME ARGNAME) BODY)`
-
-`defmacro` declares an *executable macro*.  An executable macro is a
-function that transforms syntax.  It takes one argument, a form, and returns
-a different form.
-
-#### `(let ( (NAME VALUE)... ) BODY)`
-
-The `let` special form assigns names to values.  The VALUE expressions are
-evaluated, in order.  Then BODY (a block of expressions) is evaluated in an
-environment in which each NAME is bound to its corresponding value.  The
-`let` expression returns the value of the last form in BODY.
-
-`let` is implemented in terms of `lambda` in this manner:
-
-    ((lambda (NAME...) BODY) (VALUE...))
-
-#### `(let& ( (NAME EXPR)... ) BODY)`
-
-`let&` is a "lazy" let.  It binds the names to symbol macros instead of
-local variables.  It also differs from `let` in that each expression is
-evaluated in the context of the previous bindings -- more like Scheme's
-`let*`.  It is equivalent to the following:
-
-    (begin
-      (define `NAME EXPR)...
-      BODY)
-
-Since `let&` constructs symbol macros, each bound expression is not
-always evaluated exactly once, as with `let`.  Instead, each expression
-is evaluated once each time its associated name is evaluated within
-`BODY` -- perhaps zero times, perhaps many more.
-
-Aside from the potential for multiple re-evaluations of expressions, `let&`
-generally has lower overhead than `let`, since it does not involve an
-anonymous function call (as does `let`).
-
-#### `(let-global ( (NAME VALUE)... ) BODY)`
-
-This form modifies the value of some number of global variables *during
-the execution of BODY*. Afterwards, the original values are restored.
-
-This expression evaluates to the value of the last expression in BODY.
-
-#### `(set NAME VALUE RETVAL)`
-
-The `set` special form assigns a value to a previously declared global
-variable.
-
-NAME is given as a symbol, not a string. For example:
-
-    (set var 12 nil)
-
-The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
-
-
-### Constructing and Using Functions
-
-#### `(lambda (ARG...) BODY)`
-
-A `lambda` expression evaluates to a function value.
-
-`ARG...` is zero or more symbols that name the formal arguments.
-
-`BODY` is a block of one or more expressions (see [`begin`](#begin) )
-that will be executed when the function is called. The initial environment
-of `BODY` contains bindings for the arguments names to the values passed
-to the function.
-
-#### `(apply LAMBDA VEC)`
-
-Call LAMBDA, passing as arguments the members of the vector VEC.
-
-Example:
-
-    (apply nth [3 "a b c d"])    ;; --> c
-
-
-
-### Generic String Manipulation
-
-#### `(concat VALUE...)`
-
-This special form concatenates all of its arguments.
-
-#### `(subst FROM TO {FROM TO}... VALUE)`
-
-This special form replaces substrings with replacement strings within the
-given VALUE.  For example:
-
-    > (subst 2 3 1 2 12)
-    23
-
-#### `(findstring SUB STR)`
-
-If SUB occurs within STR, return SUB.  Otherwise return the empty string.
-
-
-
-### Word List and Vector Manipulation
-
-#### `(foreach VAR LIST BODY)`
-
-The `foreach` special form iterates over a list, evaluates BODY (a sequence
-of expressions) once for each word, and constructs a new word list from the
-results of each evaluation.
-
-Each word is bound to the name `VAR` while `BODY` is evaluated.
-
-    > (foreach x "1 2 3" (1+ x))
-    "2 3 4"
-
-#### `(for VAR VECTOR BODY)`
-
-`for` iterates over items in a vector, evaluating BODY for with VAR bound to
-an item, constructing a new vector with the results of BODY. Example:
-
-    > (for x [[1 2] [3 4]]
-    +     (reverse x))
-    [[2 1] [4 3]]
-
-#### `(append-for VAR VECTOR BODY)`
-
-`append-for` is similar to `for` but it appends together all of the (vector)
-values of BODY.  This is functionally similar to what is called `concat-map`
-in some other languages.
-
-    > (append-for x [[1 2] [3 4]]
-    +     x)
-    "1 2 3 4"
-    > (append-for x [7 1 5 3]
-    +    (if (> x 3) [x]))
-    "7 5"
-
-#### `(concat-for VAR VECTOR DELIM BODY)`
-
-`concat-for` is similar to `for` but it concatenates the values of BODY.
-
-    > (concat-for x [1 2 3] ";" (wordlist 1 x "a b c"))
-    "a;a b;a b c"
-
-#### `(demote VALUE)`
-
-`demote` encodes any value as a word so that it may be embedded in a word
-list.  It is used internally to construct vectors.
-
-#### `(promote VALUE)`
-
-`promote` reverses the encoding done by `demote`.
-
-#### `(nth INDEX VEC)`
-
-Returns the value stored at index INDEX (1-based) in vector VEC.
-
-#### `(vector A B C ...)`
-
-This constructs a vector.  It is equivalent to `[A B C ...]`.
-
-### Other List Functions
-
-The following functions are equivalent to the GNU Make builtins by the same
-name: `addprefix`, `addsuffix`, `basename`, `dir`, `filter`, `filter-out`,
-`firstword`, `join`, `lastword`, `notdir`, `patsubst`, `sort`, `suffix`,
-`word`, `word`, `wordlist`, `words`.
-
-### Others
-
-#### `(print VALUE...)`
-
-Concatenate all values and write them to stdout.
-
-#### `(? FUNCNAME ARG...)`
-
-This performs call-site tracing of `FUNCNAME`, described below in the
-[Debugging](#debugging) section.
-
-#### `(at-exit FUNC)`
-
-Add FUNC to a list of functions that will be run when the program exits.
-Functions will be run in the reverse of the order that they were registered.
-
-#### `(current-env)`
-
-This special form evaluates to the data structure that describes the lexical
-environment at the point where it is invoked.  (See `gen.scm` for details of
-this structure.)
-
-#### `(current-file-line)`
-
-This special form evaluates to the file name and line number of where it was
-invoked, in this format:  `FILENAME:LINE`
-
-
 ## Libraries
 
-SCAM provides a "standard" set of modules that are available to SCAM
-programs.  Programs will need to `require` the appropriate module before
+SCAM provides a "standard" set of modules that are bundled with the SCAM
+compiler.  Programs will need to `require` the appropriate module before
 using the functions exported by that module.  In the REPL environment, by
-default all the standard modules are implicitly required.  This is a list of
-the standard libraries:
+default all the standard modules are implicitly required.
 
- - `core`: generic, commonly-used functions
- - `num`: an arbitrary-precision decimal floating point numeric library
- - `io`: generic I/O functions
- - `string`: string manipulation functions
- - `getopts`: command line option processing
- - `compile`: functions for compiling SCAM sources
- - `trace`: functions for tracing, debugging, and profiling
- - `utf8`: functions for encoding and decoding UTF-8
-
-For documentation, refer to the corresponding `.scm` files in the SCAM
-project.  (Look for `&public` functions.)
+See the [SCAM Libraries](libraries.md) document for full details.
 
 
 ## Command Line Syntax
@@ -1088,8 +773,8 @@ The text string used to specify tracing is, in its simplest form, a list of
 function names.  Further, these may be suffixed with a `:` and then an
 "mode" to select alternative instrumentation.  Possible modes include:
 
- - `t` : Print the function name and arguments when it is called and its
-         name and return value on exit.  This is the default mode.
+ - `t` : Print the function name and arguments when it is called
+         and its return value on exit.  This is the default mode.
 
  - `f` : Print just the function name on entry and exit.
 
@@ -1173,7 +858,7 @@ In the REPL:
 
 ### Profiling
 
-You can use invocation counts (as describe above) to look for potential
+You can use invocation counts (as described above) to look for potential
 hot spots.
 
 To measure the time spent in a particular function, you can use the
