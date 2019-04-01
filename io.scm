@@ -201,7 +201,8 @@
   (or *hash-cmd*
       (begin
         (define `cmd
-          (or (notdir (word 1 (shell "which md5 sha1sum shasum")))
+          ;; GNU which is noisy => errors to /dev/null
+          (or (notdir (word 1 (shell "which md5 sha1sum shasum 2>/dev/null")))
               (error "no md5, shasum, or sha1sum in path")))
         (set *hash-cmd* (subst "md5" "md5 -r" cmd))
         *hash-cmd*)))
