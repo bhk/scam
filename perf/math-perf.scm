@@ -72,7 +72,8 @@
 ;;----------------------------------------------------------------
 ;; Micro-benchmarks
 
-(require "../mcore.scm" &private)
+(require "../math0.scm" &private)
+(require "../math1.scm" &private)
 
 (define (time-fp name nums)
   (define Us (foreach x nums (d2u x)))
@@ -100,9 +101,9 @@
 (define d100 1.234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890e-9)
 
 (define (main argv)
-  (time-fp "lrg" [d100 d100 d100])
-  (time-fp "0.x" [0.1234 0.01234 0.0001234])
-  (time-fp "1.x" [1.1234 1.01234 1.0001234])
-  (time-fp "int" [11234 101234 10001234])
+  ;;(time-fp "lrg" [d100 d100 d100])
+  ;;(time-fp "0.x" [0.1234 0.01234 0.0001234])
+  ;;(time-fp "1.x" [1.1234 1.01234 1.0001234])
+  ;;(time-fp "int" [11234 101234 10001234])
   (run-composite "math    " + - * / < ^)
   nil)
