@@ -628,6 +628,7 @@
   (define `cmd-line
     (concat "SCAM_ARGS=" (quote-sh-arg argv) " "
             MAKE " -f " (quote-sh-arg runner) " "
+            "--no-print-directory "
             "SCAM_MOD=" (quote-sh-arg mod) " "
             "SCAM_DIR=" (quote-sh-arg *obj-dir*) " "
             "1>&9 ; echo \" $?\""))

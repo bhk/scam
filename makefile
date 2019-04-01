@@ -34,6 +34,8 @@
 #     result, we do not build and run $A/runtime.min or $A/runtime-q.min.
 #     Instead, we generate `b` binaries for these using the `a` compiler.
 
+SHELL := /bin/bash
+
 _@ = @
 A = .out/a
 B = .out/b
