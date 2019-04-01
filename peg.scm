@@ -152,7 +152,7 @@
 ;; Construct a PEG sequence.
 ;;
 ;; Return a parsing function that will call parsing functions in PFS, one
-;; after another, until one fails.  After each succes, the next function
+;; after another, until one fails.  After each success, the next function
 ;; will be called with the remaining un-consumed symbols.  If all functions
 ;; in PFS succeed, the resulting position will will be the position
 ;; resulting from the final match, and the captures returned will be all
