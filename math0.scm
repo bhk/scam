@@ -421,14 +421,6 @@
   (uf-carry_19_10 (uf-xcarry u)))
 
 
-;; Reduce maximum digit value from 81 to 27.
-;;
-(define `(uf-carry_81_27 u)
-  (subst " 01111111111111111111111111111111111111111" "1111 0"   ;; 45
-         " 011111111111111111111" "11 0"                         ;; 27
-         u))
-
-
 (define `(>>1 uf)
   (concat "0 " uf))
 
@@ -475,7 +467,7 @@
 ;; Multiply by single digit (UF values in & out).
 ;;
 (define `(uf*digit a digit)
-  (uf-carry (uf-carry_81_27 (uf*digit_81 a digit))))
+  (uf-carry (uf-xcarry (uf*digit_81 a digit))))
 
 
 ;; (uf*CONSTANT u)
@@ -599,7 +591,7 @@
 
 
 (define (uf*b1 a b)
-  (uf-carry_81_27 (uf*digit_81 a b)))
+  (uf-xcarry (uf*digit_81 a b)))
 
 
 (define (uf*b2 a b)
