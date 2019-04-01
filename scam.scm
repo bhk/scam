@@ -56,7 +56,8 @@ Options:
     "-o= -e= -v --version -h -x -i --quiet --obj-dir= --boot")
 
   (let ((omap (getopts argv opt-names)))
-    (define `(opt name) (dict-get name omap))
+    (define `(opt name)
+      (dict-get name omap))
 
     (define `names (opt "*"))      ; non-option arguments
     (define `errors (opt "!"))     ; errors encountered by getopts
@@ -78,7 +79,7 @@ Options:
 
      ((opt "o")
       (if (word 2 names)
-          (perror "to many input files were given with `-o`")
+          (perror "too many input files were given with `-o`")
           (build-program (first names) (last (opt "o")))))
 
      ((opt "e")
