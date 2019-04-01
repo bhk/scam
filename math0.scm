@@ -4,7 +4,6 @@
 
 (require "core.scm")
 
-(define `(strip v) (filter "%" v))
 
 (define `(+_+ a b)
   (concat a " " b))
@@ -38,6 +37,10 @@
 
 (define `(smash uv)
   (subst " " nil uv))
+
+
+(define `(u2uv u)
+  (.strip (spread u)))
 
 
 (define `U1 "01")
@@ -338,19 +341,16 @@
            "00" 0
            u))
 
-  (define `(uf-norm u)
-    (strip (spread u)))
-
   (foreach u (smash (sub-reduce (join a (neg-digits b))))
            (if (findstring "~" u)
-               (uf-norm
+               (u2uv
                 (borrow-macro
                  (if (filter "~%" (subst 0 nil u))
                      ;; negative
                      (concat prefix- (neg-swap u))
                      ;; positive
                      (concat prefix+ u))))
-               (concat prefix+ (strip (spread u))))))
+               (concat prefix+ (u2uv u)))))
 
 
 ;; Propagate carry until all digits are proper (9 or less).
@@ -948,7 +948,7 @@
 ;; note: this gets memoized
 ;;
 (define (recip2 x)
-  (strip (subst "x" 1 " " " 0" (recip-loop (tally2 x) T10))))
+  (.strip (subst "x" 1 " " " 0" (recip-loop (tally2 x) T10))))
 
 
 (memoize (native-name recip2))
@@ -1028,7 +1028,7 @@
   (define `raw
     (sdiv-loop (tally3 y) (tally3 x) (nth-rest 4 x) n))
 
-  (uf-round n mode (strip (subst 0 1 " " " 0" raw))))
+  (uf-round n mode (.strip (subst 0 1 " " " 0" raw))))
 
 
 (declare (uf-div a b n mode))
@@ -1119,5 +1119,5 @@
               (if (filter DIV-REMAINDER mode)
                   ua
                   0)
-              (uf-div (concat "0" _a) (strip _b) num-digits mode))))
+              (uf-div (concat "0" _a) (.strip _b) num-digits mode))))
     (u-norm-uns (smash uresult)))))

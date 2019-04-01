@@ -139,7 +139,7 @@
 
   (declare comment-text)
 
-  (strip-vec
+  (strip
    (foreach line (pre-process text)
             (if (filter ";%" line)
                 (begin

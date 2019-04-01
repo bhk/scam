@@ -54,10 +54,10 @@
 ;; Remove redundant spaces from a vector or list.
 ;;
 ;; Consecutive spaces and tabs will be collapsed to a single space and
-;; leading and trailing spaces will be removed.  (The function `strip` is
-;; similar, but it first will convert newlines to spaces.)
+;; leading and trailing spaces will be removed.  Newline characters are
+;; not disturbed.
 ;;
-(define `(strip-vec vec)
+(define `(strip vec)
   &public
   (filter "%" vec))
 
@@ -276,8 +276,8 @@
 ;;
 (define (append ?a ?b ?c ?d ?e ?f ?g ?h ...others)
   &public
-  (strip-vec (concat a " " b " " c " " d " " e " " f " " g " " h " "
-                     (if others (promote others)))))
+  (strip (concat a " " b " " c " " d " " e " " f " " g " " h " "
+                 (if others (promote others)))))
 
 
 ;; Return the key portion of PAIR.
@@ -439,7 +439,7 @@
                         encodings values ""))
 
         (and pattern
-             (eq? (strip-vec record) (strip-vec reconstructed))
+             (eq? (strip record) (strip reconstructed))
              (concat "(" ctor-name (if encodings " ") arg-text ")")))))
 
 (define *format-funcs* nil)
@@ -604,7 +604,7 @@
 (define (uniq vec)
   &public
   (subst "~p" "%" "~1" "~"
-         (strip-vec (uniq-x (subst "~" "~1" "%" "~p" vec)))))
+         (strip (uniq-x (subst "~" "~1" "%" "~p" vec)))))
 
 
 ;; Split STR at each occurrence of DELIM.  Returns vector whose length is

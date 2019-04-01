@@ -297,7 +297,7 @@
   (define `prefix (if (filter "/%" path) "/"))
   (define `suffix (if (filter "%/" path) "/"))
   (define `elems (filter-out "." (subst "/" " " [path])))
-  (define `o (subst " " "/" (strip-vec (clean-path-x elems))))
+  (define `o (subst " " "/" (strip (clean-path-x elems))))
 
   (promote (patsubst "/./" "/" (concat prefix (or o ".") suffix))))
 

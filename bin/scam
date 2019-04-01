@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MOD := scam
-^uid := 479128a34d195d2a
+^uid := 1adda41bd635deb6
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -116,7 +116,7 @@ endef
 
 define [mod-core]
 # Requires: 
-# Exports: intersperse"foldr}3 foldl}3 index-of"assoc(3;~%-initial[:IL2'subst',|\0,1',|\0,11',:IL3\0^d\0,1@,01,00[@'2'0 assoc-vec(3;~assoc-initial[:IL3'^d',@\01\00[@'2'0 assoc-initial"sort-by"memoize#1+#split"uniq#see"fexpect(3;~expect-x[:IL3'~format',@\01\00[:IL3'~format',@\02\00[:IL9'4634 assert&1;!1.;!1:IL3;~%-x[@'1'0[:IL9'4583 trace-expect(5[:IL8',:IL3\0~expect-x\0,1:IL3,0^n,0,11|,101,0,11@,101,100\0,1:IL3,0^n,0,11|,102,0,11@,101,100\0,1:IL9,04498[:IL3'~untrace',:IL3\0~trace\0,1|,0!p',:IL6\0,1:IL3,0^d,0,11@,101,100\0,1|,0,10\0,1:IL3,0^d,0,11@,102,100 expect(3;~%-x[@'1'0[@'2'0[:IL9'4449 expect-x}3 printf}1'or'more sprintf}1'or'more vsprintf"format#format-add#dict-collate#dict-values#dict-keys#dict-compact}1'or'2 dict-set}3 dict-remove"dict-get}2'or'3 dict-find"dict-value&1;!1.;!1:IL3;^n[|'2[:IL2'subst',|\0,1=',|\0,0',@\01\00 dict-key#append}0'or'more word-index?#numeric?#while}3 reverse#indices&1;!1.;!1:IL3;~%-a[:IL2'words',@\01\00 vec-subtract(3;~vec-filter[|'filter-out[@'2'0[@'1'0 vec-intersect(3;~vec-filter[|'filter[@'2'0[@'1'0 vec-or&1;!1.;!1:IL3;^n[|'1[:IL2'filter-out',|\0,1.',@\01\00 select-words"select-vec"butlast#strip-vec&1;!1.;!1:IL2;filter[|'!p[@'1'0 last&1;!1.;!1:IL3;^u[:IL2'%word',@\01\00 conj"cons"concat-vec}1'or'2 xor"identity&1;!1.;!1@;1;0 eq?}2
+# Exports: intersperse"foldr}3 foldl}3 index-of"assoc(3;~%-initial[:IL2'subst',|\0,1',|\0,11',:IL3\0^d\0,1@,01,00[@'2'0 assoc-vec(3;~assoc-initial[:IL3'^d',@\01\00[@'2'0 assoc-initial"sort-by"memoize#1+#split"uniq#see"fexpect(3;~expect-x[:IL3'~format',@\01\00[:IL3'~format',@\02\00[:IL9'4634 assert&1;!1.;!1:IL3;~%-x[@'1'0[:IL9'4583 trace-expect(5[:IL8',:IL3\0~expect-x\0,1:IL3,0^n,0,11|,101,0,11@,101,100\0,1:IL3,0^n,0,11|,102,0,11@,101,100\0,1:IL9,04498[:IL3'~untrace',:IL3\0~trace\0,1|,0!p',:IL6\0,1:IL3,0^d,0,11@,101,100\0,1|,0,10\0,1:IL3,0^d,0,11@,102,100 expect(3;~%-x[@'1'0[@'2'0[:IL9'4449 expect-x}3 printf}1'or'more sprintf}1'or'more vsprintf"format#format-add#dict-collate#dict-values#dict-keys#dict-compact}1'or'2 dict-set}3 dict-remove"dict-get}2'or'3 dict-find"dict-value&1;!1.;!1:IL3;^n[|'2[:IL2'subst',|\0,1=',|\0,0',@\01\00 dict-key#append}0'or'more word-index?#numeric?#while}3 reverse#indices&1;!1.;!1:IL3;~%-a[:IL2'words',@\01\00 vec-subtract(3;~vec-filter[|'filter-out[@'2'0[@'1'0 vec-intersect(3;~vec-filter[|'filter[@'2'0[@'1'0 vec-or&1;!1.;!1:IL3;^n[|'1[:IL2'filter-out',|\0,1.',@\01\00 select-words"select-vec"butlast#strip&1;!1.;!1:IL2;filter[|'!p[@'1'0 last&1;!1.;!1:IL3;^u[:IL2'%word',@\01\00 conj"cons"concat-vec}1'or'2 xor"identity&1;!1.;!1@;1;0 eq?}2
 ~eq? = $(if $(findstring 1$1,$(findstring 1$2,1$1)),1)
 ~xor = $(if $1,$(if $2,,$1),$2)
 ~concat-vec = $(call ^u,$(subst $  ,$(call ^d,$2),$1))
@@ -365,11 +365,11 @@ $(call ^at,!1:EDefn0!=EVar!0S!0W !1:EDefn1!=EFunc!0S!0W!0S!0L !1:EDefn2!=EIL!0S!
 ~form-description = $(if $(call ~eq?,$1,%),form,$(if $(call ~eq?,$1,L),list,$(if $(call ~eq?,$1,S),symbol,$(if $(call ~eq?,$1,Q),literal string,$(call ~form-typename,$1)))))
 ~err-expected = $(call ~gen-error,$(or $2,$3),$(if $2,invalid,missing) $4 in $5$(if $1,; expected a $(subst |1,|,$(subst |0, ,$(subst $  , or ,$(foreach ty,$1,$(subst $  ,|0,$(subst |,|1,$(call ~form-description,$(call ^u,$(ty)))))))))),$6,$7)
 ~check-argc = $(if $(if $(or $(filter $1,$(words $2)),$(and $(filter more,$1),$(or $(call ~eq?,0,$(word 1,$1)),$(word $(word 1,$1),$2)))),,1),$(call ~gen-error,$3,$(subst %S,$(if $(call ~eq?,$1,1),,s),$(if ,,%q accepts %s argument%S, not %s)),$(call ~symbol-name,$3),$1,$(words $2)))
-~builtins-1 := abspath basename dir error eval firstword flavor info lastword notdir origin realpath shell sort strip suffix value warning wildcard words
+~builtins-1 := abspath basename dir error eval firstword flavor info lastword notdir origin realpath shell sort .strip suffix value warning wildcard words
 ~builtins-2 := addprefix addsuffix filter filter-out findstring join word
 ~builtins-3 := .foreach patsubst .subst wordlist
 ~builtin-names := $(patsubst .%,%,$(~builtins-1) $(~builtins-2) $(~builtins-3) and or call if)
-~base-env := $(call ~append,$(foreach b,$(~builtins-1),$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$b) i 1)),$(foreach b,$(~builtins-2),$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$b) i 2)),$(foreach b,$(~builtins-3),$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$(patsubst .%,%,$b)) i 3)),$(foreach b,and or call,$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$b) i %)),if!=$(call ^d,!:EDefn5 if i 2!0or!03),$(foreach v,MAKEFILE_LIST .DEFAULT_GOAL,$(call ^k,$v)!=$(call ^d,!:EDefn0 $(call ^d,$v) i)))
+~base-env := $(call ~append,$(foreach b,$(~builtins-1),$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$(subst .,,$b)) i 1)),$(foreach b,$(~builtins-2),$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$b) i 2)),$(foreach b,$(~builtins-3),$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$(subst .,,$b)) i 3)),$(foreach b,and or call,$(call ^k,$b)!=$(call ^d,!:EDefn5 $(call ^d,$b) i %)),if!=$(call ^d,!:EDefn5 if i 2!0or!03),$(foreach v,MAKEFILE_LIST .DEFAULT_GOAL,$(call ^k,$v)!=$(call ^d,!:EDefn0 $(call ^d,$v) i)))
 ~resolve = $(if $(filter !:P2,$(word 1,$1)),$(call ^n,2,$(subst !=, ,$(or $(filter $(subst !,!1,$(call ^n,3,$1))!=%,$2),$(filter $(subst !,!1,$(call ^n,3,$1))!=%,$(~base-env))))),-)
 
 endef
@@ -538,8 +538,7 @@ $(call ^R,math2)
 ~uv-trim = $(wordlist $(words $(subst 1,1 ,$(subst 0,,$1$21))),$(words $3),$(subst 1,1 ,$(subst 0,,$2)) $3)
 ~uv-range = $(if $(findstring 1,$(call ~u-cmp,$1,$2)),,$(call ~uv-trim,$(lastword $1),$(subst $(lastword $2),0,0111111111),$(if $(if $(word 2,$1),,1),0 1 2 3 4 5 6 7 8 9 )$(foreach n,$(call ~uv-range,$(or $(filter-out %x,$1x),01),$(filter-out %x,$2x)),$n0 $n1 $n2 $n3 $n4 $n5 $n6 $n7 $n8 $n9 )))
 ~uv-sign-range = $(if $3,$(addprefix -,$(call ~reverse,$(call ~uv-range,$(if $4,$2,1),$1))) )$(if $4,,$(call ~uv-range,$(if $3,0,$1),$2))
-~u-to-uv = $(or $(strip $(subst 0, 0,$(filter 01%,$(subst 01, 01,$(subst -,,$1))))),0)
-~raw-range = $(strip $(if $(subst 0,,$(subst 1,,$(subst 9,,$(subst 9-0,,9$19$2)))),,$(call ~uv-sign-range,$(call ~u-to-uv,$1),$(call ~u-to-uv,$2),$(findstring 1,$(filter -%,$1)),$(findstring 1,$(filter -%,$2)))))
+~raw-range = $(filter %,$(if $(subst 0,,$(subst 1,,$(subst 9,,$(subst 9-0,,9$19$2)))),,$(call ~uv-sign-range,$(or $(strip $(subst 0, 0,$(filter 01%,$(subst 01, 01,$(subst -,,$1))))),0),$(or $(strip $(subst 0, 0,$(filter 01%,$(subst 01, 01,$(subst -,,$2))))),0),$(findstring 1,$(filter -%,$1)),$(findstring 1,$(filter -%,$2)))))
 ~range = $(call ~raw-range,$(call ~d2u,$1),$(call ~d2u,$2))
 ~format-fixed = $(foreach p,$(if $3,$(call ~d2u,$3),?),$(if $(subst 1,,$(subst 0,,$(if $3,$p)$(if $2,$(call ~d2u,$2)))),$(if $(and $3,$(subst 1,,$(subst 0,,$p))),[invalid_DECIMALS],[invalid_MIN-WIDTH]),$(call ~fp-fix,$(call ~fp-round,$(call ~u2fp,$(call ~d2u,$1)),$(if $3,$p,0),2),$2,$3,$p)))
 ~lex-exp = $(if $(subst 0,,$(filter-out -%,$1)),$(patsubst 0111111111%,%,$(subst 9,0111111111,$(subst 90111111111,9909,$(subst 0,9,$(subst 1,,$1))$1))),$(subst 1~,,$(subst 11~~,,$(subst 111~~~,,$(subst 111111~~~~~~,,$(subst 0,0111111111,$(subst 1,~,$(subst 9,0111111111,$(subst 90111111111,9909,$(subst 0,9,$(subst 1,,$(subst -,,$1)))$(subst -,,$1))))))))))
@@ -946,7 +945,7 @@ $(call ^R,math0)
 ~fp-sq = $(call ~fp-mul,$1,$1)
 ~fp-pwr = $(foreach n/2,$(subst 10,022222,$(subst 11,2,$2)),$(if $(findstring 2,$(n/2)),$(if $(findstring 1,$(n/2)),$(call ~fp-mul,$(call ~fp-sq,$(call ~fp-norm,$(call ~fp-pwr,$1,$(subst 2,1,$(subst 1,,$(n/2)))))),$1),$(call ~fp-sq,$(call ~fp-norm,$(call ~fp-pwr,$1,$(subst 2,1,$(n/2)))))),$(if $(findstring 1,$2),$1,01 + 01)))
 ~extend-fn = $(if $(subst 0,,$2),$(if $(word $2,$1$3),$(wordlist 1,$2,$1$3),$(call ~extend-fn,$1$3$3,$2,$3$3)))
-~zero-pad = $(strip $(if $2,$(wordlist $(words $1 0),99999999,$(call ~extend-fn,0,$2, 0 0 0 0))) $1)
+~zero-pad = $(filter %,$(if $2,$(wordlist $(words $1 0),99999999,$(call ~extend-fn,0,$2, 0 0 0 0))) $1)
 ~ltrimz = $(if $(filter 00% 0n% 0-%,$1),$(foreach lz,$(word 1,$(subst 0-,0 ,$(subst 0n,0 ,$(subst 0., ,$(subst 01, ,$(patsubst %0,% 0,$1)))))),$(subst <$(lz),$(subst 0, ,$(lz)),<$1)),$1)
 ~fp-fix = $(call ~u2d,$(call ~ltrimz,$(subst $  ,,$(call ~zero-pad,$(if $1,$(filter -,$1) $(foreach e,$(call ~u2d,$(word 1,$1)),$(if $(subst 0,,$(filter-out -%,$e)),$(call ~extend-fn,$(wordlist 3,99999999,$1),$e, 0 0 0 0),0)$(if $3, . $(call ~extend-fn,$(if $(subst 0,,$(filter-out -%,$e)),$(wordlist $e,99999999,$(wordlist 4,99999999,$1)),$(if $(findstring 1,$(call ~u-cmp,$4,$(patsubst -%,%,$(word 1,$e)))),$(call ~extend-fn,0,$(patsubst -%,%,$e), 0 0 0 0) $(wordlist 3,99999999,$1))),$3, 0 0 0 0))),n a n),$2))))
 

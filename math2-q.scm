@@ -277,7 +277,7 @@
 (expect (smash (rest (uf-mul um/10 um/10)))
         (word 2 cached-m-powers))
 (expect 01
-        (word 1 (uf-mul (strip (spread (lastword cached-m-powers))) um/10)))
+        (word 1 (uf-mul (u2uv (lastword cached-m-powers)) um/10)))
 
 ;; fp2su
 

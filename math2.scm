@@ -104,7 +104,7 @@
 (define `(uf-divu uf u n)
   ;; (uf-div A B) requires A < B.
   (define `q
-    (uf-div (>>1 uf) (strip (spread u)) n DIV-NEAREST))
+    (uf-div (>>1 uf) (u2uv u) n DIV-NEAREST))
   (nth-rest 3 (concat (subst 1 nil 0 "0 " u) q)))
 
 
@@ -152,8 +152,8 @@
 
 (define (uf-atanh-2 xlz xnz x² count)
   (if xnz
-      (strip (+_+ xlz (uf-atanh-3 xnz (uf-get-lz x²) (uf-trim-lz x²)
-                                  (wsub count xlz))))
+      (.strip (+_+ xlz (uf-atanh-3 xnz (uf-get-lz x²) (uf-trim-lz x²)
+                                   (wsub count xlz))))
       0))
 
 
@@ -316,14 +316,14 @@
       dp (psrch x cached-m-powers-r nil)
 
       (define `Mᵖ
-        (strip (spread (word dp cached-m-powers))))
+        (u2uv (word dp cached-m-powers)))
 
       (define `a
         (if (filter 0 dp)
             (>>1 x)
             (uf-mulp Mᵖ x (words (concat "0 0 " digit-zeros)))))
 
-      (uf-log-fr2 a (strip (spread (d2u dp))) digit-zeros)))
+      (uf-log-fr2 a (u2uv (d2u dp)) digit-zeros)))
 
 
 (define (log-10 count)
@@ -654,9 +654,9 @@
            (if (word 9 (spread pos))
                nil
                (nth-rest (u2d pos) (nth-rest 4 fx)))
-           (strip (+_+ (if (findstring 1 pos)
-                           (u-zeros (abs pos)))
-                       (fp.uf fx)))))
+           (.strip (+_+ (if (findstring 1 pos)
+                            (u-zeros (abs pos)))
+                        (fp.uf fx)))))
    0))
 
 
@@ -798,8 +798,8 @@
         (x² (uf-mul x x))
         (count count))
     (if xnz
-        (strip (+_+ xlz (uf-atan-loop xnz (uf-get-lz x²) (uf-trim-lz x²)
-                                      "-" U1 (wsub count xlz))))
+        (.strip (+_+ xlz (uf-atan-loop xnz (uf-get-lz x²) (uf-trim-lz x²)
+                                       "-" U1 (wsub count xlz))))
         0)))
 
 

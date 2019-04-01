@@ -122,11 +122,6 @@
 (declare (sort list) &public)
 
 
-;; Convert newlines to spaces and then remove redundant spaces in LIST.
-;;
-(declare (strip list) &public)
-
-
 ;; Return the file extensions of all file names in PATHS.
 ;;
 (declare (suffix paths) &public)

@@ -209,7 +209,7 @@
   (concat (subst "\n" "!n" " " "\n" "!0" " " data) "\n"))
 
 (define `(memo-db-decode data)
-  (strip-vec (subst " " "!0" "\n" " " "!n" "\n" data)))
+  (strip (subst " " "!0" "\n" " " "!n" "\n" data)))
 
 
 (define `(memo-read-db dbfile)

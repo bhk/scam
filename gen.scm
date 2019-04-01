@@ -357,11 +357,11 @@
 (define base-env
   (append
    (foreach b builtins-1
-            { =b: (EBuiltin b "i" 1) })
+            { =b: (EBuiltin (subst "." nil b) "i" 1) })
    (foreach b builtins-2
             { =b: (EBuiltin b "i" 2) })
    (foreach b builtins-3
-            { =b: (EBuiltin (patsubst ".%" "%" b) "i" 3)})
+            { =b: (EBuiltin (subst "." nil b) "i" 3)})
    (foreach b "and or call"
             { =b: (EBuiltin b "i" "%") })
    {if: (EBuiltin "if" "i" "2 or 3")}

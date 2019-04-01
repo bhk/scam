@@ -38,7 +38,6 @@
 ;; immediately encountered (where it might be valid) from the same token
 ;; found in a nested context where it was not valid.
 
-(define `(.strip v) (filter "%" (subst "\n" " " v)))
 
 (define (symbol-name form)
   &public

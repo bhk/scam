@@ -36,6 +36,8 @@
 (expect "c" (last "a b c"))
 (expect "a b" (butlast "a b c"))
 
+(expect "a\n b" (strip " a\n b "))
+
 (expect [[1 2]] (select-vec (lambda (x) (word 2 x)) [[1 2] 3 2]))
 
 (expect "2 23" (select-words (lambda (n) (findstring 2 n)) "1 2 3 23"))

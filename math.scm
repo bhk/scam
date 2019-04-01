@@ -109,7 +109,7 @@
 
 
 (define `(u-mul-uns a b)
-  (u-norm-uns (smash (uf-mul (strip (spread a)) (strip (spread b))))))
+  (u-norm-uns (smash (uf-mul (u2uv a) (u2uv b)))))
 
 
 (define (raw-mul-s a b)
@@ -488,18 +488,16 @@
   nil)
 
 
-;; Remove sign and extraneous leading zeros.
-;;
-(define (u-to-uv u)
-  (or (strip (subst "0" " 0" (filter "01%" (subst "-" nil "01" " 01" u))))
-      0))
-
-
 (define (raw-range a b)
+  ;; Remove sign and extraneous leading zeros.
+  (define `(u-prep u)
+    (or (.strip (subst "0" " 0" (filter "01%" (subst "-" nil "01" " 01" u))))
+        0))
+
   (strip
    (if (non-integers? a b)
        (fp-range (u2fp a) (u2fp b))
-       (uv-sign-range (u-to-uv a) (u-to-uv b) (u<0? a) (u<0? b)))))
+       (uv-sign-range (u-prep a) (u-prep b) (u<0? a) (u<0? b)))))
 
 
 ;; Return a vector of numbers ranging from X to Y.  X and Y must be integers

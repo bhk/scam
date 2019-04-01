@@ -22,7 +22,7 @@
 ;; Decimal digits to UV:  (UV "123") --> "01 011 0111"
 ;;
 (define (UV d)
-  (strip (spread (U d))))
+  (u2uv (U d)))
 
 ;; Digit sizes to UV:  (UD 1 2) --> "01 011"
 ;;

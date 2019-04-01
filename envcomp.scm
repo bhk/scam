@@ -155,7 +155,7 @@
     (printf "content: %s bytes" (string-len
                                  (concat-vec (patsubst ["# Exports: %"] "%"
                                                        (split "\n" exports)) "\n")))
-    (strip-vec
+    (strip
      (foreach line (split "\n" exports)
               (env-parse line nil)))))
 

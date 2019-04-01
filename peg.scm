@@ -37,7 +37,7 @@
   (if v
       (spread-tokens (rest v)
                      (subst (word 1 v) (concat " " (word 1 v) " ") subj))
-      (strip-vec subj)))
+      (strip subj)))
 
 
 ;; Convert text to a vector of symbols.  TOKENS is a vector including

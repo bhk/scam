@@ -8,8 +8,6 @@
 (set *required* "runtime")
 (require "runtime.scm" &private)
 
-(define `(.strip v) (filter "%" (subst "\n" " " v)))
-
 
 ;; Many of the runtime functions are tested by calling the "manifest
 ;; functions" that expose their functionality.  For example, "set-native" makes
@@ -197,7 +195,7 @@
 
 (let-global ((*log* nil))
   (expect "123456789ab" (fx 1 2 3 4 5 6 7 8 9 "a" "b"))
-  (expect 11 (words (.strip *log*))))
+  (expect 11 (words (subst "\n" " " *log*))))
 
 
 ;;-------- trace-body c
@@ -218,12 +216,12 @@
 
 (let-global ((*log* nil))
   (expect "123456789ab" (fx 1 2 3 4 5 6 7 8 9 "a" "b"))
-  (expect 121 (words (.strip *log*))))
+  (expect 121 (words (subst "\n" " " *log*))))
 
 (let-global ((*log* nil))
   (set fx (trace-body "x1" "FX" "ID" initial-fx))
   (expect "123456789ab" (fx 1 2 3 4 5 6 7 8 9 "a" "b"))
-  (expect 11 (words (.strip *log*))))
+  (expect 11 (words (subst "\n" " " *log*))))
 
 
 ;;-------- trace-body p
