@@ -104,9 +104,11 @@
 
 ;; hash-output
 
-(expect "9aa85db27d6a074c"
+(expect "ok"
         ;; expect one (md5) or the other (sha1)
-        (subst "d3b07384d113edec" "9aa85db27d6a074c"
+        (subst "d3b07384d113edec" "ok"   ;; md5
+               "f1d2d2f924e986ac" "ok"   ;; shasum, sha1sum
+               "9aa85db27d6a074c" "ok"   ;; Windows subsystem for Linux(?)
                (hash-output "echo foo")))
 
 ;; blob functions
