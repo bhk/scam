@@ -49,8 +49,8 @@ If you run SCAM with a module (file) name as an argument, SCAM will invoke
 the module a **program**.  This will load the module and then run a function
 called "main" if the module has defined such a function.  Alternatively, you
 can compile a program and then invoke the resulting executable file
-directly.  See [command line syntax](#command-line-syntax) for more details on
-the SCAM command.
+directly.  See [command line syntax](#command-line-syntax) for more details
+on the SCAM command.
 
 
 ## Syntax
@@ -747,13 +747,9 @@ Tracing can be activated at run-time in two different ways:
 
  1. In a SCAM program or in interactive mode, use the following:
 
-     - `(trace SPEC)` instruments functions immediately.
+     - `(tracing SPEC EXPR)` evaluates EXPR with tracing enabled.
+     - `(trace SPEC)` turns on tracing for subsequent expressions.
      - `(untrace NAMES)` removes instrumentation from functions.
-     - `(tracing SPEC EXPR)` instruments functions only during
-       evaluation of EXPR.
-
-    SPEC is a string that specifies the kind of tracing to be done, as
-    described below.
 
  2. Set the `SCAM_TRACE` environment variable before running a SCAM program
     in order to trace execution that happens during the program's `main`
@@ -769,55 +765,8 @@ Tracing can be activated at run-time in two different ways:
     loading prior to `main` -- e.g. top-level expressions in a `-q.scm` test
     -- modify the program to call `(trace SPEC)` or `(tracing ...)`.
 
-The text string used to specify tracing is, in its simplest form, a list of
-function names.  Further, these may be suffixed with a `:` and then an
-"mode" to select alternative instrumentation.  Possible modes include:
-
- - `t` : Print the function name and arguments when it is called
-         and its return value on exit.  This is the default mode.
-
- - `f` : Print just the function name on entry and exit.
-
- - `c` : Count the number of times that the function is invoked.  Function
-         counts will be written to stdout when tracing is removed.  This can
-         occur when `(tracing ...)` completes, or when `(untrace ...)` is
-         called, or after `main` returns otherwise.
-
- - `x<N>` : Evaluate the function body N times each time the function is
-         invoked.  <N> must be a positive number or the empty string (which
-         is treated as 11).
-
- - `-` : Exclude the function(s) from instrumentation.  Any functions
-         matched by this entry will be skipped even when they match other
-         entries in the specification string.  This does not depend on the
-         ordering of entries.  For example, `(trace "a% %z:-")` will
-         instrument all functions whose names begin with `a` except for
-         those whose names end in `z`.
-
-In place of a function name a pattern may be provided to match multiple
-functions.  In a pattern, the `%` character is a wildcard that will match
-any sequence of characters.  Some caution must be exercised in general with
-tracing, especially when using wildcards: Do not instrument any function
-while it is currently running.  SCAM prevents this from happening when you
-use `SCAM_TRACE`, or when you call `trace` or `tracing` at the top level of
-a source file, the REPL, or your `main` function.  However, if while nested
-in one or more other user-defined functions, you trace any of those
-functions, then undefined behavior will result.
-
-The intent of `x` instrumentation is to cause the function to consume more
-time by a factor of N (for profiling purposes).  If your code is purely
-functional, or at least limits its side effects to idempotent operations,
-repetition of expressions should not alter the behavior of the program.
-This can be used to identify and quantify hotspots in a program.  For
-example:
-
-  1. Run `time SCAM_TRACE='func:x1' ./myprogram`.
-
-  2. Run `time SCAM_TRACE='func:x11' ./myprogram`.
-
-  3. Calculate (duration2 - duration1) / 10.  This gives the amount of time
-     `func` ordinarily contributes to the program's execution.
-
+Refer to the [library documentation](libraries.md@tracing-spec-expr) for
+details on these tracing functions and on the `SPEC` string format.
 
 #### Tracing examples
 
@@ -854,6 +803,16 @@ In the REPL:
     > (tracing "%:c" (fib 16))
     TRACE:     1973 fib
     610
+
+To quantify hotspots in a program the `x` mode of tracing can be used with
+`SCAM_TRACE`.  An example scenario would play out like this:
+
+  1. Run `time SCAM_TRACE='func:x1' ./myprogram`.
+
+  2. Run `time SCAM_TRACE='func:x11' ./myprogram`.
+
+  3. Calculate (duration2 - duration1) / 10 to obtain the amount of time
+     `func` ordinarily contributes to the program's execution.
 
 
 ### Profiling

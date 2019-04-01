@@ -51,9 +51,11 @@
   &public
   (promote (lastword vec)))
 
-;; Collapse spaces and tabs, leaving "\n" alone.  This can be used to remove
-;; redundant spaces from a vector or dictionary without modifying its
-;; contents.  (The builtin `strip` will convert newlines to spaces.)
+;; Remove redundant spaces from a vector or list.
+;;
+;; Consecutive spaces and tabs will be collapsed to a single space and
+;; leading and trailing spaces will be removed.  (The function `strip` is
+;; similar, but it first will convert newlines to spaces.)
 ;;
 (define `(strip-vec vec)
   &public
@@ -570,9 +572,9 @@
 ;; Like `expect, but only the formatted versions of A and B are compared.
 ;; This accommodates only minor differences in the concrete layout that do
 ;; not affect the meaning in some contexts.  For example, a record ending in
-;; a &list member (that is empty) will have a trailing space when
+;; a `&list` member (that is empty) will have a trailing space when
 ;; constructed, but not after being retrieved from another record (when
-;; stored as a trailing &list parameter).
+;; stored as a trailing `&list` parameter).
 ;;
 (define `(fexpect a b)
   &public
@@ -596,7 +598,7 @@
 ;; occurrence of each member is retains.  This can be applied to word lists
 ;; or dictionaries as well.
 ;;
-;; The builtin `sort` returns unique items and is much faster, but it does
+;; The `sort` function returns unique items and is much faster, but it does
 ;; not preserve ordering.
 ;;
 (define (uniq vec)

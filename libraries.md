@@ -4,7 +4,7 @@
 | :-- | :-- |
 | [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip-vec`](#strip-vec-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
-| [intrinsics](#intrinsics) | [`?`](#-funcname-arg) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-list) [`and`](#and-expr) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-list) [`begin`](#begin-expr) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`declare`](#declare-) [`define`](#define-) [`demote`](#demote-value) [`dir`](#dir-list) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`findstring`](#findstring-sub-str) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`or`](#or-expr) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-value) [`promote`](#promote-value) [`require`](#require-module-private) [`set`](#set-name-value-retval) [`sort`](#sort-list) [`strip`](#strip-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`vector`](#vector-a-b-c-) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
+| [intrinsics](#intrinsics) | [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`and`](#and-expr) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-paths) [`begin`](#begin-expr) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`declare`](#declare-) [`declare`](#declare-) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-expr) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-value) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`strip`](#strip-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-a-b-c-) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
 | [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`echo-command`](#echo-command-str) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`ioshell`](#ioshell-cmd) [`mkdir-p`](#mkdir-p-dir) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-obj-dir-data) [`shell!`](#shell-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
@@ -153,9 +153,9 @@ FILE-LINE = "file:line:" prefix for the diagnostic message.
 Like `expect, but only the formatted versions of A and B are compared.
 This accommodates only minor differences in the concrete layout that do
 not affect the meaning in some contexts.  For example, a record ending in
-a &list member (that is empty) will have a trailing space when
+a `&list` member (that is empty) will have a trailing space when
 constructed, but not after being retrieved from another record (when
-stored as a trailing &list parameter).
+stored as a trailing `&list` parameter).
 
 
 ##### `(foldl f z v)`
@@ -262,9 +262,11 @@ Like `vsprintf`, but values are provided as separate arguments.
 
 ##### `(strip-vec vec)`
 
-Collapse spaces and tabs, leaving "\n" alone.  This can be used to remove
-redundant spaces from a vector or dictionary without modifying its
-contents.  (The builtin `strip` will convert newlines to spaces.)
+Remove redundant spaces from a vector or list.
+
+Consecutive spaces and tabs will be collapsed to a single space and
+leading and trailing spaces will be removed.  (The function `strip` is
+similar, but it first will convert newlines to spaces.)
 
 
 ##### `(trace-expect a b)`
@@ -278,7 +280,7 @@ Return the unique members of VEC *without* re-ordering.  The first
 occurrence of each member is retains.  This can be applied to word lists
 or dictionaries as well.
 
-The builtin `sort` returns unique items and is much faster, but it does
+The `sort` function returns unique items and is much faster, but it does
 not preserve ordering.
 
 
@@ -388,10 +390,10 @@ they do not have values and cannot be passed to other functions.
 
 ## Exports
 
-##### `(? funcname arg...)`
+##### `(abspath paths)`
 
-This performs call-site tracing of `FUNCNAME`, described below in the
-[Debugging](#debugging) section.
+For each file name in PATHS, convert relative paths to absolute paths.
+The file names do not need to refer to an existing file or directory.
 
 
 ##### `(addprefix prefix list)`
@@ -399,9 +401,9 @@ This performs call-site tracing of `FUNCNAME`, described below in the
 Add PREFIX to the start of each word in LIST.
 
 
-##### `(addsuffix suffix list)`
+##### `(addsuffix suffix paths)`
 
-Add SUFFIX to the end of each word in LIST.
+Add SUFFIX to the end of each word in PATHS.
 
 
 ##### `(and expr...)`
@@ -441,9 +443,9 @@ Add FUNC to a list of functions that will be run when the program exits.
 Functions will be run in the reverse of the order that they were registered.
 
 
-##### `(basename list)`
+##### `(basename paths)`
 
-Remove the file extension ("suffix") from each word in LIST
+Remove the file extension from each word in PATHS.
 
 
 ##### `(begin expr...)`
@@ -493,16 +495,16 @@ a value.  This is usually used to access non-SCAM functions, or when
 mutually recursive functions are defined.
 
 
-##### `(define ...)`
+##### `(declare ...)`
 
 Declare and define a function, variable, or macro.
 
 This special form takes several forms:
 
-    (define NAME FLAG... VALUE)            ; global data variable
-    (define (NAME ARG...) FLAG... BODY)    ; global function variable
-    (define `NAME EXPR)                    ; symbol macro
-    (define `(NAME ARG...) FLAG... BODY)   ; compound macro
+    (declare NAME FLAG... VALUE)            ; global data variable
+    (declare (NAME ARG...) FLAG... BODY)    ; global function variable
+    (declare `NAME EXPR)                    ; symbol macro
+    (declare `(NAME ARG...) FLAG... BODY)   ; compound macro
 
 The `define` special form adds a name to the environment and associates
 it with a definition.  The defined name will be visible to subsequent
@@ -519,13 +521,20 @@ symbol should be visible outside of the file in which it is declared.
 list.  It is used internally to construct vectors.
 
 
-##### `(dir list)`
+##### `(dir paths)`
 
-Get the directory of each file in LIST.
+Get the directory of each file in PATHS.
 
     (dir "a/b c")  -->  "a/ ./"
 
 See also `notdir`.
+
+
+##### `(do-not-trace names)`
+
+Add NAMES to the list of functions that should not be instrumented when
+`trace` or `tracing` are called.  In order to avoid undefined behavior,
+we must avoid instrumenting functions *while* they are executing.
 
 
 ##### `(error message)`
@@ -546,9 +555,19 @@ equal, treating the first `%` character in a pattern as a wildcard.
 Get all words in LIST that do *not* match PATTERNS.
 
 
+##### `(filtersub pat repl str)`
+
+Replace PAT with REPL if STR matches PAT; return nil otherwise.
+
+
 ##### `(findstring sub str)`
 
-If SUB occurs within STR, return SUB.  Otherwise return the empty string.
+If SUB occurs within STR, return SUB.  Otherwise return `nil`.
+
+
+##### `(first vec)`
+
+Get the first element of VEC.
 
 
 ##### `(firstword list)`
@@ -596,6 +615,11 @@ Concatenate the respective words in LIST-A and LIST-B.
 Get the last word in LIST.
 
 
+##### `(not a)`
+
+Logically invert A.  If A is `nil`, return 1.  Otherwise, return `nil`.
+
+
 ##### `(notdir paths)`
 
 Return the filename portion of each path in PATHS.
@@ -608,6 +632,11 @@ See also `dir`.
 ##### `(nth index vec)`
 
 Returns the value stored at index INDEX (1-based) in vector VEC.
+
+
+##### `(nth-rest n list)`
+
+Get the tail of LIST, starting at the Nth element (1-based).
 
 
 ##### `(or expr...)`
@@ -624,7 +653,7 @@ and a corresponding `%` in REPL will be replace with what the wildcard in
 PAT matched.  See the GNU make documentation for subtleties.
 
 
-##### `(print VALUE...)`
+##### `(print value...)`
 
 Concatenate all values and write them to stdout.
 
@@ -634,12 +663,19 @@ Concatenate all values and write them to stdout.
 `promote` reverses the encoding done by `demote`.
 
 
+##### `(realpath paths)`
+
+For each file name in PATHS, resolve the name to a form without `.` or
+`..` path elements or symbolic links.  See the UNIX `realpath` C function
+for details.
+
+
 ##### `(require module &private?)`
 
 The `require` special form provides access to functionality defined in other
 modules.  `MODULE` is a literal string that names either a SCAM source file
 or a standard SCAM module.  Symbols are exported by the module (those
-declared "&public") will be are visible to all expressions that follow in
+declared `&public`) will be are visible to all expressions that follow in
 the current block.  At run-time, the required module will be loaded and
 executed, unless it has already been required by the program.
 
@@ -683,6 +719,16 @@ follows:
     possibilities.
 
 
+##### `(rest vec)`
+
+Remove the first element from vector (or list) VEC.
+
+
+##### `(rrest vec)`
+
+Remove the first two elements from vector (or list) VEC.
+
+
 ##### `(set name value retval)`
 
 The `set` special form assigns a value to a previously declared global
@@ -693,6 +739,15 @@ NAME is given as a symbol, not a string. For example:
     (set var 12 nil)
 
 The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
+
+
+##### `(shell command)`
+
+Execute COMMAND using the default shell as specified by the SHELL
+variable (which is inherited from the SHELL environment variable).  The
+data written to `stdout` by the COMMAND is captured, trailing newlines
+are removed, and remaining newlines are converted to spaces, and the
+result is returned by `shell`.
 
 
 ##### `(sort list)`
@@ -719,14 +774,84 @@ given VALUE.  For example:
 Return the file extensions of all file names in PATHS.
 
 
+##### `(trace specs)`
+
+Instrument functions for tracing as described by SPEC.
+
+SPEC is as documented for `tracing`.
+
+The return value is a list of the names of the instrumented functions,
+which can be passed to `untrace` later.
+
+
+##### `(tracing spec expr)`
+
+Evaluate EXPR with tracing activated according to SPEC.
+
+SPEC is a string used to specify which functions are traced and how they
+are traced.  In its simplest form, it is a list of function names.
+Beyond that, a `:` followed by a "mode" may be appended to each name.
+Possible modes are:
+
+ - `t` : Print the function name and arguments when it is called and its
+         return value when it returns.  This is the default mode.
+
+ - `f` : Print just the function name on entry and exit.
+
+ - `c` : Count the number of times that the function is invoked.
+         Function counts will be written to stdout when tracing is
+         removed.  This can occur when `(tracing ...)` completes, or when
+         `(untrace ...)` is called, or after `main` returns.
+
+ - `x<N>` : Evaluate the function body N times each time the function is
+         invoked.  <N> must be a positive number or the empty string
+         (which is treated as 11).
+
+ - `-` : Exclude the function(s) from instrumentation.  Any functions
+         matched by this entry will be skipped even when they match other
+         entries in the specification string.  This does not depend on
+         the ordering of entries.  For example, `(trace "a% %z:-")` will
+         instrument all functions whose names begin with `a` except for
+         those whose names end in `z`.
+
+In place of a function name a pattern may be provided to match multiple
+functions.  In a pattern, the `%` character is a wildcard that will match
+any sequence of characters.  Some caution must be exercised in general
+with tracing, especially when using wildcards: Do not instrument any
+function while it is currently running.  SCAM prevents this from
+happening when you use `SCAM_TRACE`, or when you call `trace` or
+`tracing` at the top level of a source file, the REPL, or your `main`
+function.  However, if while nested in one or more other user-defined
+functions, you trace any of those functions, then undefined behavior will
+result.
+
+The intent of `x` instrumentation is to cause the function to consume
+more time by a factor of N (for profiling purposes).  If your code is
+purely functional, or at least limits its side effects to idempotent
+operations, repetition of expressions should not alter the behavior of
+the program.  This can be used to identify and quantify hotspots in a
+program.
+
+
+##### `(untrace names ?retval)`
+
+Remove instrumentation from functions listed in NAMES, or functions
+matched by patterns in NAMES.
+
+
 ##### `(vector a b c ...)`
 
 This constructs a vector.  It is equivalent to `[A B C ...]`.
 
 
+##### `(wildcard patterns)`
+
+Get files that match PATTERNS.  Patterns is a list of glob expressions.
+
+
 ##### `(word n list)`
 
-Return the Nth word in LIST.  If N is greater than the lenght of the
+Return the Nth word in LIST.  If N is greater than the length of the
 list, return `nil`.  If N is less than 1, terminate the program with an
 error message.
 
@@ -917,7 +1042,7 @@ sign, decimal point, and E-notation suffix.  More precisely:
 
     Number  := "-"? Integer ("." Integer)? Exp?
     Integer := ( "0" | "1" | ... | "9" )+
-    Exp     := ("E" | "e") ("+" | "-" | "") Digit+
+    Exp     := ("E" | "e") ("+" | "-" | "") Integer
 
 Strings not conforming to the above syntax are treated as non-number
 values.  Functions in this library typically return `"NaN"` when a
@@ -952,7 +1077,7 @@ Examples:
 
     (/ 200 3 5)    ->  66.666        5 significant digits
     (/ 200 2 -1)   ->  66.7          10⁻¹ is least significant place
-    (/ 200 2 "+0") ->  67            10⁰ is least signifcant place
+    (/ 200 2 "+0") ->  67            10⁰ is least significant place
     (/ 200 2 "+1") ->  70
     (/ 200 2 "+2") -> 100            rounding to nearest 10²
     (/ 200 2 "+3") ->   0            rounding to nearest 10³
@@ -1333,8 +1458,8 @@ See `peg-*`.
 
 Construct PEG optional match.
 
-Return a parsing function that will always suceed, returning PF's results
-if PF succeds, or returning the starting position and no captures
+Return a parsing function that will always succeed, returning PF's results
+if PF succeeds, or returning the starting position and no captures
 otherwise.
 
 
@@ -1362,7 +1487,7 @@ will not consume any symbols or produce any captures.
 
 Construct symbol capture.
 
-Return a parsing function that suceeds when PF succeeds, and on success,
+Return a parsing function that succeeds when PF succeeds, and on success,
 adds to the set of captures a dictionary pair whose key is NAME and whose
 value is a vector of all matched symbols.
 

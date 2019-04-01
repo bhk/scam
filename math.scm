@@ -12,7 +12,7 @@
 ;;
 ;;     Number  := "-"? Integer ("." Integer)? Exp?
 ;;     Integer := ( "0" | "1" | ... | "9" )+
-;;     Exp     := ("E" | "e") ("+" | "-" | "") Digit+
+;;     Exp     := ("E" | "e") ("+" | "-" | "") Integer
 ;;
 ;; Strings not conforming to the above syntax are treated as non-number
 ;; values.  Functions in this library typically return `"NaN"` when a
@@ -47,7 +47,7 @@
 ;;
 ;;     (/ 200 3 5)    ->  66.666        5 significant digits
 ;;     (/ 200 2 -1)   ->  66.7          10⁻¹ is least significant place
-;;     (/ 200 2 "+0") ->  67            10⁰ is least signifcant place
+;;     (/ 200 2 "+0") ->  67            10⁰ is least significant place
 ;;     (/ 200 2 "+1") ->  70
 ;;     (/ 200 2 "+2") -> 100            rounding to nearest 10²
 ;;     (/ 200 2 "+3") ->   0            rounding to nearest 10³

@@ -205,8 +205,8 @@
 
 ;; Construct PEG optional match.
 ;;
-;; Return a parsing function that will always suceed, returning PF's results
-;; if PF succeds, or returning the starting position and no captures
+;; Return a parsing function that will always succeed, returning PF's results
+;; if PF succeeds, or returning the starting position and no captures
 ;; otherwise.
 ;;
 (define (peg-? pf)
@@ -243,7 +243,7 @@
 
 ;; Construct symbol capture.
 ;;
-;; Return a parsing function that suceeds when PF succeeds, and on success,
+;; Return a parsing function that succeeds when PF succeeds, and on success,
 ;; adds to the set of captures a dictionary pair whose key is NAME and whose
 ;; value is a vector of all matched symbols.
 ;;

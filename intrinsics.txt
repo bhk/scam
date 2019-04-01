@@ -18,12 +18,157 @@
 
 
 
+;;
+;; Make built-in functions
+;;
+
+
+;; For each file name in PATHS, convert relative paths to absolute paths.
+;; The file names do not need to refer to an existing file or directory.
+;;
+(declare (abspath paths) &public)
+
+
+;; Add PREFIX to the start of each word in LIST.
+;;
+(declare (addprefix prefix list) &public)
+
+
+;; Add SUFFIX to the end of each word in PATHS.
+;;
+(declare (addsuffix suffix paths) &public)
+
+
+;; Remove the file extension from each word in PATHS.
+;;
+(declare (basename paths) &public)
+
+
+;; Get the directory of each file in PATHS.
+;;
+;;     (dir "a/b c")  -->  "a/ ./"
+;;
+;; See also `notdir`.
+;;
+(declare (dir paths) &public)
+
+
+;; Get all words in LIST that match PATTERNS.  Each word in PATTERNS is
+;; compared against the words in LIST, and is considered a match when it is
+;; equal, treating the first `%` character in a pattern as a wildcard.
+;;
+(declare (filter patterns list) &public)
+
+
+;; Get all words in LIST that do *not* match PATTERNS.
+;;
+(declare (filter-out patterns list) &public)
+
+
+;; If SUB occurs within STR, return SUB.  Otherwise return `nil`.
+;;
+(declare (findstring sub str) &public)
+
+
+;; Get the first word in LIST.
+;;
+(declare (firstword list) &public)
+
+
+;; Concatenate the respective words in LIST-A and LIST-B.
+;;
+(declare (join list-a list-b) &public)
+
+
+;; Get the last word in LIST.
+;;
+(declare (lastword list) &public)
+
+
+;; Return the filename portion of each path in PATHS.
+;;
+;;     (notdir "a/b c")  -->  "b c"
+;;
+;; See also `dir`.
+;;
+(declare (notdir paths) &public)
+
+
+;; Replace PAT with REPL in LIST.  Patterns use the first `%` as a wildcard,
+;; and a corresponding `%` in REPL will be replace with what the wildcard in
+;; PAT matched.  See the GNU make documentation for subtleties.
+;;
+(declare (patsubst pat repl list) &public)
+
+
+;; For each file name in PATHS, resolve the name to a form without `.` or
+;; `..` path elements or symbolic links.  See the UNIX `realpath` C function
+;; for details.
+;;
+(declare (realpath paths) &public)
+
+
+;; Execute COMMAND using the default shell as specified by the SHELL
+;; variable (which is inherited from the SHELL environment variable).  The
+;; data written to `stdout` by the COMMAND is captured, trailing newlines
+;; are removed, and remaining newlines are converted to spaces, and the
+;; result is returned by `shell`.
+;;
+(declare (shell command) &public)
+
+
+;; Sort the words in LIST in increasing lexicographical order.
+;;
+(declare (sort list) &public)
+
+
+;; Convert newlines to spaces and then remove redundant spaces in LIST.
+;;
+(declare (strip list) &public)
+
+
+;; Return the file extensions of all file names in PATHS.
+;;
+(declare (suffix paths) &public)
+
+
+;; Get files that match PATTERNS.  Patterns is a list of glob expressions.
+;;
+(declare (wildcard patterns) &public)
+
+
+;; Return the Nth word in LIST.  If N is greater than the length of the
+;; list, return `nil`.  If N is less than 1, terminate the program with an
+;; error message.
+;;
+(declare (word n list) &public)
+
+
+;; Extract the words in LIST from index A to index B, inclusive.  Extraneous
+;; spaces between words are retained.  If B is less than A, `nil` is returned.
+;;
+;; If A is less than 1 or B is less than zero, the program will be
+;; terminated with an error message.
+;;
+(declare (wordlist a b list) &public)
+
+
+;; Return the number of words in LIST.
+;;
+(declare (words list) &public)
+
+
+;;
+;; Special forms
+;;
+
+
 ;; This special form conditionally executes either THEN-EXPR or ELSE-EXPR.
 ;; First, COND is evaluated.  If non-nil, THEN-EXPR will be evaluated and used
 ;; are the value for the `if` expression.  Otherwise, if ELSE-EXPR is present
 ;; it is evaluated and used, and if not `nil` is used.
 ;;
-(define (if cond then-expr [else-expr]) &public)
+(declare (if cond then-expr [else-expr]) &public)
 
 
 ;; This special form expresses conditional execution of an arbitrary number
@@ -36,21 +181,21 @@
 ;;           ((filter "baz" a)  (print "BAZ") "Found BAZ")
 ;;           (else              "Found NOTHING"))
 ;;
-(define (cond (condition body)... [(else ...exprs)] ) &public)
+(declare (cond (condition body)... [(else ...exprs)] ) &public)
 
 
 ;; Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
 ;; encountered.  The value of the `and` expression is that of the last
 ;; sub-expression evaluated, or `nil` if no expressions were evaluated.
 ;;
-(define (and expr...) &public)
+(declare (and expr...) &public)
 
 
 ;; Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
 ;; is encountered.  The value of the `and` expression is that of the last
 ;; sub-expression evaluated, or `nil` if no expressions were evaluated.
 ;;
-(define (or expr...) &public)
+(declare (or expr...) &public)
 
 
 ;; The `foreach` special form iterates over a list, evaluates BODY (a sequence
@@ -62,7 +207,7 @@
 ;;     > (foreach x "1 2 3" (1+ x))
 ;;     "2 3 4"
 ;;
-(define (foreach var list body) &public)
+(declare (foreach var list body) &public)
 
 
 ;; `for` iterates over items in a vector, evaluating BODY for with VAR bound to
@@ -72,7 +217,7 @@
 ;;     +     (reverse x))
 ;;     [[2 1] [4 3]]
 ;;
-(define (for var vector body) &public)
+(declare (for var vector body) &public)
 
 
 ;; `append-for` is similar to `for` but it appends together all of the (vector)
@@ -86,7 +231,7 @@
 ;;     +    (if (> x 3) [x]))
 ;;     "7 5"
 ;;
-(define (append-for var vector body) &public)
+(declare (append-for var vector body) &public)
 
 
 ;; `concat-for` is similar to `for` but it concatenates the values of BODY.
@@ -94,26 +239,26 @@
 ;;     > (concat-for x [1 2 3] ";" (wordlist 1 x "a b c"))
 ;;     "a;a b;a b c"
 ;;
-(define (concat-for var vector delim body) &public)
+(declare (concat-for var vector delim body) &public)
 
 
 ;; Terminate execution of the program with a non-zero status code, writing
 ;; `MESSAGE` to stderr.
 ;;
-(define (error message) &public)
+(declare (error message) &public)
 
 
 ;; Encloses a *block* of expressions.  A block is a sequence of expressions
 ;; that are evaluated in order.  The result of that last expression is
 ;; returned (or nil if no expressions are given).
 ;;
-(define (begin expr...) &public)
+(declare (begin expr...) &public)
 
 
 ;; The `require` special form provides access to functionality defined in other
 ;; modules.  `MODULE` is a literal string that names either a SCAM source file
 ;; or a standard SCAM module.  Symbols are exported by the module (those
-;; declared "&public") will be are visible to all expressions that follow in
+;; declared `&public`) will be are visible to all expressions that follow in
 ;; the current block.  At run-time, the required module will be loaded and
 ;; executed, unless it has already been required by the program.
 ;;
@@ -156,17 +301,17 @@
 ;;   - If the option `--obj-dir=DIR` is given, it will override the above two
 ;;     possibilities.
 ;;
-(define (require module &private?) &public)
+(declare (require module &private?) &public)
 
 
 ;; Declare and define a function, variable, or macro.
 ;;
 ;; This special form takes several forms:
 ;;
-;;     (define NAME FLAG... VALUE)            ; global data variable
-;;     (define (NAME ARG...) FLAG... BODY)    ; global function variable
-;;     (define `NAME EXPR)                    ; symbol macro
-;;     (define `(NAME ARG...) FLAG... BODY)   ; compound macro
+;;     (declare NAME FLAG... VALUE)            ; global data variable
+;;     (declare (NAME ARG...) FLAG... BODY)    ; global function variable
+;;     (declare `NAME EXPR)                    ; symbol macro
+;;     (declare `(NAME ARG...) FLAG... BODY)   ; compound macro
 ;;
 ;; The `define` special form adds a name to the environment and associates
 ;; it with a definition.  The defined name will be visible to subsequent
@@ -176,8 +321,7 @@
 ;; The `&public` flag may be included in `FLAG...`.  This indicates that the
 ;; symbol should be visible outside of the file in which it is declared.
 ;;
-;;
-(define (define ...) &public)
+(declare (declare ...) &public)
 
 
 ;; Declare a function, variable, or macro.
@@ -191,15 +335,14 @@
 ;; a value.  This is usually used to access non-SCAM functions, or when
 ;; mutually recursive functions are defined.
 ;;
-;;
-(define (declare ...) &public)
+(declare (declare ...) &public)
 
 
 ;; Declare an *executable macro*.  An executable macro is a function that
 ;; transforms syntax.  It takes one argument, a form, and returns a
 ;; different form.
 ;;
-(define (defmacro (name argname) body) &public)
+(declare (defmacro (name argname) body) &public)
 
 
 ;; This special form assigns names to values.  The VALUE expressions are
@@ -211,7 +354,7 @@
 ;;
 ;;     ((lambda (NAME...) BODY) (VALUE...))
 ;;
-(define (let ( (NAME VALUE)... ) BODY) &public)
+(declare (let ( (name value)... ) body) &public)
 
 
 ;; Declare symbol macros.
@@ -222,7 +365,7 @@
 ;; `let*`.  It is equivalent to the following:
 ;;
 ;;     (begin
-;;       (define `NAME EXPR)...
+;;       (declare `NAME EXPR)...
 ;;       BODY)
 ;;
 ;; Since `let&` constructs symbol macros, each bound expression is not
@@ -234,7 +377,7 @@
 ;; generally has lower overhead than `let`, since it does not involve an
 ;; anonymous function call (as does `let`).
 ;;
-(define (let& ( (name expr)... ) body) &public)
+(declare (let& ( (name expr)... ) body) &public)
 
 
 ;; This form modifies the value of some number of global variables *during
@@ -242,7 +385,7 @@
 ;;
 ;; This expression evaluates to the value of the last expression in BODY.
 ;;
-(define (let-global ( (name value)... ) body) &public)
+(declare (let-global ( (name value)... ) body) &public)
 
 
 ;; The `set` special form assigns a value to a previously declared global
@@ -254,7 +397,7 @@
 ;;
 ;; The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
 ;;
-(define (set name value retval) &public)
+(declare (set name value retval) &public)
 
 
 ;; A `lambda` expression evaluates to a function value.
@@ -266,7 +409,49 @@
 ;; of `BODY` contains bindings for the arguments names to the values passed
 ;; to the function.
 ;;
-(define (lambda (...params) body) &public)
+(declare (lambda (...params) body) &public)
+
+
+;; This special form concatenates all of its arguments.
+;;
+(declare (concat ...values) &public)
+
+
+;; This special form replaces substrings with replacement strings within the
+;; given VALUE.  For example:
+;;
+;;     > (subst 2 3 1 2 12)
+;;     23
+;;
+(declare (subst from to {from to}... value) &public)
+
+
+;; This constructs a vector.  It is equivalent to `[A B C ...]`.
+;;
+(declare (vector a b c ...) &public)
+
+
+;; Concatenate all values and write them to stdout.
+;;
+(declare (print value...) &public)
+
+
+;; This special form evaluates to the data structure that describes the lexical
+;; environment at the point where it is invoked.  (See `gen.scm` for details of
+;; this structure.)
+;;
+(declare (current-env) &public)
+
+
+;; This special form evaluates to the file name and line number of where it was
+;; invoked, in this format:  `FILENAME:LINE`
+;;
+(declare (current-file-line) &public)
+
+
+;;
+;; Runtime functions
+;;
 
 
 ;; Call LAMBDA, passing as arguments the members of the vector VEC.
@@ -276,177 +461,128 @@
 ;;     > (apply nth [3 "a b c d"])
 ;;     "c"
 ;;
-(define (apply lambda vec) &public)
-
-
-;; This special form concatenates all of its arguments.
-;;
-(define (concat ...values) &public)
-
-
-;; This special form replaces substrings with replacement strings within the
-;; given VALUE.  For example:
-;;
-;;     > (subst 2 3 1 2 12)
-;;     23
-;;
-(define (subst from to {from to}... value) &public)
-
-
-;; If SUB occurs within STR, return SUB.  Otherwise return the empty string.
-;;
-(define (findstring sub str) &public)
+(declare (apply lambda vec) &public)
 
 
 ;; `demote` encodes any value as a word so that it may be embedded in a word
 ;; list.  It is used internally to construct vectors.
 ;;
-(define (demote value) &public)
+(declare (demote value) &public)
 
 
 ;; `promote` reverses the encoding done by `demote`.
 ;;
-(define (promote value) &public)
+(declare (promote value) &public)
 
 
 ;; Returns the value stored at index INDEX (1-based) in vector VEC.
 ;;
-(define (nth index vec) &public)
+(declare (nth index vec) &public)
 
 
-;; This constructs a vector.  It is equivalent to `[A B C ...]`.
+;; Logically invert A.  If A is `nil`, return 1.  Otherwise, return `nil`.
 ;;
-(define (vector a b c ...) &public)
+(declare (not a) &public)
 
 
-;; Concatenate all values and write them to stdout.
+;; Get the tail of LIST, starting at the Nth element (1-based).
 ;;
-(define (print VALUE...) &public)
+(declare (nth-rest n list) &public)
 
 
-;; This performs call-site tracing of `FUNCNAME`, described below in the
-;; [Debugging](#debugging) section.
+;; Get the first element of VEC.
 ;;
-(define (? funcname arg...) &public)
+(declare (first vec) &public)
+
+
+;; Remove the first element from vector (or list) VEC.
+;;
+(declare (rest vec) &public)
+
+
+;; Remove the first two elements from vector (or list) VEC.
+;;
+(declare (rrest vec) &public)
+
+
+;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
+;;
+(declare (filtersub pat repl str) &public)
 
 
 ;; Add FUNC to a list of functions that will be run when the program exits.
 ;; Functions will be run in the reverse of the order that they were registered.
 ;;
-(define (at-exit func) &public)
+(declare (at-exit func) &public)
 
 
-;; This special form evaluates to the data structure that describes the lexical
-;; environment at the point where it is invoked.  (See `gen.scm` for details of
-;; this structure.)
+;; Evaluate EXPR with tracing activated according to SPEC.
 ;;
-(define (current-env) &public)
-
-
-;; This special form evaluates to the file name and line number of where it was
-;; invoked, in this format:  `FILENAME:LINE`
+;; SPEC is a string used to specify which functions are traced and how they
+;; are traced.  In its simplest form, it is a list of function names.
+;; Beyond that, a `:` followed by a "mode" may be appended to each name.
+;; Possible modes are:
 ;;
-(define (current-file-line) &public)
-
-
-;; Add PREFIX to the start of each word in LIST.
+;;  - `t` : Print the function name and arguments when it is called and its
+;;          return value when it returns.  This is the default mode.
 ;;
-(define (addprefix prefix list) &public)
-
-
-;; Add SUFFIX to the end of each word in LIST.
+;;  - `f` : Print just the function name on entry and exit.
 ;;
-(define (addsuffix suffix list) &public)
-
-
-;; Remove the file extension ("suffix") from each word in LIST
+;;  - `c` : Count the number of times that the function is invoked.
+;;          Function counts will be written to stdout when tracing is
+;;          removed.  This can occur when `(tracing ...)` completes, or when
+;;          `(untrace ...)` is called, or after `main` returns.
 ;;
-(define (basename list) &public)
-
-
-;; Get the directory of each file in LIST.
+;;  - `x<N>` : Evaluate the function body N times each time the function is
+;;          invoked.  <N> must be a positive number or the empty string
+;;          (which is treated as 11).
 ;;
-;;     (dir "a/b c")  -->  "a/ ./"
+;;  - `-` : Exclude the function(s) from instrumentation.  Any functions
+;;          matched by this entry will be skipped even when they match other
+;;          entries in the specification string.  This does not depend on
+;;          the ordering of entries.  For example, `(trace "a% %z:-")` will
+;;          instrument all functions whose names begin with `a` except for
+;;          those whose names end in `z`.
 ;;
-;; See also `notdir`.
+;; In place of a function name a pattern may be provided to match multiple
+;; functions.  In a pattern, the `%` character is a wildcard that will match
+;; any sequence of characters.  Some caution must be exercised in general
+;; with tracing, especially when using wildcards: Do not instrument any
+;; function while it is currently running.  SCAM prevents this from
+;; happening when you use `SCAM_TRACE`, or when you call `trace` or
+;; `tracing` at the top level of a source file, the REPL, or your `main`
+;; function.  However, if while nested in one or more other user-defined
+;; functions, you trace any of those functions, then undefined behavior will
+;; result.
 ;;
-(define (dir list) &public)
-
-
-;; Get all words in LIST that match PATTERNS.  Each word in PATTERNS is
-;; compared against the words in LIST, and is considered a match when it is
-;; equal, treating the first `%` character in a pattern as a wildcard.
+;; The intent of `x` instrumentation is to cause the function to consume
+;; more time by a factor of N (for profiling purposes).  If your code is
+;; purely functional, or at least limits its side effects to idempotent
+;; operations, repetition of expressions should not alter the behavior of
+;; the program.  This can be used to identify and quantify hotspots in a
+;; program.
 ;;
-(define (filter patterns list) &public)
+(declare `(tracing spec expr) &public)
 
 
-;; Get all words in LIST that do *not* match PATTERNS.
+;; Instrument functions for tracing as described by SPEC.
 ;;
-(define (filter-out patterns list) &public)
-
-
-;; Get the first word in LIST.
+;; SPEC is as documented for `tracing`.
 ;;
-(define (firstword list) &public)
-
-
-;; Concatenate the respective words in LIST-A and LIST-B.
+;; The return value is a list of the names of the instrumented functions,
+;; which can be passed to `untrace` later.
 ;;
-(define (join list-a list-b) &public)
+(declare (trace specs) &public)
 
 
-;; Get the last word in LIST.
+;; Remove instrumentation from functions listed in NAMES, or functions
+;; matched by patterns in NAMES.
 ;;
-(define (lastword list) &public)
+(define (untrace names ?retval) &public)
 
 
-;; Return the filename portion of each path in PATHS.
+;; Add NAMES to the list of functions that should not be instrumented when
+;; `trace` or `tracing` are called.  In order to avoid undefined behavior,
+;; we must avoid instrumenting functions *while* they are executing.
 ;;
-;;     (notdir "a/b c")  -->  "b c"
-;;
-;; See also `dir`.
-;;
-(define (notdir paths) &public)
-
-
-;; Replace PAT with REPL in LIST.  Patterns use the first `%` as a wildcard,
-;; and a corresponding `%` in REPL will be replace with what the wildcard in
-;; PAT matched.  See the GNU make documentation for subtleties.
-;;
-(define (patsubst pat repl list) &public)
-
-
-;; Sort the words in LIST in increasing lexicographical order.
-;;
-(define (sort list) &public)
-
-
-;; Convert newlines to spaces and then remove redundant spaces in LIST.
-;;
-(define (strip list) &public)
-
-
-;; Return the file extensions of all file names in PATHS.
-;;
-(define (suffix paths) &public)
-
-
-;; Return the Nth word in LIST.  If N is greater than the lenght of the
-;; list, return `nil`.  If N is less than 1, terminate the program with an
-;; error message.
-;;
-(define (word n list) &public)
-
-
-;; Extract the words in LIST from index A to index B, inclusive.  Extraneous
-;; spaces between words are retained.  If B is less than A, `nil` is returned.
-;;
-;; If A is less than 1 or B is less than zero, the program will be
-;; terminated with an error message.
-;;
-(define (wordlist a b list) &public)
-
-
-;; Return the number of words in LIST.
-;;
-(define (words list) &public)
+(define (do-not-trace names) &public)
