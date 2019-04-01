@@ -102,7 +102,7 @@ endif
 # not implicitly trust them to overwrite the existing output file,
 # and so we delete the output file first.
 
-$A/scam: bin/scam
+$A/scam: *.scm bin/scam
 	$(build_message)
 	bin/scam -o $@ scam.scm
 	touch $@

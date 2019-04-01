@@ -339,7 +339,7 @@
 (define builtins-1
   (concat "abspath basename dir error eval firstword flavor"
           " info lastword notdir origin realpath shell sort"
-          " strip suffix value warning wildcard words"))
+          " .strip suffix value warning wildcard words"))
 
 (define builtins-2
   "addprefix addsuffix filter filter-out findstring join word")

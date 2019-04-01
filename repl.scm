@@ -113,7 +113,7 @@
         (state state))
 
     (define `(typed str)
-      (eq? (strip line) str))
+      (eq? (strip-vec line) str))
 
     (cond ((typed "?")    (begin (help) state))
           ((typed ":")    ["" env]) ; reset input state

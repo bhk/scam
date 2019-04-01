@@ -38,6 +38,8 @@
 ;; immediately encountered (where it might be valid) from the same token
 ;; found in a nested context where it was not valid.
 
+(define `(.strip v) (filter "%" (subst "\n" " " v)))
+
 (define (symbol-name form)
   &public
   (case form
@@ -259,7 +261,7 @@
       ;; Match `\xHH`
       (foreach hh match-hh
                (define `hex (subst "\n" "" hh))
-               (define `byte (strings-from-bytes (hh-to-dec (strip hh))))
+               (define `byte (strings-from-bytes (hh-to-dec (.strip hh))))
                (parse-string subj start (1+ pos)
                              (concat wstr (subst (concat "\\x" hex) byte w))))
 

@@ -4,6 +4,8 @@
 
 (require "core.scm")
 
+(define `(strip v) (filter "%" v))
+
 (define `(+_+ a b)
   (concat a " " b))
 

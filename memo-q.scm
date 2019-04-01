@@ -462,4 +462,4 @@
     (write-file out-file "different")
     (expect nil (memo-call (native-name copy-file) abc-file out-file))
     (expect 0 (log-count "copy-file"))
-    (expect "A B" (strip (read-file out-file)))))
+    (expect "A B" (strip-vec (read-file out-file)))))
