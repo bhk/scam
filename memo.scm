@@ -43,9 +43,19 @@
 (define *memo-tag* nil)       ;; next tag to use for DB entries
 (define *memo-log* nil)       ;; DB entries for currently-recording function
 (define *memo-hashes* nil)    ;; hash results during the current session
-
+(define *memo-dbdir* nil)     ;; db dir, if it has been created
 
 (declare (memo-save-session))
+
+
+;; Return dir containing DB, creating it if necessary.
+;;
+(define (memo-dbdir)
+  (if (not (eq? *memo-dbdir* (dir *memo-db-file*)))
+      (begin
+        (set *memo-dbdir* (dir *memo-db-file*))
+        (mkdir-p *memo-dbdir*)))
+  *memo-dbdir*)
 
 
 ;; The database key to use for a call initiation
@@ -188,7 +198,7 @@
 ;; Store the result of (FNAME ...ARGS) in a BLOB and return the BLOB name.
 ;;
 (define (blobify fname ...args)
-  (save-blob (dir *memo-db-file*) (name-apply fname args)))
+  (save-blob (memo-dbdir) (name-apply fname args)))
 
 
 (define (read-blob name)
@@ -247,10 +257,7 @@
   (set *memo-on* 1)
   (if (not (eq? *memo-db-file* dbfile))
       ;; load data from new (or initial) DB file
-      (begin
-        ;; blobify assumes this directory exists
-        (mkdir-p (dir dbfile))
-        (memo-read-db dbfile))))
+      (memo-read-db dbfile)))
 
 
 (define `(memo-end-session)
@@ -356,7 +363,7 @@
 (define (memo-write-file filename data)
   &public
   (if *memo-on*
-      (let ((blob (save-blob (dir *memo-db-file*) data)))
+      (let ((blob (save-blob (memo-dbdir) data)))
         (memo-io (native-name do-write-blob) filename blob))
       ;; not in a memo session
       (write-file filename data)))

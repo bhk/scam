@@ -41,14 +41,12 @@ Options:
 (define `version "1.5x")
 
 
-(define (set-obj-dir obj-dir out-file)
-  (define `given-dir
-      (or obj-dir
-          (if out-file
-              (dir out-file)
-              ".scam/")))
-  ;; ensure it ends with "/"
-  (set *obj-dir* (patsubst "%//" "%/" (concat given-dir "/"))))
+(define (get-obj-dir obj-dir out-file)
+  (if obj-dir
+      (patsubst "%//" "%/" (concat obj-dir "/"))  ;; must end with "/"
+      (if out-file
+          (dir out-file)
+          ".scam/")))
 
 
 (define (main argv)
@@ -61,9 +59,11 @@ Options:
 
     (define `names (opt "*"))      ; non-option arguments
     (define `errors (opt "!"))     ; errors encountered by getopts
+
+    ;; These globals govern compilation
     (set *is-quiet* (opt "quiet"))
     (set *is-boot* (opt "boot"))
-    (set-obj-dir (last (opt "obj-dir")) (last (opt "o")))
+    (set *obj-dir* (get-obj-dir (last (opt "obj-dir")) (last (opt "o"))))
 
     (cond
      (errors

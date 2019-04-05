@@ -7,10 +7,14 @@
 (require "parse.scm")
 (require "compile.scm")
 (require "gen.scm")
-(begin
-  ;; treat as a dependency (for build system purposes)
-  (require "math.scm")
-  (require "peg.scm"))
+
+(or 1
+    ;; Treat these as compile-time dependencies of REPL module, but don't
+    ;; automatically load them.  They will be loaded if (repl) is invoked,
+    ;; via the implicit prelude for the REPL environment.
+    (require "math.scm")
+    (require "peg.scm")
+    (require "utf8.scm"))
 
 
 ;; Override this on the command line to automatically include a different

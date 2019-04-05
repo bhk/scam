@@ -24,8 +24,8 @@
 ;;
 ;; The compiler back end (c1) emits executable code (Make source) and a
 ;; (hopefully empty) vector of errors.  The form and IL data structures can
-;; convey errors as well as successful results; c1 must output a separate
-;; value for error information.
+;; convey errors as well as successful results, so the previous stages do
+;; not need a separate error output value.
 
 
 (require "core.scm")
@@ -36,15 +36,9 @@
 (require "io.scm")
 (require "memo.scm")
 
-
-(begin
-  ;; Load macros. We don't directly call these modules, but they register
-  ;; functions called from gen0.
-  (require "macros.scm"))
-
-(and nil
-     ;; We don't use this module, but we want it bundled with the compiler.
-     (require "utf8.scm"))
+;; "macros" has no exports, but its functions are called from gen0 via
+;; computed names.
+(require "macros.scm")
 
 
 ;; When non-nil, emit progress messages.
@@ -61,10 +55,10 @@
       (write 2 (concat "... " action " " file "\n"))))
 
 
-(define `(drop-if cond ?fail ?succ)
+(define `(drop-if cond ?on-fail ?on-succ)
   (if cond
-      (begin fail (memo-drop) 1)
-      (begin succ nil)))
+      (begin on-fail (memo-drop) 1)
+      (begin on-succ nil)))
 
 
 (define (bail-if message)
@@ -102,22 +96,27 @@
 ;; Environment Imports/Exports
 ;;----------------------------------------------------------------
 
-;; Each generated .min file includes a comment line that describes the
-;; module's "final" environment state -- the lexical environment as it was
-;; at the end of processing the source file.  The comment has the following
-;; format:
+;; Each generated object file includes two comment lines that describes the
+;; symbols that were declared or defined in the module (and visible in the
+;; final environment state).
 ;;
-;;     "# Exports: " (env-compress <vector>)
+;;     "# Exports: " DEFNS
+;;     "# Private: " DEFNS
 ;;
-;; Both public *and* private symbols are exported.  Imported symbols are not
-;; re-exported.
+;; The "Exports" like includes `&public` symbols, and the "Private" line
+;; includes non-public symbols.
 ;;
-;; Exports are consumed when `(require MOD)` is compiled.  At that time, the
-;; bindings *exported* from MOD (public in its final env) are added to the
-;; current environment, and marked as imported (SCOPE = "i").
+;; Each DEFNS value is a compressed form of the vector of EDefn entries that
+;; make up the environment.
 ;;
-;; When `(require MOD &private)` is compiled, both public and private
-;; symbols from MOD are added to the current environment.
+;; Exports are consumed when `(require MOD)` is compiled.  The "Exports"
+;; line is read from MOD, added to the caller's environment, and marked as
+;; imported (EDefn.scope = "i").
+;;
+;; When `(require MOD &private)` is compiled, both the "Exports" and
+;; "Private" lines are added to the current environment.
+;;
+;; When a module is bundled, the "Private" line is omitted.
 ;;
 ;; Lambda markers and local variables are not exported -- it is actually
 ;; impossible for them to exist in the final environment because the end of
@@ -218,26 +217,24 @@
 ;; Module management
 ;;--------------------------------------------------------------
 
-;; We have different ways of referring to modules in different contexts:
+;; There are two types of modules: source modules and builtin modules
+;; (bundled with the compiler).
 ;;
-;; NAME: This is the literal string argument to `require`.
+;; A module's NAME is the string passed to `require`.  If it ends in ".scm"
+;; it identifies a source module; otherwise it refers to a builtin.
 ;;
-;; ORIGIN: If NAME identifies a source file, it will be the path to the
-;;    source file, ending in ".scm".  If NAME identifies a builtin
-;;    module, it will be that module's ID (which begins with `'`).
-;;
-;; ID: This is passed to ^R at run-time.  The bundle variable name
-;;    and the compiled module name are based on this string, which is
-;;    escaped using `escape-path`.  Modules that are bundled with the
-;;    compiler are named differently to avoid conflicts with user
-;;    modules [both user modules and builtin modules can be bundled in a
-;;    user program].
+;; A module's ID is the string passed to `^R` at run-time.  The ID of a
+;; builtin module is the same as its NAME.  The ID of a source module is its
+;; resolved path, encoded using `escape-path`.  This includes the extension
+;; to avoid conflict between user modules and builtins when they are bundled
+;; with a user program.  [When *is-boot* is true, we are building the
+;; compiler, and compiled modules are assigned the ID (basename NAME) so
+;; that they can later serve as builtin modules.]
 ;;
 ;;                  (normal)         (normal)        *is-boot*
 ;;                  Source File      Builtin         Source File
 ;;                  ------------     ------------    ------------
 ;;   NAME           io.scm           io              io.scm
-;;   ORIGIN         io.scm           io              io.scm
 ;;   ID             io.scm           io              io
 ;;   Load File      .scam/io.scm.o                   .scam/io.o
 ;;   Load Bundle                     [mod-io]
@@ -262,7 +259,8 @@
   (concat "[mod-" id "]"))
 
 
-;; Non-nil when ID names a compiled module, not a bundled one.
+;; Non-nil when ID names a module being compiled from source, not read from
+;; a bundle.
 ;;
 (define `(modid-is-file id)
   (or (filter "%.scm" id) *is-boot*))
@@ -295,43 +293,36 @@
   (env-parse (modid-read-lines id 4) all))
 
 
-;; Construct the ID corresponding to a module origin.
+;; Construct the ID for a module, given either a path to a source file or a
+;; bundled module name.
 ;;
-(define (module-id orgn)
-  (let ((e (escape-path orgn)))
+(define (module-id path-or-bundle)
+  (let ((e (escape-path path-or-bundle)))
     (if *is-boot*
         (basename e)
         e)))
 
 
-;; Get the "origin" of the module.  This is either the path of a SCAM
-;; source file (ending in .scm) or a builtin module ("core", etc.).
-;; Return nil on failure.
+;; Get find a source file in the base directory or one of the LIBPATH
+;; directories.  Return resolved path, or nil if not found.
 ;;
-;; SOURCE-DIR = directory containing the source file calling `require`
-;; NAME = the literal string passed to "require"
-;;
-(define (locate-module source-dir name)
+(define (locate-source base-dir name)
   (define `path-dirs
     (addsuffix "/" (split ":" (value "SCAM_LIBPATH"))))
 
-  (or (and (filter "%.scm" [name])
-           (vec-or
-            (for dir (cons source-dir path-dirs)
-                 (wildcard (resolve-path dir name)))))
-      (and (not *is-boot*)
-           (if (bound? (modid-var name))
-               name))))
+  (vec-or
+   (for dir (cons base-dir path-dirs)
+        (wildcard (resolve-path dir name)))))
 
 
-;; do-locate-module is safe to memoize because:
+;; locate-source is safe to memoize because:
 ;;  1. results will not change during a program invocation.
 ;;  2. it does not call memo-io or memo-call
-;;
-(memoize (native-name locate-module))
+;;(memoize (native-name locate-source))
 
-(define (m-locate-module source-dir name)
-  (memo-io (native-name locate-module) source-dir name))
+
+(define (m-locate-source base name)
+  (memo-io (native-name locate-source) base name))
 
 
 ;; Skip initial comment lines, retaining comment lines that match
@@ -403,35 +394,50 @@
                      ((EXMacro _ _) 1)))))
 
 
-;; Locate or create the compiled form of a module.
+;; See get-module.
 ;;
-;;   NAME = file name or module name
-;;   BASE = directory/file to which NAME may be relative
-;;   PRIVATE = include private as well as public bindings
+(define (get-source-module name private path)
+  (or (if (not path)
+          (ModError (sprintf "cannot find %q" name)))
+      (if (m-compile-and-maybe-test-module path private)
+          (ModError (sprintf "compilation of %q failed" path)))
+      (ModSuccess (module-id path)
+                  (memo-blob-call (native-name modid-import)
+                                  (module-id path) private))))
+
+
+;; See get-module.
 ;;
-;; Returns: a CMod record
+(define `(get-builtin-module name)
+  (if *is-boot*
+      (ModError "standard modules not available with --boot"))
+      (if (bound? (modid-var name))
+          (ModSuccess name (modid-import name nil))
+          (ModError (sprintf "standard module `%s` not found" name))))
+
+
+;; Get Mod record for a module, compiling it if necessary.
+;;
+;; NAME = string passed to `require`
+;; BASE = directory/file to which NAME may be relative
+;; PRIVATE = include private as well as public bindings
 ;;
 (define (get-module name base private)
-  (let ((orgn (m-locate-module (dir base) name))
-        (private private))
-    (define `id (module-id orgn))
+  (define `mod
+    (if (filter "%.scm" [name])
+        (get-source-module name private (m-locate-source (dir base) name))
+        (get-builtin-module name)))
 
-    (or (if (not orgn)
-            (ModError (sprintf "cannot find %q" name)))
-        (if (filter "%.scm" [orgn])
-            (if (m-compile-and-maybe-test-module orgn private)
-                (ModError (sprintf "compilation of %q failed" orgn))
-                ;; success => nil => proceed to ordinary result
-                nil))
-        (let ((exports (memo-blob-call (native-name modid-import) id private))
-              (id id) (orgn orgn))
-          (or (if (has-xmacro? exports)
-                  (if *is-boot*
-                      ;; do not require at run-time, and
-                      (ModError "module has executable macros (boot=true)")
-                      ;; require module and continue
-                      (call "^R" id)))
-              (ModSuccess id exports))))))
+  (let ((mod mod))
+    (or (case mod
+          ((ModSuccess id exports)
+           (if (has-xmacro? exports)
+               (if *is-boot*
+                   ;; do not require at run-time
+                   (ModError "module has executable macros (boot=true)")
+                   ;; require module and continue
+                   (call "^R" id)))))
+        mod)))
 
 
 ;; Get the name of the runtime module, or nil if the runtime should not

@@ -99,29 +99,19 @@
              (*obj-dir* test-dir))
   (expect ["a b" "boot-file"] (modid-deps "cqtx")))
 
-;; locate-module
+;; locate-source
 
 (declare SCAM_LIBPATH &native)
 
-;; Assert: Source file relative to requiring file is treated as origin.
+;; Assert: Source file is found in base directory.
 (expect "compile.scm"
         (let-global ((SCAM_LIBPATH nil))
-          (locate-module "./" "compile.scm")))
+          (locate-source "./" "compile.scm")))
 
-;; Assert: Source files must end in ".scm"
-(expect nil
-        (let-global ((SCAM_LIBPATH nil))
-          (locate-module "./" "makefile")))
-
-;; Assert: Source file relative to SCAM_LIBPATH is treated as origin.
+;; Assert: Source file is found in a SCAM_LIBPATH directory.
 (expect "test/run.scm"
         (let-global ((SCAM_LIBPATH "test:x/y/z"))
-          (locate-module "a/b/c/" "run.scm")))
-
-;; Assert: builtin is detected only if modvar is present
-(expect nil (locate-module "./" "not-exist"))
-(set-native "[mod-cqtest]" 1)
-(expect "cqtest" (locate-module "./" "cqtest"))
+          (locate-source "a/b/c/" "run.scm")))
 
 ;; module-id
 
@@ -158,18 +148,3 @@
                   (parse-and-gen (concat "(define a &native 1) "
                                         "(define b &native 2)")
                                 "" "(test)" "test.tmp")))
-
-;; require with get-module
-
-(declare ^R &native)
-
-(memo-on
- (concat (assert (value "SCAM_DIR")) "compile-q-db.txt")
- (let-global ((locate-module (lambda (f name) name))
-              (^R (lambda () nil))
-              (modid-import (lambda () nil)))
-   (let ((o (parse-and-gen "(require \"r.scm\")" "" "(test)" "test.tmp")))
-     (expect "" (dict-get "errors" o))
-     (expect "r.scm" (dict-get "require" o))
-     (expect 1 (see "$(call ^R,r.scm)\n"
-                    (dict-get "code" o))))))

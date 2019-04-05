@@ -654,7 +654,7 @@
   &public
   ;; ID = string to be passed to ^R
   ;; ENV = exported environment entries
-  (ModSuccess id env)
+  (ModSuccess &word id &list env)
   (ModError message))
 
 
