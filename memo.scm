@@ -13,11 +13,20 @@
 ;; to the file.  Nested calls to memo-on are no-ops; only the final exit
 ;; from memo-on will save the cache.
 ;;
-;; Functions that perform IO operations can be memoized when those
-;; operations are replayable: that is, modification of external state is
-;; idempotent.  In order to perform IO, memoized functions may call
-;; operations provided herein (`memo-read-file`, `memo-write-file`), or
-;; construct more custom IO using `memo-io`.
+;; `memo-call` and `memo-apply` memoize functions.  They take a function and
+;; a set of arguments, and construct a DB lookup key from those values.  If
+;; no match is found, the function is executed and its return value is
+;; stored un the DB.  Futhermore, any IO performed by the function (see
+;; below) is logged in the DB.  On subsequent calls, if a matching entry in
+;; the DB is found and all its recoded IO operations, when replayed, yield
+;; identical results, the cached value is used and the function is not
+;; actually called.
+;;
+;; IO operations performed during execution of a memoized function must be
+;; harmlessly replayable: that is, any modification of external state must
+;; be idempotent.  In order to be recorded, the IO operations must be
+;; invoked through a mechanism provided by this module, such as
+;; `memo-read-file`, `memo-write-file`, or `memo-io`.
 
 
 (require "core.scm")

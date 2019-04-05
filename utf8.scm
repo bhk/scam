@@ -21,6 +21,13 @@
 ;; CODES = vector of Unicode code points\
 ;; Result = vector of code points
 ;;
+;; Example:
+;;
+;;     > (utf8-encode [960 178])
+;;     [207 128 194 178]
+;;     > (string-from-bytes [207 128 194 178])
+;;     "π²"
+;;
 (define (utf8-encode codes)
   &public
   (foreach c codes
@@ -61,6 +68,13 @@
 ;;
 ;; BYTES = vector of numeric byte values\
 ;; Result = vector of code points
+;;
+;; Example:
+;;
+;;     > (string-to-bytes "π²")
+;;     [207 128 194 178]
+;;     > (utf8-decode [207 128 194 178])
+;;     [960 178]
 ;;
 (define (utf8-decode bytes)
   &public

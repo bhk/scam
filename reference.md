@@ -1,4 +1,4 @@
- SCAM Language Reference
+# SCAM Language Reference
 
 ## Index
 
@@ -23,19 +23,19 @@
  * [Macros](#macros)
  * [Special Forms](#special-forms)
  * [Libraries](#libraries)
- * [Command Line Syntax](#command-line-syntax)
  * [Debugging](#debugging)
    * [Call Site Tracing](#call-site-tracing)
    * [Run-time Tracing](#run-time-tracing)
    * [Profiling](#profiling)
+ * [The SCAM Compiler](#the-scam-compiler)
 
 ## Overview
 
-If you run the SCAM executable without any arguments it will enter REPL
-(Read-Eval-Print Loop) mode.  In this mode, you can type **expressions** and
-SCAM will immediately **evaluate** them (compute a value) and display the
-resulting value. Expressions are described in the [Syntax](#syntax) section,
-below.
+If you run the [SCAM Compiler](#the-scam-compiler) without any arguments it
+will enter interactive mode (a REPL: Read-Eval-Print Loop).  In this mode,
+you can type **expressions** and SCAM will immediately **evaluate** them
+(compute a value) and display the resulting value. Expressions are described
+in the [Syntax](#syntax) section, below.
 
 SCAM can also read expressions from source files, called **modules**.  In
 the REPL you can load a module using `(require "FILENAME")`.  The first time
@@ -49,8 +49,7 @@ If you run SCAM with a module (file) name as an argument, SCAM will invoke
 the module a **program**.  This will load the module and then run a function
 called "main" if the module has defined such a function.  Alternatively, you
 can compile a program and then invoke the resulting executable file
-directly.  See [command line syntax](#command-line-syntax) for more details
-on the SCAM command.
+directly.
 
 
 ## Syntax
@@ -690,43 +689,6 @@ default all the standard modules are implicitly required.
 See the [SCAM Libraries](libraries.md) document for full details.
 
 
-## Command Line Syntax
-
-The `scam` command support four major modes of operation:
-
-1. Generate an executable from SCAM source.
-
-   Usage: `scam -o EXE SOURCE`
-
-   SCAM source file SOURCE will be compiled and linked with its dependencies
-   to create and executable file EXE.
-
-   When EXE is invoked, the SOURCE module will be loaded and then its `main`
-   function (if there is one) will be called with one argument: a vector
-   containing all of the command line arguments.
-
-2. Execute a SCAM source file.
-
-   Usage: `scam -x SOURCE ARGS...`
-
-   SCAM source file SOURCE will be compiled and immediately executed as in
-   `scam -o`.  Command-line arguments not processed by `scam` as options
-   will be passed to SOURCE's main function as arguments.  The `--` option
-   can be used to ensure that following words are delivered to the target
-   program.
-
-3. Enter an interactive "REPL" mode.
-
-   Usage: `scam` or `scam -i`
-
-4. Execute an expression provided on the command line.
-
-   Usage: `scam -e EXPR`
-
-   Multiple `-e EXPR` options can appear on the command line.  When EXPR
-   evaluates to `nil`, scam does not print any results.
-
-
 ## Debugging
 
 ### Call Site Tracing
@@ -751,9 +713,9 @@ Tracing can be activated at run-time in two different ways:
      - `(trace SPEC)` turns on tracing for subsequent expressions.
      - `(untrace NAMES)` removes instrumentation from functions.
 
- 2. Set the `SCAM_TRACE` environment variable before running a SCAM program
-    in order to trace execution that happens during the program's `main`
-    function.
+ 2. Set the [`SCAM_TRACE`](#scam-trace) environment variable before running
+    a SCAM program.  in order to trace execution that happens during the
+    program's `main` function.
 
     `SCAM_TRACE` takes the same form as the `SPEC` argument to `trace`.
 
@@ -839,3 +801,62 @@ following approach:
  * This second invocation should take longer to execute. Dividing the
   additional time by 10 will give the amount of time spent in that function
   during that use case.
+
+## The SCAM Compiler
+
+The SCAM Compiler is an executable program that can run SCAM programs and
+compile SCAM programs to executable files, and it also supports an
+interactive "REPL" mode.
+
+The SCAM Compiler supports four major modes of operation:
+
+1. Generate an executable from SCAM source.
+
+   Usage: `scam -o EXE SOURCE`
+
+   SCAM source file SOURCE will be compiled and linked with its dependencies
+   to create and executable file EXE.
+
+   When EXE is invoked, the SOURCE module will be loaded and then its `main`
+   function (if there is one) will be called with one argument: a vector
+   containing all of the command line arguments.
+
+2. Execute a SCAM source file.
+
+   Usage: `scam -x SOURCE [--] ARGS...`
+
+   SCAM source file SOURCE will be compiled and immediately executed as in
+   `scam -o`.  Command-line arguments not processed by `scam` as options
+   will be passed to SOURCE's main function as arguments.
+
+   The `--` option can be used to ensure that following words are delivered
+   to the target program, and not interpreted as arguments to the SCAM
+   Compiler itself.
+
+3. Enter an interactive "REPL" mode.
+
+   Usage: `scam` or `scam -i`
+
+4. Execute an expression provided on the command line.
+
+   Usage: `scam -e EXPR`
+
+   Multiple `-e EXPR` options can appear on the command line.  When EXPR
+   evaluates to `nil`, scam does not print any results.
+
+
+### Cached Results
+
+In order to support fast incremental rebuilds of modules, SCAM stores
+intermediate compilation results in a directory called the **object
+directory**.  This defaults to ".scam/" unless SCAM is invoked with `scam -o
+EXE`, in which case it defaults to the directory containing EXE.  The
+location of the object directory can be overridden using the `--obj-dir`
+option.
+
+SCAM uses hashes to determine the suitability of cached entries; not
+modification times.  As a result, when modifying a source file and
+re-compiling, you may find that the compilation finishes instantly, as if
+the change were not recognized.  This can happen if the modification returns
+the source file to some older state that had been previously compiled; in
+that case, the compiler can quickly identify how to recreate the program.
