@@ -17,7 +17,6 @@
 
 
 ;; TODO:
-;;  - Replace uppercase variable names with lowercase code inlines.
 ;;  - Generate links to functions referenced as text:
 ;;      Like `sprintf` ...  =>  Like [`sprintf`](#sprintf-???) ...
 ;;  - Support exported variables, symbol macros, and data types.
@@ -240,6 +239,10 @@
 ;; documentation for each export.
 ;;
 (define (fmt-modules mod-defns)
+  (define `(fmt-proto proto)
+    (concat (first proto)
+            (concat-vec (string-upper (rest proto)))))
+
   (define `(fmt-module name exports sections)
     (concat
      ;; Module-level documentation
@@ -248,7 +251,7 @@
      "## Exports\n\n"
      ;; Exports and export documentation
      (concat-for d exports "\n\n"
-                 (concat "##### `(" (concat-vec (dict-get "proto" d)) ")`\n\n"
+                 (concat "##### `(" (fmt-proto (dict-get "proto" d)) ")`\n\n"
                          (dict-get "doc" d)))))
 
    (concat-for m mod-defns nil
@@ -280,18 +283,17 @@
 ;; Return 1 on error; `nil` otherwise.
 ;;
 (define (warn-undef name filename exports sections)
-  (firstword
-   (promote
-    (concat
+  (vec-or
+   (append
 
-     (if (not sections)
-         (perror "%s:1: ERROR: no module documentation" filename))
+    (if (not sections)
+        (perror "%s:1: ERROR: no module documentation" filename))
 
-     (for d exports
-          (if (not (dict-get "doc" d))
-              (perror "%s: ERROR: no documentation for (%s)"
-                      filename
-                      (concat-vec (dict-get "proto" d)))))))))
+    (for d exports
+         (if (not (dict-get "doc" d))
+             (perror "%s: ERROR: no documentation for (%s)"
+                     filename
+                     (concat-vec (dict-get "proto" d))))))))
 
 
 (define template
@@ -320,11 +322,10 @@
   (let ((md (sort mod-defns)))
     (or
      ;; Report errors; exit if an error was detected.
-     (firstword
-      (promote
-       (for e md
-            (case e
-              ((Mod n f e s) (warn-undef n f e s))))))
+     (vec-or
+      (for e md
+           (case e
+             ((Mod n f e s) (warn-undef n f e s)))))
 
      (let ((err (write-file outfile (fmt-doc template md))))
        (if err
