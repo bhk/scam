@@ -1,32 +1,65 @@
 ;; # memo: Persistent Memoization
 ;;
-;; The `memo` module implements a form of memoization (caching of function
-;; results) that supports IO operations and persists across program
-;; invocations.
+;; The `memo` module implements persistent memoization, which caches the
+;; results of function calls to avoid re-computing them.  "Persistent" means
+;; that results are available not just during the invocation of a program,
+;; but during future invocations as well.  Also, persistent memoization can
+;; be applied to functions that perform IO.  SCAM uses persistent
+;; memoization to rebuild SCAM programs accurately with with minimal
+;; repeated work.  [The `memo` module functionality is not to be confused
+;; with the `memoize` function in the `core` library.]
 ;;
-;; SCAM uses persistent memoization to rebuild SCAM programs accurately with
-;; with minimal repeated work.
+;; `memo-call` and `memo-apply` perform "memoized" invocations of functions.
+;; They take a function and a set of arguments, and either invoke the
+;; function with the arguments or return a result cached from a previous
+;; invocation.  When a cached result is returned, it must also be the case
+;; that any side effects (e.g. file writes) from the previous invocation are
+;; in effect.
 ;;
-;; The `memo-on` macro enters a context within which memoized functions
-;; may be called.  It loads previously cached results (if any) from a
-;; specified file, evaluates an expression, and then stores the cache back
-;; to the file.  Nested calls to memo-on are no-ops; only the final exit
-;; from memo-on will save the cache.
+;; In order to meet these requirements, any IO operations performed by the
+;; memoized functions must adhere to these requirements:
 ;;
-;; `memo-call` and `memo-apply` memoize functions.  They take a function and
-;; a set of arguments, and construct a DB lookup key from those values.  If
-;; no match is found, the function is executed and its return value is
-;; stored un the DB.  Futhermore, any IO performed by the function (see
-;; below) is logged in the DB.  On subsequent calls, if a matching entry in
-;; the DB is found and all its recoded IO operations, when replayed, yield
-;; identical results, the cached value is used and the function is not
-;; actually called.
+;; * The IO operation must be logged using a mechanism provided by this
+;;   module. The logging mechanisms provided include `memo-io`, which wraps
+;;   arbitrary IO operations, or `memo-write-file` and `memo-read-file`,
+;;   which provide ready-to-use logged and replayable read and write
+;;   operations.
 ;;
-;; IO operations performed during execution of a memoized function must be
-;; harmlessly replayable: that is, any modification of external state must
-;; be idempotent.  In order to be recorded, the IO operations must be
-;; invoked through a mechanism provided by this module, such as
-;; `memo-read-file`, `memo-write-file`, or `memo-io`.
+;; * IO operations must be replayable.  Performing the operation two or more
+;;   times will result in the same external state as performing it once
+;;   does, and will return the same values each time.
+;;
+;; * IO operations must not be mutually-conflicting during a
+;;   [session](#sessions).  One IO operation may not have an effect on
+;;   external state that would un-do the effect of another IO operation, or
+;;   that would modify the return value of a previously-executed function
+;;
+;; ## Sessions
+;;
+;; Memoized functions must be called within the context of a **session*.
+;; The `memo-on` function initiates a **session**, evaluates a given
+;; expression within the context of that session, and then terminates the
+;; session.  (If called during a session, `memo-on` is a no-op.)  At the
+;; beginning of a session, previously cached results are read from a
+;; specified DB file.  At the end of the session, cached results are written
+;; to the DB file.
+;;
+;; It is assumed that any external state that affects the program will not
+;; change during the session.  Using the compiler as an example, when source
+;; files are modified during compilation, the compiler cannot guarantee
+;; valid results.  This assumption means that each unique IO operation only
+;; needs to be performed once during a session.
+;;
+;; It is assumed that external state *may* change *between* sessions.  When
+;; cached results from one session apply to a memoized call in a subsequent
+;; session, and the results depend upon IO, those IO operations will be
+;; replayed to check the validity of the cached results.  (When external
+;; side effects are involved, replaying the IO serves the purpose of
+;; re-effecting the change -- so replay does more than just validation.)
+;;
+;; If a memoized function is called when a session is not active, it is a
+;; fatal error.
+;;
 
 
 (require "core.scm")
@@ -43,19 +76,19 @@
 (define *memo-tag* nil)       ;; next tag to use for DB entries
 (define *memo-log* nil)       ;; DB entries for currently-recording function
 (define *memo-hashes* nil)    ;; hash results during the current session
-(define *memo-dbdir* nil)     ;; db dir, if it has been created
+(define *memo-dir* nil)       ;; a directory for BLOBs, if it has been created
 
 (declare (memo-save-session))
 
 
 ;; Return dir containing DB, creating it if necessary.
 ;;
-(define (memo-dbdir)
-  (if (not (eq? *memo-dbdir* (dir *memo-db-file*)))
+(define (memo-dir)
+  (if (not (eq? *memo-dir* (dir *memo-db-file*)))
       (begin
-        (set *memo-dbdir* (dir *memo-db-file*))
-        (mkdir-p *memo-dbdir*)))
-  *memo-dbdir*)
+        (set *memo-dir* (dir *memo-db-file*))
+        (mkdir-p *memo-dir*)))
+  *memo-dir*)
 
 
 ;; The database key to use for a call initiation
@@ -198,7 +231,7 @@
 ;; Store the result of (FNAME ...ARGS) in a BLOB and return the BLOB name.
 ;;
 (define (blobify fname ...args)
-  (save-blob (memo-dbdir) (name-apply fname args)))
+  (save-blob (memo-dir) (name-apply fname args)))
 
 
 (define (read-blob name)
@@ -208,9 +241,9 @@
 
 
 ;; Memoize a function call that might return a large amount of data.  The
-;; return value is stored as an blob, and only the blob paths are stored
-;; in the database.  We assume the blobs are retained as long as the DB
-;; file.
+;; return value is stored as an blob in the memo DB directory instead of
+;; being stored directly in the memo DB file.  We assume the blobs are
+;; retained as long as the DB file.
 ;;
 (define (memo-blob-call fname ...args)
   &public
@@ -358,12 +391,14 @@
         (cp-file blob dst 1))))
 
 
-;; Write data to FILENAME, logging the IO transaction for playback.
+;; Write DATA to FILENAME, logging the IO transaction for playback.  The
+;; limit on the size of DATA is system-specific, but at least 60KB for
+;; any data and 100KB for text files.
 ;;
 (define (memo-write-file filename data)
   &public
   (if *memo-on*
-      (let ((blob (save-blob (memo-dbdir) data)))
+      (let ((blob (save-blob (memo-dir) data)))
         (memo-io (native-name do-write-blob) filename blob))
       ;; not in a memo session
       (write-file filename data)))
