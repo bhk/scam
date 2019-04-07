@@ -8,6 +8,7 @@
 (require "compile.scm")
 (require "gen.scm")
 
+
 (or 1
     ;; Treat these as compile-time dependencies of REPL module, but don't
     ;; automatically load them.  They will be loaded if (repl) is invoked,
@@ -69,11 +70,16 @@
                  (printf "  %s : %s" name desc)))))
 
 
+;; REPL state
+;;
+(declare *repl-obj-dir*)
+(declare *repl-is-quiet*)
+
 ;; Parse and evaluate text, displaying errors or result.
 ;; Return:  [ INCOMPLETE-TEXT NEWENV ERROR? ]
 ;;
 (define (eval-and-print text env ?is-interactive)
-  (let ((o (compile-text text "[stdin]" env))
+  (let ((o (compile-text text "[stdin]" env *repl-obj-dir* *repl-is-quiet*))
         (env env)
         (text text))
     (define `errors (dict-get "errors" o))
@@ -140,18 +146,22 @@
 ;; Read lines of text from stdin, evaluating expressions and displaying
 ;; results and errors.
 ;;
-(define (repl)
+(define (repl ?obj-dir)
   &public
   ;; These functions will be "on the stack" in the REPL and should not be
   ;; instrumented from the REPL.
   (do-not-trace "~repl ~eval-and-print ~while ~while-0 ~while-N")
-  (while identity read-eval-print initial-state)
+  (let-global ((*repl-obj-dir* obj-dir)
+               (*repl-is-quiet* nil))
+    (while identity read-eval-print initial-state))
   (print))
 
 
-;; Evaluate 'text' and print results (without looping).
+;; Evaluate TEXT and print results (without looping).
 ;;
-(define (repl-rep text)
+(define (repl-rep text ?obj-dir ?is-quiet)
   &public
   (define `env (nth 2 initial-state))
-  (word 3 (eval-and-print text env)))
+  (let-global ((*repl-obj-dir* obj-dir)
+               (*repl-is-quiet* is-quiet))
+    (word 3 (eval-and-print text env))))

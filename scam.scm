@@ -41,14 +41,6 @@ Options:
 (define `version "1.5x")
 
 
-(define (get-obj-dir obj-dir out-file)
-  (if obj-dir
-      (patsubst "%//" "%/" (concat obj-dir "/"))  ;; must end with "/"
-      (if out-file
-          (dir out-file)
-          ".scam/")))
-
-
 (define (main argv)
   (define `opt-names
     "-o= -e= -v --version -h -x -i --quiet --obj-dir= --boot")
@@ -61,9 +53,12 @@ Options:
     (define `errors (opt "!"))     ; errors encountered by getopts
 
     ;; These globals govern compilation
-    (set *is-quiet* (opt "quiet"))
     (set *is-boot* (opt "boot"))
-    (set *obj-dir* (get-obj-dir (last (opt "obj-dir")) (last (opt "o"))))
+    (define is-quiet (opt "quiet"))
+    (define obj-dir
+      (or (last (opt "obj-dir"))
+          (if (opt "o")
+              (concat (dir (last (opt "o"))) ".scam/"))))
 
     (cond
      (errors
@@ -80,12 +75,12 @@ Options:
      ((opt "o")
       (if (word 2 names)
           (perror "too many input files were given with `-o`")
-          (build-program (first names) (last (opt "o")))))
+          (build-program (first names) (last (opt "o")) obj-dir is-quiet)))
 
      ((opt "e")
       ;; eval with the REPL's initial env & output formatting
       (for expr (opt "e")
-           (if (repl-rep expr)
+           (if (repl-rep expr obj-dir is-quiet)
                (error "Error")))
       nil)
 
@@ -96,14 +91,14 @@ Options:
      ((opt "x")
       (if (not names)
           (perror "no FILE was given with '-x'")
-          (run-program (first names) (rest names))))
+          (run-program (first names) (rest names) obj-dir is-quiet)))
 
      ((not names) ;; handles valid `-i` case as well
       (print "SCAM v" version " interactive mode. Type '?' for help.")
-      (repl))
+      (repl obj-dir))
 
      ((opt "i")
       (perror "extraneous arguments were provided with -i"))
 
      (else
-      (run-program (first names) (rest names))))))
+      (run-program (first names) (rest names) obj-dir is-quiet)))))

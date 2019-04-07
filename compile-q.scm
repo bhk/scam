@@ -87,9 +87,10 @@
 (let-global ((*is-boot* 1))
   (expect "core" (module-id "core.scm")))
 
-(let-global ((*is-boot* nil))
-  (expect ".scam/a+0b.scm" (module-id "a b.scm"))
-  (expect ".scam/+./b.scm" (module-id "../b.scm")))
+(let-global ((*is-boot* nil)
+             (*obj-dir* ".obj/"))
+  (expect ".obj/a+0b.scm" (module-id "a b.scm"))
+  (expect ".obj/+./b.scm" (module-id "../b.scm")))
 
 
 ;; modid-deps & modid-read-lines

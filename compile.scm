@@ -26,6 +26,16 @@
 ;; (hopefully empty) vector of errors.  The form and IL data structures can
 ;; convey errors as well as successful results, so the previous stages do
 ;; not need a separate error output value.
+;;
+;; ## Object Directory
+;;
+;; During compilation, intermediate files are written to a directory called
+;; the "object directory".  Subsequent compilations with the same object
+;; directory can proceed faster by reusing these results.  This defaults to
+;; ".scam/".
+;;
+;; No two compilations should occur at the same time (e.g. in different
+;; instances of SCAM) using the same directory.
 
 
 (require "core.scm")
@@ -42,13 +52,13 @@
 
 
 ;; When non-nil, emit progress messages.
-(define *is-quiet* &public nil)
-
-;; Files currently being compiled (to check for cycles)
-(define *compiling* nil)
+(declare *is-quiet*)
 
 ;; Default cache directory
-(define *obj-dir* &public ".scam/")
+(declare *obj-dir*)
+
+;; A vector of files being compiled (to check for cycles)
+(define *compiling* nil)
 
 
 ;; Display a progress message.
@@ -77,8 +87,12 @@
 
 ;; Evaluate EXPR within a memo session for compilation.
 ;;
-(define `(compile-memo-on expr)
-  (memo-on (compile-cache-file) expr))
+(define `(compile-memo-on obj-dir is-quiet expr)
+  (let-global ((*obj-dir* (if obj-dir
+                              (patsubst "%//" "%/" (concat obj-dir "/"))
+                              ".scam/"))
+               (*is-quiet* is-quiet))
+    (memo-on (compile-cache-file) expr)))
 
 
 ;; Return transitive closure of a one-to-many relationship.
@@ -643,19 +657,23 @@
                    (bail-if (concat test-src " failed")))))))
 
 
-;; Compile SCAM source text and write an executable file.
+;; Compile a SCAM program.
+;;
+;; SRC-FILE = name of the SCAM source file\
+;; EXE-FILE = name of an executable file to create.\
+;; ARGV = a vector to pass to the program's `main` function\
+;; OBJ-DIR = nil, or the [object directory](#object-directory)\
+;; IS-QUIET = non-nil to suppress progress messages.
 ;;
 ;; On success, return `nil`.\
 ;; On failure, display message and return 1.
 ;;
-;; EXE-FILE = name of an executable file to create.\
-;; SRC-FILE = name of the source file of the main module.
-;;
-(define (build-program src-file exe-file)
+(define (build-program src-file exe-file ?obj-dir ?is-quiet)
   &public
   (define `main-id (module-id src-file))
 
   (compile-memo-on
+   obj-dir is-quiet
    (if (not (memo-hash-file src-file))
        (begin
          (fprintf 2 "scam: file '%s' does not exist\n" src-file)
@@ -664,14 +682,20 @@
            (memo-call (native-name link) exe-file main-id)))))
 
 
-;; Compile and execute a SCAM source file.
+;; Compile and execute a SCAM program.
+;;
+;; SRC-FILE = name of the SCAM source file\
+;; ARGV = a vector to pass to the program's `main` function\
+;; OBJ-DIR = nil, or the [object directory](#object-directory)\
+;; IS-QUIET = non-nil to suppress progress messages.
 ;;
 ;; On success, return `nil`.\
 ;; On failure, display message and return 1.
 ;;
-(define (run-program src-file argv)
+(define (run-program src-file argv ?obj-dir ?is-quiet)
   &public
   (compile-memo-on
+   obj-dir is-quiet
    (or (m-compile-and-maybe-test-module src-file nil)
        (run src-file argv nil))))
 
@@ -681,14 +705,17 @@
 ;; TEXT = SCAM source\
 ;; FILE = the file from which the source was obtained; this will be
 ;;     available to the compiled code via `(current-file)`.\
-;; ENV-IN = Initial environment.  If nil, SCAM's initial bindings will
-;;     be supplied.  Otherwise, it must begin with the initial bindings.
+;; ENV-IN = environment for TEXT.  If nil, SCAM's default environment will
+;;    be used.  Otherwise, it must be a previously returned ENV-OUT value.\
+;; OBJ-DIR = nil, or the [object directory](#object-directory).\
+;; IS-QUIET = non-nil to suppress progress messages.
 ;;
 ;; Returns: `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
 ;;
-(define (compile-text text file ?env-in)
+(define (compile-text text file ?env-in ?obj-dir ?is-quiet)
   &public
   (assert (not *is-boot*))
   (define `env (or env-in (compile-prelude nil)))
   (compile-memo-on
+   obj-dir is-quiet
    (parse-and-gen text env file nil)))
