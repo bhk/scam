@@ -4,7 +4,7 @@
 | :-- | :-- |
 | [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
-| [intrinsics](#intrinsics) | [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`and`](#and-expr) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-paths) [`begin`](#begin-expr) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`declare`](#declare-) [`declare`](#declare-) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-expr) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-value) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-a-b-c-) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
+| [intrinsics](#intrinsics) | [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-values) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
 | [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`ioshell`](#ioshell-cmd) [`mkdir-p`](#mkdir-p-dir) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell!`](#shell-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
@@ -390,6 +390,22 @@ they do not have values and cannot be passed to other functions.
 
 ## Exports
 
+##### `(? FN ...ARGS)`
+
+Call `(FN ...ARGS)` with tracing.
+
+On entry to FN the function name and arguments are displaced, and on exit
+the return value is displayed.  For example, in the REPL:
+
+    > (define (f x) (+ x 1))
+    > (f 1)
+    2
+    > (? f 1)
+    --> (f "1")
+    <-- f: "2"
+    2
+
+
 ##### `(abspath PATHS)`
 
 For each file name in PATHS, convert relative paths to absolute paths.
@@ -404,13 +420,6 @@ Add PREFIX to the start of each word in LIST.
 ##### `(addsuffix SUFFIX PATHS)`
 
 Add SUFFIX to the end of each word in PATHS.
-
-
-##### `(and EXPR...)`
-
-Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
-encountered.  The value of the `and` expression is that of the last
-sub-expression evaluated, or `nil` if no expressions were evaluated.
 
 
 ##### `(append-for VAR VECTOR BODY)`
@@ -439,8 +448,8 @@ Example:
 
 ##### `(at-exit FUNC)`
 
-Add FUNC to a list of functions that will be run when the program exits.
-Functions will be run in the reverse of the order that they were registered.
+Add FUNC to a list of functions that will be run after `main` exits.
+The earliest-registered functions will be called last.
 
 
 ##### `(basename PATHS)`
@@ -448,11 +457,27 @@ Functions will be run in the reverse of the order that they were registered.
 Remove the file extension from each word in PATHS.
 
 
-##### `(begin EXPR...)`
+##### `(begin ...EXPRS)`
 
 Encloses a *block* of expressions.  A block is a sequence of expressions
 that are evaluated in order.  The result of that last expression is
 returned (or nil if no expressions are given).
+
+
+##### `(case VALUE ...CLAUSES)`
+
+Match a record value with its constructor.
+
+Example:
+
+    (case shape
+       ((Square x) (^ x 2))
+       ((Rectangle x y) (* x y))
+       ((Triangle base height) (/ (* base height) 2))
+       (else 0))
+
+See the [language reference](reference.md#records) for more examples and
+details.
 
 
 ##### `(concat ...VALUES)`
@@ -468,6 +493,21 @@ This special form concatenates all of its arguments.
     "a;a b;a b c"
 
 
+##### `(cond ...CLAUSES)`
+
+This special form expresses conditional execution of an arbitrary number
+of possible blocks of code.  Each CLAUSE takes the form:
+
+    (CONDITION ...EXPRS)
+
+Example:
+
+    (cond ((filter "foo" a)  "Found FOO")
+          ((filter "bar" a)  "Found BAR")
+          ((filter "baz" a)  (print "BAZ") "Found BAZ")
+          (else              "Found NOTHING"))
+
+
 ##### `(current-env)`
 
 This special form evaluates to the data structure that describes the lexical
@@ -481,7 +521,16 @@ This special form evaluates to the file name and line number of where it was
 invoked, in this format:  `FILENAME:LINE`
 
 
-##### `(declare ...)`
+##### `(data NAME ...CTORS)`
+
+Declare a record data type.
+
+CTORS is a sequence of `(NAME ...ARGS)` expressions that declare data
+constructors.  Records are discussed further in the [language
+reference](reference.md#records).
+
+
+##### `(declare ...FORMS)`
 
 Declare a function, variable, or macro.
 
@@ -495,7 +544,7 @@ a value.  This is usually used to access non-SCAM functions, or when
 mutually recursive functions are defined.
 
 
-##### `(declare ...)`
+##### `(declare ...FORMS)`
 
 Declare and define a function, variable, or macro.
 
@@ -639,11 +688,11 @@ Returns the value stored at index INDEX (1-based) in vector VEC.
 Get the tail of LIST, starting at the Nth element (1-based).
 
 
-##### `(or EXPR...)`
+##### `(or ...EXPRS)`
 
-Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
-is encountered.  The value of the `and` expression is that of the last
-sub-expression evaluated, or `nil` if no expressions were evaluated.
+Expressions in `...EXPRS` are evaluated sequentially until a non-`nil`
+value is encountered.  The first non-`nil` value is returned; if all are
+`nil`, `nil` is returned.
 
 
 ##### `(patsubst PAT REPL LIST)`
@@ -653,9 +702,9 @@ and a corresponding `%` in REPL will be replace with what the wildcard in
 PAT matched.  See the GNU make documentation for subtleties.
 
 
-##### `(print VALUE...)`
+##### `(print ...VALUES)`
 
-Concatenate all values and write them to stdout.
+Concatenate all values and write them to `stdout`.
 
 
 ##### `(promote VALUE)`
@@ -826,9 +875,9 @@ Remove instrumentation from functions listed in NAMES, or functions
 matched by patterns in NAMES.
 
 
-##### `(vector A B C ...)`
+##### `(vector ...VALUES)`
 
-This constructs a vector.  It is equivalent to `[A B C ...]`.
+Construct a vector containing each argument.
 
 
 ##### `(wildcard PATTERNS)`
