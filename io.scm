@@ -1,6 +1,7 @@
 ;; # io: File I/O and Shell Interaction
 
 (require "core.scm")
+(require "string.scm")
 
 
 (declare SCAM_DEBUG &native)
@@ -52,11 +53,56 @@
   (concat-vec (subst "!r" "\x0d" (addsuffix "\n" raw-lines))))
 
 
-;; Construct a command line that will echo STR.
+(define MAX-ARG-1     100000)
+(define MAX-ARG-REST  100001)   ;; MAX-ARG-1 + 1
+
+
+;; Construct a BYTES argument for `echo-bytes` that outputs STR.
 ;;
-(define (echo-command str)
-  &public
-  (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str))))
+(define `(get-echo-bytes str)
+  (subst "\\" "\\ \\"    ;; encode for printf
+         "\n" "\\ n"     ;; encode for printf
+         "'" "' \\ ' '"  ;; encode for shell
+         (string-to-bytes str)))
+
+
+;; Output BYTES to file FILE-NAME.
+;;
+;; Return `nil` on success; error message otherwise.
+;;
+(define (echo-small bytes suffix file is-append)
+  (ioshell
+   (concat "printf '%b' '" (concat-vec bytes) "' "
+           (subst "{>}" (if is-append ">>" ">") suffix)
+           file)))
+
+
+(declare (echo-bytes bytes suffix file is-append))
+
+
+(define (echo-split b-first b-rest suffix file is-append)
+  ;; "'" should only appear within "' \\ ' '"
+  (if (filter "' \\" (lastword (subst "\\ \\" nil "' \\ ' '" nil b-first)))
+      ;; get one more character
+      (echo-split (concat b-first " " (word 1 b-rest))
+                  (rest b-rest)
+                  suffix file is-append)
+      (or (echo-small b-first suffix file is-append)
+          (echo-bytes b-rest suffix file 1))))
+
+
+;; BYTES = vector of single-byte strings (gotten from `get-echo-bytes`)
+;; SUFFIX = string appended to echo command, in which "{>}" will be replaced
+;;      with either ">" or ">>".
+;; FILE = string to be appended to SUFFIX.
+;;
+(define (echo-bytes bytes suffix file ?is-append)
+  (if (word MAX-ARG-REST bytes)
+      (echo-split (wordlist 1 MAX-ARG-1 bytes)
+                  (nth-rest MAX-ARG-REST bytes)
+                  suffix file is-append)
+      (echo-small bytes suffix file is-append)))
+
 
 
 ;; Write DATA to a file descriptor FD, 0 through 8.
@@ -71,13 +117,21 @@
   ;; program prologue when running make, so fd 9 is available as the real
   ;; stdout.  Second, we want to capture error messages from the executed
   ;; command, so we redirect 2.
-  (rest
-   (ioshell (concat (echo-command data)
-                     (if (filter 2 fd)
-                         ;; use 9 to save the "real" stderr
-                         " 9>&2 2>&1 >&9"
-                         ;; use 9 for the "real" stdout
-                         (concat " 2>&1 >&" (patsubst 1 9 fd)))))))
+  (define `redirs
+    (if (filter 2 fd)
+        "9>&2 2>&1 >&9"
+        (concat "2>&1 >&" (patsubst 1 9 fd))))
+
+  (echo-bytes (get-echo-bytes data) redirs nil))
+
+
+;; Write DATA to file FILENAME.
+;;
+;; On success, nil is returned.  Otherwise, an error description is returned.
+;;
+(define (write-file file-name data)
+  &public
+  (echo-bytes (get-echo-bytes data) "2>&1 {>} " (quote-sh-file file-name)))
 
 
 ;; Format text and write to a file.  See `vsprintf` for handling of FORMAT
@@ -98,43 +152,6 @@
   (if prompt
       (write 1 prompt))
   (shell! "head -1"))
-
-
-;; Concatenate elements in VEC in groups of SIZE.
-;;
-(define (concat-groups vec size)
-  (let ((group-dots (patsubst "%" "!." (wordlist 1 size vec)))
-        (all-dots (patsubst "%" "!." vec))
-        (vec vec))
-    (define `groups
-      (subst group-dots (concat group-dots "!.") all-dots))
-    (subst "!. " "" "!." " " (join vec groups))))
-
-
-;; Write DATA to file FILENAME.
-;;
-;; In order to handle large values, the data is written line-by-line, using
-;; multiple shell invocations, to a temporary file that is moved to FILENAME
-;; only on success, so that if the operation is interrupted (e.g. the SCAM
-;; process is killed) then FILENAME will not be left with partial data.
-;;
-;; On success, nil is returned.  Otherwise, an error description is returned.
-;;
-(define (write-file filename data)
-  &public
-  (define `file-arg (quote-sh-file filename))
-  (define `temp-arg (quote-sh-file (concat filename "_[tmp]")))
-
-  (or
-   ;; ensure filename is not a directory and create empty tmpfile
-   (rest (ioshell (concat "rm -f " file-arg " 2>&1 && 2>&1 > " temp-arg)))
-
-   ;; initial write succeeded
-   (begin
-     (for line (concat-groups (subst "\n" "\n " [data]) 50)
-          (ioshell (concat (echo-command line) " >> " temp-arg)))
-     (rest (ioshell (concat "mv " temp-arg " " file-arg " 2>&1"
-                             " || rm " temp-arg " 2>&1"))))))
 
 
 ;; Modify file mode.  Return nil on success, description on error.
@@ -202,7 +219,7 @@
   (or *hash-cmd*
       (begin
         (define `cmd
-          ;; GNU which is noisy => errors to /dev/null
+          ;; GNU `which` is noisy => errors to /dev/null
           (or (notdir (word 1 (shell "which md5 sha1sum shasum 2>/dev/null")))
               (error "no md5, shasum, or sha1sum in path")))
         (set *hash-cmd* (subst "md5" "md5 -r" cmd))
@@ -223,7 +240,8 @@
   ;; Limit the first word on each line (the hash) to 16 bytes
   (define `cmd
     (concat (hash-cmd) " " quoted-names " 2>/dev/null"
-            " | sed 's/\\(^................\\)[^ ]*/\\1/;s/!/!1/g;s/ /!0/g;s/\t/!+/g'"))
+            " | sed 's/\\(^................\\)[^ ]*/\\1/;"
+            "s/!/!1/g;s/ /!0/g;s/\t/!+/g'"))
 
   ;; Output is one line per file containing HASH and FILENAME seperated
   ;; by one space (md5 -r) or two spaces (all others).
@@ -243,7 +261,7 @@
   (dict-value (hash-files [filename])))
 
 
-;; Execute shell command CMD, has what it writes to `stdout`, and return the
+;; Execute shell command CMD, hash what it writes to `stdout`, and return the
 ;; hash.
 ;;
 (define (hash-output cmd)
@@ -256,21 +274,36 @@
                    " | sed 's/\\(^................\\).*/\\1/'")))
 
 
+(define (mktemp dir-name)
+  (ioshell
+   (concat "mktemp " (quote-sh-file (concat dir-name "blob.XXXX")))))
+
+
+(define (write-blob file data)
+  (define `dir-arg
+    (quote-sh-file (dir file)))
+
+  (define `file-arg
+    (quote-sh-file file))
+
+  (define `hash
+    (if (echo-bytes (get-echo-bytes data) "2>&1 {>} " file-arg)
+        nil
+        (ioshell
+         (concat "( o=" file-arg
+                 " && h=$(" (hash-cmd) " \"$o\")"
+                 " && mv -f \"$o\" " dir-arg "\"${h:0:16}\""
+                 " && echo \"${h:0:16}\" ) 2>/dev/null"))))
+
+  (addprefix (dir file) hash))
+
+
 ;; Write DATA to a file whose name is a hash of DATA, in directory DIR-NAME.
 ;; Return the path to the new file.
 ;;
 (define (save-blob dir-name data)
   &public
-  (define `templ (quote-sh-file (concat dir-name "objtmp.XXXXXXXX")))
-  (define `cmd
-    (concat "( t=$(mktemp " templ ") && "
-            (echo-command data) " > \"$t\" && "
-            "h=$(" (hash-cmd) " \"$t\") && "
-            "n=\"${h:0:16}\" && "
-            "mv -f \"$t\" " (quote-sh-file dir-name) "\"$n\" && "
-            "echo \"$n\""
-            ") 2>/dev/null"))
-  (addprefix dir-name (ioshell cmd)))
+  (write-blob (mktemp dir-name) data))
 
 
 ;; clean-path-x: Helper for clean-path

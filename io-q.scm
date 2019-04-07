@@ -21,12 +21,6 @@
 
 (expect 1 (see "Bad file descriptor" (write 543 "hi")))
 
-;; concat-groups
-
-(expect "abc def ghi j"
-        (filter "%"
-                (concat-groups "a b c d e f g h i j" 3)))
-
 ;; write-file & read-file
 
 (define `thisfile (lastword MAKEFILE_LIST))
