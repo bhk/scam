@@ -26,11 +26,16 @@
 ;; first word of each vector describes its type.  IL constructs map closely
 ;; to GNU Make constructs.
 ;;
-;; Blocks
+;; IBlock
 ;;
-;;   Blocks are sequences of expressions, as in a `begin` expression or a
-;;   function body.  All code within a block is executed, and the return
+;;   An IBlock is a sequences of expressions, as in a `begin` expression or
+;;   a function body.  All code within a block is executed, and the return
 ;;   values are discarded for all but the last sub-node.
+;;
+;; ILocal
+;;
+;;    A reference to a local variable: argument NDX (1...N) to some parent
+;;    lambda.  LEVEL is 0 for the enclosing lambda, 1 for its parent, etc.
 ;;
 ;; IWhere
 ;;
@@ -38,7 +43,7 @@
 ;;    non-nil, a ":LINE" suffix.  When IWhere occurs within a macro, POS
 ;;    will be rewritten to reflect where the macro was invoked.
 ;;
-;;  ICrumb
+;; ICrumb
 ;;
 ;;    An ICrumb holds a name/value pair that will be passed through to the
 ;;    `compile-text` output without affecting the behavior of the generated
