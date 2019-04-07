@@ -131,7 +131,7 @@ int main(int argc, char **argv)
       (set t-nil (/ (- (.time cnil) t-time) (.reps cnil) 5)))))
 
 
-;; Compute calibrated per-iteration time in milliseconds
+;; Compute calibrated per-iteration time in milliseconds.
 ;;
 (define (clk-result reps-time)
   (define `time (word 2 reps-time))
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
   (/ t-per 1 4))
 
 
-;; Compute time consumed by calling FN.
+;; Compute time (milliseconds) consumed by calling FN.
 ;;
 (define (clk-time-fn fn ?duration ?reps)
   &public
@@ -152,14 +152,14 @@ int main(int argc, char **argv)
                              (or reps 1))))
 
 
-;; Compute time consumed by evaluating EXPR.
+;; Compute time (milliseconds) consumed by evaluating EXPR.
 ;;
 (define `(clk-time expr ?duration ?reps)
   &public
   (clk-time-fn (lambda () (and expr nil)) duration reps))
 
 
-;; Compute and print time consumed by evaluating EXPR.
+;; Compute and print time (milliseconds) consumed by evaluating EXPR.
 ;;
 (define `(clk-show name expr ?duration ?reps)
   &public
