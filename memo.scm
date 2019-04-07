@@ -162,9 +162,8 @@
     (case io-record ((IO t _ _) t)))
 
   (if io-record
-      (begin
-        (expect io-record (IO io-tag fname args))
-        io-tag)))
+        ;; We expect: io-record == (IO io-tag fname args)
+        io-tag))
 
 
 (define (memo-log-io fname args result)
@@ -217,7 +216,7 @@
 ;;
 (define (memo-apply fname args)
   &public
-  (assert *memo-on*)
+  ;; (assert *memo-on*)
   (memo-log-call fname args (memo-do-apply fname args)))
 
 
