@@ -7,6 +7,18 @@
 (require "../core.scm")
 
 
+;; current-file-line
+
+(define `(fl0)
+  (current-file-line))
+
+;; WARNING: fragile tests... Just update line numbers if they have changed.
+(expect "run.scm:17"
+        (notdir (current-file-line)))
+(expect "run.scm:19"
+        (notdir (fl0)))
+
+
 ;; run-time escaping of lambda expressions
 
 (define (make-lambda a)
@@ -72,14 +84,20 @@
        (expect str (unmunge fun))))
 
 
+;; GNU Make 3.82 strips spaces from start and end of a variable name
+;; (*after* expansion) in `define VARNAME ...  endef`.  We don't need to
+;; worry about making native-name well-defined, since it isn't an exposed
+;; building block in SCAM anymore.  We just need to worry about it handling
+;; SCAM symbols, of which make keywords and words containing any of "#+=?\\"
+;; are or concern.
 
-(for name [ "a# " "a; " "a: " "a ( " "a ) " "a\n" " $a" "a=1" "a:=1"]
+(for name [ "a#b" "a+" "a?" "a=" "a?=" "a\\#" "override" "include" ]
      (set-native name name)
-     (expect "simple" (flavor name))
+     (expect (concat "simple:" name) (concat (flavor name) ":" name))
      (expect name (value name))
 
      (set-native-fn name name)
-     (expect "recursive" (flavor name))
+     (expect (concat "recursive:" name) (concat (flavor name) ":" name))
      (expect name (value name)))
 
 ;; append-for
@@ -95,18 +113,6 @@
 
 (set-native-fn "fun" "define\nendef\n\\")
 (expect "$ define\n$ endef\n\\$ " fun)
-
-;; current-file-line
-
-(define `(fl0)
-  (current-file-line))
-
-;; WARNING: very fragile tests...
-(expect "run.scm:106"
-        (notdir (current-file-line)))
-(expect "run.scm:108"
-        (notdir (fl0)))
-
 
 ;; builtins as functions
 
