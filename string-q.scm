@@ -7,6 +7,7 @@
 
 ;; gen-polysub
 
+(expect " 12 3 21 " ( (gen-polysub [" 1 "] [" 3 "]) " 12 1 21 "))
 (expect "a$,\\#\nb" ( (gen-polysub ["#"] ["$,\\#\n"]) "a#b" ))
 (expect "((" ( (gen-polysub [")"] ["("]) "()" ))
 (expect "2.3.1" ( (gen-polysub "a b c" "1 2 3") "b.c.a"))
@@ -16,9 +17,10 @@
 
 ;; string-to-chars
 
-(expect [" " "!" "\t" "!" " " "\x0d" "\n"] (string-to-chars " !\t! \x0d\n"))
+(expect [] (string-to-chars ""))
+(expect [" " "!" "\t" "!" " " " " "\x0d" "\n"] (string-to-chars " !\t!  \x0d\n"))
 (expect ["a" "¢" "€" "￦" "€" "¢" "a"] (string-to-chars "a¢€￦€¢a"))
-;; for non-UTF8, each word should still be composed of byte sequences in the original string
+;; When not UTF8, the vector should still contain bytes from the original string
 (expect ["\x80\x81 " "\xA1"] (string-to-chars "\x80\x81 \xA1"))
 
 ;; string-len
@@ -47,23 +49,30 @@
 
 ;; string-to-bytes
 
-(string-to-bytes "x")
-(expect [32 65 66 67 33 49 32 33 48] (string-to-bytes " ABC!1 !0"))
-(expect [255] (string-to-bytes "\xff"))
-(expect (range 1 255) (string-to-bytes (concat-vec all-bytes)))
+(expect ["\t" "A" "\n" "\x80" "\xa1" "\xd1" "\xff"]
+        (string-to-bytes "\tA\n\x80\xA1\xD1\xFF"))
 
-;; strings-from-bytes
+;; string-to-bytecodes
 
-(expect ["A" " " "" "\xFF"] (strings-from-bytes [65 32 0 255]))
+(expect [] (string-to-bytecodes ""))
+(expect [97] (string-to-bytecodes "a"))
+(expect [32 65 66 67 33 49 32 33 48] (string-to-bytecodes " ABC!1 !0"))
+(expect [255] (string-to-bytecodes "\xff"))
+(expect (range 1 255) (string-to-bytecodes (concat-vec all-bytes)))
 
-;; string-from-bytes
+;; bytes-from-bytecodes
 
-(expect "A \xFF" (string-from-bytes [65 32 255]))
+(expect ["A" " " "" "\xFF"] (bytes-from-bytecodes [65 32 0 255]))
+
+;; string-from-bytecodes
+
+(expect "A \xFF" (string-from-bytecodes [65 32 255]))
 (expect (concat-vec all-bytes)
-        (string-from-bytes (range 1 255)))
+        (string-from-bytecodes (range 1 255)))
 
 ;; string-repeat
 
 (expect "Abc" (string-repeat "Abc" 1))
 (expect "AbcAbcAbcAbc" (string-repeat "Abc" 4))
 (expect "" (string-repeat "Abc" 0))
+(expect "" (string-repeat "" 3))

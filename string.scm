@@ -56,39 +56,72 @@
   (define `arg
     (or input (lambda (s) s)))
 
-  (define `(enc s)
-    (subst "$" "$$" "(" "$[" ")" "$]" "," "$&" s))
+  (define `(enc w)
+    (concat
+     (if (filter "!0% !+%" w) "$ ")
+     (subst "$" "$$" "(" "$[" ")" "$]" "," "$&" (promote w))))
 
-  (define `(gen-subst from to expr)
-    (concat "$(subst " (enc from) "," (enc to) "," expr ")"))
+  (define `(gen-subst wfrom wto expr)
+    (concat "$(subst " (enc wfrom) "," (enc wto) "," expr ")"))
 
   (if froms
       (gen-polysub (rest froms) (rest tos)
-                   (gen-subst (first froms) (first tos) arg))
+                   (gen-subst (word 1 froms) (word 1 tos) arg))
       arg))
 
 
-;; Demote all elements in a vector.  This is faster than `(for i vec [i])`.
-(define (vdemote vec)
+;; Demote all elements in a vector.  This is faster than `(for i VEC [i])`.
+;;
+(define `(vdemote vec)
   (subst [" "] " " [vec]))
 
 
-(define (gen-split chars to-pattern)
-  (let& ((froms (vdemote chars)))
-    (gen-polysub froms (patsubst "%" to-pattern froms))))
+;; Word-encode *content* of STR; does not* convert empty string to "!.".
+;;
+(define `(down str)
+  (subst "!" "!1" " " "!0" "\t" "!+" str))
 
-(define `ascii (wordlist 1 127 all-bytes))
-(define `utf8-cont (wordlist 128 191 all-bytes))   ;; continuation bytes
-(define `utf8-esc (wordlist 194 244 all-bytes))    ;; initial bytes of a sequence
 
-;; Note: These 'split' functions operate on *demoted* strings.
+(define (def-split func chars to-pattern)
+  ;; split functions operate on demoted strings
+  (define `froms (vdemote chars))
+
+  (set-native-fn func
+                 (gen-polysub froms (patsubst "%" to-pattern froms))))
+
+
+;; Split a vector of one element at each ASCII byte, creating a vector of
+;; multiple elements.
+;;
 (declare (split-ascii str))
-(declare (split-utf8-esc str))
-(declare (split-utf8-cont str))
+(def-split (native-name split-ascii)
+           ;; Avoid splitting multi-byte vector-encodings
+           (filter-out ["!" " " "\t"] (wordlist 1 127 all-bytes))
+           ["% "])
 
-(set split-ascii (gen-split ascii ["% "]))
-(set split-utf8-esc (gen-split utf8-esc ["% "]))
-(set split-utf8-cont (gen-split utf8-cont ["!.% "]))
+
+;; Split a vector at bytes 128...255.
+;;
+(declare (split-high str))
+(def-split (native-name split-high)
+           (wordlist 128 255 all-bytes)
+           ["% "])
+
+
+;; Split a vector at each UTF-8 escape byte.
+;;
+(declare (split-utf8-esc str))
+(def-split (native-name split-utf8-esc)
+           (wordlist 194 244 all-bytes)
+           ["% "])
+
+
+;; Split a vector at each UTF-8 continuation byte.
+;;
+(declare (split-utf8-cont str))
+(def-split (native-name split-utf8-cont)
+           (wordlist 128 191 all-bytes)
+           ["!.% "])
 
 
 ;; Group UTF-8 continuation characters with UTF-8 initial bytes *if* the
@@ -111,9 +144,15 @@
 ;;
 (define (string-to-chars s)
   &public
-  (define `u8
-    (utf8-group-if (split-utf8-esc (subst "!" "!1" " " "!0" "\t" "!+" s))))
-  (filter "%" (split-ascii u8)))
+  (strip (split-ascii (utf8-group-if (split-utf8-esc (down s))))))
+
+
+;; Get all bytes in STR.  The result is a vector of strings, each containing
+;; one byte. `concat-vec` reverses this operation.
+;;
+(define (string-to-bytes s)
+  &public
+  (strip (split-high (split-ascii (down s)))))
 
 
 ;; Return the number of *characters* in S.  UTF-8 encoding is assumed.
@@ -155,46 +194,45 @@
 ;; Get the numeric indices of all *bytes* in STR.  The result is a vector of
 ;; numbers from 1 to 255.
 ;;
-(define (string-to-bytes str)
+(define (string-to-bytecodes str)
   &public
 
   ;; initialize on first use
   (declare (s2b-sub str))
   (declare (num-enc str))
-  (if (not s2b-sub)
+  (if (not num-enc)
       (begin
+        ;; Encode bytes in a way that does not include digits.
         (set num-enc
-             ;; Prefix all digits in a vector.  Fix up bang-escaped values.
-             (gen-polysub ["/" 0 1 2 3 4 5 6 7 8 9 "!/1" "!/0"]
-                          ["/@" "/0" "/1" "/2" "/3" "/4" "/5" "/6" "/7" "/8" "/9" "!1" "!0"]))
-
+             (gen-polysub ["!0" "!1" 0 1 2 3 4 5 6 7 8 9]
+                          (addprefix ["!"] "a b c d e f g h i j k l")))
         (set s2b-sub (gen-polysub (vdemote (num-enc all-bytes))
                                   (addsuffix [" "] (indices all-bytes))))))
+  (strip (s2b-sub (num-enc (down str)))))
 
-  (filter "%" (s2b-sub (num-enc [str]))))
 
-
-;; Convert byte values into single-byte strings.
+;; Convert byte codes into a vector of single-byte strings.
 ;;
-;; BYTES = a vector of byte values (numbers from 0 to 255).
+;; CODES = a vector of byte values (numbers from 1 to 255).  Non-negative
+;;    values out of range will be ignored.  Negative values will result in a
+;;    fatal error.
 ;;
-;; The result is a vector the same length as bytes.  Each zero value in
-;; BYTES will result in a corresponding empty string in the result.
-;;
-(define (strings-from-bytes bytes)
+(define (bytes-from-bytecodes codes)
   &public
-  (foreach n bytes
-           (if (filter 0 n)
-               [""]
-               (word n all-bytes))))
+  (foreach n (patsubst 0 999 codes)
+           (or (word n all-bytes) [""])))
 
 
 ;; Construct a string from a vector of byte values.  This reverses
-;; `string-to-bytes`.
+;; `string-to-bytecodes`.
 ;;
-(define (string-from-bytes bytes)
+;; CODES = a vector of byte values (numbers from 1 to 255).  Non-negative
+;;    values out of range will be ignored.  Negative values will result in
+;;    fatal error.
+;;
+(define (string-from-bytecodes codes)
   &public
-  (concat-vec (strings-from-bytes bytes)))
+  (concat-vec (bytes-from-bytecodes codes)))
 
 
 (define (nwords num str)

@@ -15,7 +15,7 @@
 ;; utf8-decode
 
 (expect [32 127] (utf8-decode [32 127]))
-;; the result of (string-to-bytes "a¢€￦€¢a")
+;; the result of (string-to-bytecodes "a¢€￦€¢a")
 (expect [97 162 8364 65510 8364 162 97]
         (utf8-decode [97 194 162 226 130 172 239 191 166 226 130 172 194 162 97]))
 (expect [66376]

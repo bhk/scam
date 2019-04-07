@@ -25,7 +25,7 @@
 ;;
 ;;     > (utf8-encode [960 178])
 ;;     [207 128 194 178]
-;;     > (string-from-bytes [207 128 194 178])
+;;     > (string-from-bytecodes [207 128 194 178])
 ;;     "π²"
 ;;
 (define (utf8-encode codes)
@@ -71,7 +71,7 @@
 ;;
 ;; Example:
 ;;
-;;     > (string-to-bytes "π²")
+;;     > (string-to-bytecodes "π²")
 ;;     [207 128 194 178]
 ;;     > (utf8-decode [207 128 194 178])
 ;;     [960 178]

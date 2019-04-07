@@ -59,23 +59,24 @@
   (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str))))
 
 
-;; Write data to a file descriptor.  Since `shell` captures `stdout` for the
-;; command it invokes, we replace 1 with 9, which has been redirected to
-;; *actual* `stdout` (see the prologue in build.scm).
-;;
-;; We redirect `stderr` to `stdout`, so that `shell` will capture error
-;; messages. Special care must be taken when fd is 2.
+;; Write DATA to a file descriptor FD, 0 through 8.
 ;;
 ;; Result is `nil` on success; non-nil if the file descriptor is bad.
 ;;
 (define (write fd data)
   &public
+  ;; Writing to 1 or 2 (stdout, stderr) is tricky.  First, `shell` captures
+  ;; the output of the command it executes, making our program's stdout
+  ;; unavailable.  To get around this, we redirect 9 to 1 in the SCAM
+  ;; program prologue when running make, so fd 9 is available as the real
+  ;; stdout.  Second, we want to capture error messages from the executed
+  ;; command, so we redirect 2.
   (rest
    (ioshell (concat (echo-command data)
                      (if (filter 2 fd)
-                         ;; swap 1 and 2
-                         " 3>&2 2>&1 1>&3 3>&-"
-                         ;; swap 1 and 2
+                         ;; use 9 to save the "real" stderr
+                         " 9>&2 2>&1 >&9"
+                         ;; use 9 for the "real" stdout
                          (concat " 2>&1 >&" (patsubst 1 9 fd)))))))
 
 
@@ -255,21 +256,21 @@
                    " | sed 's/\\(^................\\).*/\\1/'")))
 
 
-;; Write DATA to a file in OBJ-DIR whose name is a function of DATA.
-;; Returns the path to the new file.
+;; Write DATA to a file whose name is a hash of DATA, in directory DIR-NAME.
+;; Return the path to the new file.
 ;;
-(define (save-blob obj-dir data)
+(define (save-blob dir-name data)
   &public
-  (define `templ (quote-sh-file (concat obj-dir "objtmp.XXXXXXXX")))
+  (define `templ (quote-sh-file (concat dir-name "objtmp.XXXXXXXX")))
   (define `cmd
     (concat "( t=$(mktemp " templ ") && "
             (echo-command data) " > \"$t\" && "
             "h=$(" (hash-cmd) " \"$t\") && "
             "n=\"${h:0:16}\" && "
-            "mv -f \"$t\" " (quote-sh-file obj-dir) "\"$n\" && "
+            "mv -f \"$t\" " (quote-sh-file dir-name) "\"$n\" && "
             "echo \"$n\""
             ") 2>/dev/null"))
-  (addprefix obj-dir (ioshell cmd)))
+  (addprefix dir-name (ioshell cmd)))
 
 
 ;; clean-path-x: Helper for clean-path
