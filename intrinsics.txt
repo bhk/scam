@@ -158,6 +158,22 @@
 ;;
 
 
+;; Call `(FN ...ARGS)` with tracing.
+;;
+;; On entry to FN the function name and arguments are displaced, and on exit
+;; the return value is displayed.  For example, in the REPL:
+;;
+;;     > (define (f x) (+ x 1))
+;;     > (f 1)
+;;     2
+;;     > (? f 1)
+;;     --> (f "1")
+;;     <-- f: "2"
+;;     2
+;;
+(declare (? fn ...args) &public)
+
+
 ;; This special form conditionally executes either THEN-EXPR or ELSE-EXPR.
 ;; First, COND is evaluated.  If non-nil, THEN-EXPR will be evaluated and used
 ;; are the value for the `if` expression.  Otherwise, if ELSE-EXPR is present
@@ -166,8 +182,26 @@
 (declare (if cond then-expr [else-expr]) &public)
 
 
+;; Match a record value with its constructor.
+;;
+;; Example:
+;;
+;;     (case shape
+;;        ((Square x) (^ x 2))
+;;        ((Rectangle x y) (* x y))
+;;        ((Triangle base height) (/ (* base height) 2))
+;;        (else 0))
+;;
+;; See the [language reference](reference.md#records) for more examples and
+;; details.
+;;
+(declare (case value ...clauses) &public)
+
+
 ;; This special form expresses conditional execution of an arbitrary number
-;; of possible blocks of code.
+;; of possible blocks of code.  Each CLAUSE takes the form:
+;;
+;;     (CONDITION ...EXPRS)
 ;;
 ;; Example:
 ;;
@@ -176,21 +210,31 @@
 ;;           ((filter "baz" a)  (print "BAZ") "Found BAZ")
 ;;           (else              "Found NOTHING"))
 ;;
-(declare (cond (condition body)... [(else ...exprs)] ) &public)
+(declare (cond ...clauses) &public)
 
 
-;; Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
-;; encountered.  The value of the `and` expression is that of the last
-;; sub-expression evaluated, or `nil` if no expressions were evaluated.
+;; Declare a record data type.
 ;;
-(declare (and expr...) &public)
-
-
-;; Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
-;; is encountered.  The value of the `and` expression is that of the last
-;; sub-expression evaluated, or `nil` if no expressions were evaluated.
+;; CTORS is a sequence of `(NAME ...ARGS)` expressions that declare data
+;; constructors.  Records are discussed further in the [language
+;; reference](reference.md#records).
 ;;
-(declare (or expr...) &public)
+(declare (data name ...ctors) &public)
+
+
+;; Expressions in `...EXPRS` are evaluated sequentially until a `nil` value
+;; is encountered.  If a `nil` value is encountered, `nil` is returned; if
+;; all expressions are non-nil, the last one is returned.  Note: *if no
+;; expressions were passed, `nil` will be returned.*
+;;
+(declare (and ...exprs)
+
+
+;; Expressions in `...EXPRS` are evaluated sequentially until a non-`nil`
+;; value is encountered.  The first non-`nil` value is returned; if all are
+;; `nil`, `nil` is returned.
+;;
+(declare (or ...exprs) &public)
 
 
 ;; The `foreach` special form iterates over a list, evaluates BODY (a sequence
@@ -247,7 +291,7 @@
 ;; that are evaluated in order.  The result of that last expression is
 ;; returned (or nil if no expressions are given).
 ;;
-(declare (begin expr...) &public)
+(declare (begin ...exprs) &public)
 
 
 ;; The `require` special form provides access to functionality defined in
@@ -308,7 +352,7 @@
 ;; The `&public` flag may be included in `FLAG...`.  This indicates that the
 ;; symbol should be visible outside of the file in which it is declared.
 ;;
-(declare (declare ...) &public)
+(declare (declare ...forms) &public)
 
 
 ;; Declare a function, variable, or macro.
@@ -322,7 +366,7 @@
 ;; a value.  This is usually used to access non-SCAM functions, or when
 ;; mutually recursive functions are defined.
 ;;
-(declare (declare ...) &public)
+(declare (declare ...forms) &public)
 
 
 ;; Declare an *executable macro*.  An executable macro is a function that
@@ -332,16 +376,17 @@
 (declare (defmacro (name argname) body) &public)
 
 
-;; This special form assigns names to values.  The VALUE expressions are
-;; evaluated, in order.  Then BODY (a block of expressions) is evaluated in
-;; an environment in which each NAME is bound to its corresponding value.
-;; The `let` expression returns the value of the last form in BODY.
+;; This special form assigns names to values.  BINDINGS is a sequence of
+;; `(NAME VALUE)` pairs.  First, the VALUE expressions are evaluated.
+;; order.  Then BODY (a sequence of expressions) is evaluated in an
+;; environment in which each NAME is bound to its corresponding value.  The
+;; The value of the last expression in BODY is returned.
 ;;
-;; `let` is implemented in terms of `lambda` in this manner:
+;; `let` is implemented in terms of `lambda`, and is equivalent to:
 ;;
-;;     ((lambda (NAME...) BODY) (VALUE...))
+;;     ((lambda (NAME1 NAME2 ...) BODY) (VALUE1 VALUE2 ...))
 ;;
-(declare (let ( (name value)... ) body) &public)
+(declare (let (...bindings) ...body) &public)
 
 
 ;; Declare symbol macros.
@@ -349,10 +394,15 @@
 ;; `let&` is a "lazy" let.  It binds the names to symbol macros instead of
 ;; local variables.  It also differs from `let` in that each expression is
 ;; evaluated in the context of the previous bindings -- more like Scheme's
-;; `let*`.  It is equivalent to the following:
+;; `let*`.  The following expression:
+;;
+;;     (let& ((NAME EXPR))
+;;       BODY)
+;;
+;; ... is equivalent to the following:
 ;;
 ;;     (begin
-;;       (declare `NAME EXPR)...
+;;       (declare `NAME EXPR)
 ;;       BODY)
 ;;
 ;; Since `let&` constructs symbol macros, each bound expression is not
@@ -360,11 +410,10 @@
 ;; is evaluated once each time its associated name is evaluated within
 ;; `BODY` -- perhaps zero times, perhaps many more.
 ;;
-;; Aside from the potential for multiple re-evaluations of expressions, `let&`
-;; generally has lower overhead than `let`, since it does not involve an
-;; anonymous function call (as does `let`).
+;; The `let&` form generally has lower overhead than `let`, since it does
+;; not involve an anonymous function call (as does `let`).
 ;;
-(declare (let& ( (name expr)... ) body) &public)
+(declare (let& (...bindings) ...body) &public)
 
 
 ;; This form modifies the value of some number of global variables *during
@@ -372,7 +421,7 @@
 ;;
 ;; This expression evaluates to the value of the last expression in BODY.
 ;;
-(declare (let-global ( (name value)... ) body) &public)
+(declare (let-global (...bindings) ...body) &public)
 
 
 ;; The `set` special form assigns a value to a previously declared global
@@ -413,14 +462,14 @@
 (declare (subst from to {from to}... value) &public)
 
 
-;; This constructs a vector.  It is equivalent to `[A B C ...]`.
+;; Construct a vector containing each argument.
 ;;
-(declare (vector a b c ...) &public)
+(declare (vector ...values) &public)
 
 
-;; Concatenate all values and write them to stdout.
+;; Concatenate all values and write them to `stdout`.
 ;;
-(declare (print value...) &public)
+(declare (print ...values) &public)
 
 
 ;; This special form evaluates to the data structure that describes the lexical
@@ -497,8 +546,8 @@
 (declare (filtersub pat repl str) &public)
 
 
-;; Add FUNC to a list of functions that will be run when the program exits.
-;; Functions will be run in the reverse of the order that they were registered.
+;; Add FUNC to a list of functions that will be run after `main` exits.
+;; The earliest-registered functions will be called last.
 ;;
 (declare (at-exit func) &public)
 
@@ -565,11 +614,86 @@
 ;; Remove instrumentation from functions listed in NAMES, or functions
 ;; matched by patterns in NAMES.
 ;;
-(define (untrace names ?retval) &public)
+(declare (untrace names ?retval) &public)
 
 
 ;; Add NAMES to the list of functions that should not be instrumented when
 ;; `trace` or `tracing` are called.  In order to avoid undefined behavior,
 ;; we must avoid instrumenting functions *while* they are executing.
 ;;
-(define (do-not-trace names) &public)
+(declare (do-not-trace names) &public)
+
+
+;;
+;; Internals: The following functions are not officially part of the SCAM
+;;   language.  They provide access to lower-level Make features, and cannot
+;;   be described completely without introducing implementation complexities
+;;   of SCAM and "alien" aspects of Make.  They are labeled &internal, not
+;;   &public, in order to exclude them from libraries.md.
+;;
+
+
+;; Evaluate STR as GNU Make source.
+;;
+(declare (eval str) &internal)
+
+
+;; Get the "native name" of a SCAM variable or function.
+;;
+(declare (native-name var-name) &internal)
+
+
+;; Call function variable whose native name is NAME with elements of vector
+;; ARGV as arguments.
+;;
+(declare (name-apply func-name argv) &internal)
+
+
+;; Assign VALUE to the native variable VAR-NAME as a data variable.  This
+;; will replace any data or function variable binding for VAR-NAME.
+;;
+(declare (set-native var-name value ?retval) &internal)
+
+
+;; Assign VALUE to the native variable FUNC-NAME as a function variable.
+;; This will replace any data or function variable binding for FUNC-NAME.
+;;
+;; Function variables cannot store values with complete fidelity -- the
+;; value read back using `(value FUNC-NAME)` may not be exactly the same.
+;; However, it is guaranteed that when a SCAM function value is assigned to
+;; a function, the variable's *behavior* (when called as a function) will be
+;; as expected; furthermore, the value read back will be functionally
+;; equivalent to the original SCAM function.
+;;
+;; Function names cannot begin or end in spaces, and other limitations may
+;; apply depending on the version of Make, but any valid SCAM symbol will
+;; work.
+;;
+(declare (set-native-fn func-name value ?retval) &internal)
+
+
+;; Return 1 if native variable VAR-NAME has been assigned a value (as a data
+;; or function variable), or `nil` if unassigned.
+;;
+(declare `(bound? var-name) &internal)
+
+
+;; Describe the flavor of native variable VAR-NAME.  One of:
+;;
+;;  * `"simple"`
+;;  * `"recursive"`
+;;  * `"undefined"`
+;;
+(declare (flavor var-name) &internal)
+
+
+;; Describe the GNU make origin of native variable VAR-NAME.  Origin values
+;; include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
+;; See GNU Make docs for more.
+;;
+(declare (origin var-name) &internal)
+
+
+;; Return the value of native variable VAR-NAME.
+;;
+(declare (value var-name) &internal)

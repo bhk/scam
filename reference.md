@@ -693,15 +693,8 @@ See the [SCAM Libraries](libraries.md) document for full details.
 
 ### Call Site Tracing
 
-The "?" macro can be used for tracing at a function call site. `(? f ...)`
-is equivalent to `(f ...)`, but when it executes the function name, its
-arguments and return value will displayed. For example, in the REPL:
-
-    > (define (f x) (concat x x))
-    > (? f 1)
-    --> (f "1")
-    <-- f: 11
-    11
+The ["?" special form](libraries.md#-fn-args) allows a simple edit of the
+source to enable or disable tracing at a particular call site.
 
 ### Run-time Tracing
 
@@ -727,7 +720,7 @@ Tracing can be activated at run-time in two different ways:
     loading prior to `main` -- e.g. top-level expressions in a `-q.scm` test
     -- modify the program to call `(trace SPEC)` or `(tracing ...)`.
 
-Refer to the [library documentation](libraries.md@tracing-spec-expr) for
+Refer to the [library documentation](libraries.md#tracing-spec-expr) for
 details on these tracing functions and on the `SPEC` string format.
 
 #### Tracing examples
