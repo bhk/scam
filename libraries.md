@@ -5,11 +5,11 @@
 | [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
 | [intrinsics](#intrinsics) | [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`and`](#and-expr) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-paths) [`begin`](#begin-expr) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`declare`](#declare-) [`declare`](#declare-) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-expr) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-value) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-a-b-c-) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
-| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`echo-command`](#echo-command-str) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`ioshell`](#ioshell-cmd) [`mkdir-p`](#mkdir-p-dir) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-obj-dir-data) [`shell!`](#shell-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) |
+| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`ioshell`](#ioshell-cmd) [`mkdir-p`](#mkdir-p-dir) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell!`](#shell-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
 | [peg](#peg-peg-parser-generator) | [`gen-lex`](#gen-lex-tokens) [`lex`](#lex-text-tokens) [`peg-*`](#peg--pf) [`peg-+`](#peg--pf) [`peg-?`](#peg--pf) [`peg-and`](#peg-and-pfs) [`peg-at`](#peg-at-pf) [`peg-c`](#peg-c-name-pf) [`peg-empty`](#peg-empty-caps) [`peg-not`](#peg-not-pf) [`peg-or`](#peg-or-pfs) [`peg-p`](#peg-p-in-out-caps) [`un-lex`](#un-lex-subj) |
-| [string](#string-string-manipulation) | [`gen-polysub`](#gen-polysub-froms-tos-input) [`string-from-bytes`](#string-from-bytes-bytes) [`string-len`](#string-len-s) [`string-lower`](#string-lower-str) [`string-repeat`](#string-repeat-str-num) [`string-slice`](#string-slice-first-last-str) [`string-to-bytes`](#string-to-bytes-str) [`string-to-chars`](#string-to-chars-s) [`string-upper`](#string-upper-str) [`strings-from-bytes`](#strings-from-bytes-bytes) |
+| [string](#string-string-manipulation) | [`bytes-from-bytecodes`](#bytes-from-bytecodes-codes) [`gen-polysub`](#gen-polysub-froms-tos-input) [`string-from-bytecodes`](#string-from-bytecodes-codes) [`string-len`](#string-len-s) [`string-lower`](#string-lower-str) [`string-repeat`](#string-repeat-str-num) [`string-slice`](#string-slice-first-last-str) [`string-to-bytecodes`](#string-to-bytecodes-str) [`string-to-bytes`](#string-to-bytes-s) [`string-to-chars`](#string-to-chars-s) [`string-upper`](#string-upper-str) |
 | [utf8](#utf8-utf-8-coding) | [`utf8-decode`](#utf8-decode-bytes) [`utf8-encode`](#utf8-encode-codes) |
 
 
@@ -21,124 +21,124 @@ vectors, and dictionaries.
 
 ## Exports
 
-##### `(1+ n)`
+##### `(1+ N)`
 
 Add one to N.  N must contain only decimal digits.
 
 
-##### `(append ?a ?b ?c ?d ?e ?f ?g ?h ...others)`
+##### `(append ?A ?B ?C ?D ?E ?F ?G ?H ...OTHERS)`
 
 Combine one or more (potentially empty) vectors, word lists, or
 dictionaries.
 
 
-##### `(assert cond)`
+##### `(assert COND)`
 
 If COND is nil, display diagnostics and terminate execution.
 
 
-##### `(assoc key vecv)`
+##### `(assoc KEY VECV)`
 
 Return the first vector in VECV whose first item is KEY.
 
 
-##### `(assoc-initial prefix vec)`
+##### `(assoc-initial PREFIX VEC)`
 
 Return items that match PREFIX or begin with `(concat PREFIX " ")`.
 
 
-##### `(assoc-vec key-vec vecv)`
+##### `(assoc-vec KEY-VEC VECV)`
 
 Return the first vector in VECV whose initial items match those in KEY-VEC.
 
 
-##### `(butlast vec)`
+##### `(butlast VEC)`
 
 Return elements in vector VEC *except* for the last one.
 This may also be applied to word lists or dictionaries.
 
 
-##### `(concat-vec vec ?delim)`
+##### `(concat-vec VEC ?DELIM)`
 
 Concatenate strings in VEC, separating them with DELIM.
 
 
-##### `(conj vec item)`
+##### `(conj VEC ITEM)`
 
 Add ITEM to end of vector VEC.
 
 
-##### `(cons item vec)`
+##### `(cons ITEM VEC)`
 
 Add ITEM to the front of vector VEC.
 
 
-##### `(dict-collate pairs)`
+##### `(dict-collate PAIRS)`
 
 Create a new dictionary in which each key from DICT appears only once,
 bound to a vector of all its values in DICT.
 
 
-##### `(dict-compact dict ?result)`
+##### `(dict-compact DICT ?RESULT)`
 
 Remove pairs in a dictionary that are preceded by pairs that share the
 same KEY.
 
 
-##### `(dict-find key dict)`
+##### `(dict-find KEY DICT)`
 
 Return the first pair matching KEY.  Unlike `dict-get`, this indicates
 whether a match was found (every pair is non-nil).
 
 
-##### `(dict-get key dict ?default)`
+##### `(dict-get KEY DICT ?DEFAULT)`
 
 Return the value bound to KEY.  If more than one pair matches KEY, only
 the first is returned.  If no pair is found, DEFAULT is returned.
 
 
-##### `(dict-key pair)`
+##### `(dict-key PAIR)`
 
 Return the key portion of PAIR.
 
 
-##### `(dict-keys dict)`
+##### `(dict-keys DICT)`
 
 Return a vector of keys from DICT.
 
 
-##### `(dict-remove key dict)`
+##### `(dict-remove KEY DICT)`
 
 Remove all pairs whose key portion is KEY from DICT.
 
 
-##### `(dict-set key value dict)`
+##### `(dict-set KEY VALUE DICT)`
 
 Bind KEY to VALUE in dictionary DICT, removing other entries for KEY.
 
 
-##### `(dict-value pair)`
+##### `(dict-value PAIR)`
 
 Return the value portion of PAIR.
 
 
-##### `(dict-values dict)`
+##### `(dict-values DICT)`
 
 Return a vector of values from DICT.
 
 
-##### `(eq? a b)`
+##### `(eq? A B)`
 
 Return 1 if A and B are equal, nil otherwise.
 
 
-##### `(expect a b)`
+##### `(expect A B)`
 
 Compare A to B; if they are not equal, display diagnostics and terminate
 execution.
 
 
-##### `(expect-x a b file-line)`
+##### `(expect-x A B FILE-LINE)`
 
 Compare A to B, and if unequal display diagnostics and terminate
 execution.  This function is exported to enable clients to easily
@@ -148,7 +148,7 @@ from a macro in order to reflect the location of the caller.
 FILE-LINE = "file:line:" prefix for the diagnostic message.
 
 
-##### `(fexpect a b)`
+##### `(fexpect A B)`
 
 Like `expect, but only the formatted versions of A and B are compared.
 This accommodates only minor differences in the concrete layout that do
@@ -158,109 +158,109 @@ constructed, but not after being retrieved from another record (when
 stored as a trailing `&list` parameter).
 
 
-##### `(foldl f z v)`
+##### `(foldl F Z V)`
 
 Apply the two-argument function F to all elements of V, starting at the
 left with `(F Z <first>)`.  If V is empty, return Z.
 
 
-##### `(foldr f z v)`
+##### `(foldr F Z V)`
 
 Like `foldl`, but starting from the right with `(F <last> Z)`.
 
 
-##### `(format str)`
+##### `(format STR)`
 
 Return a SCAM literal that evaluates to VALUE, using the "friendliest"
 representation available.
 
 
-##### `(format-add func)`
+##### `(format-add FUNC)`
 
 Register a formatting function that will be used by `format`.
 
 
-##### `(identity a)`
+##### `(identity A)`
 
 Return A.
 
 
-##### `(index-of vec item)`
+##### `(index-of VEC ITEM)`
 
 Return the index of ITEM in VEC, or 0 if ITEM is not found.
 
 
-##### `(indices lst)`
+##### `(indices LST)`
 
 Return a vector of the indices (1, 2, ...) of words in word list (or vector)
 LST.
 
 
-##### `(intersperse value vec)`
+##### `(intersperse VALUE VEC)`
 
 Insert VALUE into VEC between every two adjacent items.  If VEC is empty,
 the result is empty.  Otherwise, the result has one less than twice as
 many elements as VEC.
 
 
-##### `(last vec)`
+##### `(last VEC)`
 
 Return the last item in vector VEC.
 
 
-##### `(memoize funcname)`
+##### `(memoize FUNCNAME)`
 
 Memoize a function that accepts up to three arguments.
 
 
-##### `(numeric? s)`
+##### `(numeric? S)`
 
 Return S if S is a valid numeric literal in SCAM, nil otherwise.
 
 
-##### `(printf fmt ...values)`
+##### `(printf FMT ...VALUES)`
 
 Display a message to stdout, followed by a newline.  See `vsprintf` for
 handling of FMT and VALUES.
 
 
-##### `(reverse list)`
+##### `(reverse LIST)`
 
 Reverse word list (or vector) LIST.
 
 
-##### `(see substr str)`
+##### `(see SUBSTR STR)`
 
 Return 1 if SUBSTR appears within STR.  Print a diagnostic otherwise.
 
 
-##### `(select-vec fn list)`
+##### `(select-vec FN LIST)`
 
 Return a vector of all members of VEC for which (FN member) is non-nil.
 
 
-##### `(select-words fn list)`
+##### `(select-words FN LIST)`
 
 Return a list of words in LIST for which `(FN <word>)` is non-nil.
 
 
-##### `(sort-by key-func values)`
+##### `(sort-by KEY-FUNC VALUES)`
 
 Sort a vector VALUES in order of increasing `(KEY-FUNC i)` for each item i.
 
 
-##### `(split delim str)`
+##### `(split DELIM STR)`
 
 Split STR at each occurrence of DELIM.  Returns vector whose length is
 one more than the number of occurrences of DELIM.
 
 
-##### `(sprintf fmt ...values)`
+##### `(sprintf FMT ...VALUES)`
 
 Like `vsprintf`, but values are provided as separate arguments.
 
 
-##### `(strip vec)`
+##### `(strip VEC)`
 
 Remove redundant spaces from a vector or list.
 
@@ -269,12 +269,12 @@ leading and trailing spaces will be removed.  Newline characters are
 not disturbed.
 
 
-##### `(trace-expect a b)`
+##### `(trace-expect A B)`
 
 Like `expect`, but evaluation of A and B is done with tracing enabled.
 
 
-##### `(uniq vec)`
+##### `(uniq VEC)`
 
 Return the unique members of VEC *without* re-ordering.  The first
 occurrence of each member is retains.  This can be applied to word lists
@@ -284,24 +284,24 @@ The `sort` function returns unique items and is much faster, but it does
 not preserve ordering.
 
 
-##### `(vec-intersect a b)`
+##### `(vec-intersect A B)`
 
 Return entries in vector A that also appear in vector B.
 This may also be applied to dictionaries.
 
 
-##### `(vec-or vec)`
+##### `(vec-or VEC)`
 
 Return the first non-nil member of VEC.
 
 
-##### `(vec-subtract a b)`
+##### `(vec-subtract A B)`
 
 Return entries in vector A that do not appear in vector B.
 This may also be used to applied to dictionaries.
 
 
-##### `(vsprintf fmt values)`
+##### `(vsprintf FMT VALUES)`
 
 Expand FMT, replacing escape sequences with values from vector VALUES,
 returning the resulting string.
@@ -311,26 +311,26 @@ The following escape sequences are supported:
 -  `%q` -> `(format value)`
 
 
-##### `(while pred do initial)`
+##### `(while PRED DO INITIAL)`
 
 Recursively apply FN to VALUE until `(PRED result)` is nil, then return
 the final value.
 
 
-##### `(word-index? n)`
+##### `(word-index? N)`
 
 Return non-nil if N is safe to pass to WORD or WORDLIST.  This means it
 consists only of decimal digits and is non-zero.
 
 
-##### `(xor a b)`
+##### `(xor A B)`
 
 Return the parameter that is not nil (unless both or none are nil).
 # getopts: Command Line Options Parser
 
 ## Exports
 
-##### `(getopts argv opts)`
+##### `(getopts ARGV OPTS)`
 
 Parse command line options.
 
@@ -390,30 +390,30 @@ they do not have values and cannot be passed to other functions.
 
 ## Exports
 
-##### `(abspath paths)`
+##### `(abspath PATHS)`
 
 For each file name in PATHS, convert relative paths to absolute paths.
 The file names do not need to refer to an existing file or directory.
 
 
-##### `(addprefix prefix list)`
+##### `(addprefix PREFIX LIST)`
 
 Add PREFIX to the start of each word in LIST.
 
 
-##### `(addsuffix suffix paths)`
+##### `(addsuffix SUFFIX PATHS)`
 
 Add SUFFIX to the end of each word in PATHS.
 
 
-##### `(and expr...)`
+##### `(and EXPR...)`
 
 Expressions in `EXPR...` are evaluated sequentially until a `nil` value is
 encountered.  The value of the `and` expression is that of the last
 sub-expression evaluated, or `nil` if no expressions were evaluated.
 
 
-##### `(append-for var vector body)`
+##### `(append-for VAR VECTOR BODY)`
 
 `append-for` is similar to `for` but it appends together all of the (vector)
 values of BODY.  This is functionally similar to what is called `concat-map`
@@ -427,7 +427,7 @@ in some other languages.
     "7 5"
 
 
-##### `(apply lambda vec)`
+##### `(apply LAMBDA VEC)`
 
 Call LAMBDA, passing as arguments the members of the vector VEC.
 
@@ -437,30 +437,30 @@ Example:
     "c"
 
 
-##### `(at-exit func)`
+##### `(at-exit FUNC)`
 
 Add FUNC to a list of functions that will be run when the program exits.
 Functions will be run in the reverse of the order that they were registered.
 
 
-##### `(basename paths)`
+##### `(basename PATHS)`
 
 Remove the file extension from each word in PATHS.
 
 
-##### `(begin expr...)`
+##### `(begin EXPR...)`
 
 Encloses a *block* of expressions.  A block is a sequence of expressions
 that are evaluated in order.  The result of that last expression is
 returned (or nil if no expressions are given).
 
 
-##### `(concat ...values)`
+##### `(concat ...VALUES)`
 
 This special form concatenates all of its arguments.
 
 
-##### `(concat-for var vector delim body)`
+##### `(concat-for VAR VECTOR DELIM BODY)`
 
 `concat-for` is similar to `for` but it concatenates the values of BODY.
 
@@ -515,13 +515,13 @@ The `&public` flag may be included in `FLAG...`.  This indicates that the
 symbol should be visible outside of the file in which it is declared.
 
 
-##### `(demote value)`
+##### `(demote VALUE)`
 
 `demote` encodes any value as a word so that it may be embedded in a word
 list.  It is used internally to construct vectors.
 
 
-##### `(dir paths)`
+##### `(dir PATHS)`
 
 Get the directory of each file in PATHS.
 
@@ -530,52 +530,52 @@ Get the directory of each file in PATHS.
 See also `notdir`.
 
 
-##### `(do-not-trace names)`
+##### `(do-not-trace NAMES)`
 
 Add NAMES to the list of functions that should not be instrumented when
 `trace` or `tracing` are called.  In order to avoid undefined behavior,
 we must avoid instrumenting functions *while* they are executing.
 
 
-##### `(error message)`
+##### `(error MESSAGE)`
 
 Terminate execution of the program with a non-zero status code, writing
 `MESSAGE` to stderr.
 
 
-##### `(filter patterns list)`
+##### `(filter PATTERNS LIST)`
 
 Get all words in LIST that match PATTERNS.  Each word in PATTERNS is
 compared against the words in LIST, and is considered a match when it is
 equal, treating the first `%` character in a pattern as a wildcard.
 
 
-##### `(filter-out patterns list)`
+##### `(filter-out PATTERNS LIST)`
 
 Get all words in LIST that do *not* match PATTERNS.
 
 
-##### `(filtersub pat repl str)`
+##### `(filtersub PAT REPL STR)`
 
 Replace PAT with REPL if STR matches PAT; return nil otherwise.
 
 
-##### `(findstring sub str)`
+##### `(findstring SUB STR)`
 
 If SUB occurs within STR, return SUB.  Otherwise return `nil`.
 
 
-##### `(first vec)`
+##### `(first VEC)`
 
 Get the first element of VEC.
 
 
-##### `(firstword list)`
+##### `(firstword LIST)`
 
 Get the first word in LIST.
 
 
-##### `(for var vector body)`
+##### `(for VAR VECTOR BODY)`
 
 `for` iterates over items in a vector, evaluating BODY for with VAR bound to
 an item, constructing a new vector with the results of BODY. Example:
@@ -585,7 +585,7 @@ an item, constructing a new vector with the results of BODY. Example:
     [[2 1] [4 3]]
 
 
-##### `(foreach var list body)`
+##### `(foreach VAR LIST BODY)`
 
 The `foreach` special form iterates over a list, evaluates BODY (a sequence
 of expressions) once for each word, and constructs a new word list from the
@@ -597,7 +597,7 @@ Each word is bound to the name `VAR` while `BODY` is evaluated.
     "2 3 4"
 
 
-##### `(if cond then-expr [else-expr])`
+##### `(if COND THEN-EXPR [ELSE-EXPR])`
 
 This special form conditionally executes either THEN-EXPR or ELSE-EXPR.
 First, COND is evaluated.  If non-nil, THEN-EXPR will be evaluated and used
@@ -605,22 +605,22 @@ are the value for the `if` expression.  Otherwise, if ELSE-EXPR is present
 it is evaluated and used, and if not `nil` is used.
 
 
-##### `(join list-a list-b)`
+##### `(join LIST-A LIST-B)`
 
 Concatenate the respective words in LIST-A and LIST-B.
 
 
-##### `(lastword list)`
+##### `(lastword LIST)`
 
 Get the last word in LIST.
 
 
-##### `(not a)`
+##### `(not A)`
 
 Logically invert A.  If A is `nil`, return 1.  Otherwise, return `nil`.
 
 
-##### `(notdir paths)`
+##### `(notdir PATHS)`
 
 Return the filename portion of each path in PATHS.
 
@@ -629,71 +629,76 @@ Return the filename portion of each path in PATHS.
 See also `dir`.
 
 
-##### `(nth index vec)`
+##### `(nth INDEX VEC)`
 
 Returns the value stored at index INDEX (1-based) in vector VEC.
 
 
-##### `(nth-rest n list)`
+##### `(nth-rest N LIST)`
 
 Get the tail of LIST, starting at the Nth element (1-based).
 
 
-##### `(or expr...)`
+##### `(or EXPR...)`
 
 Expressions in `EXPR...` are evaluated sequentially until a non-`nil` value
 is encountered.  The value of the `and` expression is that of the last
 sub-expression evaluated, or `nil` if no expressions were evaluated.
 
 
-##### `(patsubst pat repl list)`
+##### `(patsubst PAT REPL LIST)`
 
 Replace PAT with REPL in LIST.  Patterns use the first `%` as a wildcard,
 and a corresponding `%` in REPL will be replace with what the wildcard in
 PAT matched.  See the GNU make documentation for subtleties.
 
 
-##### `(print value...)`
+##### `(print VALUE...)`
 
 Concatenate all values and write them to stdout.
 
 
-##### `(promote value)`
+##### `(promote VALUE)`
 
 `promote` reverses the encoding done by `demote`.
 
 
-##### `(realpath paths)`
+##### `(realpath PATHS)`
 
 For each file name in PATHS, resolve the name to a form without `.` or
 `..` path elements or symbolic links.  See the UNIX `realpath` C function
 for details.
 
 
-##### `(require module &private?)`
+##### `(require MODULE &PRIVATE?)`
 
-The `require` special form provides access to functionality defined in other
-modules.  `MODULE` is a literal string that names either a SCAM source file
-or a standard SCAM module.  Symbols are exported by the module (those
-declared `&public`) will be are visible to all expressions that follow in
-the current block.  At run-time, the required module will be loaded and
-executed, unless it has already been required by the program.
+The `require` special form provides access to functionality defined in
+other modules.  It performs two actions:
+
+ 1. It ensures that the module has been executed.  If the module has
+    already been loaded, it does nothing.  Otherwise, it executes the
+    module.  (This occurs at run time.)
+
+ 2. It imports symbols exported by the module.  Symbols declared
+    `&public` within the module are imported into the environment of the
+    caller of `require`.  (This occurs at compile time.)
 
 The `&private` flag is intended for use by unit test modules.  When present,
 private symbols will be imported in addition to `&public` ones, and the
 qualification step will not be required.  (See "qualification", below.)
 
 When `MODULE` is one of the [standard library names](#libraries), the
-standard library will be supplied by the compiler.  Otherwise, `MODULE` is
-names a SCAM source file.  If it is a relative path, it is treated as
-relative to the directory containing the requiring file, or, if no such file
-exists, the directories listed in `SCAM_LIBPATH` (colon-delimited) until a
-matching file is found.
+standard library will be supplied by the compiler.  Otherwise, `MODULE`
+must end in `".scm"` and names SCAM source file.  If it is a relative
+path, it is treated as relative to the directory containing the requiring
+file.  If no such file exists, the directories listed in `SCAM_LIBPATH`
+(colon-delimited) are tried, in order, until a matching file is found.
 
-When `MODULE` identifies a source file, that source file will be compiled to
-determine its exports before compilation can continue.  In turn, modules
-required by `MODULE` will also have to be compiled in order to build
-`MODULE`, and so on.
+When `MODULE` identifies a source file, that source file will be compiled
+to determine its exports before compilation can continue.  In turn,
+modules required by `MODULE` will also have to be compiled in order to
+build `MODULE`, and so on.  Compilation results are
+[cached](reference.md#cached-results) to avoid exponential build times.
 
 **Qualification:** Each module can be accompanied by a qualification test: a
 module with the same name except for an added `-q` before the extension.
@@ -705,31 +710,18 @@ test failure and compilation stops.  (Note that qualification test files
 must use the `&private` flag when requiring the module they test in order to
 avoid a dependency loop.)
 
-**Object directory:** During compilation, SCAM writes intermediate build
-results under a directory called the object directory, and on subsequent
-compilations it will reuse those files if they remain valid, compiling and
-testing modules only when necessary.  The object directory is determined as
-follows:
 
-  - The object directory defaults to `./.scam`.
-  - If `scam -o EXE SRC` is invoked and `EXE` is *not* in the current
-    working directory, the object directory will be set to the directory
-    containing `EXE`.
-  - If the option `--obj-dir=DIR` is given, it will override the above two
-    possibilities.
-
-
-##### `(rest vec)`
+##### `(rest VEC)`
 
 Remove the first element from vector (or list) VEC.
 
 
-##### `(rrest vec)`
+##### `(rrest VEC)`
 
 Remove the first two elements from vector (or list) VEC.
 
 
-##### `(set name value retval)`
+##### `(set NAME VALUE RETVAL)`
 
 The `set` special form assigns a value to a previously declared global
 variable.
@@ -741,7 +733,7 @@ NAME is given as a symbol, not a string. For example:
 The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
 
 
-##### `(shell command)`
+##### `(shell COMMAND)`
 
 Execute COMMAND using the default shell as specified by the SHELL
 variable (which is inherited from the SHELL environment variable).  The
@@ -750,12 +742,12 @@ are removed, and remaining newlines are converted to spaces, and the
 result is returned by `shell`.
 
 
-##### `(sort list)`
+##### `(sort LIST)`
 
 Sort the words in LIST in increasing lexicographical order.
 
 
-##### `(subst from to {from to}... value)`
+##### `(subst FROM TO {FROM TO}... VALUE)`
 
 This special form replaces substrings with replacement strings within the
 given VALUE.  For example:
@@ -764,12 +756,12 @@ given VALUE.  For example:
     23
 
 
-##### `(suffix paths)`
+##### `(suffix PATHS)`
 
 Return the file extensions of all file names in PATHS.
 
 
-##### `(trace specs)`
+##### `(trace SPECS)`
 
 Instrument functions for tracing as described by SPEC.
 
@@ -779,7 +771,7 @@ The return value is a list of the names of the instrumented functions,
 which can be passed to `untrace` later.
 
 
-##### `(tracing spec expr)`
+##### `(tracing SPEC EXPR)`
 
 Evaluate EXPR with tracing activated according to SPEC.
 
@@ -828,30 +820,30 @@ the program.  This can be used to identify and quantify hotspots in a
 program.
 
 
-##### `(untrace names ?retval)`
+##### `(untrace NAMES ?RETVAL)`
 
 Remove instrumentation from functions listed in NAMES, or functions
 matched by patterns in NAMES.
 
 
-##### `(vector a b c ...)`
+##### `(vector A B C ...)`
 
 This constructs a vector.  It is equivalent to `[A B C ...]`.
 
 
-##### `(wildcard patterns)`
+##### `(wildcard PATTERNS)`
 
 Get files that match PATTERNS.  Patterns is a list of glob expressions.
 
 
-##### `(word n list)`
+##### `(word N LIST)`
 
 Return the Nth word in LIST.  If N is greater than the length of the
 list, return `nil`.  If N is less than 1, terminate the program with an
 error message.
 
 
-##### `(wordlist a b list)`
+##### `(wordlist A B LIST)`
 
 Extract the words in LIST from index A to index B, inclusive.  Extraneous
 spaces between words are retained.  If B is less than A, `nil` is returned.
@@ -860,36 +852,31 @@ If A is less than 1 or B is less than zero, the program will be
 terminated with an error message.
 
 
-##### `(words list)`
+##### `(words LIST)`
 
 Return the number of words in LIST.
 # io: File I/O and Shell Interaction
 
 ## Exports
 
-##### `(chmod-file filename mode)`
+##### `(chmod-file FILENAME MODE)`
 
 Modify file mode.  Return nil on success, description on error.
 MODE is as defined by the `chmod` command.
 
 
-##### `(clean-path path)`
+##### `(clean-path PATH)`
 
 Remove redundant "." and ".." path elements and repeated "/" characters
 from an absolute or relative path.  PATH may include whitespace.
 
 
-##### `(cp-file src dst ?make-dst-dir)`
+##### `(cp-file SRC DST ?MAKE-DST-DIR)`
 
 Copy file SRC to DST.  Return nil on success, description on error.
 
 
-##### `(echo-command str)`
-
-Construct a command line that will echo STR.
-
-
-##### `(escape-path path)`
+##### `(escape-path PATH)`
 
 Escape a relative path or absolute path, so that the result is:
  - safe as a sub-directory (has no "..", and is not an absolute path)
@@ -900,20 +887,20 @@ Escape a relative path or absolute path, so that the result is:
  - unique (the encoding can be reversed)
 
 
-##### `(file-exists? filename)`
+##### `(file-exists? FILENAME)`
 
 Return FILENAME if file FILENAME exists.  The `wildcard` built-in
 function is a faster alternative, but it caches results and will not
 reflect files created/deleted when the program is running.
 
 
-##### `(fprintf fd format ...values)`
+##### `(fprintf FD FORMAT ...VALUES)`
 
 Format text and write to a file.  See `vsprintf` for handling of FORMAT
 and VALUES.  Unlike `printf`, no trailing newline is appended.
 
 
-##### `(getline prompt)`
+##### `(getline PROMPT)`
 
 Read one line from `stdin`.
 
@@ -921,12 +908,12 @@ Note: On MacOS, input lines longer than 1023 characters will cause bad
 things to happen.
 
 
-##### `(hash-file filename)`
+##### `(hash-file FILENAME)`
 
 Return the hash of one file (see `hash-files`).
 
 
-##### `(hash-files filenames)`
+##### `(hash-files FILENAMES)`
 
 Hash multiple files, returning a dictionary mapping file names to hash
 values.  Hash values are 16 bytes long.  The selection of which hash
@@ -934,38 +921,38 @@ algorithm to use depends on what is available in PATH; it is guaranteed
 to remain the same for the duration of the program's execution.
 
 
-##### `(hash-output cmd)`
+##### `(hash-output CMD)`
 
-Execute shell command CMD, has what it writes to `stdout`, and return the
+Execute shell command CMD, hash what it writes to `stdout`, and return the
 hash.
 
 
-##### `(ioshell cmd)`
+##### `(ioshell CMD)`
 
 Perform a shell command CMD, logging results if `S` appears in SCAM_DEBUG.
 
 
-##### `(mkdir-p dir)`
+##### `(mkdir-p DIR)`
 
 Create directory DIR and parent directories, if necessary.
 
 
-##### `(quote-sh-arg arg)`
+##### `(quote-sh-arg ARG)`
 
 Quote argument ARG for POSIX shells.
 
 
-##### `(quote-sh-file filename)`
+##### `(quote-sh-file FILENAME)`
 
 Quote FILENAME for POSIX shells and ensure it does not begin with '-'.
 
 
-##### `(read-file filename)`
+##### `(read-file FILENAME)`
 
 Read the contents of file FILENAME and return it as a string.
 
 
-##### `(read-lines filename ?start ?end)`
+##### `(read-lines FILENAME ?START ?END)`
 
 Read contents of file FILENAME and return a vector of lines.  The number
 of elements in the resulting vector is one more than the number of
@@ -974,18 +961,18 @@ newlines in the file.
 Return `nil` if the file is not readable.
 
 
-##### `(resolve-path dir path)`
+##### `(resolve-path DIR PATH)`
 
 Combine a directory name and a path (relative or absolute).
 
 
-##### `(save-blob obj-dir data)`
+##### `(save-blob DIR-NAME DATA)`
 
-Write DATA to a file in OBJ-DIR whose name is a function of DATA.
-Returns the path to the new file.
+Write DATA to a file whose name is a hash of DATA, in directory DIR-NAME.
+Return the path to the new file.
 
 
-##### `(shell! cmd)`
+##### `(shell! CMD)`
 
 Execute command CMD, returning data written to `stdout`.
 
@@ -996,31 +983,21 @@ preserved, and the last line of output will be terminated with a newline
 (whether it was present or not in the command output).
 
 
-##### `(unescape-path loc)`
+##### `(unescape-path LOC)`
 
 Undo `escape-path`.
 
 
-##### `(write fd data)`
+##### `(write FD DATA)`
 
-Write data to a file descriptor.  Since `shell` captures `stdout` for the
-command it invokes, we replace 1 with 9, which has been redirected to
-*actual* `stdout` (see the prologue in build.scm).
-
-We redirect `stderr` to `stdout`, so that `shell` will capture error
-messages. Special care must be taken when fd is 2.
+Write DATA to a file descriptor FD, 0 through 8.
 
 Result is `nil` on success; non-nil if the file descriptor is bad.
 
 
-##### `(write-file filename data)`
+##### `(write-file FILE-NAME DATA)`
 
 Write DATA to file FILENAME.
-
-In order to handle large values, the data is written line-by-line, using
-multiple shell invocations, to a temporary file that is moved to FILENAME
-only on success, so that if the operation is interrupted (e.g. the SCAM
-process is killed) then FILENAME will not be left with partial data.
 
 On success, nil is returned.  Otherwise, an error description is returned.
 # math: Numeric Operations
@@ -1079,94 +1056,94 @@ Examples:
 
 ## Exports
 
-##### `(!= x y)`
+##### `(!= X Y)`
 
 Return 1 if X != Y, nil otherwise.
 
 
-##### `(* x y)`
+##### `(* X Y)`
 
 Return X * Y.
 
 
-##### `(*~ x y ?p)`
+##### `(*~ X Y ?P)`
 
 Compute X*Y to the [precision specified by P](#precision).  The result
 will be within one unit of the least significant digit.
 
 
-##### `(+ x y)`
+##### `(+ X Y)`
 
 Return X + Y.
 
 
-##### `(- x y)`
+##### `(- X Y)`
 
 Return X - Y.
 
 
-##### `(/ x y ?p)`
+##### `(/ X Y ?P)`
 
 Return X / Y to the [precision specified by P](#precision).  The answer
 will be rounded to the *nearest* unit in the least significant digit.
 
 
-##### `(// x y)`
+##### `(// X Y)`
 
 Return floor(X / Y): the largest integer less than or equal to X/Y.
 
 
-##### `(0- x)`
+##### `(0- X)`
 
 Negate a number.  This function assumes that X is a valid number; it does
 not validate or canonicalize X.
 
 
-##### `(< x y)`
+##### `(< X Y)`
 
 Return 1 if X < Y, nil otherwise.
 
 
-##### `(<= x y)`
+##### `(<= X Y)`
 
 Return 1 if X <= Y, nil otherwise.
 
 
-##### `(= x y)`
+##### `(= X Y)`
 
 Return 1 if X = Y, nil otherwise.
 
 
-##### `(> x y)`
+##### `(> X Y)`
 
 Return 1 if X > Y, nil otherwise.
 
 
-##### `(>= x y)`
+##### `(>= X Y)`
 
 Return 1 if X >= Y, nil otherwise.
 
 
-##### `(^ x y)`
+##### `(^ X Y)`
 
 Raise X to the power of Y.  Y must be an non-negative integer in "simple"
 format (without a decimal point or E-notation).
 
 
-##### `(abs x)`
+##### `(abs X)`
 
 Absolute value of a number.  This function assumes that X is a valid
 number; it does not validate or canonicalize X.
 
 
-##### `(atan m ?p)`
+##### `(atan M ?P)`
 
 Return the arctangent of M to the [precision given by P](#precision).
 
 The result is in the range (-π/2,π/2).
 
 
-##### `(atan2 y x ?p)`
+##### `(atan2 Y X ?P)`
 
 Return the angle between the X axis and the line from the origin to the
 point (X,Y).  (**Note** that Y is the first argument and X is the
@@ -1177,27 +1154,27 @@ The result is in the range (-π,π).
 The [precision is given by P](#precision).
 
 
-##### `(ceil x)`
+##### `(ceil X)`
 
 Return the smallest integer greater than or equal to X.
 
 
-##### `(cos x ?p)`
+##### `(cos X ?P)`
 
 Compute the cosine of X to the [precision given by P](#precision).
 
 
-##### `(exp x ?p)`
+##### `(exp X ?P)`
 
 Calculate eˣ to the [precision given by P](#precision).
 
 
-##### `(floor x)`
+##### `(floor X)`
 
 Return the greatest integer less than or equal to X.
 
 
-##### `(format-fixed x ?min-width ?decimals)`
+##### `(format-fixed X ?MIN-WIDTH ?DECIMALS)`
 
 Convert X to a fixed-point representation.
 
@@ -1206,7 +1183,7 @@ MIN-WIDTH = if non-nil, minimum field width.  Padding with spaces on the
 DECIMALS = if non-nil, number of digits to the right of the decimal.
 
 
-##### `(frexp10 x)`
+##### `(frexp10 X)`
 
 Return the fraction and exponent portions of X.
 
@@ -1216,12 +1193,12 @@ Result = [M E] where X = M * 10ᴱ and E is an integer.
  - When X is not a number, Result is nil.
 
 
-##### `(get-pi ?p)`
+##### `(get-pi ?P)`
 
 Compute π to the [precision given by P](#precision).
 
 
-##### `(log x ?b ?p)`
+##### `(log X ?B ?P)`
 
 Calculate the logarithm of X to the [precision given by P](#precision).
 
@@ -1231,24 +1208,24 @@ returned.
 X and B must be be greater than 0.
 
 
-##### `(max x y)`
+##### `(max X Y)`
 
 Return the larger of X or Y.
 
 
-##### `(min x y)`
+##### `(min X Y)`
 
 Return the smaller of X or Y.
 
 
-##### `(mod x y)`
+##### `(mod X Y)`
 
 Return the remainder of floor(X/Y).
 
 `(mod X Y)` is equal to `(- X (* (// X Y) Y))`.
 
 
-##### `(num-lex n)`
+##### `(num-lex N)`
 
 Convert a number to a string.  The *lexical* sort order of multiple
 results corresponds to the *numeric* sort order of the numbers.  In other
@@ -1262,7 +1239,7 @@ This can be used with `sort-by` to obtain numeric sort order.  E.g.:
     (sort-by (lambda (i) (num-lex (nth 2 i))) ...)
 
 
-##### `(num-sort v)`
+##### `(num-sort V)`
 
 Sort elements of V by the numeric order of the first sub-element.  V may
 be a simple list of numbers, or vector of vectors to be sorted by the
@@ -1270,20 +1247,20 @@ first element of each, or a dictionary to be sorted by the numeric value
 of each key.
 
 
-##### `(pow x y ?p)`
+##### `(pow X Y ?P)`
 
 Compute xʸ to the [precision given by P](#precision).
 
 X must be non-negative.
 
 
-##### `(range x y)`
+##### `(range X Y)`
 
 Return a vector of numbers ranging from X to Y.  X and Y must be integers
 in "simple" format (without a decimal point or E-notation).
 
 
-##### `(round x ?p ?dir)`
+##### `(round X ?P ?DIR)`
 
 Round X to the [precision given by P](#precision).
 
@@ -1296,62 +1273,103 @@ DIR is one of the following:
  - `"|"` ⇒ round towards zero (truncate)
 
 
-##### `(sin x ?p)`
+##### `(sin X ?P)`
 
 Compute the sine of X to the [precision given by P](#precision).
 
 
-##### `(sum ...args)`
+##### `(sum ...ARGS)`
 
 Sum all numbers in ARGS.  Each argument may be a number, or a vector of
 numbers, or a vector of vectors of numbers, and so on.
 
 
-##### `(trunc x)`
+##### `(trunc X)`
 
 Return the integer portion of X (rounding towards zero).
 # memo: Persistent Memoization
 
-The `memo` module implements a form of memoization (caching of function
-results) that supports IO operations and persists across program
-invocations.
+The `memo` module implements persistent memoization, which caches the
+results of function calls to avoid re-computing them.  "Persistent" means
+that results are available not just during the invocation of a program,
+but during future invocations as well.  Also, persistent memoization can
+be applied to functions that perform IO.  SCAM uses persistent
+memoization to rebuild SCAM programs accurately with with minimal
+repeated work.  [The `memo` module functionality is not to be confused
+with the `memoize` function in the `core` library.]
 
-SCAM uses persistent memoization to rebuild SCAM programs accurately with
-with minimal repeated work.
+`memo-call` and `memo-apply` perform "memoized" invocations of functions.
+They take a function and a set of arguments, and either invoke the
+function with the arguments or return a result cached from a previous
+invocation.  When a cached result is returned, it must also be the case
+that any side effects (e.g. file writes) from the previous invocation are
+in effect.
 
-The `memo-on` macro enters a context within which memoized functions
-may be called.  It loads previously cached results (if any) from a
-specified file, evaluates an expression, and then stores the cache back
-to the file.  Nested calls to memo-on are no-ops; only the final exit
-from memo-on will save the cache.
+In order to meet these requirements, any IO operations performed by the
+memoized functions must adhere to these requirements:
 
-Functions that perform IO operations can be memoized when those
-operations are replayable: that is, modification of external state is
-idempotent.  In order to perform IO, memoized functions may call
-operations provided herein (`memo-read-file`, `memo-write-file`), or
-construct more custom IO using `memo-io`.
+* The IO operation must be logged using a mechanism provided by this
+  module. The logging mechanisms provided include `memo-io`, which wraps
+  arbitrary IO operations, or `memo-write-file` and `memo-read-file`,
+  which provide ready-to-use logged and replayable read and write
+  operations.
+
+* IO operations must be replayable.  Performing the operation two or more
+  times will result in the same external state as performing it once
+  does, and will return the same values each time.
+
+* IO operations must not be mutually-conflicting during a
+  [session](#sessions).  One IO operation may not have an effect on
+  external state that would un-do the effect of another IO operation, or
+  that would modify the return value of a previously-executed function
+
+## Sessions
+
+Memoized functions must be called within the context of a **session*.
+The `memo-on` function initiates a **session**, evaluates a given
+expression within the context of that session, and then terminates the
+session.  (If called during a session, `memo-on` is a no-op.)  At the
+beginning of a session, previously cached results are read from a
+specified DB file.  At the end of the session, cached results are written
+to the DB file.
+
+It is assumed that any external state that affects the program will not
+change during the session.  Using the compiler as an example, when source
+files are modified during compilation, the compiler cannot guarantee
+valid results.  This assumption means that each unique IO operation only
+needs to be performed once during a session.
+
+It is assumed that external state *may* change *between* sessions.  When
+cached results from one session apply to a memoized call in a subsequent
+session, and the results depend upon IO, those IO operations will be
+replayed to check the validity of the cached results.  (When external
+side effects are involved, replaying the IO serves the purpose of
+re-effecting the change -- so replay does more than just validation.)
+
+If a memoized function is called when a session is not active, it is a
+fatal error.
 
 ## Exports
 
-##### `(memo-apply fname args)`
+##### `(memo-apply FNAME ARGS)`
 
 Call `(FNAME ...ARGS)`, or return cached results.
 
 
-##### `(memo-blob-call fname ...args)`
+##### `(memo-blob-call FNAME ...ARGS)`
 
 Memoize a function call that might return a large amount of data.  The
-return value is stored as an blob, and only the blob paths are stored
-in the database.  We assume the blobs are retained as long as the DB
-file.
+return value is stored as an blob in the memo DB directory instead of
+being stored directly in the memo DB file.  We assume the blobs are
+retained as long as the DB file.
 
 
-##### `(memo-call fname ...args)`
+##### `(memo-call FNAME ...ARGS)`
 
 Call `(FNAME ...ARGS)`, or return cached results.
 
 
-##### `(memo-chmod-file filename mode)`
+##### `(memo-chmod-file FILENAME MODE)`
 
 Call `chmod-file`, logging the IO as a dependency.  MODE is formatted as
 per the `chmod` command.
@@ -1363,32 +1381,34 @@ Discard memoization results from the current session, preventing them
 from being persisted.
 
 
-##### `(memo-hash-file filename)`
+##### `(memo-hash-file FILENAME)`
 
 Return hash of file contents, logging the IO transaction for playback.
 
 
-##### `(memo-io fname ...args)`
+##### `(memo-io FNAME ...ARGS)`
 
 Perform an IO operation.  Log the IO as an additional input to the
 function being recorded (if there is one).
 
 
-##### `(memo-on dbfile expr)`
+##### `(memo-on DBFILE EXPR)`
 
 Evaluate EXPR with memoization initialized.  If a session is not active,
 begin one using DBFILE as the database.  DBFILE will be evaluated only
 when a session is initiated.
 
 
-##### `(memo-read-file filename)`
+##### `(memo-read-file FILENAME)`
 
 Read data from FILENAME, logging the IO transaction for playback.
 
 
-##### `(memo-write-file filename data)`
+##### `(memo-write-file FILENAME DATA)`
 
-Write data to FILENAME, logging the IO transaction for playback.
+Write DATA to FILENAME, logging the IO transaction for playback.  The
+limit on the size of DATA is system-specific, but at least 60KB for
+any data and 100KB for text files.
 # peg: PEG Parser Generator
 
 The peg module exports *generators* that create parsing functions.
@@ -1417,12 +1437,12 @@ CAPTURES is the vector of values produced by the parsing function.
 
 ## Exports
 
-##### `(gen-lex tokens)`
+##### `(gen-lex TOKENS)`
 
 Return a function that converts text to a vector of symbols.  See `lex`.
 
 
-##### `(lex text tokens)`
+##### `(lex TEXT TOKENS)`
 
 Convert text to a vector of symbols.  TOKENS is a vector including
 strings that are symbols of interest to the parsing functions and/or
@@ -1431,7 +1451,7 @@ strings that delimit those symbols.
 See also `un-lex`.
 
 
-##### `(peg-* pf)`
+##### `(peg-* PF)`
 
 Construct PEG zero-or-more repetition.
 
@@ -1442,14 +1462,14 @@ the resulting captures will be all captures from successful matches,
 appended.
 
 
-##### `(peg-+ pf)`
+##### `(peg-+ PF)`
 
 Construct PEG one-or-more repetition.
 
 See `peg-*`.
 
 
-##### `(peg-? pf)`
+##### `(peg-? PF)`
 
 Construct PEG optional match.
 
@@ -1458,7 +1478,7 @@ if PF succeeds, or returning the starting position and no captures
 otherwise.
 
 
-##### `(peg-and ...pfs)`
+##### `(peg-and ...PFS)`
 
 Construct a PEG sequence.
 
@@ -1470,7 +1490,7 @@ resulting from the final match, and the captures returned will be all
 captures from all functions, appended.
 
 
-##### `(peg-at pf)`
+##### `(peg-at PF)`
 
 Construct PEG positive lookahead.
 
@@ -1478,7 +1498,7 @@ Return a parsing function that will succeed if PF succeeds, but which
 will not consume any symbols or produce any captures.
 
 
-##### `(peg-c name pf)`
+##### `(peg-c NAME PF)`
 
 Construct symbol capture.
 
@@ -1487,7 +1507,7 @@ adds to the set of captures a dictionary pair whose key is NAME and whose
 value is a vector of all matched symbols.
 
 
-##### `(peg-empty ?caps)`
+##### `(peg-empty ?CAPS)`
 
 Construct PEG empty string.
 
@@ -1495,7 +1515,7 @@ Return a parsing function that always succeeds, consuming no symbols,
 with captures CAPS.
 
 
-##### `(peg-not pf)`
+##### `(peg-not PF)`
 
 Construct PEG negative lookahead.
 
@@ -1503,7 +1523,7 @@ Return a parsing function that will succeed if PF fails and fail if PF
 succeeds.
 
 
-##### `(peg-or ...pfs)`
+##### `(peg-or ...PFS)`
 
 Construct a PEG prioritized choice.
 
@@ -1512,7 +1532,7 @@ after another until one succeeds.  It returns the first successful
 result, or `nil` if none of them succeed.
 
 
-##### `(peg-p in ?out ?caps)`
+##### `(peg-p IN ?OUT ?CAPS)`
 
 Construct a PEG terminal symbol.
 
@@ -1527,7 +1547,7 @@ Examples:
  - `(peg-p "%" "\n")` matches any symbol except `"\n"`.
 
 
-##### `(un-lex subj)`
+##### `(un-lex SUBJ)`
 
 Recover original text from a string of symbols.
 # string: String Manipulation
@@ -1537,7 +1557,16 @@ that are not available as builtins.
 
 ## Exports
 
-##### `(gen-polysub froms tos ?input)`
+##### `(bytes-from-bytecodes CODES)`
+
+Convert byte codes into a vector of single-byte strings.
+
+CODES = a vector of byte values (numbers from 1 to 255).  Non-negative
+   values out of range will be ignored.  Negative values will result in a
+   fatal error.
+
+
+##### `(gen-polysub FROMS TOS ?INPUT)`
 
 Construct a function that performs a number of substitutions.  The
 returned function accepts one argument and returns the result of the
@@ -1549,28 +1578,32 @@ INPUT = if non-nil, a lambda expression that will transform the
   input string before the substitutions.
 
 
-##### `(string-from-bytes bytes)`
+##### `(string-from-bytecodes CODES)`
 
 Construct a string from a vector of byte values.  This reverses
-`string-to-bytes`.
+`string-to-bytecodes`.
+
+CODES = a vector of byte values (numbers from 1 to 255).  Non-negative
+   values out of range will be ignored.  Negative values will result in
+   fatal error.
 
 
-##### `(string-len s)`
+##### `(string-len S)`
 
 Return the number of *characters* in S.  UTF-8 encoding is assumed.
 
 
-##### `(string-lower str)`
+##### `(string-lower STR)`
 
 Convert letters to lower case.  Only ASCII letters are supported.
 
 
-##### `(string-repeat str num)`
+##### `(string-repeat STR NUM)`
 
 Return a string that consists of NUM copies of STR concatenated.
 
 
-##### `(string-slice first last str)`
+##### `(string-slice FIRST LAST STR)`
 
 Extract a substring, given start and end character indices.  The range is
 inclusive and 1-based.  When LAST is less than FIRST, an empty string is
@@ -1580,13 +1613,19 @@ FIRST = index of first character to include (1 or greater).\
 LAST = index of last character to include (0 or greater).
 
 
-##### `(string-to-bytes str)`
+##### `(string-to-bytecodes STR)`
 
 Get the numeric indices of all *bytes* in STR.  The result is a vector of
 numbers from 1 to 255.
 
 
-##### `(string-to-chars s)`
+##### `(string-to-bytes S)`
+
+Get all bytes in STR.  The result is a vector of strings, each containing
+one byte. `concat-vec` reverses this operation.
+
+
+##### `(string-to-chars S)`
 
 Get all characters in STR.  The result is a vector of strings, each
 containing one character. `concat-vec` reverses this operation.
@@ -1597,35 +1636,39 @@ still reverse the operation) but the bytes may not grouped at character
 boundaries.
 
 
-##### `(string-upper str)`
+##### `(string-upper STR)`
 
 Convert letters to upper case.  Only ASCII letters are supported.
-
-
-##### `(strings-from-bytes bytes)`
-
-Convert byte values into single-byte strings.
-
-BYTES = a vector of byte values (numbers from 0 to 255).
-
-The result is a vector the same length as bytes.  Each zero value in
-BYTES will result in a corresponding empty string in the result.
 # utf8: UTF-8 Coding
 
 ## Exports
 
-##### `(utf8-decode bytes)`
+##### `(utf8-decode BYTES)`
 
 Convert UTF-8 encoded bytes to Unicode code points.
 
 BYTES = vector of numeric byte values\
 Result = vector of code points
 
+Example:
 
-##### `(utf8-encode codes)`
+    > (string-to-bytecodes "π²")
+    [207 128 194 178]
+    > (utf8-decode [207 128 194 178])
+    [960 178]
+
+
+##### `(utf8-encode CODES)`
 
 Convert Unicode character indices to UTF-8 encoded bytes.
 
 CODES = vector of Unicode code points\
 Result = vector of code points
+
+Example:
+
+    > (utf8-encode [960 178])
+    [207 128 194 178]
+    > (string-from-bytecodes [207 128 194 178])
+    "π²"
 
