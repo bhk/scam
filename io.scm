@@ -7,12 +7,12 @@
 (declare SCAM_DEBUG &native)
 
 
-;; Perform a shell command CMD, logging results if `S` appears in SCAM_DEBUG.
+;; Invoke `(shell CMD)`, logging results if `S` appears in SCAM_DEBUG.
 ;;
 (define (ioshell cmd)
   &public
   (if (filter "S" SCAM_DEBUG)
-      (print "shell: " cmd))
+      (printf "shell: %q" cmd))
   (shell cmd))
 
 
@@ -30,27 +30,45 @@
   (quote-sh-arg (concat (if (filter "-%" [filename]) "./") filename)))
 
 
-;; A sed command that converts text to a vector of lines as encoded by SCAM.
+;; Return a vector of lines output by CMD.
 ;;
-(define `(wrap-filter ?start ?end)
-  (concat "sed -e '"
-          (if start
-              (concat start "," end "!d;"))
-          "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/\x0d/!r/g;s/^$/!./'"))
+(define (shell-wrap cmd ?start ?end)
+  (define `shell-cmd
+    (concat "( " cmd " ) | sed -e '"
+            (if start
+                (concat start "," end "!d;"))
+            "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/\x0d/!r/g;s/^$/!./'"))
+  (subst "!r" "\x0d" (ioshell shell-cmd)))
 
 
-;; Execute command CMD, returning data written to `stdout`.
+;; Execute command CMD, returning data written to `stdout` as a vector of
+;; lines, split at "\n" characters.  To obtain the original output as one
+;; string, do the following:
 ;;
-;; Unlike `shell`, which trims trailing newlines and then converts newlines
-;; to spaces, `shell!` preserves newline and space characters.  It does
-;; guarantee complete fidelity, however: NUL characters will not be
-;; preserved, and the last line of output will be terminated with a newline
-;; (whether it was present or not in the command output).
+;;     (concat-vec RESULT "\n")
 ;;
-(define (shell! cmd)
+;; Note: Zero bytes in the output may result in truncated lines.
+;;
+(define (shell-lines cmd)
   &public
-  (define `raw-lines (ioshell (concat "( " cmd " ) | " (wrap-filter))))
-  (concat-vec (subst "!r" "\x0d" (addsuffix "\n" raw-lines))))
+  (shell-wrap (concat cmd " ; echo ")))
+
+
+;; Return both the `stdout` and `stderr` output of CMD.  The actual output
+;; is returned unmolested.  (Zero bytes may result in truncated lines.)
+;;
+;; Result = [STDOUT STDERR]
+;;
+(define (shell2 cmd)
+  &public
+  ;; A vector of lines prefixed with "1" or "2".
+  (define `shell-lines
+    (shell-wrap (concat "((( " cmd " ; echo ; echo >&2 )|sed 's/^/1/') "
+                        "3>&1 1>&2 2>&3 |sed 's/^/2/') 2>&1")))
+  (let ((lines shell-lines))
+    (foreach fd [1 2]
+             (or (subst " " "\n" (filtersub (concat fd "%") "%" lines))
+                 "!."))))
 
 
 (define MAX-ARG-1     100000)
@@ -104,7 +122,6 @@
       (echo-small bytes suffix file is-append)))
 
 
-
 ;; Write DATA to a file descriptor FD, 0 through 8.
 ;;
 ;; Result is `nil` on success; non-nil if the file descriptor is bad.
@@ -151,7 +168,7 @@
   &public
   (if prompt
       (write 1 prompt))
-  (shell! "head -1"))
+  (concat-vec (shell-lines "head -1") "\n"))
 
 
 ;; Modify file mode.  Return nil on success, description on error.
@@ -171,9 +188,9 @@
 ;;
 (define (read-lines filename ?start ?end)
   &public
-  (subst "!r" "\x0d"
-         (ioshell (concat "(( cat " (quote-sh-file filename) " && echo )"
-                          " | " (wrap-filter start end) " ) 2>/dev/null"))))
+  (shell-wrap
+   (concat "cat " (quote-sh-file filename) " 2>/dev/null && echo")
+   start end))
 
 
 ;; Read the contents of file FILENAME and return it as a string.
@@ -374,3 +391,23 @@
   (subst "+/" "/" "+." ".." "+_" "\n" "+-" "\t" "+V" "|" "+Q" "?"
          "+A" "*" "+T" "~" "+P" "%" "+E" "=" "+S" ";" "+C" ":"
          "+D" "$" "+B" "\\" "+H" "#" "+1" "!" "+0" " " "+2" "+" loc))
+
+
+;; Obtain a directory underneath the build directory, or, if not running
+;; in the context of a build (as "-q.scm" files do) then return ".scam/".
+;; If TMPL is given, a new directory is created under the build directory
+;; and returned, using TMPL as a template for the `mktemp` command.
+;;
+;; Result ends in "/".
+;;
+(define (get-tmp-dir ?tmpl)
+  &public
+  (define `tmp
+    (or (value "SCAM_DIR") (value "SCAM_TMP") ".scam/"))
+
+  (if tmpl
+      (let ((o (shell2
+                (concat "mktemp -d " (quote-sh-file (concat tmp tmpl))))))
+        (or (first (word 1 (subst "\n" " " o)))
+            (error (concat "get-tmp-dir failed: " (nth 2 o)))))
+      tmp))

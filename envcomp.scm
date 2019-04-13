@@ -150,13 +150,13 @@
 ;;
 
 (define scam-env
-  (let ((exports (shell! "grep '# Exports' bin/scam")))
-    (printf "exports: %s bytes" (string-len exports))
+  (let ((export-lines (shell-lines "grep '# Exports' bin/scam")))
+    (printf "exports: %s bytes" (string-len (concat-vec export-lines "\n")))
     (printf "content: %s bytes" (string-len
                                  (concat-vec (patsubst ["# Exports: %"] "%"
-                                                       (split "\n" exports)) "\n")))
+                                                       export-lines) "\n")))
     (strip
-     (foreach line (split "\n" exports)
+     (foreach line export-lines
               (env-parse line nil)))))
 
 (printf "raw: %s entries, %s bytes" (words scam-env) (string-len scam-env))

@@ -6,16 +6,20 @@
   (dir (current-file)))
 
 (define TMPDIR
-  (define `test-dir (assert (value "SCAM_DIR")))
-  (concat (shell (concat "mktemp -d " test-dir "io-q.XXXX")) "/"))
+  (get-tmp-dir))
 
-;; shell!
+;; shell-lines
 
-(expect "" (shell! "false"))
-(expect "\n" (shell! "echo"))
-;; When using sed we cannot distinguish between a line ending in newline and
-;; one not ending in newline:
-(expect "  \t \n \n" (shell! "echo $'  \\t \\n '"))
+(expect [""] (shell-lines "printf ''"))
+(expect ["a b c"] (shell-lines "printf 'a b c'"))
+(expect ["a b c" ""] (shell-lines "printf '%b' 'a b c\\n'"))
+(expect ["a b c" "" " "] (shell-lines "printf '%b' 'a b c\\n\\n '"))
+
+;; shell2
+
+(expect ["a b \n \n" ""] (shell2 "printf '%b' 'a b \\n \\n'"))
+(expect ["" "a b \n \n"] (shell2 "printf '%b' 'a b \\n \\n' >&2"))
+(expect ["a b \n" " c d"] (shell2 "echo 'a b ' && echo -n ' c d' >&2"))
 
 ;; write
 
@@ -151,3 +155,13 @@
 
 (escape-rt "/../..a$*!#//x")
 (escape-rt "+ !#\\$:;=%~*?|\t\n")
+
+;; get-tmp-dir
+
+(expect (or (value "SCAM_DIR") (value "SCAM_TMP"))
+        (get-tmp-dir))
+
+(let ((tmp (get-tmp-dir "io-q.XXX")))
+  (assert (filter-out "/%" tmp))
+  (expect nil (nth 2 (shell2 (concat "ls " (quote-sh-file tmp)))))
+  (shell (concat "rm -rf " (quote-sh-file tmp))))
