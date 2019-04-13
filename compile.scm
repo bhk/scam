@@ -47,6 +47,9 @@
 ;; Files currently being compiled (to check for cycles)
 (define *compiling* nil)
 
+;; Default cache directory
+(define *obj-dir* &public ".scam/")
+
 
 ;; Display a progress message.
 ;;
@@ -224,21 +227,21 @@
 ;; it identifies a source module; otherwise it refers to a builtin.
 ;;
 ;; A module's ID is the string passed to `^R` at run-time.  The ID of a
-;; builtin module is the same as its NAME.  The ID of a source module is its
-;; resolved path, encoded using `escape-path`.  This includes the extension
-;; to avoid conflict between user modules and builtins when they are bundled
-;; with a user program.  [When *is-boot* is true, we are building the
-;; compiler, and compiled modules are assigned the ID (basename NAME) so
-;; that they can later serve as builtin modules.]
+;; builtin module is the same as its NAME.  The ID of a source module is
+;; *obj-dir* concatenated with (escape-path SOURCE-FILENAME).  The ".scm"
+;; extension is included to avoid conflict between user modules and builtins
+;; when they are bundled with a user program.  [When *is-boot* is true, we
+;; are building the compiler, and compiled modules are assigned the ID
+;; (basename NAME) so that they can later serve as builtin modules.]
 ;;
-;;                  (normal)         (normal)        *is-boot*
-;;                  Source File      Builtin         Source File
-;;                  ------------     ------------    ------------
-;;   NAME           io.scm           io              io.scm
-;;   ID             io.scm           io              io
-;;   Load File      .scam/io.scm.o                   .scam/io.o
-;;   Load Bundle                     [mod-io]
-;;   Bundle as      [mod-io.scm]     [mod-io]        [mod-io]
+;;                 (normal)         (normal)        *is-boot*
+;;                 Source File      Builtin         Source File
+;;                 ------------     ------------    ------------
+;;   NAME          io.scm           io              io.scm
+;;   ID            .scam/io.scm     io              io
+;;   Load File     .scam/io.scm.o                   .scam/io.o
+;;   Load Bundle                    [mod-io]
+;;   Bundle as     [mod-io.scm]     [mod-io]        [mod-io]
 ;;
 
 
@@ -248,7 +251,9 @@
 ;; Note: this must be kept consistent with the behavior of `^load`.
 ;;
 (define `(modid-file id)
-  (concat *obj-dir* id ".o"))
+  (if *is-boot*
+      (concat *obj-dir* id ".o")
+      (concat id ".o")))
 
 
 ;; Return the bundle variable that holds (or will hold) the modules's code.
@@ -293,14 +298,13 @@
   (env-parse (modid-read-lines id 4) all))
 
 
-;; Construct the ID for a module, given either a path to a source file or a
-;; bundled module name.
+;; Construct the ID for a module, given either a module name or an
+;; already-resolved path to a source file.
 ;;
 (define (module-id path-or-bundle)
-  (let ((e (escape-path path-or-bundle)))
-    (if *is-boot*
-        (basename e)
-        e)))
+  (if (and (modid-is-file path-or-bundle) (not *is-boot*))
+      (concat *obj-dir* (escape-path path-or-bundle))
+      (basename path-or-bundle)))
 
 
 ;; Get find a source file in the base directory or one of the LIBPATH
@@ -617,7 +621,9 @@
             MAKE " -f " (quote-sh-arg runner) " "
             "--no-print-directory "
             "SCAM_MOD=" (quote-sh-arg mod) " "
-            "SCAM_DIR=" (quote-sh-arg *obj-dir*) " "
+            (if *is-boot*
+                (concat "SCAM_DIR=" (quote-sh-arg *obj-dir*) " "))
+            (concat "SCAM_TMP=" (quote-sh-arg *obj-dir*) " ")
             "1>&9 ; echo \" $?\""))
 
   (drop-if (filter-out 0 (lastword (ioshell cmd-line)))))
@@ -682,6 +688,7 @@
 ;;
 (define (compile-text text file ?env-in)
   &public
+  (assert (not *is-boot*))
   (define `env (or env-in (compile-prelude nil)))
   (compile-memo-on
    (parse-and-gen text env file nil)))

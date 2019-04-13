@@ -284,36 +284,16 @@ $(if ,, ) :=
 (define *required* nil)
 
 
-;; This is overridden on the make command line -- along with SCAM_MOD and
-;; SCAM_MAIN -- when running tests.
-;;
-(define SCAM_DIR
-  &native
-  nil)
-
-;; Root directory for loading modules from files.
-(define *obj-dir*
-  &public
-  ".scam/")
-
-
-(define `(mod-var id)
-  (concat "[mod-" id "]"))
-
-
 ;; Load the module identified by ID.
-;; Try, in order:
-;;  - bundle
-;;  - SCAM_DIR
-;;  - *obj-dir*
 ;;
 (define (^load id)
   &native
+  (define `(mod-var id)
+    (concat "[mod-" id "]"))
+
   (if (bound? (mod-var id))
       (eval (value (mod-var id)))
-      (eval (concat "include "
-                    (or (and SCAM_DIR (wildcard (concat SCAM_DIR id ".o")))
-                        (concat *obj-dir* id ".o")))))
+      (eval (concat "include " (concat (value "SCAM_DIR") id ".o"))))
   ;; return value is useful when viewing trace of load sequence
   id)
 

@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 ;; Build timems if it isn't there...
 (define (build-timems)
   (define timems-loc
-    (concat (or (value "SCAM_DIR") ".scam/") "timems"))
+    (concat (get-tmp-dir) "timems"))
 
   (set *timems*
        (or (wildcard timems-loc)

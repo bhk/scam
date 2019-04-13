@@ -4,10 +4,7 @@
 (require "memo.scm" &private)
 
 
-(define TMPDIR
-  (define `test-dir (assert (value "SCAM_DIR")))
-  (concat (shell (concat "mktemp -d " test-dir "memo-q.XXXX")) "/"))
-
+(define TMPDIR (get-tmp-dir "memo-q.XXXX"))
 (define db-file (concat TMPDIR "db.txt"))
 
 ;; Utilities
@@ -370,7 +367,7 @@
 
 ;; memo-hash-file
 
-(write-file xyz-file "xyz")
+(expect "" (write-file xyz-file "xyz"))
 (define xyz (hash-file xyz-file))
 
 (define (hash-two-files-test)

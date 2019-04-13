@@ -82,22 +82,39 @@
 ;; Module Management
 ;;--------------------------------------------------------------
 
-;; modid-deps & modid-read-lines
+;; module-id
 
+(let-global ((*is-boot* 1))
+  (expect "core" (module-id "core.scm")))
+
+(let-global ((*is-boot* nil))
+  (expect ".scam/a+0b.scm" (module-id "a b.scm"))
+  (expect ".scam/+./b.scm" (module-id "../b.scm")))
+
+
+;; modid-deps & modid-read-lines
 (set-native "[mod-cqtx]" "# Requires: a!0b var\n# xyz")
-(define test-dir (assert (value "SCAM_DIR")))
+(define test-dir (get-tmp-dir))
 (write-file (concat test-dir "cqtx.o") "# Requires: a!0b boot-file\n# xyz\n")
-(write-file (concat test-dir "cqtx.scm.o") "# Requires: a!0b file\n# xyz\n")
+(write-file (concat test-dir "cqtx.scm.o") "# Requires: .tmp/a!0b .tmp/file\n# xyz\n")
+(write-file (concat test-dir "nil.scm.o") "# Requires: \n")
 
 
 (let-global ((*is-boot* nil)
              (*obj-dir* test-dir))
-  (expect ["a b" "var"] (modid-deps "cqtx"))
-  (expect ["a b" "file"] (modid-deps "cqtx.scm")))
+  (expect "runtime" (runtime-module-name nil))
+
+  (expect (modid-deps (module-id "cqtx.scm"))
+          [".tmp/a b" ".tmp/file"])
+  (expect (modid-deps-all (module-id "nil.scm"))
+          [(concat test-dir "nil.scm") "runtime"]))
+
 
 (let-global ((*is-boot* 1)
              (*obj-dir* test-dir))
-  (expect ["a b" "boot-file"] (modid-deps "cqtx")))
+  (expect ["a b" "boot-file"] (modid-deps (module-id "cqtx"))))
+
+
 
 ;; locate-source
 
@@ -112,16 +129,6 @@
 (expect "test/run.scm"
         (let-global ((SCAM_LIBPATH "test:x/y/z"))
           (locate-source "a/b/c/" "run.scm")))
-
-;; module-id
-
-(let-global ((*is-boot* 1))
-  (expect "a+0b" (module-id "a b.scm"))
-  (expect "+./b" (module-id "../b.scm")))
-
-(let-global ((*is-boot* nil))
-  (expect "a+0b.scm" (module-id "a b.scm"))
-  (expect "+./b.scm" (module-id "../b.scm")))
 
 
 ;;--------------------------------------------------------------
