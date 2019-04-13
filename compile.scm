@@ -79,7 +79,7 @@
 
 
 ;; Return transitive closure of a one-to-many relationship.
-;; Ordering is per first ocurrence in a breadth-first search.
+;; Ordering is per first occurrence in a breadth-first search.
 ;;
 (define (descendants fn children ?out)
   (define `new-children
@@ -482,18 +482,13 @@
 ;;       compiled is itself an implicit module.  When called from the REPL,
 ;;       this will contain additional bindings from the user's session.
 ;; FILE = Input file name (or '[command line]').
-;; FORMS-IN = if non-nil, the results of (parse-text text).
 ;; IS-FILE = When nil, code will be compiled for function syntax.  When
 ;;           non-nil, code will be compiled for file syntax.
 ;;
-(define (parse-and-gen text env file is-file ?forms-in)
+(define (parse-and-gen text env file is-file)
   (let-global ((*compile-subject*  (penc text))
                (*compile-file*     file))
-    (define `forms
-      (or forms-in
-          (parse-subject *compile-subject*)))
-
-    (let ((o (gen0 forms env))
+    (let ((o (gen0 (parse-subject *compile-subject*) env))
           (is-file is-file))
       (define `env-out (first o))
       (define `nodes (rest o))
@@ -514,15 +509,7 @@
                        (concat-vec (conj *compiling* file) " -> ")))))
 
 
-;; Return parsed form of file.  This is a separate function for the sake
-;; of memoizing it separately, so we can avoid re-parsing unchanged
-;; sources even when they need to be recompiled due to changing imports.
-;;
-(define (parse-file file)
-  (parse-text (trim-hashbang (memo-read-file file))))
-
-
-;; Compile a SCAM source file and all ites dependencies.
+;; Compile a SCAM source file and all its dependencies.
 ;;
 ;; On success, return `nil`.
 ;; On failure, display message and return 1.
@@ -531,7 +518,6 @@
 ;;
 (define (compile-module file)
   (define `text (trim-hashbang (memo-read-file file)))
-  (define `outfile (modid-file (module-id file)))
   (define `imports (compile-prelude file))
 
   (or
@@ -540,16 +526,17 @@
 
      (build-message "compile" file)
 
-     (define `forms
-       (memo-blob-call (native-name parse-file) file))
-
-     (let ((o (parse-and-gen text imports file outfile forms))
-           (file file)
-           (outfile outfile))
+     (let ((o (parse-and-gen text imports file 1))
+           (file file))
        (define `errors (dict-get "errors" o))
        (define `exe (dict-get "code" o))
        (define `env-out (dict-get "env" o))
        (define `reqs (dict-get "require" o))
+       (define `outfile (modid-file (module-id file)))
+       (define `content
+         (concat "# Requires: " reqs "\n"
+                 (env-export-lines env-out)
+                 exe))
 
        (drop-if
         errors
@@ -558,16 +545,10 @@
              (info (describe-error e text file)))
 
         ;; Success
-        (begin
-          (define `content
-            (concat "# Requires: " reqs "\n"
-                    (env-export-lines env-out)
-                    exe))
-
-          (bail-if (memo-write-file outfile content))))))))
+        (bail-if (memo-write-file outfile content)))))))
 
 
-;; Return a vector of all direct and indirect module depdendencies of ID
+;; Return a vector of all direct and indirect module dependencies of ID
 ;; and include ID.
 ;;
 (define (modid-deps-all id)
@@ -579,7 +560,7 @@
 
 ;; Construct a bundled executable from a compiled module.
 ;;
-;; EXE-FILE = exectuable file to create
+;; EXE-FILE = executable file to create
 ;; MAIN-ID = module ID for the main module (previously compiled, so that
 ;;     object files for it and its dependencies are available).
 ;;
@@ -628,7 +609,7 @@
         (modid-file "runtime")
         (firstword MAKEFILE_LIST)))
 
-  ;; (value "MAKE") does not sem to provide the actual value
+  ;; (value "MAKE") does not seem to provide the actual value
   (declare MAKE &native)
 
   (define `cmd-line
@@ -661,7 +642,7 @@
 ;; On success, return `nil`.\
 ;; On failure, display message and return 1.
 ;;
-;; EXE-FILE = name of an exectuable file to create.\
+;; EXE-FILE = name of an executable file to create.\
 ;; SRC-FILE = name of the source file of the main module.
 ;;
 (define (build-program src-file exe-file)
@@ -693,9 +674,9 @@
 ;;
 ;; TEXT = SCAM source\
 ;; FILE = the file from which the source was obtained; this will be
-;;        available to the compiled code via `(current-file)`.\
-;; ENV = Initial environment.  If nil, SCAM's initial bindings will be
-;;       supplied.  Otherwise, it must begin with the initial bindings.
+;;     available to the compiled code via `(current-file)`.\
+;; ENV-IN = Initial environment.  If nil, SCAM's initial bindings will
+;;     be supplied.  Otherwise, it must begin with the initial bindings.
 ;;
 ;; Returns: `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
 ;;
