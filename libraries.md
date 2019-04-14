@@ -2,10 +2,11 @@
 
 | Module | Exports |
 | :-- | :-- |
+| [compile](#compile-scam-compilation) | [`build-program`](#build-program-src-file-exe-file-obj-dir-is-quiet) [`compile-text`](#compile-text-text-file-env-in-obj-dir-is-quiet) [`run-program`](#run-program-src-file-argv-obj-dir-is-quiet) |
 | [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
 | [intrinsics](#intrinsics) | [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-values) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
-| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`ioshell`](#ioshell-cmd) [`mkdir-p`](#mkdir-p-dir) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell!`](#shell-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-file-name-data) |
+| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`mkdir-p`](#mkdir-p-dir) [`pipe`](#pipe-cmd-stdin) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
 | [peg](#peg-peg-parser-generator) | [`gen-lex`](#gen-lex-tokens) [`lex`](#lex-text-tokens) [`peg-*`](#peg--pf) [`peg-+`](#peg--pf) [`peg-?`](#peg--pf) [`peg-and`](#peg-and-pfs) [`peg-at`](#peg-at-pf) [`peg-c`](#peg-c-name-pf) [`peg-empty`](#peg-empty-caps) [`peg-not`](#peg-not-pf) [`peg-or`](#peg-or-pfs) [`peg-p`](#peg-p-in-out-caps) [`un-lex`](#un-lex-subj) |
@@ -13,6 +14,87 @@
 | [utf8](#utf8-utf-8-coding) | [`utf8-decode`](#utf8-decode-bytes) [`utf8-encode`](#utf8-encode-codes) |
 
 
+# compile: SCAM Compilation
+
+The following diagram summarizes the stages of compiling a SCAM
+expression:
+
+                 pos                 env
+                  |                   |
+                  v                   v
+     text    +---------+   form   +------+    IL    +------+   exe
+    -------->|  parse  |--------->|  c0  |--------->|  c1  |-------->
+             +---------+          +------+          +------+
+                  |                   |                 |    errors
+                  v                   v                 +----------->
+                 pos                 env
+
+Each expression begins at a position "pos" (a numeric index into the
+sequence of tokens in the subject text).  Parsing emits a "form" (an AST
+node) and a position at which to look for subsequent expressions.
+
+The compiler front end (c0) operates on a form and an environment (a set
+of symbol bindings), and emits an IL node and a new environment, since
+expressions (e.g. `declare` and `define`) can alter the environment for
+subsequent expressions.
+
+The compiler back end (c1) emits executable code (Make source) and a
+(hopefully empty) vector of errors.  The form and IL data structures can
+convey errors as well as successful results, so the previous stages do
+not need a separate error output value.
+
+## Object Directory
+
+During compilation, intermediate files are written to a directory called
+the "object directory".  Subsequent compilations with the same object
+directory can proceed faster by reusing these results.  This defaults to
+".scam/".
+
+No two compilations should occur at the same time (e.g. in different
+instances of SCAM) using the same directory.
+
+## Exports
+
+##### `(build-program SRC-FILE EXE-FILE ?OBJ-DIR ?IS-QUIET)`
+
+Compile a SCAM program.
+
+SRC-FILE = name of the SCAM source file\
+EXE-FILE = name of an executable file to create.\
+ARGV = a vector to pass to the program's `main` function\
+OBJ-DIR = nil, or the [object directory](#object-directory)\
+IS-QUIET = non-nil to suppress progress messages.
+
+On success, return `nil`.\
+On failure, display message and return 1.
+
+
+##### `(compile-text TEXT FILE ?ENV-IN ?OBJ-DIR ?IS-QUIET)`
+
+Compile SCAM source code to a function.
+
+TEXT = SCAM source\
+FILE = the file from which the source was obtained; this will be
+    available to the compiled code via `(current-file)`.\
+ENV-IN = environment for TEXT.  If nil, SCAM's default environment will
+   be used.  Otherwise, it must be a previously returned ENV-OUT value.\
+OBJ-DIR = nil, or the [object directory](#object-directory).\
+IS-QUIET = non-nil to suppress progress messages.
+
+Returns: `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
+
+
+##### `(run-program SRC-FILE ARGV ?OBJ-DIR ?IS-QUIET)`
+
+Compile and execute a SCAM program.
+
+SRC-FILE = name of the SCAM source file\
+ARGV = a vector to pass to the program's `main` function\
+OBJ-DIR = nil, or the [object directory](#object-directory)\
+IS-QUIET = non-nil to suppress progress messages.
+
+On success, return `nil`.\
+On failure, display message and return 1.
 # core: General-Purpose Functions
 
 The `core` library provides general-purpose functions, such as `eq?`, and
@@ -945,8 +1027,19 @@ reflect files created/deleted when the program is running.
 
 ##### `(fprintf FD FORMAT ...VALUES)`
 
-Format text and write to a file.  See `vsprintf` for handling of FORMAT
-and VALUES.  Unlike `printf`, no trailing newline is appended.
+Format text and write to a file descriptor, 0 through 8.  See `vsprintf`
+for handling of FORMAT and VALUES.  Unlike `printf`, no trailing newline
+is appended.
+
+
+##### `(get-tmp-dir ?TMPL)`
+
+Obtain a directory underneath the build directory, or, if not running
+in the context of a build (as "-q.scm" files do) then return ".scam/".
+If TMPL is given, a new directory is created under the build directory
+and returned, using TMPL as a template for the `mktemp` command.
+
+Result ends in "/".
 
 
 ##### `(getline PROMPT)`
@@ -976,14 +1069,18 @@ Execute shell command CMD, hash what it writes to `stdout`, and return the
 hash.
 
 
-##### `(ioshell CMD)`
-
-Perform a shell command CMD, logging results if `S` appears in SCAM_DEBUG.
-
-
 ##### `(mkdir-p DIR)`
 
 Create directory DIR and parent directories, if necessary.
+
+
+##### `(pipe CMD ?STDIN)`
+
+Execute CMD, providing STDIN as input, capturing `stdout` and `stderr`.
+Return the exit status and output.  The output is returned unmolested,
+except that zero bytes may result in truncated lines.
+
+Result = [STATUS STDOUT STDERR]
 
 
 ##### `(quote-sh-arg ARG)`
@@ -1021,15 +1118,15 @@ Write DATA to a file whose name is a hash of DATA, in directory DIR-NAME.
 Return the path to the new file.
 
 
-##### `(shell! CMD)`
+##### `(shell-lines CMD)`
 
-Execute command CMD, returning data written to `stdout`.
+Execute command CMD, returning data written to `stdout` as a vector of
+lines, split at "\n" characters.  To obtain the original output as one
+string, do the following:
 
-Unlike `shell`, which trims trailing newlines and then converts newlines
-to spaces, `shell!` preserves newline and space characters.  It does
-guarantee complete fidelity, however: NUL characters will not be
-preserved, and the last line of output will be terminated with a newline
-(whether it was present or not in the command output).
+    (concat-vec RESULT "\n")
+
+Note: Zero bytes in the output may result in truncated lines.
 
 
 ##### `(unescape-path LOC)`

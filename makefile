@@ -71,7 +71,8 @@ $$%: ; 	@true $(info $$$* --> "$(call if,,,$$$*)")
 #----------------------------------------------------------------
 # Docs
 
-DOCLIBS = $(patsubst %,%.scm,core getopts io math peg string utf8 memo) intrinsics.txt
+DOCLIBS = $(patsubst %,%.scm,compile core getopts io math peg string utf8 memo) \
+          intrinsics.txt
 
 docs: .out/libs.txt
 
