@@ -72,75 +72,98 @@
 
 ;; REPL state
 ;;
-(declare *repl-obj-dir*)
-(declare *repl-is-quiet*)
+(data REPL
+  ;; TEXT = leftover typed text (awaiting completion of an expression)
+  ;; ENV = current environment
+  ;; ERROR = error response from most recent evaluation
+  (REPL text obj-dir is-quiet error &list env))
+
 
 ;; Parse and evaluate text, displaying errors or result.
-;; Return:  [ INCOMPLETE-TEXT NEWENV ERROR? ]
 ;;
-(define (eval-and-print text env ?is-interactive)
-  (let ((o (compile-text text "[stdin]" env *repl-obj-dir* *repl-is-quiet*))
+(define (eval-and-print text obj-dir is-quiet env ?is-interactive)
+  (let ((o (compile-text text "[stdin]" env obj-dir is-quiet))
         (env env)
         (text text))
     (define `errors (dict-get "errors" o))
     (define `exe    (dict-get "code" o))
     (define `newenv (dict-get "env" o))
-    (define `(is-error codes)
-      (and is-interactive
-           (filter codes (case (first errors)
-                           ((PError n desc) (word 1 desc))))))
 
     (cond
-     ;; unterminated expr: append more text
-     ((is-error "( [ {") [text env])
+     ;; partial/unterminated expr --> append more text
+     ((and is-interactive
+           (filter "( [ {" (case (first errors)
+                             ((PError n desc) (word 1 desc)))))
+      (REPL text obj-dir is-quiet nil env))
 
      ;; error?
-     (errors (begin
-               (for err errors
-                    (info (describe-error err text "[stdin]")))
-               ["" env 1]))
+     (errors
+      (for err errors
+           (info (describe-error err text "[stdin]")))
+      (REPL "" obj-dir is-quiet 1 env))
 
      ;; execute & display result
-     (else (begin
-             (let ((result (exe)))
-               (if result
-                   (begin
-                     (set *2 *1)
-                     (set *1 result)
-                     (print (format result)))))
-             ["" newenv])))))
+     (else
+      (let ((result (exe)))
+        (if result
+            (begin
+              (set *2 *1)
+              (set *1 result)
+              (print (format result)))))
+      (REPL "" obj-dir is-quiet nil newenv)))))
 
 
 ;; Collect another line of input and process it.
 ;;
-;; STATE = [TEXT ENV]    (TEXT = previous incomplete expression)
 ;; Returns next state; or nil to terminate loop.
 ;;
 (define (read-eval-print state)
-  (let ((line (getline (if (first state) "+ " "> ")))
-        (text (nth 1 state))
-        (env (nth 2 state))
-        (state state))
+  (define `text-in
+    (case state ((REPL text _ _ _ _) text)))
 
-    (define `(typed str)
+  (let ((line (getline (if text-in "+ " "> ")))
+        (state state))
+    (define `(saw str)
       (eq? (.strip line) str))
 
-    (cond ((typed "?")    (begin (help) state))
-          ((typed ":")    ["" env]) ; reset input state
-          ((typed ":q")   nil)      ; exit
-          ((eq? line "")  nil)      ; exit (Ctrl-D)
-          ((typed ":e")   (begin (describe-env env nil) state))
-          ((typed ":E")   (begin (describe-env env 1) state))
-          (else           (eval-and-print (concat text line) env 1)))))
+    (case state
+      ((REPL text obj-dir is-quiet _ env)
+       (cond
+        ((saw "?")
+         (help)
+         state)
+
+        ((saw ":")
+         ;; Reset text
+         (REPL nil obj-dir is-quiet nil env))
+
+        ((saw ":q")
+         ;; Exit
+         nil)
+
+        ((eq? line "")
+         ;; Exit (Ctrl-D)
+         nil)
+
+        ((saw ":e")
+         (describe-env env nil)
+         state)
+
+        ((saw ":E")
+         (describe-env env 1)
+         state)
+
+        (else
+         (eval-and-print (concat text line) obj-dir is-quiet env 1)))))))
 
 
-(define `initial-state
-  (eval-and-print
-   (concat (foreach lib LIBS
-                    (concat "(require \"" lib "\")"))
-           "(declare *1)"
-           "(declare *2)")
-   nil))
+(define `initial-env
+  (begin
+    (define `env-text
+      (concat (foreach lib LIBS (concat "(require \"" lib "\")"))
+              "(declare *1)"
+              "(declare *2)"))
+    (dict-get "env" (compile-text env-text "[stdin]" nil nil nil))))
 
 
 ;; Read lines of text from stdin, evaluating expressions and displaying
@@ -151,17 +174,15 @@
   ;; These functions will be "on the stack" in the REPL and should not be
   ;; instrumented from the REPL.
   (do-not-trace "~repl ~eval-and-print ~while ~while-0 ~while-N")
-  (let-global ((*repl-obj-dir* obj-dir)
-               (*repl-is-quiet* nil))
-    (while identity read-eval-print initial-state))
+  (while identity read-eval-print
+         (REPL nil obj-dir nil nil initial-env))
   (print))
 
 
-;; Evaluate TEXT and print results (without looping).
+;; Evaluate TEXT and display result and/or errors as REPL does.
 ;;
 (define (repl-rep text ?obj-dir ?is-quiet)
   &public
-  (define `env (nth 2 initial-state))
-  (let-global ((*repl-obj-dir* obj-dir)
-               (*repl-is-quiet* is-quiet))
-    (word 3 (eval-and-print text env))))
+  (let ((state (eval-and-print text obj-dir is-quiet initial-env nil)))
+    (case state
+      ((REPL _ _ _ error _) error))))
