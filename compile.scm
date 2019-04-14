@@ -705,15 +705,31 @@
 
 ;; Compile SCAM source code to a function.
 ;;
-;; TEXT = SCAM source\
+;; TEXT = a string of SCAM source code containing a sequence of one or more
+;;     expressions.\
 ;; FILE = the file from which the source was obtained; this will be
 ;;     available to the compiled code via `(current-file)`.\
-;; ENV-IN = environment for TEXT.  If nil, SCAM's default environment will
-;;    be used.  Otherwise, it must be a previously returned ENV-OUT value.\
+;; ENV-IN = the environment (symbol definitions) visible to TEXT
+;;    at the outset.  If nil, SCAM's default environment will be used.
+;;    Otherwise, it must be a previously returned ENV-OUT value.\
 ;; OBJ-DIR = nil, or the [object directory](#object-directory).\
 ;; IS-QUIET = non-nil to suppress progress messages.
 ;;
-;; Returns: `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
+;; Result = `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
+;;
+;; On success, the `code` member of the result contains a SCAM function that
+;; will execute the compiled code, returning the value of the last
+;; expression.
+;;
+;; Example:
+;;
+;;     > (define result
+;;     +   (compile-text "(print 123) (require \"math\") (+ 1 2)" "--"))
+;;     > (define f (dict-get "code" result))
+;;     > (define out (f))
+;;     123
+;;     > out
+;;     3
 ;;
 (define (compile-text text file ?env-in ?obj-dir ?is-quiet)
   &public

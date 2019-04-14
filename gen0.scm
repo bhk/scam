@@ -303,6 +303,15 @@
 
 ;; Special forms are implemented in functions that begin with "ml.special-".
 ;;
+;; (ml.special-XXX ENV SYM ARGS) -> RESULT
+;;
+;; SYM = a (PSymbol ...) record
+;; ARGS = forms following SYM in `(SYM ...)` invocation of the special form
+;; RESULT = a single IL node
+
+
+;; Return a special form function native name given the symbol-name.
+;;
 (define `(special-form-func name)
   (declare (ml.special-))
   (concat (native-name ml.special-) name))
@@ -660,8 +669,11 @@
 
 ;; (require STRING [&private])
 ;;
-;; Emit code to call REQUIRE, and add the module's exported symbols to the
-;; current environment.
+;; Result = IL node that calls REQUIRE + includes a "require crumb"
+;;
+;; Generate IL nodes including a call to ^R and a "require" crumb to track
+;; the module dependency, and wrap it in an IEnv that exports the new
+;; symbols.
 ;;
 (define (ml.special-require env sym args)
   (define `module (first args))
