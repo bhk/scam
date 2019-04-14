@@ -504,13 +504,16 @@
 ;;           non-nil, code will be compiled for file syntax.
 ;;
 (define (parse-and-gen text env file is-file)
-  (let-global ((*compile-subject*  (penc text))
-               (*compile-file*     file))
-    (let ((o (gen0 (parse-subject *compile-subject*) env))
-          (is-file is-file))
-      (define `env-out (first o))
-      (define `nodes (rest o))
-      (concat (gen1 nodes is-file) " " {env: env-out}))))
+  (if (not text)
+      { errors: [(PError 0 "File empty or does not exist")] }
+
+      (let-global ((*compile-subject*  (penc text))
+                   (*compile-file*     file))
+        (let ((o (gen0 (parse-subject *compile-subject*) env))
+              (is-file is-file))
+          (define `env-out (first o))
+          (define `nodes (rest o))
+          (concat (gen1 nodes is-file) " " {env: env-out})))))
 
 
 ;; Replace the first line with a blank line if it begins with "#".
