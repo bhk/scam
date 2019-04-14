@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MOD := scam
-^uid := 0c5d4802dd475cf3
+^uid := f2f4da829709b609
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -23,7 +23,7 @@ endef
 
 define [mod-runtime]
 # Requires: 
-# Exports: at-exit#tracing(3;~untrace[:IL3'~trace',@\01\00[@'2'0 do-not-trace#untrace}1'or'2 trace#^tags{0;%;i filtersub}3 bound?&1;!1.;!1:IL2;if[:IL2'filter-out',|\0u!p',:IL2\0flavor\0,1@,01,00[|'1 rrest&1;!1.;!1:IL2;wordlist[|'3[|'99999999[@'1'0 rest&1;!1.;!1:IL2;wordlist[|'2[|'99999999[@'1'0 first&1;!1.;!1:IL3;^n[|'1[@'1'0 nth-rest(2;wordlist[@'1'0[|'99999999[@'2'0 not&1;!1.;!1:IL2;if[@'1'0[|'\.[|'1 nil{2;!1.;i;!1|;!1. set-native-fn&2'or'3;!1.;!1:IL3;^fset[@'1'0[@'2'0[@'3'0 set-native&2'or'3;!1.;!1:IL3;^set[@'1'0[@'2'0[@'3'0 nth(3;^n[@'1'0[@'2'0 demote&1;!1.;!1:IL3;^d[@'1'0 promote&1;!1.;!1:IL3;^u[@'1'0 apply(3;^%[@'1'0[@'2'0 name-apply(3;^na[@'1'0[@'2'0
+# Exports: at-exit}1'or'2 tracing(3;~untrace[:IL3'~trace',@\01\00[@'2'0 do-not-trace#untrace}1'or'2 trace#^tags{0;%;i filtersub}3 bound?&1;!1.;!1:IL2;if[:IL2'filter-out',|\0u!p',:IL2\0flavor\0,1@,01,00[|'1 rrest&1;!1.;!1:IL2;wordlist[|'3[|'99999999[@'1'0 rest&1;!1.;!1:IL2;wordlist[|'2[|'99999999[@'1'0 first&1;!1.;!1:IL3;^n[|'1[@'1'0 nth-rest(2;wordlist[@'1'0[|'99999999[@'2'0 not&1;!1.;!1:IL2;if[@'1'0[|'\.[|'1 nil{2;!1.;i;!1|;!1. set-native-fn&2'or'3;!1.;!1:IL3;^fset[@'1'0[@'2'0[@'3'0 set-native&2'or'3;!1.;!1:IL3;^set[@'1'0[@'2'0[@'3'0 nth(3;^n[@'1'0[@'2'0 demote&1;!1.;!1:IL3;^d[@'1'0 promote&1;!1.;!1:IL3;^u[@'1'0 apply(3;^%[@'1'0[@'2'0 name-apply(3;^na[@'1'0[@'2'0
 ~*do-not-trace* := $(value .VARIABLES)
 define '
 
@@ -97,7 +97,7 @@ endef
 ~start-trace = $(call ~trace,$(value $(if $(filter scam,$1),_)SCAM_TRACE))
 SHELL := /bin/bash
 ~*atexits* := 
-~at-exit = $(call ^set,~*atexits*,$(call ^d,$1) $(~*atexits*))
+~at-exit = $(if $(and $2,$(findstring $  $(call ^d,$1) , $(~*atexits*) )),,$(call ^set,~*atexits*,$(call ^d,$1) $(~*atexits*)))
 ~run-at-exits = $(and $(foreach fn,$(~*atexits*),$(call ^d,$(call ^Y,,,,,,,,,,$(call ^u,$(fn)))))1,)
 ~check-exit = $(if $(subst 0,,$(subst 9,,$(subst 8,,$(subst 7,,$(subst 6,,$(subst 5,,$(subst 4,,$(subst 3,,$(subst 2,,$(subst 1,,$(patsubst -%,%,$(subst $ 	,x,$(subst $  ,x,$1))))))))))))),$(error scam: main returned '$1'),$(or $1,0))
 define ^start
@@ -113,7 +113,7 @@ endef
 
 define [mod-core]
 # Requires: 
-# Exports: intersperse"foldr}3 foldl}3 index-of"assoc(3;~%-initial[:IL2'subst',|\0,1',|\0,11',:IL3\0^d\0,1@,01,00[@'2'0 assoc-vec(3;~assoc-initial[:IL3'^d',@\01\00[@'2'0 assoc-initial"sort-by"memoize#1+#split"uniq#see"fexpect(3;~expect-x[:IL3'~format',@\01\00[:IL3'~format',@\02\00[:IL9'4634 assert&1;!1.;!1:IL3;~%-x[@'1'0[:IL9'4583 trace-expect(5[:IL8',:IL3\0~expect-x\0,1:IL3,0^n,0,11|,101,0,11@,101,100\0,1:IL3,0^n,0,11|,102,0,11@,101,100\0,1:IL9,04498[:IL3'~untrace',:IL3\0~trace\0,1|,0!p',:IL6\0,1:IL3,0^d,0,11@,101,100\0,1|,0,10\0,1:IL3,0^d,0,11@,102,100 expect(3;~%-x[@'1'0[@'2'0[:IL9'4449 expect-x}3 printf}1'or'more sprintf}1'or'more vsprintf"format#format-add#dict-collate#dict-values#dict-keys#dict-compact}1'or'2 dict-set}3 dict-remove"dict-get}2'or'3 dict-find"dict-value&1;!1.;!1:IL3;^n[|'2[:IL2'subst',|\0,1=',|\0,0',@\01\00 dict-key#append}0'or'more word-index?#numeric?#while}3 reverse#indices&1;!1.;!1:IL3;~%-a[:IL2'words',@\01\00 vec-subtract(3;~vec-filter[|'filter-out[@'2'0[@'1'0 vec-intersect(3;~vec-filter[|'filter[@'2'0[@'1'0 vec-or&1;!1.;!1:IL3;^n[|'1[:IL2'filter-out',|\0,1.',@\01\00 select-words"select-vec"butlast#strip&1;!1.;!1:IL2;filter[|'!p[@'1'0 last&1;!1.;!1:IL3;^u[:IL2'%word',@\01\00 conj"cons"concat-vec}1'or'2 xor"identity&1;!1.;!1@;1;0 eq?}2
+# Exports: intersperse"foldr}3 foldl}3 index-of"assoc(3;~%-initial[:IL2'subst',|\0,1',|\0,11',:IL3\0^d\0,1@,01,00[@'2'0 assoc-vec(3;~assoc-initial[:IL3'^d',@\01\00[@'2'0 assoc-initial"sort-by"memoize#1+#split"uniq#see"fexpect(3;~expect-x[:IL3'~format',@\01\00[:IL3'~format',@\02\00[:IL9'4638 assert&1;!1.;!1:IL3;~%-x[@'1'0[:IL9'4587 trace-expect(5[:IL8',:IL3\0~expect-x\0,1:IL3,0^n,0,11|,101,0,11@,101,100\0,1:IL3,0^n,0,11|,102,0,11@,101,100\0,1:IL9,04502[:IL3'~untrace',:IL3\0~trace\0,1|,0!p',:IL6\0,1:IL3,0^d,0,11@,101,100\0,1|,0,10\0,1:IL3,0^d,0,11@,102,100 expect(3;~%-x[@'1'0[@'2'0[:IL9'4453 expect-x}3 printf}1'or'more sprintf}1'or'more vsprintf"format#format-add#dict-collate#dict-values#dict-keys#dict-compact}1'or'2 dict-set}3 dict-remove"dict-get}2'or'3 dict-find"dict-value&1;!1.;!1:IL3;^n[|'2[:IL2'subst',|\0,1=',|\0,0',@\01\00 dict-key#append}0'or'more word-index?#numeric?#while}3 reverse#indices&1;!1.;!1:IL3;~%-a[:IL2'words',@\01\00 vec-subtract(3;~vec-filter[|'filter-out[@'2'0[@'1'0 vec-intersect(3;~vec-filter[|'filter[@'2'0[@'1'0 vec-or&1;!1.;!1:IL3;^n[|'1[:IL2'filter-out',|\0,1.',@\01\00 select-words"select-vec"butlast#strip&1;!1.;!1:IL2;filter[|'!p[@'1'0 last&1;!1.;!1:IL3;^u[:IL2'%word',@\01\00 conj"cons"concat-vec}1'or'2 xor"identity&1;!1.;!1@;1;0 eq?}2
 ~eq? = $(if $(findstring 1$1,$(findstring 1$2,1$1)),1)
 ~xor = $(if $1,$(if $2,,$1),$2)
 ~concat-vec = $(call ^u,$(subst $  ,$(call ^d,$2),$1))
@@ -168,7 +168,7 @@ B: $(call ~format,$2)
 Raw:
 A: $1
 B: $2
-)1,$(if $(if $(findstring K,$(SCAM_DEBUG)),,1),$(error ))))
+)1,$(if $(findstring K,$(SCAM_DEBUG)),$(call ~at-exit,$`(error $`1)),$(error ))))
 endef
 ~assert-x = $(or $1,$(error $(info $2: error: assertion failed)))
 define ~see

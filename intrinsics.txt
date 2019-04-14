@@ -549,7 +549,10 @@
 ;; Add FUNC to a list of functions that will be run after `main` exits.
 ;; The earliest-registered functions will be called last.
 ;;
-(declare (at-exit func) &public)
+;; If UNIQUE is non-nil and FUNC has already been registered, it will not be
+;; added again.
+;;
+(declare (at-exit func ?unique) &public)
 
 
 ;; Evaluate EXPR with tracing activated according to SPEC.

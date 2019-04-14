@@ -588,9 +588,11 @@ $(if ,, ) :=
 
 
 ;; prepend new function so they are run in reverse order
-(define (at-exit fn)
+(define (at-exit fn ?unique)
   &public
-  (set *atexits* (concat [fn] " " *atexits*)))
+  (if (and unique (findstring (concat " " [fn] " ") (concat " " *atexits* " ")))
+      nil
+      (set *atexits* (concat [fn] " " *atexits*))))
 
 
 (define (run-at-exits)
