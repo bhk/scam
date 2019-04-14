@@ -538,7 +538,8 @@
                "Raw:\n"
                "A: " a "\n"
                "B: " b "\n")
-        (if (not (findstring "K" SCAM_DEBUG))
+        (if (findstring "K" SCAM_DEBUG)
+            (at-exit error 1)
             (error "")))))
 
 
