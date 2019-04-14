@@ -626,7 +626,7 @@
             (concat "SCAM_TMP=" (quote-sh-arg *obj-dir*) " ")
             "1>&9 ; echo \" $?\""))
 
-  (drop-if (filter-out 0 (lastword (ioshell cmd-line)))))
+  (drop-if (filter-out 0 (lastword (shell cmd-line)))))
 
 
 ;; Compile a module and test it.

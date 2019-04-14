@@ -15,11 +15,14 @@
 (expect ["a b c" ""] (shell-lines "printf '%b' 'a b c\\n'"))
 (expect ["a b c" "" " "] (shell-lines "printf '%b' 'a b c\\n\\n '"))
 
-;; shell2
+;; pipe
 
-(expect ["a b \n \n" ""] (shell2 "printf '%b' 'a b \\n \\n'"))
-(expect ["" "a b \n \n"] (shell2 "printf '%b' 'a b \\n \\n' >&2"))
-(expect ["a b \n" " c d"] (shell2 "echo 'a b ' && echo -n ' c d' >&2"))
+(expect [0 "a b \n \n" ""] (pipe "printf '%b' 'a b \\n \\n'"))
+(expect [0 "" "a b \n \n"] (pipe "printf '%b' 'a b \\n \\n' >&2"))
+(expect [0 "a b \n" " c d"] (pipe "echo 'a b ' && echo -n ' c d' >&2"))
+(expect [0 "11\n22\n" ""] (pipe "sed 's/\\(.*\\)/\\1\\1/'" "1\n2\n"))
+(expect [0 "123" ""] (pipe "cat" "123"))
+(expect [1 "" ""] (pipe "false"))
 
 ;; write
 
@@ -163,5 +166,5 @@
 
 (let ((tmp (get-tmp-dir "io-q.XXX")))
   (assert (filter-out "/%" tmp))
-  (expect nil (nth 2 (shell2 (concat "ls " (quote-sh-file tmp)))))
+  (expect 0 (first (pipe (concat "ls " (quote-sh-file tmp)))))
   (shell (concat "rm -rf " (quote-sh-file tmp))))

@@ -10,7 +10,6 @@
 ;; Invoke `(shell CMD)`, logging results if `S` appears in SCAM_DEBUG.
 ;;
 (define (ioshell cmd)
-  &public
   (if (filter "S" SCAM_DEBUG)
       (printf "shell: %q" cmd))
   (shell cmd))
@@ -30,14 +29,19 @@
   (quote-sh-arg (concat (if (filter "-%" [filename]) "./") filename)))
 
 
-;; Return a vector of lines output by CMD.
+(define `sed-esc-chars
+  "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/\x0d/!r/g")
+
+
+;; Return a vector of lines output by CMD, optionally starting/stopping at
+;; START/END.
 ;;
 (define (shell-wrap cmd ?start ?end)
   (define `shell-cmd
     (concat "( " cmd " ) | sed -e '"
             (if start
                 (concat start "," end "!d;"))
-            "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/\x0d/!r/g;s/^$/!./'"))
+            sed-esc-chars ";s/^$/!./'"))
   (subst "!r" "\x0d" (ioshell shell-cmd)))
 
 
@@ -54,23 +58,36 @@
   (shell-wrap (concat cmd " ; echo ")))
 
 
-;; Return both the `stdout` and `stderr` output of CMD.  The actual output
-;; is returned unmolested.  (Zero bytes may result in truncated lines.)
+;; Execute CMD, providing STDIN as input, capturing `stdout` and `stderr`.
+;; Return the exit status and output.  The output is returned unmolested,
+;; except that zero bytes may result in truncated lines.
 ;;
-;; Result = [STDOUT STDERR]
+;; Result = [STATUS STDOUT STDERR]
 ;;
-(define (shell2 cmd)
+(define (pipe cmd ?stdin)
   &public
-  ;; A vector of lines prefixed with "1" or "2".
-  (define `shell-lines
-    (shell-wrap (concat "((( " cmd " ; echo ; echo >&2 )|sed 's/^/1/') "
-                        "3>&1 1>&2 2>&3 |sed 's/^/2/') 2>&1")))
-  (let ((lines shell-lines))
-    (foreach fd [1 2]
+  (define `(quote-printf-arg str)
+    (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str)))
+
+  (define `(label n)
+    (concat "| sed 's/^/" n "/;" sed-esc-chars "'"))
+
+  ;; Label each line with "1" or "2"
+  (define `label-cmd
+    (concat (if stdin
+                (concat "printf '%b' " (quote-printf-arg stdin) " | ")
+                "cat /dev/null | ")
+            "( ( ( " cmd " ; echo 1$? >&3 ; echo ; echo >&2 ) " (label 2) " ) "
+            "3>&2 2>&1 1>&3 " (label 3) " ) 2>&1"))
+
+  (let ((lines (subst "!r" "\x0d" (ioshell label-cmd))))
+    (foreach fd [1 2 3]
              (or (subst " " "\n" (filtersub (concat fd "%") "%" lines))
                  "!."))))
 
 
+;; Some (all?) Linuxes limit command line length to 2^18
+;;
 (define MAX-ARG-1     100000)
 (define MAX-ARG-REST  100001)   ;; MAX-ARG-1 + 1
 
@@ -151,8 +168,9 @@
   (echo-bytes (get-echo-bytes data) "2>&1 {>} " (quote-sh-file file-name)))
 
 
-;; Format text and write to a file.  See `vsprintf` for handling of FORMAT
-;; and VALUES.  Unlike `printf`, no trailing newline is appended.
+;; Format text and write to a file descriptor, 0 through 8.  See `vsprintf`
+;; for handling of FORMAT and VALUES.  Unlike `printf`, no trailing newline
+;; is appended.
 ;;
 (define (fprintf fd format ...values)
   &public
@@ -406,8 +424,7 @@
     (or (value "SCAM_DIR") (value "SCAM_TMP") ".scam/"))
 
   (if tmpl
-      (let ((o (shell2
-                (concat "mktemp -d " (quote-sh-file (concat tmp tmpl))))))
-        (or (first (word 1 (subst "\n" " " o)))
+      (let ((o (pipe (concat "mktemp -d " (quote-sh-file (concat tmp tmpl))))))
+        (or (first (word 2 (subst "\n" " " o)))
             (error (concat "get-tmp-dir failed: " (nth 2 o)))))
       tmp))

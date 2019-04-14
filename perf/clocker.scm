@@ -34,12 +34,15 @@ int main(int argc, char **argv)
   (define timems-loc
     (concat (get-tmp-dir) "timems"))
 
+  (define `echo-cmd
+    (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" timems.c))))
+
   (set *timems*
        (or (wildcard timems-loc)
            (begin
              (expect "" (mkdir-p (dir timems-loc)))
-             (expect "" (ioshell (concat (echo-command timems.c) " | "
-                                         " cc -o " timems-loc " -x c - 2>&1")))
+             (expect 0 (first (pipe (concat "cc -o " timems-loc " -x c -")
+                                    timems.c)))
              timems-loc)))
   *timems*)
 
