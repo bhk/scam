@@ -654,7 +654,8 @@
   (define `test-src (subst ".scm" "-q.scm" src-file))
 
   (or (m-compile-module src-file)
-      (and (file-exists? test-src)
+      ;; Does a test file exist?
+      (and (memo-hash-file test-src)
            (or (m-compile-module test-src)
                (if (memo-call (native-name run) test-src nil 1)
                    (bail-if (concat test-src " failed")))))))
