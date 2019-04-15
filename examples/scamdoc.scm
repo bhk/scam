@@ -246,6 +246,7 @@
   (define `(fmt-module name exports sections)
     (concat
      ;; Module-level documentation
+     "\n\n"
      (concat-for e sections nil
                  (concat (dict-get "text" e) "\n"))
      "## Exports\n\n"
@@ -303,7 +304,6 @@
    "| Module | Exports |\n"
    "| :-- | :-- |\n"
    "{index}\n"
-   "\n"
    "{modules}\n"))
 
 

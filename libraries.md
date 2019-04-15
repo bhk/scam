@@ -5,13 +5,15 @@
 | [compile](#compile-scam-compilation) | [`build-program`](#build-program-src-file-exe-file-obj-dir-is-quiet) [`compile-text`](#compile-text-text-file-env-in-obj-dir-is-quiet) [`run-program`](#run-program-src-file-argv-obj-dir-is-quiet) |
 | [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
-| [intrinsics](#intrinsics) | [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-values) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
+| [intrinsics](#intrinsics) | [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-values) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
 | [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`mkdir-p`](#mkdir-p-dir) [`pipe`](#pipe-cmd-stdin) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
 | [peg](#peg-peg-parser-generator) | [`gen-lex`](#gen-lex-tokens) [`lex`](#lex-text-tokens) [`peg-*`](#peg--pf) [`peg-+`](#peg--pf) [`peg-?`](#peg--pf) [`peg-and`](#peg-and-pfs) [`peg-at`](#peg-at-pf) [`peg-c`](#peg-c-name-pf) [`peg-empty`](#peg-empty-caps) [`peg-not`](#peg-not-pf) [`peg-or`](#peg-or-pfs) [`peg-p`](#peg-p-in-out-caps) [`un-lex`](#un-lex-subj) |
+| [repl](#repl-interactive-mode-for-scam) | [`repl`](#repl-obj-dir-prompts) [`repl-ep`](#repl-ep-text-obj-dir-is-quiet) |
 | [string](#string-string-manipulation) | [`bytes-from-bytecodes`](#bytes-from-bytecodes-codes) [`gen-polysub`](#gen-polysub-froms-tos-input) [`string-from-bytecodes`](#string-from-bytecodes-codes) [`string-len`](#string-len-s) [`string-lower`](#string-lower-str) [`string-repeat`](#string-repeat-str-num) [`string-slice`](#string-slice-first-last-str) [`string-to-bytecodes`](#string-to-bytecodes-str) [`string-to-bytes`](#string-to-bytes-s) [`string-to-chars`](#string-to-chars-s) [`string-upper`](#string-upper-str) |
 | [utf8](#utf8-utf-8-coding) | [`utf8-decode`](#utf8-decode-bytes) [`utf8-encode`](#utf8-encode-codes) |
+
 
 
 # compile: SCAM Compilation
@@ -73,15 +75,31 @@ On failure, display message and return 1.
 
 Compile SCAM source code to a function.
 
-TEXT = SCAM source\
+TEXT = a string of SCAM source code containing a sequence of one or more
+    expressions.\
 FILE = the file from which the source was obtained; this will be
     available to the compiled code via `(current-file)`.\
-ENV-IN = environment for TEXT.  If nil, SCAM's default environment will
-   be used.  Otherwise, it must be a previously returned ENV-OUT value.\
+ENV-IN = the environment (symbol definitions) visible to TEXT
+   at the outset.  If nil, SCAM's default environment will be used.
+   Otherwise, it must be a previously returned ENV-OUT value.\
 OBJ-DIR = nil, or the [object directory](#object-directory).\
 IS-QUIET = non-nil to suppress progress messages.
 
-Returns: `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
+Result = `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
+
+On success, the `code` member of the result contains a SCAM function that
+will execute the compiled code, returning the value of the last
+expression.
+
+Example:
+
+    > (define result
+    +   (compile-text "(print 123) (require \"math\") (+ 1 2)" "--"))
+    > (define f (dict-get "code" result))
+    > (define out (f))
+    123
+    > out
+    3
 
 
 ##### `(run-program SRC-FILE ARGV ?OBJ-DIR ?IS-QUIET)`
@@ -95,6 +113,8 @@ IS-QUIET = non-nil to suppress progress messages.
 
 On success, return `nil`.\
 On failure, display message and return 1.
+
+
 # core: General-Purpose Functions
 
 The `core` library provides general-purpose functions, such as `eq?`, and
@@ -408,6 +428,8 @@ consists only of decimal digits and is non-zero.
 ##### `(xor A B)`
 
 Return the parameter that is not nil (unless both or none are nil).
+
+
 # getopts: Command Line Options Parser
 
 ## Exports
@@ -416,44 +438,45 @@ Return the parameter that is not nil (unless both or none are nil).
 
 Parse command line options.
 
-ARGV = arguments vector\
+ARGV = argument vector, as supplied to `main`\
 OPTS = a string of option specifiers\
-Result = a dictionary describing options, non-option arguments, and errors.
+Result = a dictionary
 
-Any non-option command-line arguments will appear in the result in a
-vector bound to the key `"*"`.  In other words, `(dict-get "*" RESULT)`
-yields all of the non-option arguments.
+The resulting dictionary maps each option name to a *vector* of values
+supplied for that option.  Options can appear zero or more times.  If not
+seen, the option name will not appear as a key in the dictionary.
 
-Option specifiers in OPTS may begin with `"-"` or `"--"`.  Leading dashes
-are not included in the dictionary keys.  Option names may not contain
-`%`, `!`, `*`, or whitespace.
+The key `"*"` holds elements in ARGV that were not options or option
+arguments.  In other words, `(dict-get "*" RESULT)` yields all of the
+non-option arguments.
 
-Options can appear multiple more times.  If not seen, the option name
-will not appear in the result.  Otherwise, it will be bound to a vector
-that contains one value per occurrence:
-
- - If an option specifier ends in `"="`, this indicates that the option
-   consumes an argument.  Its values will be the consumed arguments.
-
- - If an option does not end in `"="`, its values will all be `1`.
-
-If `--` is seen in ARGV, all elements following `--` are treated as
-non-option arguments.  Otherwise, options can appear in any order, before
-and after non-option arguments.
-
-If errors are encountered, a `"!"` entry in the dictionary will exist,
-containing `GetoptsError` records.
+If errors were encountered, the key `"!"` holds a vector of
+`GetoptsError` records:
 
  - `(MissingArg OPT)` : Option specifier OPT takes an argument but was found
    in last element of argv.
  - `(BadOption ARG)` : Argument ARG began with "-" but did not match any
    option specifiers.
 
+Words in OPTS begin with `-` or `--` and may end with `=`.  Leading
+dashes and the trailing `=` are not included in the dictionary keys.
+Option names may not contain `%`, `!`, `*`, or whitespace.
+
+If an option specifier ends in `"="`, the value will be the next argument
+in ARGV (which will be consumed).  Otherwise, the value `1` is supplied
+for each occurrence of the option.
+
+If `--` is seen in ARGV, all elements following `--` are treated as
+non-option arguments.  Otherwise, options can appear in any order, before
+and after non-option arguments.
+
 Example:
 
-    (getopts ["a" "-f" "--g" "x" "b"]      ;; command line as in `argv`
-             "-f --g= -h")                 ;; option description
-    {f: 1, g: "x", *: ["a" "b"] }          ;; result
+    > (getopts ["a" "-f" "-f" "--g" "x" "b c" "--" "-f"]
+    +          "-f --g= -h")
+    {*: ["a" "b c" "-f"], f: [1 1], g: "x"}
+
+
 # Intrinsics
 
 There is not an "intrinsics" module; all these exports are defined by the
@@ -528,10 +551,13 @@ Example:
     "c"
 
 
-##### `(at-exit FUNC)`
+##### `(at-exit FUNC ?UNIQUE)`
 
 Add FUNC to a list of functions that will be run after `main` exits.
 The earliest-registered functions will be called last.
+
+If UNIQUE is non-nil and FUNC has already been registered, it will not be
+added again.
 
 
 ##### `(basename PATHS)`
@@ -986,6 +1012,8 @@ terminated with an error message.
 ##### `(words LIST)`
 
 Return the number of words in LIST.
+
+
 # io: File I/O and Shell Interaction
 
 ## Exports
@@ -1146,6 +1174,8 @@ Result is `nil` on success; non-nil if the file descriptor is bad.
 Write DATA to file FILENAME.
 
 On success, nil is returned.  Otherwise, an error description is returned.
+
+
 # math: Numeric Operations
 
 The `math` library implements operations on numbers.
@@ -1433,6 +1463,8 @@ numbers, or a vector of vectors of numbers, and so on.
 ##### `(trunc X)`
 
 Return the integer portion of X (rounding towards zero).
+
+
 # memo: Persistent Memoization
 
 The `memo` module implements persistent memoization, which caches the
@@ -1555,6 +1587,8 @@ Read data from FILENAME, logging the IO transaction for playback.
 Write DATA to FILENAME, logging the IO transaction for playback.  The
 limit on the size of DATA is system-specific, but at least 60KB for
 any data and 100KB for text files.
+
+
 # peg: PEG Parser Generator
 
 The peg module exports *generators* that create parsing functions.
@@ -1696,6 +1730,36 @@ Examples:
 ##### `(un-lex SUBJ)`
 
 Recover original text from a string of symbols.
+
+
+# repl: Interactive mode for SCAM
+
+REPL mode reads lines of text from `stdin`, evaluating expressions and
+displaying results and errors.  Typing `:q<RETURN>` or `Ctrl-D` will
+exit REPL mode.  Typing `?<RETURN>` will show a command reference.
+
+## Exports
+
+##### `(repl ?OBJ-DIR ?PROMPTS)`
+
+Enter REPL mode, and return to caller when the user exits with `:q` or
+`Ctrl-D`.
+
+OBJ-DIR = [object directory](#object-directory); `nil` for default.\
+PROMPTS = [P1 P2]; P1 is shown when awaiting an expression; P2 is
+  shown when awaiting completion of an expression.  If `nil`, default
+  values will be used.
+
+
+##### `(repl-ep TEXT ?OBJ-DIR ?IS-QUIET)`
+
+Evaluate TEXT and print results and/or errors as REPL-mode does.
+
+TEXT = SCAM source text containing zero or more expressions.\
+OBJ-DIR = [object directory](#object-directory); `nil` for default.\
+IS-QUIET = When non-nil, suppresses compilation progress messaged.\
+
+
 # string: String Manipulation
 
 The `string` library provides some common string manipulation functions
@@ -1785,6 +1849,8 @@ boundaries.
 ##### `(string-upper STR)`
 
 Convert letters to upper case.  Only ASCII letters are supported.
+
+
 # utf8: UTF-8 Coding
 
 ## Exports

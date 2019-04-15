@@ -71,14 +71,16 @@ $$%: ; 	@true $(info $$$* --> "$(call if,,,$$$*)")
 #----------------------------------------------------------------
 # Docs
 
-DOCLIBS = $(patsubst %,%.scm,compile core getopts io math peg string utf8 memo) \
+SCAMDOC = examples/scamdoc.scm
+
+DOCLIBS = $(patsubst %,%.scm,compile core getopts io math peg repl string utf8 memo) \
           intrinsics.txt
 
 docs: .out/libs.txt
 
 promote-docs: .out/libs.txt ; cp .out/libs.txt libraries.md
 
-.out/libs.txt: $(DOCLIBS) ; bin/scam examples/scamdoc.scm -- -o $@ $(DOCLIBS)
+.out/libs.txt: $(DOCLIBS) $(SCAMDOC) ; bin/scam $(SCAMDOC) -- -o $@ $(DOCLIBS)
 
 #----------------------------------------------------------------
 
