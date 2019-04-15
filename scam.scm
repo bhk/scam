@@ -80,7 +80,7 @@ Options:
      ((opt "e")
       ;; eval with the REPL's initial env & output formatting
       (for expr (opt "e")
-           (if (repl-rep expr obj-dir is-quiet)
+           (if (repl-ep expr obj-dir is-quiet)
                (error "Error")))
       nil)
 
