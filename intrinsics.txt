@@ -641,7 +641,8 @@
 (declare (eval str) &internal)
 
 
-;; Get the "native name" of a SCAM variable or function.
+;; Get the "native name" of a SCAM global variable, function, or a built-in
+;; function.
 ;;
 (declare (native-name var-name) &internal)
 

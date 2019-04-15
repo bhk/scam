@@ -127,7 +127,7 @@
       (EVar     name &word scope)
       ;; function variable or compound macro
       (EFunc    name &word scope argc &list macro)
-      ;; pre-compiled IL
+      ;; pre-compiled IL (symbol macros)
       (EIL      depth &word scope &list il)
       ;; executable macro
       (EXMacro  name &word scope)

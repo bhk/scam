@@ -464,9 +464,12 @@
 ;;--------------------------------
 
 (define (defn-native-name defn)
-  (case defn
-    ((EFunc name _ _ _) name)
-    ((EVar name _) name)))
+  (filter-out
+   NoGlobalName
+   (case defn
+     ((EFunc name _ _ _) name)
+     ((EVar name _) name)
+     ((EBuiltin name _ _) name))))
 
 (define (ml.special-native-name env sym args)
   (define `var (first args))
