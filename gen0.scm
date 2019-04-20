@@ -124,7 +124,7 @@
     ((ILocal ndx ups) (cond
                        ;; macro arg
                        ((eq? ups top)
-                        (xlat-arg (or (nth ndx arg-values) NoOp)
+                        (xlat-arg (nth ndx arg-values)
                                   "."
                                   (concat "." (dots-from-num top))))
                        ;; capture
@@ -708,7 +708,7 @@
 ;;
 (define (c0-block-cc env forms k ?results ?o)
   (define `new-results
-    (concat results (if o (concat " " [o]))))
+    (concat results " " [o]))
 
   (case o
     ((IEnv bindings node)
@@ -718,7 +718,7 @@
      (if forms
          (c0-block-cc env (rest forms) k new-results
                       (c0 (first forms) env))
-         (k env (filter-out NoOp new-results))))))
+         (k env (filter-out [nil] new-results))))))
 
 
 ;; Compile a vector of forms as a block (each expression may modiy
@@ -731,8 +731,7 @@
                (lambda (env results)
                  (if (word 2 results)
                      (IBlock results)
-                     (or (first results)
-                         NoOp)))))
+                     (first results)))))
 
 
 ;;--------------------------------

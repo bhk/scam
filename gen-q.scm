@@ -6,8 +6,7 @@
 ;; IL-related definitions
 ;;
 
-(expect (il-concat nil)
-        (IString ""))
+(expect (il-concat nil) nil)
 (expect (il-concat [ (IString "abc") ])
         (IString "abc"))
 (expect (il-concat [ (IString "a") (IString "b") ])

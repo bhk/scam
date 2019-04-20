@@ -24,7 +24,7 @@
 ;;
 ;; "IL" is an intermediate language, structured as a tree of records.  The
 ;; first word of each vector describes its type.  IL constructs map closely
-;; to GNU Make constructs.
+;; to GNU Make constructs.  A `nil` value can e used to represent no-op.
 ;;
 ;; IBuiltin: Call a GNU make builtin NAME with arguments NODES.  Any
 ;;     number of arguments may be passed.
@@ -141,11 +141,6 @@
 (define `LambdaMarkerKey &public ":")
 
 
-(define `NoOp
-  &public
-  (IString ""))
-
-
 ;; Merge consecutive (IString ...) nodes into one node.  Retain all other
 ;; nodes.
 ;;
@@ -176,8 +171,7 @@
   (let ((nodes-out (il-merge-strings (il-flatten nodes) "")))
     (if (word 2 nodes-out)
         (IConcat nodes-out)
-        (or (first nodes-out)
-            NoOp))))
+        (first nodes-out))))
 
 
 ;; Demote in IL domain

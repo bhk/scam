@@ -53,14 +53,14 @@
        g: (EFunc "g" "p" 1),  ;; private
        g: (EFunc "g" "i" 1),  ;; imported, shadowed
        z: (EFunc "z" "i" 1),  ;; imported
-       m: (EIL "" "x" NoOp),
+       m: (EIL "" "x" nil),
        "a:n\n,x": (EVar "xyz" "x") })
 
 ;; import public members
 (fexpect (export-round-trip e1 nil)
          { f: (EFunc "f" "i" 2),
            x: (EVar "X" "i"),
-           m: (EIL "" "i" NoOp),
+           m: (EIL "" "i" nil),
            "a:n\n,x": (EVar "xyz" "i")})
 
 ;; import public AND private members
@@ -70,7 +70,7 @@
 (fexpect (export-round-trip e1 1)
          { f: (EFunc "f" "i" 2),
            x: (EVar "X" "i"),
-           m: (EIL "" "i" NoOp),
+           m: (EIL "" "i" nil),
            "a:n\n,x": (EVar "xyz" "i"),
            g: (EFunc "g" "i" 1)})
 

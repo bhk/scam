@@ -307,7 +307,9 @@
     ((IWhere pos) (c1-Where pos))
     ((ICrumb key value) (crumb key value))
     ((IEnv _ node) (c1 node))
-    (else (c1-Error node))))
+    (else
+     (if node
+         (c1-Error node)))))
 
 
 ;;--------------------------------------------------------------
@@ -387,7 +389,7 @@
 
      ;; Handle assignments using "a = b" vs. "$(call ^fset,a,b)"
      ((ICall name args)
-      (if (not (filter-out [NoOp] (word 3 args)))
+      (if (not (filter-out [nil] (word 3 args)))
           (if (filter "^set" name)
               (c1-file-set (c1 (nth 1 args)) (c1 (nth 2 args)))
               (if (filter "^fset" name)
