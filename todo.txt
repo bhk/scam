@@ -3,13 +3,6 @@ TODO
 Bugs
 ----
 
- * fix: (num-format 0.4 2 " ")                -> "  "
-        (num-format 868.8888888888858 6 " ")  ->  "??????"
-        (num-format 0.18 5 " " 3)             ->  "     .18000"
-        (mod 999 16) -> 54
-
- * fix: circular dependency warning with gen-testutils.
-
  * fix: 'rest' captures
 
    (begin
@@ -19,34 +12,21 @@ Bugs
      (expect [1 2 3 "a b"] (f 1 2 3 "a b")))
 
 
-Library Enhancements
-----
-
- * num: (div-rem float float) : (div-rem N 1) == [floor(N) (- N floor(N))]
- * num: faster div: O(n) or close, not O(n^2)
- * num: validate all inputs; no undefined behavior
- * num: Exponentiation with non-integral exponents
- * num: accept E-notation for integers in: range, ^
- * num: multi-arg + and *
-
-
-Language/Runtime Enhancements
+Enhancements
 ----
 
  * Prefix automatic variables to avoid conflicts with globals, making them
    functionally equivalent to locals.
 
- * Auto-rename variables to avoid conflict with Make special variables and
-   keywords (@, +, SHELL, MAKEFLAGS, etc.)
+ * Prefix *all* variables to avoid conflicts with environment variables and
+   special variables (SHELL, MAKEFLAGS, .FEATURES, etc.).  (Deal with
+   repurcussions in tracing...)
 
  * Forbid shadowing of variables
     - allow `(let ((x x)) ...)` or `&override` exceptions
     - validate `define` against prior `declare`
 
- * Remove `use`; handle xmacros-exporting modules in `require`
-
  * Enhance call-site tracing to support lambdas and macros/builtins
-
      (? lambda ...)  -->  (call "^tv" "any" (any ...))
      or:  (call "^yt" "any" (lambda (args) (any args)) ...)
 
@@ -54,11 +34,10 @@ Language/Runtime Enhancements
       Maybe:  (ILocal "1+" ups)
       At macro expand time, evaluates to precisely-sized vector.
 
- * Deconstruct vectors in `let`
+ * Deconstruct vectors in `let` or `define`
     (let (([a b c] vec)) ...)       ;; always succeeds
 
  * Record reflection.  What format-record needs:
-
     (data? value)
     (data-type value)    -> [ctor-name arity ctor dtor]
 
@@ -102,6 +81,11 @@ Language/Runtime Enhancements
    (do (a b <- f1 x)
        (c <- fn2 a b)
        (return c))
+
+
+ * num: accept E-notation for integers in: range, ^
+
+ * num: multi-arg + and *
 
 
 Code Optimizations

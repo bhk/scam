@@ -212,15 +212,14 @@ all numbers are strings.  Similarly, some strings can represent vectors of
 strings.  Not all strings are vectors, but all vectors are strings, so we
 can think of vectors as a subset of the set of strings.  At the same time, a
 vector can contain any number of any string values, so we can also think of
-it as a Cartesian product of the set of strings.
+the set of vectors as the Kleene closure of the set of strings.
 
 In terms of these subordinate types, SCAM is not statically typed at all.
 SCAM is mostly oblivious to them.  It provides syntax for constructing some
-of these types, functions for manipulating them, and it can convert them
-back to source code form.  However, if you were to pass, say, a non-vector
-to the `append` function, it will perform a deterministic string
-manipulation and happily succeed, even though the result may not be of any
-use to you.
+of these types, functions for manipulating them, and it can pretty-print
+them.  However, if you were to pass, say, a non-vector to the `append`
+function, it will perform a deterministic string manipulation and happily
+succeed whether or not the result makes any sense.
 
 Some of these subordinate types are overlapping sets.  For example, `1` is
 equivalent to `[1]` (and `[[1]]` and so on), but mostly they are disjoint.
@@ -639,18 +638,33 @@ Macros are invoked just like functions:
 Each invocation of the macro will be replaced by a `begin` block containing
 the macro body.  Within the macro body, the macro argument names are bound
 to the argument expressions.  Compound macros behave much like functions,
-but (1) they do not bind global variables to a function value, as function
-definitions do, and (2) when invoked, their argument expressions may be
-evaluated zero or more times.  When the value of a compound macro is
-requested, an equivalent function definition results.  Here is an example in
-the REPL:
+but macros cannot recurse, and when a macro is invoked, an expression passed
+as an argument argument may be evaluated zero or more times, depending on
+how many times the parameter ends up being evaluated within the macro body.
+For example:
+
+    > (define `(m a) (concat a a a) "done")
+    > (m (print 1))
+    1
+    1
+    1
+    "done"
+
+Defining a macro does not create a global function variable, but when the
+macro name itself is evaluated, its value is an anonymous function.  Here is
+an example in the REPL:
 
     > (define `(m a)
     +     (subst 2 9 a))
     > (m 123)
     193
-    > m
-    "$(subst 2,9,$1)"
+    > (let ((f m))
+    +   (f 123))
+    193
+
+The anonymous function behaves the same as the macro when invoked, only
+except for the fact that functions evaluate their arguments exactly once
+(while macros may evaluate them zero or more times).
 
 SCAM macros are hygienic -- they adhere to lexical scoping rules, just like
 SCAM functions.  Symbols named in the body of a macro are matched with the

@@ -479,8 +479,19 @@
 (declare (current-env) &public)
 
 
-;; This special form evaluates to the file name and line number of where it was
-;; invoked, in this format:  `FILENAME:LINE`
+;; This special form evaluates to the current file name.  Ordinarily, this
+;; will refer to the location in the source file where the `(current-file)`
+;; call appears, but when it appears within a macro it refers to the
+;; location at which the macro was expanded.
+;;
+(declare (current-file) &public)
+
+
+;; This special form evaluates to `FILENAME:LINE:COL` describing the
+;; "current" position in the program.  Ordinarily, this will refer to the
+;; location in the source file where the `(current-file-line)` call appears,
+;; but when it appears within a macro it refers to the location at which the
+;; macro was expanded.
 ;;
 (declare (current-file-line) &public)
 

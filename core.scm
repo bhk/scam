@@ -570,7 +570,7 @@
   (assert-x cond (current-file-line)))
 
 
-;; Like `expect, but only the formatted versions of A and B are compared.
+;; Like `expect`, but only the formatted versions of A and B are compared.
 ;; This accommodates only minor differences in the concrete layout that do
 ;; not affect the meaning in some contexts.  For example, a record ending in
 ;; a `&list` member (that is empty) will have a trailing space when
