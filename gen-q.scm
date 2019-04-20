@@ -30,6 +30,17 @@
 ;; Environment definitions
 ;;
 
+
+;; gen-native-name
+
+(let-global ((*is-boot* 1))
+  (expect "`a" (gen-native-name "a" nil))
+  (expect "a" (gen-native-name "a" "&native")))
+
+(let-global ((*is-boot* nil))
+  (expect "'a" (gen-native-name "a" nil))
+  (expect "a" (gen-native-name "a" "&native")))
+
 ;; gensym
 
 (expect (gensym-name "foo" nil nil)
@@ -39,7 +50,6 @@
 (expect (gensym (PSymbol 0 "foo")
                 {(symbol-name (gensym (PSymbol 0 "foo") nil)): (EVar "x" ".")})
         (PSymbol 0 "foo&1"))
-
 
 ;; gen-error
 

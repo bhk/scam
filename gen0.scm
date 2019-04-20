@@ -175,7 +175,12 @@
 (declare (c0-lambda env args body))
 
 
-;; c0-local: Construct a local variable reference.
+;;--------------------------------
+;; Symbol: local variable
+;;--------------------------------
+
+
+;; Return IL for a local variable reference.
 ;;
 ;; ARG = the argument's index preceded by its depth (e.g. "..3").
 ;; DEPTH = current lambda nesting depth (see Environment Records).
@@ -196,8 +201,12 @@
          (level-count (subst arg "" (concat depth ndx)))))
 
 
-;; Return the "value" of a record constructor: an equivalent anonymous
-;; function.
+;;--------------------------------
+;; Symbol: record constructor name
+;;--------------------------------
+
+
+;; Return the value of a constructor name: an equivalent lambda.
 ;;
 (define (c0-ctor env sym encs)
   (define `args
@@ -206,8 +215,12 @@
   (c0-lambda env args [ (PList 0 (cons sym args)) ]))
 
 
-;; MACRO --> (lambda (a b c...) (MACRO a b c...)
-;;
+;;--------------------------------
+;; Symbol: macro name
+;;--------------------------------
+
+
+;; Return IL for the "value" of a macro: (lambda (a b c...) (MACRO a b c...)
 ;; Adjust captures; do not replace macro args.
 ;;
 (define (c0-macro env depth il)
@@ -231,8 +244,13 @@
       (gen-error sym "undefined variable: `%s`" (symbol-name sym))))
 
 
-;; Symbol value
-;;    DEFN = definition bound to symbol
+;;--------------------------------
+;; Symbol
+;;--------------------------------
+
+
+;; DEFN = definition bound to symbol
+;;
 (define (c0-S env sym name defn)
   (case defn
     ((EArg arg)
@@ -260,15 +278,17 @@
     (else (c0-S-error sym defn))))
 
 
-;; Compile a vector of expressions independently, as in an argument
-;; list.  Declarations and definitions on one expression do not apply to
-;; subsequent ones (inlike c0-block-cc).
+;; Compile a vector of expressions independently, as in an argument list.
+;; Bindings established by one expression do not apply to subsequent ones.
+;; Note: May evaluate ENV more than once.
 ;;
-(define (c0-vec forms env)
+(define `(c0-vec forms env)
   &public
   (for f forms (c0 f env)))
 
 
+;; Return a special form function native name given the symbol-name.
+;;
 ;; Special forms are implemented in functions that begin with "ml.special-".
 ;;
 ;; (ml.special-XXX ENV SYM ARGS) -> RESULT
@@ -276,13 +296,15 @@
 ;; SYM = a (PSymbol ...) record
 ;; ARGS = forms following SYM in `(SYM ...)` invocation of the special form
 ;; RESULT = a single IL node
-
-
-;; Return a special form function native name given the symbol-name.
 ;;
 (define `(special-form-func name)
   (declare (ml.special-))
   (concat (native-name ml.special-) name))
+
+
+;;--------------------------------
+;; (CTOR ...ARGS)
+;;--------------------------------
 
 
 ;; form = `(Ctor ARG...)
@@ -305,11 +327,15 @@
                 (append [(IString " ")] [field])))))))
 
 
-;; L: compound forms
-;;    defn = Result of (resolve op), which is either:
-;;              a) "-" if op is not a symbol
-;;              b) nil if op is an unbound symbol)
-;;              b) an env record if op is a defined symbol
+;;--------------------------------
+;; ( ...FORMS )    [compound expressions]
+;;--------------------------------
+
+
+;; DEFN = (resolve (first subforms) env), which is either:
+;;     * "-" if op is not a symbol
+;;     * nil if op is an unbound symbol
+;;     * an env record if op is a defined symbol
 ;;
 (define (c0-L env pos sym args defn)
   (define `symname (symbol-name sym))
@@ -354,9 +380,10 @@
        (gen-error sym "undefined symbol: `%s`" symname))))))
 
 
-;;================================================================
-;; lambda
-;;================================================================
+;;--------------------------------
+;; (lambda (...SYMS) ...EXPRS)
+;;--------------------------------
+
 
 ;; Construct a binding for an argument to a function
 ;;
@@ -437,9 +464,12 @@
          (c0-lambda env lambda-args body)))
     (else (lambda-error "L" arglist sym "(ARGNAME...)"))))
 
-;;================================================================
-;; declare/define
-;;================================================================
+
+;;--------------------------------
+;; (declare ...)
+;; (define ...)
+;;--------------------------------
+
 
 (define (c0-check-body where first-form is-define)
   ;; validate BODY
@@ -477,26 +507,15 @@
             (first errors)))))
 
 
-;; Generate error is variable or function name conflicts with Make built-in
-;; function of automatic variable.
-;;
-(define (check-name name n)
-  (if (filter name builtin-names)
-      (gen-error n "cannot redefine built-in function `%s`" name)
-      ;; Use ":" (illegal name char) to represent "%"
-      (if (filter "@ : < ? ^ + | *" (subst "%" ":" name) )
-          (gen-error n "cannot redefine automatic variable `$%s`" name))))
-
-
+;;--------------------------------
 ;; (define `NAME FLAGS... BODY)
 ;; (declare NAME FLAGS...)
 ;; (define  NAME FLAGS... BODY)
+;;--------------------------------
+
 
 (define (c0-def-symbol env n name flags body is-define is-macro)
   (or (c0-check-body n (first body) is-define)
-
-      (if (not is-macro)
-          (check-name name n))
 
       (let ((value (c0-block body env))
             (scope (if (filter "&public" flags) "x" "p"))
@@ -518,9 +537,9 @@
 
 
 ;; Construct a string describing the number of parameters:
-;;  "a b c"      ==>   "3"
-;;  "a ?b ?c"    ==>   "1 or 2 or 3"
-;;  "a ?b ?c ..." ==>  "1 or more"
+;;   "a b c"      ==>   "3"
+;;   "a ?b ?c"    ==>   "1 or 2 or 3"
+;;   "a ?b ?c ..." ==>  "1 or more"
 ;;
 (define (get-argc args)
   (if (filter "...% ?%" (lastword args))
@@ -530,9 +549,12 @@
       (words args)))
 
 
+;;--------------------------------
 ;; (define `(NAME ARGS...) FLAGS BODY)
 ;; (declare (NAME ARGS...) FLAGS)
 ;; (define  (NAME ARGS...) FLAGS BODY)
+;;--------------------------------
+
 
 (define (c0-def-compound env n name args flags body is-define is-macro)
   (define `argc (get-argc (for a args (symbol-name a))))
@@ -552,9 +574,7 @@
           (vec-or
            (for a args
                 (if (filter "...%" (symbol-name a))
-                    (gen-error a "macros cannot have rest (...) parameters"))))
-          ;; check name for conflict
-          (check-name name n))
+                    (gen-error a "macros cannot have rest (...) parameters")))))
 
       ;; compile function/macro body
       (let ((body-il (c0-lambda body-env args body))
@@ -641,13 +661,16 @@
   (ModError message))
 
 
+;;--------------------------------
 ;; (require STRING [&private])
-;;
-;; Result = IL node that calls REQUIRE + includes a "require crumb"
-;;
+;;--------------------------------
+
+
 ;; Generate IL nodes including a call to ^R and a "require" crumb to track
 ;; the module dependency, and wrap it in an IEnv that exports the new
 ;; symbols.
+;;
+;; Result = IL node that calls REQUIRE + includes a "require crumb"
 ;;
 (define (ml.special-require env sym args)
   (define `module (first args))
@@ -674,14 +697,14 @@
       (err-expected "Q" module sym "STRING" "(require STRING)")))))
 
 
-;; c0-block-cc: Compile a vector of forms, calling `k` with results.
+;; Compile a vector of forms, calling `k` with results.
 ;;
-;;   FORMS = vector of forms
-;;   K = fuction to call: (k new-env nodes)
-;;   ENV = current environment
-;;   RESULTS = results (not including previous compiled form)
-;;   O = result of compiling previous form EXCEPT the first time
-;;       this function is called, when it is nil.
+;; FORMS = vector of forms
+;; K = fuction to call: (k new-env nodes)
+;; ENV = current environment
+;; RESULTS = results (not including previous compiled form)
+;; O = result of compiling previous form EXCEPT the first time
+;;     this function is called, when it is nil.
 ;;
 (define (c0-block-cc env forms k ?results ?o)
   (define `new-results
@@ -712,15 +735,22 @@
                          NoOp)))))
 
 
+;;--------------------------------
+;; (begin STRING [&private])
+;;--------------------------------
+
+
 (define (ml.special-begin env sym args)
   (c0-block args env))
 
 
 ;;--------------------------------
-;; dictionaries
+;; { KEY: VALUE, ...}
 ;;--------------------------------
 
-;; Compile a form and encode its IL value as a dictionary key.
+
+;; Return IL for a dictionary key.
+;;
 (define (c0-dict-key form env)
   (let ((node (il-demote (c0 form env))))
     (or (case node
@@ -755,12 +785,13 @@
 
 
 ;;--------------------------------
-;; quasi-quoting
+;; `EXPR   [quasi-quoting]
 ;;--------------------------------
 
+
 ;; A quasi-quoted form evaluates (at run time) to a form value.
-;; Quasi-quoted forms can contain un-quoted expressions, which are
-;; evaluated at run-time (presumably to a valid form).
+;; Quasi-quoted forms can contain un-quoted expressions, which are evaluated
+;; at run-time (presumably to a valid form).
 ;;
 ;; Quasi-quoting code must make *some* assumptions about how data
 ;; constructors work.  In order to minimize those, we use the constructors
@@ -773,6 +804,7 @@
 
 (define `QQS
   "*!*")
+
 
 ;; TEMPLATE = form encoding QQS as a child
 ;; SUB = IL node describing child/children
@@ -833,15 +865,15 @@
   (gen-error form msg form))
 
 
-;; c0: compile an expression.  Return IL.  (see c0-block)
+;; Compile an expression.  Return IL.  (see c0-block)
 ;;
 (define (c0 form env)
   &public
   (case form
-    ((PSymbol n value) (c0-S env form value (resolve form env)))
-    ((PString n value) (IString value))
     ((PList n subforms) (c0-L env n (first subforms) (rest subforms)
                               (resolve (first subforms) env)))
+    ((PString n value) (IString value))
+    ((PSymbol n value) (c0-S env form value (resolve form env)))
     ((PDict n pairs) (c0-D env n pairs))
     ((PQuote n subform) (IString subform))
     ((PQQuote n subform) (c0-qq env subform))

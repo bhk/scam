@@ -45,6 +45,7 @@
 (require "gen1.scm")
 (require "io.scm")
 (require "memo.scm")
+(require "escape.scm")
 
 ;; "macros" has no exports, but its functions are called from gen0 via
 ;; computed names.
@@ -366,6 +367,7 @@
           "endef\n"))
 
 
+
 ;; This preamble makes the resulting file both a valid shell script and a
 ;; valid makefile.  When invoked by the shell, the script invokes `make` to
 ;; process the script as a makefile.
@@ -373,15 +375,18 @@
 ;; LC_ALL=C allows makefiles to contain non-UTF-8 byte sequences, which is
 ;; needed to enable SCAM's UTF-8 support.
 ;;
-(define `(construct-file main-id bundles uid)
+(define `(construct-file main-mod bundles uid)
   (concat
+   ;; Initial line = bash "boot"
    "#!/bin/bash\n"
    ":; for v in \"${@//!/!1}\" ; "
    "do v=${v// /!0} ; v=${v//\t/!+}; a[++n]=${v:-!.} ; done ; "
    "LC_ALL=C "
    "SCAM_ARGS=${a[*]} "
    "exec make -Rr --no-print-directory -f\"$0\" 9>&1\n"
-   "SCAM_MOD := " main-id "\n"
+   ;; Remaining lines = makefile content
+   "SCAM_MAIN := " (protect-rhs
+                    (concat main-mod ":" (gen-native-name "main" nil))) "\n"
    "^uid := " uid "\n"
    bundles
    "$(eval $(value " (modid-var "runtime") "))\n"))
@@ -633,11 +638,13 @@
   ;; (value "MAKE") does not seem to provide the actual value
   (declare MAKE &native)
 
+  (define `scam-main
+    (concat mod ":" (gen-native-name "main" nil)))
+
   (define `cmd-line
     (concat "SCAM_ARGS=" (quote-sh-arg argv) " "
-            MAKE " -f " (quote-sh-arg runner) " "
-            "--no-print-directory "
-            "SCAM_MOD=" (quote-sh-arg mod) " "
+            MAKE " -Rr --no-print-directory -f" (quote-sh-arg runner) " "
+            "SCAM_MAIN=" (quote-sh-arg scam-main) " "
             (if *is-boot*
                 (concat "SCAM_DIR=" (quote-sh-arg *obj-dir*) " "))
             (concat "SCAM_TMP=" (quote-sh-arg *obj-dir*) " ")

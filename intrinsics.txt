@@ -612,6 +612,8 @@
 ;; the program.  This can be used to identify and quantify hotspots in a
 ;; program.
 ;;
+;; See the [reference manual](reference.md#debugging) for examples.
+;;
 (declare `(tracing spec expr) &public)
 
 

@@ -26,36 +26,33 @@
 ;; first word of each vector describes its type.  IL constructs map closely
 ;; to GNU Make constructs.
 ;;
-;; IBlock
+;; IBuiltin: Call a GNU make builtin NAME with arguments NODES.  Any
+;;     number of arguments may be passed.
 ;;
-;;   An IBlock is a sequences of expressions, as in a `begin` expression or
-;;   a function body.  All code within a block is executed, and the return
-;;   values are discarded for all but the last sub-node.
+;; ICall: Call a SCAM function stored in recursive variable NAME.  SCAM
+;;     functions have a convention for dealing with arguments above #9.
 ;;
-;; ILocal
+;; IBlock: An IBlock is a sequences of expressions, as in a `begin`
+;;     expression or a function body.  All code within a block is executed,
+;;     and the return values are discarded for all but the last sub-node.
 ;;
-;;    A reference to a local variable: argument NDX (1...N) to some parent
-;;    lambda.  LEVEL is 0 for the enclosing lambda, 1 for its parent, etc.
+;; ILocal: A reference to a local variable: argument NDX (1...N) to some
+;;     parent lambda.  LEVEL is 0 for the enclosing lambda, 1 for its
+;;     parent, etc.
 ;;
-;; IWhere
+;; IWhere: IWhere will be expanded to the source file name, and, if POS is
+;;     non-nil, a ":LINE" suffix.  When IWhere occurs within a macro, POS
+;;     will be rewritten to reflect where the macro was invoked.
 ;;
-;;    IWhere will be expanded to the source file name, and, if POS is
-;;    non-nil, a ":LINE" suffix.  When IWhere occurs within a macro, POS
-;;    will be rewritten to reflect where the macro was invoked.
+;; ICrumb: An ICrumb holds a name/value pair that will be passed through to
+;;     the `compile-text` output without affecting the behavior of the
+;;     generated code.
 ;;
-;; ICrumb
-;;
-;;    An ICrumb holds a name/value pair that will be passed through to the
-;;    `compile-text` output without affecting the behavior of the generated
-;;    code.
-;;
-;; IEnv
-;;
-;;    Some expressions in a block context create new bindings for the
-;;    environment.  In those cases, the phase 0 compilation of those
-;;    expressions return an IEnv record containing the code *and* the new
-;;    bindings.  These are "unwrapped" by c0-block-cc and replaced with
-;;    `node`.  If phase 1 sees an IEnv record, it ignores the env field.
+;; IEnv: Some expressions in a block context create new bindings for the
+;;     environment.  In those cases, the phase 0 compilation of those
+;;     expressions return an IEnv record containing the code *and* the new
+;;     bindings.  These are "unwrapped" by c0-block-cc and replaced with
+;;     `node`.  If phase 1 sees an IEnv record, it ignores the env field.
 ;;
 ;; Errors
 ;;
@@ -66,8 +63,8 @@
       &public
       (IString  value)                      ; "value"
       (IVar     &word name)                 ; "$(name)"
-      (IBuiltin &word name  &list args)     ; "$(name ARGS...)"
-      (ICall    &word name  &list args)     ; "$(call name,ARGS...)"
+      (IBuiltin &word name  &list nodes)    ; "$(name NODES...)"
+      (ICall    &word name  &list nodes)    ; "$(call name,NODES...)"
       (ILocal   &word ndx   &word level)    ; "$(ndx)"
       (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
       (IConcat  &list nodes)                ; "VALUES..."
@@ -100,11 +97,7 @@
 ;;
 ;; DEPTH = the lambda nesting depth of the definition.  This can be used to
 ;;    translate (relative) ILocal indices when "expanding" the macro's IL.
-;;    DEPTH uses a unary counting system:
-;;
-;;      ""   = top-level
-;;      "."  = within a function
-;;      ".." = within a function within a function
+;;    See `current-depth` for more.
 ;;
 ;; IL = the macro definition, an IL record.
 ;;
@@ -211,7 +204,6 @@
     (else (IBuiltin "subst" [ (IString a) (IString b) node ]))))
 
 
-
 ;; Namespacing
 ;; -----------
 ;;
@@ -220,41 +212,17 @@
 ;; scenarios:
 ;;
 ;;  - In interactive mode, expressions are compiled and then executed.
-;;
 ;;  - An executable may be composed of modules compiled from source and
 ;;    other modules that had been bundled with the compiler.
+;;  - Executable macros are loaded and executed during compilation.
 ;;
-;;  - "use" statements specify modules to be executed by the compiler,
-;;    perhaps after being compiled by the same compiler.
-;;
-;; See reference.md for more on namespaces.  The compile flag "--boot"
-;; indicates that we are building the compiler, and *is-boot* will be true.
-;;
-;; (gen-native-name SCAM-NAME FLAGS)
-;;
-;;     This function generates a global name for the target code. It is
-;;     by the compiler when generating code.
-;;
-;; (native-name SYMBOL)
-;;
-;;    This special form retrieves the global name associated with the SYMBOL
-;;    in the current environment.  This yields a string suitable for passing
-;;    to `call`, `value`, `origin`, etc..
-;;
-;; If FLAGS contains a word ending in "&native", the symbol name is returned
-;; unmodified.
-;;
-
-(define (gen-native-name local flags)
-  &public
-  (concat (and *is-boot*
-               (not (filter "%&native" flags))
-               "~")
-          local))
+;; A "native name" for a SCAM variable is the GNU Make variable name used to
+;; hold its value.  When building the compiler, we prefix the SCAM name with
+;; "~".  The compile flag "--boot" indicates that we are building the
+;; compiler, and *is-boot* will be true.
 
 
-;; Generate a unique symbol name derived from `base`.  Returns a symbol
-;; name.
+;; Generate a unique symbol name derived from BASE.
 ;;
 (define (gensym-name base env suff)
   &public
@@ -266,6 +234,14 @@
 
 ;; Return current lambda nesting depth.
 ;;
+;; Depth values use a unary counting system:
+;;     ""   = top-level
+;;     "."  = within a function
+;;     ".." = within a function within a function
+;;
+;; The current level is indicated by a marker record in ENV.  When compiling
+;; the body of a lambda, a new marker is added to increment the depth.
+;;
 (define (current-depth env)
   &public
   (let ((defn (dict-get LambdaMarkerKey env)))
@@ -273,9 +249,9 @@
       ((EMarker level) level))))
 
 
-;; Generate a unique symbol derived from symbol `base`.  Returns new symbol.
-;; The symbol is guaranteed not to conflict with any symbol in `env`, or
-;; with any other symbol generated with the same `env` and a different `base`.
+;; Generate a unique symbol derived from symbol BASE.  Returns new symbol.
+;; The symbol is guaranteed not to conflict with any symbol in ENV, or with
+;; any other symbol generated with the same ENV and a different BASE.
 ;;
 (define (gensym base env)
   &public
@@ -283,7 +259,7 @@
 
 
 ;; Construct an error node.  The resulting error node inherits the document
-;; index from `form`.
+;; index from FORM.
 ;;
 (define (gen-error form fmt ...values)
   &public
@@ -385,3 +361,20 @@
     ((PSymbol n name) (dict-value (or (find-name name env)
                                       (find-name name base-env))))
     (else "-")))
+
+
+(define conflict-pats
+  (addprefix "%" (concat builtin-names
+                         " guile "
+                         (foreach c "@ < ? ^ + | *"
+                                  (concat c "D " c "F " c)))))
+
+
+;; Return the native name to use for SCAM variable NAME.
+;;
+(define (gen-native-name name flags)
+  &public
+  (cond
+   ((filter "%&native" flags) name)
+   (*is-boot* (concat "`" name))
+   (else (concat "'" name))))

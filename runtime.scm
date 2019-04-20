@@ -409,7 +409,7 @@ $(if ,, ) :=
    ":I" "info $(^TI)"
    ":E" "$(eval ^TI:=$$(^TI) ):C$(eval ^TI:=$$(subst x ,,x$$(^TI)))"
    ":C" (concat "$(call " (save-var id) ",$1,$2,$3,$4,$5,$6,$7,$8,$9)")
-   ":N" ename
+   ":N" (patsubst "'%" "%" ename)
    ":D" defn ;; do this last, because we don't know what it contains
    template))
 
@@ -418,11 +418,18 @@ $(if ,, ) :=
 ;; subsets unless the specified pattern explicitly requests those names.
 ;;
 (define (trace-match pat variables)
-  (define `avoid-pats
-    (foreach p "^% ~% ~trace% ~esc-% ~set-native-fn ~filtersub"
-             (if (filter-out p pat)
-                 p)))
-  (filter-out avoid-pats (filter pat variables)))
+  ;; Default the namespace
+  (foreach
+      ns-pat (if (filter "'% `% \"%" pat)
+                 (patsubst "\"%" "%" pat)
+                 (concat "'" pat))
+
+      (define `avoid-pats
+        (foreach p "^% `% `trace% `esc-% `set-native-fn `filtersub"
+                 (if (filter-out p ns-pat)
+                     p)))
+
+      (filter-out avoid-pats (filter ns-pat variables))))
 
 
 ;; List of NAME:ID pairs.
@@ -449,6 +456,14 @@ $(if ,, ) :=
 
 ;; Instrument functions as described in SPECS.  Return list of instrumented
 ;; function names.
+;;
+;; SPEC = list of: NAME ( ":" MODE )?
+;;
+;; NAME defaults to the user namespace unless it begins with "`" or "\"":
+;;     "foo"   -> "'foo"
+;;     "'foo"  -> "'foo"
+;;     "`foo"  -> "`foo"
+;;     "\"foo" -> "foo"
 ;;
 (define (trace specs)
   &public
@@ -510,7 +525,8 @@ $(if ,, ) :=
                      (instrument (spec-mode _-spec) _-name id)
                      _-name))))
 
-  (filter "%" instrumented-names))
+  (subst "\"'" "'" "\"`" "`"
+         (addprefix "\"" (filter "%" instrumented-names))))
 
 
 (define (trace-rev lst)
@@ -614,10 +630,8 @@ $(if ,, ) :=
       (or code 0)))
 
 
-(define (^start main-mod args)
+(define (^start main-mod main-func args)
   &native
-  (define `main-func
-    (concat (if (filter ".scm" (suffix main-mod)) nil "~") "main"))
 
   ;; Allow module loading to be traced.
   (start-trace main-mod)
@@ -647,13 +661,8 @@ $(if ,, ) :=
 (at-exit (lambda () (trace-dump known-names)))
 
 
-;; In a bundled executable, the runtime module loads the "main" module
-;; (defined elsewhere in the program) and calls the function named "main"
-;; that it exports.  When unit tests are run during compilation, SCAM_MOD is
-;; overridden to point to a file-resident module (thereby avoiding the need
-;; to link an executable just for the test).  Ordinarily, the SCAM
-;; executable itself is used to "host" these unit tests; during compiler
-;; bootstrapping the runtime by itself does this.
-;;
-(declare SCAM_MOD &native)
-(^start SCAM_MOD (value "SCAM_ARGS"))
+;; Loads the "main" module and call the "main" function.
+(declare SCAM_MAIN &native)
+(^start (word 1 (subst ":" " " SCAM_MAIN))
+        (word 2 (subst ":" " " SCAM_MAIN))
+        (value "SCAM_ARGS"))

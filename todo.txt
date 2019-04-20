@@ -18,10 +18,6 @@ Enhancements
  * Prefix automatic variables to avoid conflicts with globals, making them
    functionally equivalent to locals.
 
- * Prefix *all* variables to avoid conflicts with environment variables and
-   special variables (SHELL, MAKEFLAGS, .FEATURES, etc.).  (Deal with
-   repurcussions in tracing...)
-
  * Forbid shadowing of variables
     - allow `(let ((x x)) ...)` or `&override` exceptions
     - validate `define` against prior `declare`

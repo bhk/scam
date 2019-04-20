@@ -279,9 +279,11 @@
 
 ;;-------- trace-match
 
-(expect "ab ac" (trace-match "%" "ab ac ~c ~az"))
-(expect "~az" (trace-match "~a%" "ab ac ~c ~az"))
-(expect "~c ~az" (trace-match "~%" "ab ac ~c ~az"))
+(expect "'ab 'ac" (trace-match "%" "ab 'ab 'ac `c `az"))
+(expect "`az" (trace-match "`a%" "az 'ab 'ac `c `az"))
+(expect "`c `az" (trace-match "`%" "ab ac `c `az"))
+(expect "ab" (trace-match "\"ab" "ab 'ab `ab ^ab"))
+(expect "^ab" (trace-match "\"^ab" "ab 'ab `ab ^ab"))
 
 ;;-------- *trace-ids* & related functions
 

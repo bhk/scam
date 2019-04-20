@@ -409,11 +409,6 @@
         "!(PError 7 'undefined variable: `UNDEF`')")
 (expect (c0-ser "(define `(M) UNDEF)")
         "!(PError 9 'undefined variable: `UNDEF`')")
-;; check for name conflicts with built-ins and automatic vars
-(expect (c0-ser "(define + 1)")
-        "!(PError 4 'cannot redefine automatic variable `$+`')")
-(expect (c0-ser "(define (word a) a)")
-        "!(PError 4 'cannot redefine built-in function `word`')")
 
 ;; define and use symbol macro
 
