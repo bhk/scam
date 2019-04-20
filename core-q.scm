@@ -188,11 +188,11 @@
 
 (expect "a b c" (uniq "a a b a c a b"))
 
-(expect ["" "abc" ""]   (split "/x/" "/x/abc/x/"))
-(expect ["" "" "" ""]   (split "a" "aaa"))
-(expect ["a \t" "" "}"] (split "{" "a \t{{}"))
-(expect ["" " \t{{}"] (split "a" "a \t{{}"))
-
+(expect ["" "x" ""] (split "/x/" "/x/x/x/"))
+(expect ["" "" "" ""] (split "a" "aaa"))
+(expect ["!!!" "!!" "" "!" "" "" "!"] (split " " "!!! !!  !   !"))
+(expect ["   " "  " "" " " "" "" " "] (split "!" "   !  !! !!! "))
+(expect ["!!x!" "!x"] (split "a" "!!x!a!x"))
 
 (expect 1 (1+ 0))
 (expect 2  (1+ 1))

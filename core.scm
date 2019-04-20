@@ -581,7 +581,11 @@
   &public
   (expect-x (format a) (format b) (current-file-line)))
 
+
 ;; Return 1 if SUBSTR appears within STR.  Print a diagnostic otherwise.
+;; This is intended for use in unit tests, as follows:
+;;
+;;     (expect 1 (see SUBSTR STR))
 ;;
 (define (see substr str)
   &public
@@ -594,6 +598,7 @@
 (define (uniq-x lst)
   (if lst
       (concat (word 1 lst) " " (uniq-x (filter-out (word 1 lst) (rest lst))))))
+
 
 ;; Return the unique members of VEC *without* re-ordering.  The first
 ;; occurrence of each member is retains.  This can be applied to word lists
@@ -613,16 +618,14 @@
 ;;
 (define (split delim str)
   &public
-  ;; Ensure that the end or start of delim cannot overlap part of an escape
-  ;; sequence.  In an encoded string, "{" and "}" appear only in the
-  ;; following escape sequences: {L} {R} {s} {t} {}
-  (define `(enc str)
-    (or (subst "{" "{L" "}" "{R}" "{L" "{L}" " " "{s}" "\t" "{t}" str) "{}"))
-  (define `(dec str)
-    (subst "{}" "" "{t}" "\t" "{s}" " " "{L}" "{L" "{R}" "}" "{L" "{" str))
-
-  (foreach w (subst (enc delim) "{} {}" (enc str))
-           [(dec w)]))
+  ;; Encode "!" as "!! and " " as " ! "
+  (define `(enc s)
+    (subst "!" "!!" " " " ! " s))
+  (define `(tovec s)
+    (subst "!x" nil
+           (patsubst "!x" "!."
+                     (concat "!x" (subst " ! " "!0" "!!" "!1" "\t" "!+" s)))))
+  (tovec (subst (enc delim) " !x" (enc str))))
 
 
 ;; Add one to N.  N must contain only decimal digits.
