@@ -46,14 +46,12 @@
 (define (describe-binding bound-name defn all)
   (if (or all (not (filter "i%" (EDefn.scope defn))))
       (case defn
-        ((EBuiltin name _ args)
+        ((EBuiltin _ _ args)
          "built-in function")
-        ((EFunc name _ argc inln)
-         (concat (if (eq? name NoGlobalName)
-                     "compound macro"
-                     "function")
-                 (if inln
-                     (sprintf " (%s arguments)" argc))))
+        ((EFunc _ _ argc)
+         (sprintf "function (%s arguments)" argc))
+        ((EMacro depth _ argc _)
+         (sprintf "compound macro (%s arguments)" argc))
         ((EVar name _)
          "variable")
         ((EIL _ _ node)

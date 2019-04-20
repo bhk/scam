@@ -59,7 +59,7 @@
 ;;
 ;; Errors
 ;;
-;;   PError records may occur where IL records may appear.  See parse.scm.
+;;    PError records may occur where IL records may appear.  See parse.scm.
 
 
 (data IL
@@ -86,37 +86,33 @@
 ;; dictionary, it maps a symbol name to its in-scope *definition*.  Each
 ;; definition is a vector in one of the following formats:
 ;;
-;; SCOPE describes the scope and origin of top-level bindings.
-;;
-;;      When `require` imports symbols, only &public symbols will be
-;;      imported.  This should not involve EBuiltin, EIL, EArg, and EMarker
-;;      because they should not be in any exported environment.
-;;
-;;        "i" => defn was imported
-;;        "p" => defn is private
-;;        "x" => public (exported)
-;;        "-" => private or don't care
-;;
 ;; NAME = the actual (global) name of the function/variable or builtin.
-;;         For EFunc records, the value NoGlobalName indicates that the
-;;         binding is a compound macro, and not a function variable.
 ;;
-;; ARGC = number of arguments the function/macro accepts, in a form
+;; SCOPE describes the scope and origin of top-level bindings:
+;;
+;;     "i" => defn was imported
+;;     "p" => defn is private
+;;     "x" => public (exported)
+;;     "-" => private or don't care
+;;
+;; ARGC = number of arguments the function or macro accepts, in a form
 ;;        ready for check-argc, such as: "0", "1 or 2", "1 or more".
 ;;
-;; MACRO = For functions, this is nil.  For macros, it is (cons DEPTH NODE)
-;;         where DEPTH is the lambda nesting depth where the macro was
-;;         defined, and NODE is an IL node representing the macro body.
+;; DEPTH = the lambda nesting depth of the definition.  This can be used to
+;;    translate (relative) ILocal indices when "expanding" the macro's IL.
+;;    DEPTH uses a unary counting system:
+;;
+;;      ""   = top-level
+;;      "."  = within a function
+;;      ".." = within a function within a function
+;;
+;; IL = the macro definition, an IL record.
 ;;
 ;; ARGREF = description of local variable or capture.  Note that these
 ;;   references are absolute, an ILocal records use relative addressing.
 ;;      .1   --> argument #1 of a top-level function
 ;;      ..1  --> argument #1 of a function within a function
 ;;      ...1 --> argument #1 of a third-level nested function
-;;
-;; DEPTH = nesting depth at which the IL portion of an EIL entry was
-;;     compiled.  When the EIL entry is instantiated, DEPTH tells how to
-;;     translate ILocal records that identify captures.
 ;;
 ;; EMarker values embed contextual data other than variable bindings.  They
 ;; use keys that begin with ":" to distinguish them from variable names.
@@ -125,8 +121,10 @@
       &public
       ;; data variable
       (EVar     name &word scope)
-      ;; function variable or compound macro
-      (EFunc    name &word scope argc &list macro)
+      ;; function variable
+      (EFunc    name &word scope argc)
+      ;; compound macro
+      (EMacro   depth &word scope argc &list il)
       ;; pre-compiled IL (symbol macro)
       (EIL      depth &word scope &list il)
       ;; executable macro
@@ -140,13 +138,10 @@
       ;; marker
       (EMarker  &word data))
 
+
 (define `(EDefn.scope defn)
   &public
   (word 3 defn))
-
-(define `NoGlobalName
-    &public
-    ":")
 
 
 ;; The current function nesting level: ".", "..", "...", and so on.

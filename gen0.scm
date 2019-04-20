@@ -68,8 +68,7 @@
     (else node)))
 
 
-;; Translate IWhere nodes to the source location where the macro is
-;; expanded.
+;; Translate IWhere nodes to the location where the macro is expanded.
 ;;
 (define (xlat-where node pos)
   (define `(x* nodes)
@@ -146,7 +145,9 @@
 ;;    been removed).  The body is actually nested one level deeper.
 ;; TO-DEPTH = lambda nesting level (unary) where macro is being expanded.
 ;;
-(define (expand-macro node from-depth to-depth arg-values pos)
+(define (expand-macro node from-depth to-depth arg-values sym)
+  (define `pos
+    (form-index sym))
   (define `(dots- a b)
     (subst (concat ":" b) "" (concat ":" a)))
   ;; subtract 1 from the offset to account for extraction of lambda body
@@ -169,10 +170,6 @@
               (check-optional-args (rest args) nil)))))
 
 
-;;================================
-;; c0 compilation
-;;================================
-
 (declare (c0 form env))
 (declare (c0-block forms env))
 (declare (c0-lambda env args body))
@@ -180,14 +177,8 @@
 
 ;; c0-local: Construct a local variable reference.
 ;;
-;; A unary counting system identifies levels of nesting of functions:
-;;
-;;    "." = outermost function
-;;    ".." = first nesting level down
-;;    "..." = third down
-;;
-;; ARG is a decimal index preceded by the level where it is bound (e.g. "..3").
-;; MARKER is an EMarker describing the current nesting level.
+;; ARG = the argument's index preceded by its depth (e.g. "..3").
+;; DEPTH = current lambda nesting depth (see Environment Records).
 ;; FORM is used in the up-value warning form of the function.
 ;;
 (define (c0-local arg depth sym)
@@ -217,12 +208,10 @@
 
 ;; MACRO --> (lambda (a b c...) (MACRO a b c...)
 ;;
-(define (c0-macro env inln)
-  (define `depth-from (first inln))
-  (define `macro-il (rest inln))
-
-  ;; Adjust captures; do not replace macro args.
-  (xlat-arg (ILambda macro-il) depth-from (current-depth env)))
+;; Adjust captures; do not replace macro args.
+;;
+(define (c0-macro env depth il)
+  (xlat-arg (ILambda il) depth (current-depth env)))
 
 
 (define (c0-builtin env name argc)
@@ -252,10 +241,11 @@
     ((EVar gname _)
      (IVar gname))
 
-    ((EFunc gname _ _ macro)
-     (if (filter NoGlobalName gname)
-         (c0-macro env macro)
-         (IBuiltin "value" [(IString gname)])))
+    ((EMacro depth scope argc il)
+     (c0-macro env depth il))
+
+    ((EFunc gname _ _)
+     (IBuiltin "value" [(IString gname)]))
 
     ((EIL depth _ il)
      (xlat-arg (xlat-where il (form-index sym))
@@ -277,28 +267,6 @@
 (define (c0-vec forms env)
   &public
   (for f forms (c0 f env)))
-
-
-;; Function call by name.
-;;
-;;   Ordinary function:  macro is nil,  REALNAME = global name
-;;   Compound macro:     macro non-nil, REALNAME = NoGlobalName
-;;
-(define (c0-call env sym args realname argc macro)
-  (define `depth-from (first macro))
-  (define `macro-il (rest macro))
-
-  (or (check-argc argc args sym)
-      (if macro
-          ;; macro
-          (expand-macro macro-il
-                        depth-from
-                        (current-depth env)
-                        (for a args (c0 a env))
-                        (form-index sym))
-
-          ;; function
-          (ICall realname (c0-vec args env)))))
 
 
 ;; Special forms are implemented in functions that begin with "ml.special-".
@@ -347,8 +315,13 @@
   (define `symname (symbol-name sym))
 
   (case defn
-    ((EFunc realname _ argc macro)
-     (c0-call env sym args realname argc macro))
+    ((EFunc realname _ argc)
+     (or (check-argc argc args sym)
+         (ICall realname (c0-vec args env))))
+
+    ((EMacro depth _ argc il)
+     (or (check-argc argc args sym)
+         (expand-macro il depth (current-depth env) (c0-vec args env) sym)))
 
     ((EBuiltin realname _ argc)
      (or (check-argc argc args sym)
@@ -567,10 +540,10 @@
   (define `scope (if (filter "&public" flags) "x" "p"))
 
   ;; Make function name known *within* the body, unless it is a macro.
-  (define `env-in
+  (define `body-env
     (if is-macro
         env
-        (append { =name: (EFunc gname scope argc nil) } env)))
+        (append { =name: (EFunc gname scope argc) } env)))
 
   (or (c0-check-body n (first body) is-define)
 
@@ -584,25 +557,26 @@
           (check-name name n))
 
       ;; compile function/macro body
-      (let ((macro-il (c0-lambda env-in args body))
+      (let ((body-il (c0-lambda body-env args body))
             (depth (current-depth env))
             (is-define is-define)
             (is-macro is-macro)
             (argc argc)
             (scope scope)
             (name name)
-            (gname (if is-macro NoGlobalName gname)))
+            (gname gname))
 
         (define `defn
-          (EFunc gname scope argc (if is-macro
-                                      (cons depth (case macro-il
-                                                    ((ILambda body) body))))))
+          (if is-macro
+              (EMacro depth scope argc (case body-il ((ILambda node) node)))
+              (EFunc gname scope argc)))
 
-        (or (il-error-node macro-il)
+        (or (il-error-node body-il)
             (IEnv {=name: defn}
                   (and is-define
                        (not is-macro)
-                       (ICall "^fset" [(IString gname) macro-il])))))))
+                       (ICall "^fset" [(IString gname) body-il])))))))
+
 
 ;; Dispatch to c0-def-symbol or c0-def-compound
 ;;

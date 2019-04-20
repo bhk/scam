@@ -67,9 +67,9 @@
   &public
   { a: (EArg "1"),
     v: (EVar "V" "."),
-    f: (EFunc "F" "." 2 nil),
+    f: (EFunc "F" "." 2),
     ;; names that an extra promote/demote will corrupt...
-    "f!0!": (EFunc "F!0!" "." 2 nil),
+    "f!0!": (EFunc "F!0!" "." 2),
     "d!0!": (EVar "D!0!" ".") })
 
 

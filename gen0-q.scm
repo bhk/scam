@@ -107,25 +107,17 @@
 
 ;; PList: (macro ...)
 
-(define `inln-f
-  (cons "." (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
-                               (ILocal 1 1)  ;; capture
-                               (ILocal 2 0)])))
-(expect (c0-ser "(f 1 a)"
-                { f: (EFunc NoGlobalName "." 2 inln-f),
-                  a: (EArg ".7"),
-                  =LambdaMarkerKey: (EMarker "..") })
-        "(.subst 1,{1^1},{7^1})")
+;; (define `(f a) a) *(f 1)*
+(expect (c0-ser "(f 1)" { f: (EMacro "." "p" 1 (ILocal 1 0)) })
+        "1")
 
-(define `inln-f-2
-  (cons "." (ILambda (IBuiltin "word"
-                               [ (ILocal 2 0)     ;; interior arg
-                                 (ILocal 1 1)     ;; macro arg
-                                 ]))))
-(expect (c0-ser "(f 1)"
-                 { f: (EFunc NoGlobalName "." 1 inln-f-2),
-                   =LambdaMarkerKey: (EMarker "..") })
-        "`(.word {2},1)")
+;; (lambda (x y) (define `(f) x) *(f)* )    [capture]
+(expect (c0-ser "(f)" { f: (EMacro "." "p" 0 (ILocal 2 1)) })
+        "{2^1}")
+
+;; (define `(f) (lambda (x) x)) *(f)*
+(expect (c0-ser "(f)" { f: (EMacro "." "p" 0 (ILambda (ILocal 1 0))) })
+        "`{1}")
 
 
 ;; Expand IWhere in macros.  Supports (current-file-line).
@@ -138,8 +130,7 @@
          (IWhere 1))
 
  ;; Expand compound macro with IWhere record.
- (define `inln-f-where (cons "." (IWhere 99)))
- (expect (c0-ser "(f)" {f: (EFunc NoGlobalName "." 0 inln-f-where)})
+ (expect (c0-ser "(f)" {f: (EMacro "." "p" 0 (IWhere 99))})
          "!(IWhere 2)")
 
  ;; Expand symbol macro with IWhere record.
@@ -249,12 +240,11 @@
 
 ;; PSymbol: macro  (uses c0-lambda)
 (begin
-  (define `inln
-    (cons "." (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
-                                 (ILocal 1 1)  ;; capture
-                                 (ILocal 2 0)])))
   (expect (il-ser (c0-macro { =LambdaMarkerKey: (EMarker "..") }
-                            inln))
+                            "."
+                            (IBuiltin "subst" [(ILocal 1 0)  ;; macro arg
+                                               (ILocal 1 1)  ;; capture
+                                               (ILocal 2 0)])))
           "`(.subst {1},{1^2},{2})"))
 
 
@@ -343,9 +333,9 @@
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        { fn: (EFunc (gen-native-name "fn" nil) "p" 2 nil) })
+        { fn: (EFunc (gen-native-name "fn" nil) "p" 2) })
 (expect (text-to-env "(declare (fn a b) &public)")
-        { fn: (EFunc (gen-native-name "fn" nil) "x" 2 nil) })
+        { fn: (EFunc (gen-native-name "fn" nil) "x" 2) })
 
 ;; declare errors
 (expect (c0-ser "(declare)")
@@ -369,16 +359,14 @@
         (xns "(^fset ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
-        (xns { f: (EFunc "~f" "p" 1 nil) }))
+        (xns { f: (EFunc "~f" "p" 1) }))
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (words a))")
-        { M: (EFunc NoGlobalName "p" 1
-                    (cons "" (IBuiltin "words" [(ILocal 1 0)]))) })
+        {M: (EMacro "" "p" 1 (IBuiltin "words" [(ILocal 1 0)]))})
 
 (expect (text-to-env "(define `(M a) &public (words a))")
-        { M: (EFunc NoGlobalName "x" 1
-                    (cons "" (IBuiltin "words" [(ILocal 1 0)]))) })
+        {M: (EMacro "" "x" 1 (IBuiltin "words" [(ILocal 1 0)]))})
 
 
 ;; define symbol macro

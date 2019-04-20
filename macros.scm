@@ -122,7 +122,7 @@
       ((PSymbol pos var-name)
        (case binding
          ((EVar name _) (il-set "^set" name))
-         ((EFunc name _ _ _) (il-set "^fset" name))
+         ((EFunc name _ _) (il-set "^fset" name))
          (else
           (gen-error sym "`%s` is not a global variable" (symbol-name sym)))))
       (else
@@ -163,8 +163,7 @@
            (define `(trace ctor name)
              (ctor "^t" (cons (IString name) (c0-vec func-args env))))
            (case defn
-             ((EFunc name _ _ _) (if (not (eq? name NoGlobalName))
-                                     (trace ICall name)))
+             ((EFunc name _ _) (trace ICall name))
              ((EBuiltin name _ _) (trace IBuiltin name)))))
 
      (if defn
@@ -464,12 +463,10 @@
 ;;--------------------------------
 
 (define (defn-native-name defn)
-  (filter-out
-   NoGlobalName
-   (case defn
-     ((EFunc name _ _ _) name)
-     ((EVar name _) name)
-     ((EBuiltin name _ _) name))))
+  (case defn
+    ((EFunc name _ _) name)
+    ((EVar name _) name)
+    ((EBuiltin name _ _) name)))
 
 (define (ml.special-native-name env sym args)
   (define `var (first args))

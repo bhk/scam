@@ -97,7 +97,7 @@
 (expect (c0-ser "(? f 1)")
         "(^t F,1)")
 (expect (c0-ser "(? m a)"
-                { m: (EFunc NoGlobalName "." 1 nil) })
+                { m: (EMacro "." "p" 1 (ILocal 0 0)) })
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
