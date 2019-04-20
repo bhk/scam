@@ -11,6 +11,7 @@
    * [Vector Constructors](#vector-constructors)
    * [Dictionary Constructors](#dictionary-constructors)
    * [Syntax Quoting](#syntax-quoting)
+   * [Comments](#comments)
  * [Data Types](#data-types)
    * [Booleans](#booleans)
    * [Numbers](#numbers)
@@ -28,6 +29,7 @@
    * [Run-time Tracing](#run-time-tracing)
    * [Profiling](#profiling)
  * [The SCAM Compiler](#the-scam-compiler)
+ * [Hashbang](#hashbang)
 
 ## Overview
 
@@ -185,6 +187,16 @@ representation of the quoted expression.  SCAM ASTs are represented as
 [records](#records), and contain additional syntax information, such as the
 original position in the source code, and typing information.  See
 `parse.scm` for complete details.
+
+
+### Comments
+
+Comments begin at a `;` character (outside of a quoted string) and continue
+to the end of the line.  A comment is treated as whitespace.
+
+Additionally, if the first line of a SCAM source file begins with a `#`
+character, that line is ignored.  This enables [hashbang](#hashbang)
+executables.
 
 
 ## Data Types
@@ -745,11 +757,11 @@ To count all function invocations in a SCAM program:
 
 Or:
 
-    $ SCAM_TRACE='%:c' scam -x myprogram.scm
+    $ SCAM_TRACE='%:c' scam myprogram.scm
 
 To show details for all calls into functions beginning with "foo-":
 
-    $ SCAM_TRACE='foo-%' scam -x myprogram.scm
+    $ SCAM_TRACE='foo-%' scam myprogram.scm
 
 In the REPL:
 
@@ -796,7 +808,7 @@ following approach:
 
        $ time ...command...
 
-   The command can invoke your program via `scam -x program.scm ...args...`
+   The command can invoke your program via `scam program.scm ...args...`
    or it can invoke your program directly, assuming you have compiled it
    using `scam -o ...`.
 
@@ -830,7 +842,7 @@ The SCAM Compiler supports four major modes of operation:
 
 2. Execute a SCAM source file.
 
-   Usage: `scam -x SOURCE [--] ARGS...`
+   Usage: `scam SOURCE [--] ARGS...`
 
    SCAM source file SOURCE will be compiled and immediately executed as in
    `scam -o`.  Command-line arguments not processed by `scam` as options
@@ -856,10 +868,14 @@ The SCAM Compiler supports four major modes of operation:
 
 In order to support fast incremental rebuilds of modules, SCAM stores
 intermediate compilation results in a directory called the **object
-directory**.  This defaults to ".scam/" unless SCAM is invoked with `scam -o
-EXE`, in which case it defaults to the directory containing EXE.  The
-location of the object directory can be overridden using the `--obj-dir`
-option.
+directory**.  The object directory is determined by one of the following
+(with the earlier ones taking precedence):
+
+  1. The value given by the `--obj-dir` command line option.
+  2. If the `-o EXE` option is given, a directory named ".scam"
+     within the directory containing EXE.
+  3. The environment variable `SCAM_OBJDIR`.
+  4. A directory named `.scam` (relative to the current directory).
 
 SCAM uses hashes to determine the suitability of cached entries; not
 modification times.  As a result, when modifying a source file and
@@ -867,3 +883,20 @@ re-compiling, you may find that the compilation finishes instantly, as if
 the change were not recognized.  This can happen if the modification returns
 the source file to some older state that had been previously compiled; in
 that case, the compiler can quickly identify how to recreate the program.
+
+
+## Hashbang
+
+In UNIX-based systems, SCAM source files may be marked as executable files
+and labeled with a hashbang (`#!`).  For example:
+
+    #!/usr/bin/env scam --quiet --
+    (define (main argv)
+      (print "Hello, world!"))
+
+The `--quiet` option ensures consistent behavior by suppressing the progress
+messages (to stderr) that would otherwise appear when compilation occurs.
+
+The `--` option ensures that remaining arguments are treated as the program
+name and program arguments, and are not interpreted as options by the SCAM
+compiler.

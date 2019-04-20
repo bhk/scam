@@ -1,4 +1,4 @@
-#!/usr/bin/env scam -x
+#!/usr/bin/env scam --quiet -x --
 ;; "scam -x SOURCE" test file
 ;;
 ;; - The initial "hashbang" line should be ignored.

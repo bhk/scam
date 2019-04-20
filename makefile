@@ -64,7 +64,7 @@ install: ; cp bin/scam `which scam`
 
 clean: ; rm -rf .out .scam */.out */.scam
 
-bench: ; bin/scam --obj-dir .out/ -x bench.scm $(ARGS)
+bench: ; bin/scam --obj-dir .out/ -- bench.scm $(ARGS)
 
 $$%: ; 	@true $(info $$$* --> "$(call if,,,$$$*)")
 
@@ -154,8 +154,8 @@ $B-o.ok: $B/scam test/*.scm
 
 
 $B-x.ok: $B/scam test/*.scm
-	@ echo '... test scam -x FILE ARGS...'
-	$(_@) SCAM_TRACE='%conc:c' $B/scam --obj-dir .out/tbx/ -x test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
+	@ echo '... test scam FILE ARGS...'
+	$(_@) SCAM_TRACE='%conc:c' $B/scam --obj-dir .out/tbx/ -- test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
 	$(_@) $(call guard,BX1,grep '9:3:a b' .out/tb/dash-x.out)
 	$(_@) $(call guard,BX2,grep ' 4 .*conc' .out/tb/dash-x.out)
 	$(_@) touch $@

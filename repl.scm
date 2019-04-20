@@ -200,6 +200,8 @@
 ;; OBJ-DIR = [object directory](#object-directory); `nil` for default.\
 ;; IS-QUIET = When non-nil, suppresses compilation progress messaged.\
 ;;
+;; Result = non-nil on error.
+;;
 (define (repl-ep text ?obj-dir ?is-quiet)
   &public
   (let ((state (eval-and-print text nil obj-dir is-quiet initial-env)))

@@ -13,11 +13,11 @@
 (define usage-string
   "Usage:\n
     scam [-i]                  Enter interactive mode
+    scam FILE ARGS...          Compile and execute FILE
     scam -o FILE [OPTS] FILE   Build an executable from SRC
-    scam -e EXPR               Eval and print value of expression
-    scam [-x] FILE ARGS...     Compile and execute FILE
+    scam -e EXPR               Print the value of expression EXPR
     scam -v / --version        Show version
-    scam -h                    Show this message
+    scam -h / --help           Show this message
 
 Options:
 
@@ -43,62 +43,61 @@ Options:
 
 (define (main argv)
   (define `opt-names
-    "-o= -e= -v --version -h -x -i --quiet --obj-dir= --boot")
+    "-o= -e= -v --version -h --help -i --quiet --obj-dir= --boot")
 
   (let ((omap (getopts argv opt-names)))
     (define `(opt name)
       (dict-get name omap))
 
-    (define `names (opt "*"))      ; non-option arguments
-    (define `errors (opt "!"))     ; errors encountered by getopts
+    (define `names (opt "*"))
+    (define `errors (opt "!"))
+    (define `is-quiet (opt "quiet"))
 
     ;; These globals govern compilation
     (set *is-boot* (opt "boot"))
-    (define is-quiet (opt "quiet"))
+
     (define obj-dir
       (or (last (opt "obj-dir"))
-          (if (opt "o")
-              (concat (dir (last (opt "o"))) ".scam/"))))
+          (addsuffix ".scam/" (dir (last (opt "o"))))
+          (value "SCAM_OBJDIR")))
 
-    (cond
-     (errors
-      (for e errors
-           (case e
-             ((MissingArg opt) (perror "`%s` is missing an argument" opt))
-             ((BadOption arg) (perror "`%s` is not a recognized option" arg))
-             (else (perror "[internal error]"))))
-      (perror "try `scam -h` for help"))
+    (or
 
-     ((opt "h")
-      (print usage-string))
+     (when errors
+       (for e errors
+            (case e
+              ((MissingArg opt) (perror "`%s` is missing an argument" opt))
+              ((BadOption arg) (perror "`%s` is not a recognized option" arg))
+              (else (perror "[internal error]"))))
+       (perror "try `scam -h` for help"))
 
-     ((opt "o")
-      (if (word 2 names)
-          (perror "too many input files were given with `-o`")
-          (build-program (first names) (last (opt "o")) obj-dir is-quiet)))
-
-     ((opt "e")
-      ;; eval with the REPL's initial env & output formatting
+     (vec-or
       (for expr (opt "e")
            (if (repl-ep expr obj-dir is-quiet)
-               (error "Error")))
-      nil)
+               1)))
 
-     ((or (opt "v")
-          (opt "version"))
-      (print "SCAM version " version))
+     (when (or (opt "h")
+               (opt "help"))
+       (print usage-string)
+       0)
 
-     ((opt "x")
-      (if (not names)
-          (perror "no FILE was given with `-x`")
-          (run-program (first names) (rest names) obj-dir is-quiet)))
+     (when (opt "o")
+       (if (word 2 names)
+           (perror "too many input files were given with `-o`")
+           (or (build-program (first names) (last (opt "o")) obj-dir is-quiet)
+               0)))
 
-     ((not names) ;; handles valid `-i` case as well
+     (when (or (opt "v")
+               (opt "version"))
+       (print "SCAM version " version)
+       0)
+
+     (when names
+       (or (run-program (first names) (rest names) obj-dir is-quiet)
+           0))
+
+     (when (or (opt "i")
+               (not (or names (opt "e"))))
       (print "SCAM v" version " interactive mode. Type `?` for help.")
-      (repl obj-dir))
-
-     ((opt "i")
-      (perror "extraneous arguments were provided with `-i`"))
-
-     (else
-      (run-program (first names) (rest names) obj-dir is-quiet)))))
+      (repl obj-dir)
+      0))))
