@@ -416,9 +416,9 @@
 ;;
 (define (get-source-module name private path)
   (or (if (not path)
-          (ModError (sprintf "cannot find %q" name)))
+          (ModError (sprintf "cannot find `%s`" name)))
       (if (m-compile-and-maybe-test-module path private)
-          (ModError (sprintf "compilation of %q failed" path)))
+          (ModError (sprintf "compilation of `%s` failed" path)))
       (ModSuccess (module-id path)
                   (memo-blob-call (native-name modid-import)
                                   (module-id path) private))))
@@ -680,7 +680,7 @@
    obj-dir is-quiet
    (if (not (memo-hash-file src-file))
        (begin
-         (fprintf 2 "scam: file '%s' does not exist\n" src-file)
+         (fprintf 2 "scam: file `%s` does not exist\n" src-file)
          1)
        (or (m-compile-and-maybe-test-module src-file nil)
            (memo-call (native-name link) exe-file main-id)))))

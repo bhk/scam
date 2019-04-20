@@ -20,7 +20,7 @@
                  (if (and nodes
                           (not allow-nodes)
                           (not (eq? [(IString "")] nodes)))
-                     (sprintf "UNEXPECTED NODES: '%q'" nodes)
+                     (sprintf "UNEXPECTED NODES: %q" nodes)
                      env))))
 
 
@@ -72,7 +72,7 @@
 
 ;; PSymbol: undefined variables
 (expect (c0-ser "foo")
-        "!(PError 1 'undefined variable \\'foo\\'')")
+        "!(PError 1 'undefined variable: `foo`')")
 
 ;; PDict: dictionaries
 
@@ -94,15 +94,15 @@
 (expect (c0-ser "(f!0! 1 2)")
         "(F!0! 1,2)")
 (expect (c0-ser "(f 1)")
-        "!(PError 2 '\\'f\\' accepts 2 arguments, not 1')")
+        "!(PError 2 '`f` accepts 2 arguments, not 1')")
 (expect (c0-ser "(f)" (text-to-env "(declare (f a ?b))"))
-        "!(PError 2 '\\'f\\' accepts 1 or 2 arguments, not 0')")
+        "!(PError 2 '`f` accepts 1 or 2 arguments, not 0')")
 (expect (c0-ser "(f)" (text-to-env "(declare (f a ?b ...))"))
-        "!(PError 2 '\\'f\\' accepts 1 or more arguments, not 0')")
+        "!(PError 2 '`f` accepts 1 or more arguments, not 0')")
 (expect (c0-ser "(f)" (text-to-env "(declare (f a b ...))"))
-        "!(PError 2 '\\'f\\' accepts 2 or more arguments, not 0')")
+        "!(PError 2 '`f` accepts 2 or more arguments, not 0')")
 (expect (c0-ser "(f)" (text-to-env "(declare (f a ?b ?c))"))
-        "!(PError 2 '\\'f\\' accepts 1 or 2 or 3 arguments, not 0')")
+        "!(PError 2 '`f` accepts 1 or 2 or 3 arguments, not 0')")
 
 
 ;; PList: (macro ...)
@@ -176,11 +176,11 @@
 (expect (c0-ser "(or 7)" nil)
         "(.or 7)")
 (expect (c0-ser "(if 1)")
-        "!(PError 2 '\\'if\\' accepts 2 or 3 arguments, not 1')")
+        "!(PError 2 '`if` accepts 2 or 3 arguments, not 1')")
 (expect (c0-ser "(if 1 2 3 4)")
-        "!(PError 2 '\\'if\\' accepts 2 or 3 arguments, not 4')")
+        "!(PError 2 '`if` accepts 2 or 3 arguments, not 4')")
 (expect (c0-ser "(bar)")
-        "!(PError 2 'undefined symbol: \\'bar\\'')")
+        "!(PError 2 'undefined symbol: `bar`')")
 (expect (c0-ser "()")
         "!(PError 1 'missing function/macro name')")
 
@@ -418,14 +418,14 @@
         "!(PError 9 'non-optional parameter after optional one')")
 ;; report errors when compiled, not when used
 (expect (c0-ser "(define `M UNDEF)")
-        "!(PError 7 'undefined variable \\'UNDEF\\'')")
+        "!(PError 7 'undefined variable: `UNDEF`')")
 (expect (c0-ser "(define `(M) UNDEF)")
-        "!(PError 9 'undefined variable \\'UNDEF\\'')")
+        "!(PError 9 'undefined variable: `UNDEF`')")
 ;; check for name conflicts with built-ins and automatic vars
 (expect (c0-ser "(define + 1)")
-        "!(PError 4 'cannot redefine automatic variable '$+'')")
+        "!(PError 4 'cannot redefine automatic variable `$+`')")
 (expect (c0-ser "(define (word a) a)")
-        "!(PError 4 'cannot redefine built-in function \\'word\\'')")
+        "!(PError 4 'cannot redefine built-in function `word`')")
 
 ;; define and use symbol macro
 

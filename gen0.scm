@@ -197,7 +197,7 @@
   (if (and *warn-upvals*
            (not (findstring depth arg)))
       (info (describe-error
-             (gen-error sym "reference to upvalue %q" (symbol-name sym))
+             (gen-error sym "reference to upvalue `%s`" (symbol-name sym))
              (pdec *compile-subject*)
              *compile-file*)))
 
@@ -238,8 +238,8 @@
 
 (define (c0-S-error sym defn)
   (if defn
-      (gen-error sym "internal: %q binds to %q" sym defn)
-      (gen-error sym "undefined variable %q" (symbol-name sym))))
+      (gen-error sym "internal: %s binds to %q" sym defn)
+      (gen-error sym "undefined variable: `%s`" (symbol-name sym))))
 
 
 ;; Symbol value
@@ -378,7 +378,7 @@
 
       ;; none of the above
       (else
-       (gen-error sym "undefined symbol: %q" symname))))))
+       (gen-error sym "undefined symbol: `%s`" symname))))))
 
 
 ;;================================================================
@@ -509,10 +509,10 @@
 ;;
 (define (check-name name n)
   (if (filter name builtin-names)
-      (gen-error n "cannot redefine built-in function %q" name)
+      (gen-error n "cannot redefine built-in function `%s`" name)
       ;; Use ":" (illegal name char) to represent "%"
       (if (filter "@ : < ? ^ + | *" (subst "%" ":" name) )
-          (gen-error n "cannot redefine automatic variable '$%s'" name))))
+          (gen-error n "cannot redefine automatic variable `$%s`" name))))
 
 
 ;; (define `NAME FLAGS... BODY)

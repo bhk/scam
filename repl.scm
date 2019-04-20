@@ -196,7 +196,7 @@
   (print))
 
 
-;; Evaluate TEXT and print results and/or errors as REPL-mode does.
+;; Evaluate TEXT and print results and errors as REPL mode does.
 ;;
 ;; TEXT = SCAM source text containing zero or more expressions.\
 ;; OBJ-DIR = [object directory](#object-directory); `nil` for default.\

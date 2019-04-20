@@ -124,7 +124,7 @@
          ((EVar name _) (il-set "^set" name))
          ((EFunc name _ _ _) (il-set "^fset" name))
          (else
-          (gen-error sym "%q is not a global variable" (symbol-name sym)))))
+          (gen-error sym "`%s` is not a global variable" (symbol-name sym)))))
       (else
        (err-expected "S" sym nil what where)))))
 
@@ -169,7 +169,7 @@
 
      (if defn
          (gen-error func "FUNC in (? FUNC ...) is not traceable")
-         (gen-error func "undefined variable: %q" (symbol-name sym))))))
+         (gen-error func "undefined variable: `%s`" (symbol-name sym))))))
 
 
 ;;--------------------------------
@@ -190,7 +190,7 @@
             (if value
                 (if (not extra)
                     (read-pairs-r (rest forms) where (conj out pair))
-                    (gen-error extra "extra form after value in %q" where))
+                    (gen-error extra "extra form after value in %s" where))
                 (err-expected "" value form "VALUE" where)))
            (else (err-expected "S" var form "VAR" where))))
         (else (err-expected "L" form nil "(VAR VALUE)" where)))))
@@ -480,7 +480,7 @@
                (name name))
            (if global-name
                (IString global-name)
-               (gen-error var "%q is not a global variable" name))))
+               (gen-error var "`%s` is not a global variable" name))))
         (else (err-expected "S" var sym "NAME" "(native-name NAME)")))))
 
 
@@ -745,7 +745,7 @@
 
             (case ctor-form
               ((PSymbol _ name)
-               (gen-error ctor-form "symbol %q does not identify a record type"
+               (gen-error ctor-form "symbol `%s` is not a record constructor"
                           name))
               (else
                (err-expected "S" ctor-form pattern "CTOR" case-where)))))

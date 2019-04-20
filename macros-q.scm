@@ -86,7 +86,7 @@
 (expect (c0-ser "(set f 1 2)")
         "(^fset F,1,2)")
 (expect (c0-ser "(set f 1 2 2)")
-        "!(PError 2 '\\'set\\' accepts 2 or 3 arguments, not 4')")
+        "!(PError 2 '`set` accepts 2 or 3 arguments, not 4')")
 (expect (c0-ser "(set 1 2 2)")
         "!(PError 4 'invalid NAME in (set NAME VALUE [RETVAL]); expected a symbol')")
 
@@ -217,11 +217,11 @@
 
 (expect "V"
         (c0-ser "(native-name v)"))
-(expect "!(PError 4 '\\'a\\' is not a global variable')"
+(expect "!(PError 4 '`a` is not a global variable')"
         (c0-ser "(native-name a)"))
 (expect "!(PError 4 'invalid NAME in (native-name NAME); expected a symbol')"
         (c0-ser "(native-name 1)"))
-(expect "!(PError 2 '\\'native-name\\' accepts 1 argument, not 2')"
+(expect "!(PError 2 '`native-name` accepts 1 argument, not 2')"
         (c0-ser "(native-name v v)"))
 
 ;;--------------------------------
@@ -338,17 +338,17 @@
 
 ;; non-ctor in pattern
 (expect (c0-ser "(case v ((Foo a) 1))")
-        "!(PError 8 'symbol \\'Foo\\' does not identify a record type')")
+        "!(PError 8 'symbol `Foo` is not a record constructor')")
 
 ;; bad value expr
 (expect (c0-ser "(case bogus)")
-        "!(PError 4 'undefined variable \\'bogus\\'')")
+        "!(PError 4 'undefined variable: `bogus`')")
 
 ;; wrong number of arguments
 (expect (c0-ser "(case v ((Ctor s l) l))"
                 (append { Ctor: (ERecord "S W L" "." "!:T0") }
                         default-env))
-        "!(PError 8 '\\'Ctor\\' accepts 3 arguments, not 2')")
+        "!(PError 8 '`Ctor` accepts 3 arguments, not 2')")
 
 ;; collapse clauses with equivalent bodies
 (expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))"

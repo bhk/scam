@@ -127,7 +127,7 @@
       (EVar     name &word scope)
       ;; function variable or compound macro
       (EFunc    name &word scope argc &list macro)
-      ;; pre-compiled IL (symbol macros)
+      ;; pre-compiled IL (symbol macro)
       (EIL      depth &word scope &list il)
       ;; executable macro
       (EXMacro  name &word scope)
@@ -337,7 +337,7 @@
   (if (not ok)
       (gen-error sym
                  (subst "%S" (if (eq? expected 1) "" "s")
-                        "%q accepts %s argument%S, not %s")
+                        "`%s` accepts %s argument%S, not %s")
                  (symbol-name sym) expected (words args))))
 
 

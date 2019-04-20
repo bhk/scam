@@ -64,10 +64,10 @@ Options:
      (errors
       (for e errors
            (case e
-             ((MissingArg opt) (perror "'%s' is missing an argument" opt))
-             ((BadOption arg) (perror "'%s' is not a recognized option" arg))
+             ((MissingArg opt) (perror "`%s` is missing an argument" opt))
+             ((BadOption arg) (perror "`%s` is not a recognized option" arg))
              (else (perror "[internal error]"))))
-      (perror "try 'scam -h' for help"))
+      (perror "try `scam -h` for help"))
 
      ((opt "h")
       (print usage-string))
@@ -90,15 +90,15 @@ Options:
 
      ((opt "x")
       (if (not names)
-          (perror "no FILE was given with '-x'")
+          (perror "no FILE was given with `-x`")
           (run-program (first names) (rest names) obj-dir is-quiet)))
 
      ((not names) ;; handles valid `-i` case as well
-      (print "SCAM v" version " interactive mode. Type '?' for help.")
+      (print "SCAM v" version " interactive mode. Type `?` for help.")
       (repl obj-dir))
 
      ((opt "i")
-      (perror "extraneous arguments were provided with -i"))
+      (perror "extraneous arguments were provided with `-i`"))
 
      (else
       (run-program (first names) (rest names) obj-dir is-quiet)))))
