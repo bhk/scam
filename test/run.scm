@@ -40,7 +40,6 @@
 (define (F) "\\\n\\")
 (expect "\\\n\\" (F))
 
-
 ;; compile-time escaping
 
 (define v0 &native "$a$$a$$$a\\\\n")
@@ -169,6 +168,11 @@
 ;;--------------------------------
 ;; Regression tests
 ;;--------------------------------
+
+;; failure to escape newline in file-syntax expression
+
+(set F (or "\n"))
+
 
 ;; arg9+ references are different from 1...8
 

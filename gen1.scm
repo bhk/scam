@@ -312,18 +312,30 @@
 
 ;;--------------------------------------------------------------
 ;; File Syntax
+;;
+;; Newlines may appear in function syntax but not in file syntax
+;; assignments or expressions.  (But "define ... endef" can retain
+;; them.)  We call protect-expr to encode newlines in expressions, and
+;; protect-lhs and protect-rhs for assingments.
 
 (declare (c1-file node))
 
-;; construct code for simple assignment
+
+;; Embed a function-syntax expression in file syntax
+;;
+(define `(c1-file-expr expr)
+  (concat (protect-expr expr) "\n"))
+
+
+;; Construct a file-syntax assignment for a simple variable
 ;;
 ;; After "LHS := RHS", $(LHS) or $(value LHS) == RHS.
 ;;
-(define (c1-file-set lhs rhs)
+(define `(c1-file-set lhs rhs)
   (concat (protect-lhs lhs) " := " (protect-rhs rhs) "\n"))
 
 
-;; construct code for recursive assignment
+;; Construct a file-syntax assignment for a recursive variable
 ;;
 ;; After "LHS = RHS", $(value LHS) == RHS
 ;;
@@ -333,8 +345,10 @@
 
   (if (or (findstring "$" (subst "$`" "" rhs))
           (findstring "$`." rhs))
-      ;; RHS not constant (has un-escaped "$"), or would contain "$."
-      (concat "$(call " "^fset" "," (protect-arg lhs) "," (protect-arg rhs) ")\n")
+      ;; RHS is non-const (has un-escaped "$"), or would contain "$."
+      (c1-file-expr
+       (concat "$(call ^fset," (protect-arg lhs) "," (protect-arg rhs) ")"))
+      ;; RHS is const
       (if (or (findstring "#" rhs)
               (findstring "\n" rhs)
               ;; leading whitespace?
@@ -350,7 +364,7 @@
 
 ;; Compile a vector of expressions to file syntax.
 ;;
-(define (c1-file* nodes)
+(define `(c1-file* nodes)
   (concat-for node nodes ""
               (c1-file node)))
 
@@ -382,7 +396,7 @@
      ;; Compile block members as also in file scope
      ((IBlock nodes) (c1-file* nodes)))
 
-   (concat (protect-expr (c1 (voidify node))) "\n")))
+   (c1-file-expr (c1 (voidify node)))))
 
 
 ;; Compile a vector of IL nodes.
