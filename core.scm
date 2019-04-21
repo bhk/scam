@@ -363,7 +363,7 @@
 ;; Return STR if it should be displayed as a symbol (versus a quoted
 ;; string) in a dictionary.
 (define (symbol? str)
-  (and (findstring str (promote (word 1 str)))
+  (and (findstring str (word 1 str))
        (not (or (findstring "\n" str)
                 (findstring "(" str)
                 (findstring ")" str)
@@ -371,6 +371,10 @@
                 (findstring "]" str)
                 (findstring "," str)
                 (findstring ";" str)
+                (findstring ":" str)
+                (findstring "'" str)
+                (findstring "`" str)
+                (findstring "\"" str)
                 (findstring "!=" str)))
        str))
 

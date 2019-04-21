@@ -145,8 +145,9 @@
 
 (expect "" (symbol? ""))
 (expect "a!" (symbol? "a!"))
-(expect "" (symbol? "a!0b"))
+(expect "a!0b" (symbol? "a!0b"))
 (expect "" (symbol? "a(b)"))
+(expect "" (symbol? "a:"))
 
 
 ;; format
