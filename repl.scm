@@ -169,7 +169,10 @@
       (concat (foreach lib LIBS (concat "(require \"" lib "\")"))
               "(declare *1)"
               "(declare *2)"))
-    (dict-get "env" (compile-text env-text "[stdin]" nil nil nil))))
+    (let ((o (compile-text env-text "[stdin]" nil nil nil)))
+      (define `fn (dict-get "code" o))
+      (fn) ;; load modules referenced by the environment
+      (dict-get "env" o))))
 
 
 ;; Enter REPL mode, and return to caller when the user exits with `:q` or
