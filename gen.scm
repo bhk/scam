@@ -36,8 +36,8 @@
 ;;     expression or a function body.  All code within a block is executed,
 ;;     and the return values are discarded for all but the last sub-node.
 ;;
-;; ILocal: A reference to a local variable: argument NDX (1...N) to some
-;;     parent lambda.  LEVEL is 0 for the enclosing lambda, 1 for its
+;; IArg: A reference to a local variable: argument NDX (1...N) to some
+;;     parent lambda.  UPS is "." for the enclosing lambda, ".." for its
 ;;     parent, etc.
 ;;
 ;; IWhere: IWhere will be expanded to the source file name, and, if POS is
@@ -65,7 +65,7 @@
       (IVar     &word name)                 ; "$(name)"
       (IBuiltin &word name  &list nodes)    ; "$(name NODES...)"
       (ICall    &word name  &list nodes)    ; "$(call name,NODES...)"
-      (ILocal   &word ndx   &word level)    ; "$(ndx)"
+      (IArg     &word ndx   &word ups)      ; "$(ndx)"
       (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
       (IConcat  &list nodes)                ; "VALUES..."
       (IBlock   &list nodes)                ; "$(if NODES,,)"
@@ -92,20 +92,18 @@
 ;;     "x" => public (exported)
 ;;     "-" => private or don't care
 ;;
-;; ARGC = number of arguments the function or macro accepts, in a form
-;;        ready for check-argc, such as: "0", "1 or 2", "1 or more".
+;; ARITY = how many arguments are reuired by the function, in the form of a
+;;    list of valid argument counts, or `N+` for "N or more".
 ;;
-;; DEPTH = the lambda nesting depth of the definition.  This can be used to
-;;    translate (relative) ILocal indices when "expanding" the macro's IL.
-;;    See `current-depth` for more.
+;; DEPTH = Lambda nesting depth (absolute); see current-depth.  For ELocal:
+;;    the depth at which the variable is bound.  For EMacro, EIL: the depth
+;;    at which their arguments were bound; this is the basis for
+;;    interpreting captures (any relative IArg references beyond the "top"
+;;    of the IL node).
 ;;
 ;; IL = the macro definition, an IL record.
 ;;
-;; ARGREF = description of local variable or capture.  Note that these
-;;   references are absolute, an ILocal records use relative addressing.
-;;      .1   --> argument #1 of a top-level function
-;;      ..1  --> argument #1 of a function within a function
-;;      ...1 --> argument #1 of a third-level nested function
+;; ARGN = argument index: 1, 2, ... .
 ;;
 ;; EMarker values embed contextual data other than variable bindings.  They
 ;; use keys that begin with ":" to distinguish them from variable names.
@@ -115,9 +113,9 @@
       ;; data variable
       (EVar     name &word scope)
       ;; function variable
-      (EFunc    name &word scope argc)
+      (EFunc    name &word scope arity)
       ;; compound macro
-      (EMacro   depth &word scope argc &list il)
+      (EMacro   depth &word scope arity &list il)
       ;; pre-compiled IL (symbol macro)
       (EIL      depth &word scope &list il)
       ;; executable macro
@@ -125,9 +123,9 @@
       ;; data record type
       (ERecord  encs &word scope tag)
       ;; builtin function
-      (EBuiltin name &word scope argc)
+      (EBuiltin name &word scope arity)
       ;; function argument
-      (EArg     &word argref)
+      (ELocal   &word argn &word depth)
       ;; marker
       (EMarker  &word data))
 
@@ -138,7 +136,14 @@
 
 
 ;; The current function nesting level: ".", "..", "...", and so on.
-(define `LambdaMarkerKey &public ":")
+(define `LambdaMarkerKey
+  &public
+  ":")
+
+
+(define `(lambda-marker depth)
+  &public
+  { =LambdaMarkerKey: (EMarker depth) })
 
 
 ;; Merge consecutive (IString ...) nodes into one node.  Retain all other
@@ -240,7 +245,7 @@
   &public
   (let ((defn (dict-get LambdaMarkerKey env)))
     (case defn
-      ((EMarker level) level))))
+      ((EMarker depth) depth))))
 
 
 ;; Generate a unique symbol derived from symbol BASE.  Returns new symbol.
@@ -284,20 +289,20 @@
              arg1 arg2))
 
 
-;; EXPECTED = filter pattern to match number of arguments, and also
-;;      to be used to construct the error message.  E.g. "2 or 3".
-;;      "N or more" can be used to verify that at least N arguments
-;;      are present.
+;; ARITY = the arity of the function or macro being called (as in EMacro and
+;;    EFunc entries).
 ;; ARGS = array of arguments
 ;; SYM = symbol for function/form that is being invoked
 ;;
-(define (check-argc expected args sym)
+(define (check-arity arity args sym)
   &public
   (define `ok
-    (or (filter expected (words args))
-        (and (filter "more" expected)
-             (or (eq? 0 (word 1 expected))
-                 (word (word 1 expected) args)))))
+    (or (filter (concat "0+ " (words args)) arity)
+        (and (findstring "+" arity)
+             (word (patsubst "%+" "%" arity) args))))
+
+  (define `expected
+    (subst "+" " or more" (subst " " " or " arity)))
 
   (if (not ok)
       (gen-error sym
@@ -333,8 +338,8 @@
    (foreach b builtins-3
             { =b: (EBuiltin (subst "." nil b) "i" 3)})
    (foreach b "and or call"
-            { =b: (EBuiltin b "i" "%") })
-   {if: (EBuiltin "if" "i" "2 or 3")}
+            { =b: (EBuiltin b "i" "0+") })
+   {if: (EBuiltin "if" "i" "2 3")}
 
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables

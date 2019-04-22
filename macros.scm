@@ -23,7 +23,7 @@
 ;;--------------------------------
 
 (define (ml.special-when env sym args)
-  (or (check-argc "2 or more" args sym)
+  (or (check-arity "2+" args sym)
       (IBuiltin "if" [ (c0 (first args) env) (c0-block (rest args) env) ])))
 
 
@@ -50,7 +50,7 @@
 ;; Evaluates to literal string containing source file name.
 ;;
 (define (ml.special-current-file env sym args)
-  (or (check-argc 0 args sym)
+  (or (check-arity 0 args sym)
       (IWhere nil)))
 
 
@@ -61,7 +61,7 @@
 ;; "FILE:LINE:COL" at which the macro containing this line is invoked.
 ;;
 (define (ml.special-current-file-line env sym args)
-  (or (check-argc 0 args sym)
+  (or (check-arity 0 args sym)
       (IWhere (form-index sym))))
 
 
@@ -134,7 +134,7 @@
   (define `value-form (nth 2 args))
   (define `retval (nth 3 args))
 
-  (or (check-argc "2 or 3" args sym)
+  (or (check-arity "2 3" args sym)
       (c0-set env
               var-sym
               (c0 value-form env)
@@ -470,7 +470,7 @@
 
 (define (ml.special-native-name env sym args)
   (define `var (first args))
-  (or (check-argc 1 args sym)
+  (or (check-arity 1 args sym)
       (case var
         ((PSymbol _ name)
          (let ((global-name (defn-native-name (resolve var env)))
@@ -637,8 +637,8 @@
 
 (define (ml.special-data env sym args)
   (define `type (first args))
-  (define `flags (get-flags args 1))
-  (define `ctor-forms (skip-flags args 1))
+  (define `flags (get-flags args))
+  (define `ctor-forms (skip-flags args))
 
   (let ((types
          (case type
@@ -736,7 +736,7 @@
                  (define `then-node
                    (c0-block body (append bindings env)))
 
-                 (or (check-argc (words encs) ctor-args ctor-form)
+                 (or (check-arity (words encs) ctor-args ctor-form)
                      ;; Success
                      (IBuiltin "if" [ test-node then-node ])))))
 

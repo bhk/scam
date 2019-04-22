@@ -1,17 +1,5 @@
 TODO
 
-Bugs
-----
-
- * fix: 'rest' captures
-
-   (begin
-     (define (f a ...r)
-       (let ((x (wildcard a)))
-         (cons a r)))
-     (expect [1 2 3 "a b"] (f 1 2 3 "a b")))
-
-
 Enhancements
 ----
 
@@ -27,7 +15,6 @@ Enhancements
      or:  (call "^yt" "any" (lambda (args) (any args)) ...)
 
  * Allow varargs in macros:
-      Maybe:  (ILocal "1+" ups)
       At macro expand time, evaluates to precisely-sized vector.
 
  * Deconstruct vectors in `let` or `define`
@@ -40,7 +27,7 @@ Enhancements
  * (case EXPR
       (CONST        EXPR)   ;; match constant value (nil, for example)
       ((Ctor "K" y) EXPR)   ;; match constant member
-      (["A" a b]    EXPR)   ;; match constant element (always succeeds)
+      (["A" a b]    EXPR)   ;; match constant element
       ...)
 
  * "spread" with "..." syntax.
@@ -82,13 +69,6 @@ Enhancements
  * num: accept E-notation for integers in: range, ^
 
  * num: multi-arg + and *
-
-
-Code Optimizations
-----
-
- * Identify arguments using special IL record (vs. R)
-     A n level           ->   local (arg)       $n
 
 
 Optimizations for Generated Code

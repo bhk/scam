@@ -26,7 +26,7 @@
     (lambda (c)
       (concat a b c))))
 
-(eq? " $ $ " (( (make-lambda " $ ") "$ ") " $ "))
+(expect " $1  $2  $3 " (( (make-lambda " $1 ") " $2 ") " $3 "))
 
 
 ;; compile-time escaping of assignment values
@@ -168,6 +168,19 @@
 ;;--------------------------------
 ;; Regression tests
 ;;--------------------------------
+
+;; rest arg captures
+
+(expect ((lambda (...z) (let ((a 9)) z)) 1 2 3)
+        [1 2 3])
+
+;; macro arguments
+
+(define `(m10 a b c d e f g h i j)
+  (concat "9:" i ":10:" j))
+(expect (m10 1 2 3 4 5 6 7 "a b" "c d" "e f")
+        ;; was "9:c:10:d"
+        "9:c d:10:e f")
 
 ;; failure to escape newline in file-syntax expression
 

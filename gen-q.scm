@@ -30,6 +30,12 @@
 ;;
 
 
+
+;; current-depth
+
+(expect nil (current-depth nil))
+(expect "." (current-depth (lambda-marker ".")))
+
 ;; gen-native-name
 
 (let-global ((*is-boot* 1))
@@ -54,6 +60,21 @@
 
 (expect (gen-error (PString 12 "x") "Msg: %s %s" "hello" "error")
         (PError 12 "Msg: hello error"))
+
+
+;; check-arity
+
+(define `args2 [(PSymbol 1 "a") (PSymbol 2 "b")])
+(define `argsym (PSymbol 0 "word"))
+
+(expect nil (check-arity "1 2 3" args2 argsym))
+(expect nil (check-arity "2+" args2 argsym))
+(expect nil (check-arity "0+" [] argsym))
+(expect (check-arity "3+" args2 argsym)
+        (PError 0 "`word` accepts 3 or more arguments, not 2"))
+(expect (check-arity "3" args2 argsym)
+        (PError 0 "`word` accepts 3 arguments, not 2"))
+
 
 ;; base-env and resolve
 

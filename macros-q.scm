@@ -20,16 +20,16 @@
 ;; read-pairs
 
 (define `(test-read-pairs text-pairs)
-  (read-pairs (form-set-indices 0 (p1 text-pairs)) macro-sym "WHERE"))
+  (read-pairs (p1 text-pairs) macro-sym "WHERE"))
 
-(expect [ [ (PSymbol 0 "x") (PString 0 1) ]
-          [ (PSymbol 0 "y") (PString 0 2) ] ]
+(expect [ [ (PSymbol 3 "x") (PString 5 1) ]
+          [ (PSymbol 9 "y") (PString 11 2) ] ]
         (test-read-pairs "((x 1) (y 2))"))
-(expect (PError 0 "invalid VAR in WHERE; expected a symbol")
+(expect (PError 3 "invalid VAR in WHERE; expected a symbol")
         (test-read-pairs "((1 1) (y 2))"))
-(expect (PError 0 "missing VALUE in WHERE")
+(expect (PError 2 "missing VALUE in WHERE")
         (test-read-pairs "((x) (y 2))"))
-(expect (PError 0 "invalid (VAR VALUE) in WHERE; expected a list")
+(expect (PError 2 "invalid (VAR VALUE) in WHERE; expected a list")
         (test-read-pairs "(sym (x 1))"))
 
 ;;--------------------------------
@@ -52,9 +52,6 @@
 ;;--------------------------------
 
 (expect "ab(.or 1)" (c0-ser "(concat \"a\" \"b\" (or 1))"))
-
-(expect "`{1}(.call ^n,1,{9})"
-        (c0-ser "(lambda (a b c d e f g h i) (concat a i))"))
 
 ;;--------------------------------
 ;; (vector FORM...)
@@ -97,7 +94,7 @@
 (expect (c0-ser "(? f 1)")
         "(^t F,1)")
 (expect (c0-ser "(? m a)"
-                { m: (EMacro "." "p" 1 (ILocal 0 0)) })
+                { m: (EMacro "." "p" 1 (IArg 0 ".")) })
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------

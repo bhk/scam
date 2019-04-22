@@ -48,7 +48,7 @@
     ((IVar name) (concat "{" name "}"))
     ((IBuiltin name args) (call-ser (concat "." name) args))
     ((ICall name args) (call-ser name args))
-    ((ILocal ndx level) (concat "{" ndx (filter-out "^0" (concat "^" level)) "}"))
+    ((IArg ndx ups) (concat "{" (patsubst ".%" "%" ups) ndx "}"))
     ((IFuncall nodes) (call-ser "^Y" nodes))
     ((IConcat values) (concat-for v values "" (il-ser v)))
     ((IBlock nodes) (if (word 2 nodes)
@@ -65,7 +65,7 @@
 ;;
 (define default-env
   &public
-  { a: (EArg "1"),
+  { a: (ELocal 1 "."),
     v: (EVar "V" "."),
     f: (EFunc "F" "." 2),
     ;; names that an extra promote/demote will corrupt...

@@ -25,86 +25,41 @@
 ;; handled specially in file syntax, but in most cases the code is first
 ;; compiled to function syntax and then wrapped and/or transformed.
 ;;
-;; Function syntax consists of text that, when expanded in Make, will expand
-;; to the *value* described by the corresponding IL node.  For example, the
-;; IL node (IString "$") compiles to "$`", which, when evaluated by Make --
-;; as in, say "$(info $`)" -- will yield "$".  So in a sense there is an
-;; "extra" level of escaping in all function syntax, and no literal "$"
-;; will appear un-escaped.  When "$" is escaped, we use "$`", ensuring that
-;; each "$" will be followed only by a restricted set of characters.  We
-;; assign special meaning to a couple of character sequences that do not
-;; appear in actual "code":
-;;
-;;    "$." is a marker.
-;;    "$-" is a negative-escape sequence.
-;;
-;; Lambda-escaping handles these specially.  Whereas every "$" usually
-;; escapes to "$`", "$." remains "$." and "$-" becomes "$".
-;;
 ;; Lambda Values, Captures, and Lambda-escaping
 ;; ----------------
 ;;
-;; Code that lies within an anonymous function will be "lambda-escaped" for
-;; inclusion in the body of a parent function.  Consider this example:
+;; Function code will be *expanded*, so any literals including "$" are
+;; replaced with "$`" so that after one round of expansion they evaulate
+;; to "$".  (The SCAM runtime defines the variable "`" as "$".)
 ;;
-;;   (define f (lambda () (lambda () (lambda (a) (IConcat "$" a)))))
-;;   f  -->  "$```$``1"
-;;   (((f)) "A")   -->  "$A"
+;;   (define (f x) (concat "$" x))
+;;   -->  f = $`$1
 ;;
-;; Here, the code generated for the innermost lambda, "$`$1", was escaped
-;; twice to yield the value of `f`, because it had to survive two rounds of
-;; expansion before being executed.
+;; When function code expands to an anonymous function, two levels of
+;; escaping are necessary. Consider:
 ;;
-;; Now consider this:
+;;   (define (f x) (lambda (y) "$")
+;;   -->  f = $``
 ;;
-;;   (define f (lambda (c) (lambda (b) (lambda (a) (concat "$" a b c)))))
-;;   (((f "C") "B") "A")  -->   "$ABC"
+;; When there is a *capture*, the runtime function `^E` is used to encode
+;; that captured value as part of the anonymous function:
 ;;
-;; The innermost lambda's IL node looks like this:
+;;   (define (f x) (lambda (y) (concat "$" y x)))
+;;   -->  $``$`1$(call ^E,$1)
 ;;
-;;   (ILambda (IConcat (IString "$") (ILocal 1 0) (ILocal 1 1) (ILocal 1 2)))
+;; Note that the value of `x` results in the code `$(call ^E,$1)`.  The steps
+;; can be summarized as:
 ;;
-;; The `IConcat` node compiles to:
+;;           IL             (c1 IL)           (c1-Lambda (c1 IL)
+;;   "$" = (IString "$")    $`                $``
+;;    y  = (IArg 1 ".")     $1                $`1
+;;    x  = (IArg 1 "..")    $-(call ^E,$-1)   $(call ^E,$1)
 ;;
-;;   "$`$1$-(call ^E,$-1)$--(call ^E,$--1,`)"
+;; Lambda-escaping performs the following:
 ;;
-;; When evaluated in Make, "$`" expands to "$", and "$1" expands the
-;; innermost local variable value.  The other local variables are
-;; *captures*.  Their numeric variables (e..g "$1") are not accessible when
-;; the innermost lambda executes ... instead, they must have been expanded
-;; earlier when the corresponding ancestor executed.  But the ancestor's
-;; code cannot be generated until after the nested lambda has been compiled.
-;; For this, we have a notion of "negative" escaping.  We can use "$-",
-;; which after a round of escaping, yields a "bare", un-escaped "$".
-;;
-;; The sequence "$-(call ^E,$-1)" will escape to "$(call ^E,$1)", so when
-;; the parent function executes its "$1" argument will be embedded in the
-;; lambda expression.  `^E` escapes the value at run-time, since it must
-;; survive a round of expansion (when the lambda expression is evaluated).
-;; For 'c' -- (ILocal 1 2) -- an extra "`" argument is passed to `^E` to
-;; indicate that the run-time expansion must survive an additional round of
-;; expansion, since the value will be captured in a lambda expression that
-;; is two levels down.
-;;
-;; The `IConcat` code is then expanded to produce the value of the innermost
-;; Lambda -- which constitutes the the *body* of the middle Lambda:
-;;
-;;   "$``$`1$(call ^E,$1)$-(call ^E,$-1,`))"
-;;
-;; This is then escaped to obtain the body of the outer Lambda:
-;;
-;;   "$```$``1$`(call ^E,$`1)$(call ^E,$1,`))"
-;;
-;; Now we have the *value* of `f`, although compiling the outer Lambda
-;; proceeds to escape this once more, producing the compiled form of the
-;; body of `f` (code = escaped value).
-;;
-;;                     f  -->  "$```$``1$`(call ^E,$`1)$(call ^E,$1,`))"
-;;               (f "C")  -->  "$``$`1$(call ^E,$1)C"
-;;         ((f "C") "B")  -->  ("$``$`1$(call ^E,$1)C" "B")
-;;                        -->  "$`$1BC"
-;;   (((f "C") "B") "A")  -->  ("$`$1BC" "A")
-;;                        -->  "$ABC"
+;;    "$." -> "$."  (marker)
+;;    "$-" -> "$"   (negative-escape)
+;;    "$"  -> "$`"  (other instances of "$")
 
 
 ;; "FILE" or "FILE:LINE" as given by POS and current file.
@@ -181,7 +136,7 @@
     ((IVar _)       1)
     ((IBuiltin _ _) 1)
     ((IFuncall _)   1)
-    ((ILocal _ _)   1)))
+    ((IArg _ _)   1)))
 
 
 (define (c1-arg node)
@@ -248,24 +203,56 @@
   (concat "$(call " ename (if args ",") (c1-args9 args) ")"))
 
 
-;; Repeat WORDS (B - A + 1) times.
-;; Note: A and B must be >= 1.
-;;
-(define (make-list a b words)
-  (if (word b words)
-      (subst " " "" (wordlist a b words))
-      (make-list a b (concat words " " words " " words))))
+(define (repeat-words n list)
+  (if (word n (concat list " " list " " list))
+      (wordlist 1 n (concat list " " list " " list))
+      (repeat-words n (concat list " " list " " list))))
 
 
-;; Local variable  (level 0 = current)
+(define (i-8 n)
+  (words (nth-rest 9 (repeat-words n ". . . ."))))
+
+
+(define (c1-ugly-arg ndx ups)
+  ;; Return one copy of STR per dot in UPS, after subtracting SUB from UPS.
+  (define `(ups-repeat str sub)
+    (subst (concat "<" sub) nil
+           "." str
+           (concat "<" ups)))
+
+  (define `argval
+    (if (findstring "+" ndx)
+        ;; "rest" argument
+        (if (filter ndx "1+ 2+ 3+ 4+ 5+ 6+ 7+ 8+")
+            (concat "$(foreach N," (subst "+" nil ndx) ",$(^v))")
+            (if (filter "9+" ndx)
+                "$9"
+                (concat "$(wordlist " (i-8 (subst "+" nil ndx)) ",99999999,$9)")))
+        ;; single argument
+        (if (filter ndx "1 2 3 4 5 6 7 8")
+            (concat "$" ndx)
+            (concat "$(call ^n," (i-8 ndx) ",$9)"))))
+
+  (define `e-level
+    (filter "%`" (concat "," (ups-repeat "`" ".."))))
+
+  (subst "%" argval
+         "$" (concat "$" (ups-repeat "-" "."))
+         (if (filter "." ups)
+             ;; argument of immediately enclosing function
+             "%"
+             ;; capture
+             (concat "$(call ^E,%" e-level ")"))))
+
+
+;; Local variable
 ;;
-(define (c1-Local ndx level)
-  (if (filter-out 0 level)
-      ;; ups is non-zero, non-nil
-      (subst "-" (make-list 1 level "-")
-             ",)" ")"
-             (concat "$-(call ^E,$-" ndx "," (make-list 2 level "`") ")"))
-      (concat "$" ndx)))
+(define `(c1-IArg ndx ups)
+  (or
+   ;; make common and simple case fast
+   (if (filter "." ups)
+       (addprefix "$" (filter ndx "1 2 3 4 5 6 7 8")))
+   (c1-ugly-arg ndx ups)))
 
 
 ;; Call lambda value
@@ -293,10 +280,11 @@
   (concat "$" (or (filter one-char-names name)
                   (concat "(" (escape name) ")"))))
 
+
 (define (c1 node)
   (case node
     ((IString value) (escape value))
-    ((ILocal ndx ups) (c1-Local ndx ups))
+    ((IArg ndx ups) (c1-IArg ndx ups))
     ((ICall name args) (c1-Call name args))
     ((IVar name) (c1-Var name))
     ((IConcat nodes) (c1-vec nodes "" (native-name c1)))

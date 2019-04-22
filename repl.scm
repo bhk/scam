@@ -44,14 +44,20 @@
 
 
 (define (describe-binding bound-name defn all)
+  (define `(describe-arity arity)
+    (concat (subst " " " or "
+                   "+" " or more"
+                   arity)
+            "arguments"))
+
   (if (or all (not (filter "i%" (EDefn.scope defn))))
       (case defn
         ((EBuiltin _ _ args)
          "built-in function")
-        ((EFunc _ _ argc)
-         (sprintf "function (%s arguments)" argc))
-        ((EMacro depth _ argc _)
-         (sprintf "compound macro (%s arguments)" argc))
+        ((EFunc _ _ arity)
+         (sprintf "function (%s)" (describe-arity arity)))
+        ((EMacro depth _ arity _)
+         (sprintf "compound macro (%s)" (describe-arity arity)))
         ((EVar name _)
          "variable")
         ((EIL _ _ node)
