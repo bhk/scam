@@ -677,18 +677,6 @@
   (c0-def env sym args nil))
 
 
-;; This is supplied by modules that are not strict dependencies, in order to
-;; avoid sprawling/circular dependencies.
-(declare (get-module name base private) &public)
-
-(data Mod
-  &public
-  ;; ID = string to be passed to ^R
-  ;; ENV = exported environment entries
-  (ModSuccess &word id &list env)
-  (ModError message))
-
-
 ;;--------------------------------
 ;; Symbol: record constructor name
 ;;--------------------------------
@@ -701,42 +689,6 @@
     (for i (indices encs)
          (PSymbol 0 (concat "a" i))))
   (c0-lambda env args [ (PList 0 (cons sym args)) ]))
-
-
-;;--------------------------------
-;; (require STRING [&private])
-;;--------------------------------
-
-
-;; Generate IL nodes including a call to ^R and a "require" crumb to track
-;; the module dependency, and wrap it in an IEnv that exports the new
-;; symbols.
-;;
-;; Result = IL node that calls REQUIRE + includes a "require crumb"
-;;
-(define (ml.special-require env sym args)
-  (define `module (first args))
-  (define `flags (get-flags args))
-  (define `body (skip-flags args))
-  (define `mod-name (string-value module))
-  (define `read-priv (filter "&private" flags))
-
-  (or
-   (if body
-       (gen-error (first body) "too many arguments to require"))
-
-   (case module
-     ((PString _ name)
-      (let ((o (get-module name *compile-file* read-priv))
-            (module module))
-        (case o
-          ((ModError message)
-           (gen-error module "require: %s" message))
-          ((ModSuccess id exports)
-           (define `arg (IConcat [(IString id) (ICrumb "require" id)]))
-           (IEnv exports (ICall "^R" [arg]))))))
-     (else
-      (err-expected "Q" module sym "STRING" "(require STRING)")))))
 
 
 ;;--------------------------------

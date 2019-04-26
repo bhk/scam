@@ -3,6 +3,7 @@
 (require "io.scm")
 (require "memo.scm")
 (require "compile.scm" &private)
+(require "gen-testutils.scm" &private)
 
 
 ;; strip-comments
@@ -127,6 +128,37 @@
 (expect "test/run.scm"
         (let-global ((SCAM_LIBPATH "test:x/y/z"))
           (locate-source "a/b/c/" "run.scm")))
+
+
+;;--------------------------------
+;; (require MOD)
+;;--------------------------------
+
+
+(let-global ((get-module (lambda () (ModError "no worky"))))
+
+  ;; too many arguments
+  (expect (c0-ser "(require \"mod\" foo)")
+          "!(PError 8 'too many arguments to require')")
+
+  ;; non-string
+  (expect (c0-ser "(require MOD)")
+          (concat "!(PError 4 'invalid STRING in (require STRING); "
+                  "expected a literal string')"))
+
+  ;; get-module failure
+  (expect (c0-ser "(require \"mod\")")
+          "!(PError 4 'require: no worky')"))
+
+
+(define (mock-get-module name base private)
+  (ModSuccess (subst ".scm" "" name)
+              {f: (EVar "f" "i")}))
+
+(let-global ((get-module mock-get-module))
+  ;; get-module success
+  (expect (c0-ser "(require \"mod.scm\")")
+          "(^R mod!(ICrumb 'require' 'mod'))"))
 
 
 ;;--------------------------------------------------------------

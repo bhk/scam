@@ -230,7 +230,6 @@
     (concat "# Exports: " (env-compress (filtersub "x:%" "%" e)) "\n"
             "# Private: " (env-compress (filtersub "p:%" "%" e)) "\n")))
 
-
 ;;--------------------------------------------------------------
 ;; Module management
 ;;--------------------------------------------------------------
@@ -396,6 +395,15 @@
 ;; Module compilation
 ;;----------------------------------------------------------------
 
+
+(data Mod
+  &public
+  ;; ID = string to be passed to ^R
+  ;; ENV = exported environment entries
+  (ModSuccess &word id &list env)
+  (ModError message))
+
+
 (declare (compile-module src-file))
 (declare (compile-and-test-module src-file))
 
@@ -461,6 +469,37 @@
                    ;; require module and continue
                    (call "^R" id)))))
         mod)))
+
+
+;; Generate IL nodes including a call to ^R and a "require" crumb to track
+;; the module dependency, and wrap it in an IEnv that exports the new
+;; symbols.
+;;
+;; Result = IL node that calls REQUIRE + includes a "require crumb"
+;;
+(define (ml.special-require env sym args)
+  (define `module (first args))
+  (define `flags (get-flags args))
+  (define `body (skip-flags args))
+  (define `mod-name (string-value module))
+  (define `read-priv (filter "&private" flags))
+
+  (or
+   (if body
+       (gen-error (first body) "too many arguments to require"))
+
+   (case module
+     ((PString _ name)
+      (let ((o (get-module name *compile-file* read-priv))
+            (module module))
+        (case o
+          ((ModError message)
+           (gen-error module "require: %s" message))
+          ((ModSuccess id exports)
+           (define `arg (IConcat [(IString id) (ICrumb "require" id)]))
+           (IEnv exports (ICall "^R" [arg]))))))
+     (else
+      (err-expected "Q" module sym "STRING" "(require STRING)")))))
 
 
 ;; Get the name of the runtime module, or nil if the runtime should not
