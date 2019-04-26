@@ -167,14 +167,6 @@
            (else (PError 0 (concat "internal:bad IL: " node))))))
 
 
-;; Construct an IL node that evaluates to a vector.  `nodes` is a vector of
-;; IL nodes containing the item values.
-;;
-(define (il-vector nodes)
-  (il-concat (subst " " (concat " " [(IString " ")] " ")
-                    (for n nodes (il-demote n)))))
-
-
 ;; Call built-in function
 (define (c1-Builtin name args)
   ;; (demote <builtin>) == <builtin> for all builtins

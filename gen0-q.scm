@@ -80,6 +80,9 @@
 ;; macro argument
 (expect (xlat (IArg 2 ".") ".." "." [(IString "a") (IString "b")] 9)
         (IString "b"))
+;; macro "rest" argument
+(expect (xlat (IArg "1+" ".") ".." "." [(IString "a") (IString "b")] 9)
+        (il-vector [(IString "a") (IString "b")]))
 ;; interior arg
 (expect (xlat (ILambda (IArg 2 ".")) ".." "." [(IString "x")] 9)
         (ILambda (IArg 2 ".")))
@@ -398,10 +401,7 @@
 (expect (c0-ser "(define)")
         "!(PError 2 'missing FORM in (define FORM ...); expected a list or symbol')")
 (expect (c0-ser "(define `1)")
-        "!(PError 5 'invalid FORM in (define `FORM ...); expected a list or symbol')")
-(expect (c0-ser "(define `(m ...x) x)")
-        "!(PError 8 'macros cannot have rest (...) parameters')")
-(expect (c0-ser "(define `(m ?a) a)")
+        "!(PError 5 'invalid FORM in (define `FORM ...); expected a list or symbol')")(expect (c0-ser "(define `(m ?a) a)")
         "")
 (expect (c0-ser "(define (f ...x ?z) x)")
         "!(PError 7 ''...' argument not in last position')")
@@ -452,6 +452,11 @@
 
 (expect (c0-ser "(begin (define `s2 (lambda (x) x)) (s2 3))")
         (c0-ser "((lambda (x) x) 3)"))
+
+;; macro with "rest" arg
+
+(expect (c0-ser "(begin (define `(m ...z) z) (m 1 2 3))")
+        (c0-ser "\"1 2 3\""))
 
 
 ;;--------------------------------

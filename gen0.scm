@@ -105,14 +105,17 @@
 
   (define `(xarg n ups node)
     (cond
-     ;; capture
+     ;; translate capture?
      ((findstring out ups)
       (IArg n (ups-add-sub deeper ups ".")))
-     ;; macro arg
+
+     ;; replace macro arg?
      ((and args (filter out (concat ups ".")))
-      (if (filter ".." (concat out deeper))
-          (nth n args)
-          (xlat (nth n args) "." (patsubst ".%" "%" out) nil pos)))
+      (xlat (if (findstring "+" n)
+                (il-vector (nth-rest (subst "+" nil n) args))
+                (nth n args))
+            "." (patsubst ".%" "%" out) nil nil))
+
      ;; interior capture
      (else node)))
 
@@ -125,7 +128,7 @@
     ((IConcat nodes) (IConcat (x* nodes)))
     ((IBlock nodes) (IBlock (x* nodes)))
     ((ILambda body) (ILambda (xlat body (concat "." out) deeper args pos)))
-    ((IWhere p) (IWhere pos))
+    ((IWhere p) (if pos (IWhere pos) node))
     (else node)))
 
 
@@ -600,13 +603,6 @@
         (append { =name: (EFunc gname scope arity) } env)))
 
   (or (c0-check-body n (first body) is-define)
-
-      (if is-macro
-          ;; check params
-          (vec-or
-           (for a args
-                (if (filter "...%" (symbol-name a))
-                    (gen-error a "macros cannot have rest (...) parameters")))))
 
       ;; compile function/macro body
       (let ((body-il (c0-lambda body-env args body))

@@ -14,9 +14,6 @@ Enhancements
      (? lambda ...)  -->  (call "^tv" "any" (any ...))
      or:  (call "^yt" "any" (lambda (args) (any args)) ...)
 
- * Allow varargs in macros:
-      At macro expand time, evaluates to precisely-sized vector.
-
  * Deconstruct vectors in `let` or `define`
     (let (([a b c] vec)) ...)       ;; always succeeds
 

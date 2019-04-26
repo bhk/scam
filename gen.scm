@@ -22,23 +22,23 @@
 ;; IL Records
 ;; ----------
 ;;
-;; "IL" is an intermediate language, structured as a tree of records.  The
-;; first word of each vector describes its type.  IL constructs map closely
-;; to GNU Make constructs.  A `nil` value can e used to represent no-op.
+;; "IL" is an intermediate language encoded as records of the IL data type,
+;; defined below.  IArg, IFuncall, and ILamda records embody the untyped
+;; lambda calculus, but with multiple positional arguments to each function.
+;; Further terms deal with the "primordial" data types and functionality of
+;; the target VM, GNU Make 3.81, wherein all values (including functions)
+;; are strings.  A `nil` value in IL represents an empty string.
 ;;
-;; IBuiltin: Call a GNU make builtin NAME with arguments NODES.  Any
-;;     number of arguments may be passed.
+;; IArg: References a local variable -- a positional argument NDX (1...N) to
+;;     some parent lambda, or "=AUTO" where AUTO is an automatic (foreach)
+;;     variable.  UPS is a de Bruijn index in string form: "." for the
+;;     enclosing lambda, ".." for its parent, and so on.
 ;;
-;; ICall: Call a SCAM function stored in recursive variable NAME.  SCAM
-;;     functions have a convention for dealing with arguments above #9.
+;; IFuncall: Calls an anonymous function with a vector of arguments.
 ;;
 ;; IBlock: An IBlock is a sequences of expressions, as in a `begin`
 ;;     expression or a function body.  All code within a block is executed,
 ;;     and the return values are discarded for all but the last sub-node.
-;;
-;; IArg: A reference to a local variable: argument NDX (1...N) to some
-;;     parent lambda.  UPS is "." for the enclosing lambda, ".." for its
-;;     parent, etc.
 ;;
 ;; IWhere: IWhere will be expanded to the source file name, and, if POS is
 ;;     non-nil, a ":LINE" suffix.  When IWhere occurs within a macro, POS
@@ -52,7 +52,7 @@
 ;;     environment.  In those cases, the phase 0 compilation of those
 ;;     expressions return an IEnv record containing the code *and* the new
 ;;     bindings.  These are "unwrapped" by c0-block-cc and replaced with
-;;     `node`.  If phase 1 sees an IEnv record, it ignores the env field.
+;;     NODE.  If phase 1 sees an IEnv record, it ignores the env field.
 ;;
 ;; Errors
 ;;
@@ -60,19 +60,19 @@
 
 
 (data IL
-      &public
-      (IString  value)                      ; "value"
-      (IVar     &word name)                 ; "$(name)"
-      (IBuiltin &word name  &list nodes)    ; "$(name NODES...)"
-      (ICall    &word name  &list nodes)    ; "$(call name,NODES...)"
-      (IArg     &word ndx   &word ups)      ; "$(ndx)"
-      (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
-      (IConcat  &list nodes)                ; "VALUES..."
-      (IBlock   &list nodes)                ; "$(if NODES,,)"
-      (ILambda  node)                       ; (lambda-quote (c1 node))
-      (IWhere   &word pos)                  ; "value"
-      (ICrumb   &word key value)            ; <crumb>
-      (IEnv     env &list node))            ; used during phase 0
+  &public
+  (IArg     &word ndx  &word ups)       ; "$(ndx)"
+  (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
+  (ILambda  node)                       ; (lambda-quote (c1 node))
+  (IString  value)                      ; "value"
+  (IVar     &word name)                 ; "$(name)"
+  (IBuiltin &word name  &list nodes)    ; "$(name NODES...)"
+  (ICall    &word name  &list nodes)    ; "$(call name,NODES...)"
+  (IConcat  &list nodes)                ; "VALUES..."
+  (IBlock   &list nodes)                ; "$(if NODES,,)"
+  (IWhere   &word pos)                  ; "value"
+  (ICrumb   &word key value)            ; <crumb>
+  (IEnv     env &list node))            ; used during phase 0
 
 
 ;; Environment Records
@@ -92,7 +92,7 @@
 ;;     "x" => public (exported)
 ;;     "-" => private or don't care
 ;;
-;; ARITY = how many arguments are reuired by the function, in the form of a
+;; ARITY = how many arguments are required by the function, in the form of a
 ;;    list of valid argument counts, or `N+` for "N or more".
 ;;
 ;; DEPTH = Lambda nesting depth (absolute); see current-depth.  For ELocal:
@@ -109,25 +109,16 @@
 ;; use keys that begin with ":" to distinguish them from variable names.
 
 (data EDefn
-      &public
-      ;; data variable
-      (EVar     name &word scope)
-      ;; function variable
-      (EFunc    name &word scope arity)
-      ;; compound macro
-      (EMacro   depth &word scope arity &list il)
-      ;; pre-compiled IL (symbol macro)
-      (EIL      depth &word scope &list il)
-      ;; executable macro
-      (EXMacro  name &word scope)
-      ;; data record type
-      (ERecord  encs &word scope tag)
-      ;; builtin function
-      (EBuiltin name &word scope arity)
-      ;; function argument
-      (ELocal   &word argn &word depth)
-      ;; marker
-      (EMarker  &word data))
+  &public
+  (EVar     name &word scope)                  ;; simple global variable
+  (EFunc    name &word scope arity)            ;; recursive global variable
+  (EMacro   depth &word scope arity &list il)  ;; compound macro
+  (EIL      depth &word scope &list il)        ;; symbol macro
+  (EXMacro  name &word scope)                  ;; executable macro
+  (ERecord  encs &word scope tag)              ;; data record type
+  (EBuiltin name &word scope arity)            ;; builtin function
+  (ELocal   &word argn &word depth)            ;; function argument
+  (EMarker  &word data))                       ;; marker
 
 
 (define `(EDefn.scope defn)
@@ -169,7 +160,7 @@
                 (else [node]))))
 
 
-;; IConcatenate nodes in IL domain.
+;; Concatenate nodes in IL domain.
 ;;
 (define (il-concat nodes)
   &public
@@ -193,6 +184,17 @@
 (define (il-promote node)
   &public
   (ICall "^u" [ node ]))
+
+
+;; Construct an IL node that evaluates to a vector.  NODES is a vector of IL
+;; nodes, one for each element.
+;;
+(define (il-vector nodes)
+  &public
+  (il-concat
+   (intersperse (IString " ")
+                (for n nodes
+                     (il-demote n)))))
 
 
 ;; NODE is IL; A and B are actual strings.

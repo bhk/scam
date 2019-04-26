@@ -78,10 +78,7 @@
 ;;--------------------------------
 
 (define (ml.special-vector env sym args)
-  (il-concat
-   (intersperse (IString " ")
-                (for f args
-                     (il-demote (c0 f env))))))
+  (il-vector (c0-vec args env)))
 
 
 ;;--------------------------------
