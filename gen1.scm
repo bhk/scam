@@ -195,14 +195,8 @@
   (concat "$(call " ename (if args ",") (c1-args9 args) ")"))
 
 
-(define (repeat-words n list)
-  (if (word n (concat list " " list " " list))
-      (wordlist 1 n (concat list " " list " " list))
-      (repeat-words n (concat list " " list " " list))))
-
-
 (define (i-8 n)
-  (words (nth-rest 9 (repeat-words n ". . . ."))))
+  (words (nth-rest 9 (repeat-words ". . . ." n))))
 
 
 (define (c1-ugly-arg ndx ups)

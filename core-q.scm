@@ -263,3 +263,8 @@
 ;; intersperse
 (expect [1 9 "cat dog" 9 3] (intersperse 9 [1 "cat dog" 3]))
 (expect ["a b c"] (intersperse 9 ["a b c"]))
+
+;; repeat-words
+(expect nil (repeat-words "1 2 3" 0))
+(expect nil (repeat-words "1 2 3" -1))
+(expect ". . . ." (repeat-words "." 4))

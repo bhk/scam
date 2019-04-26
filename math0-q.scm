@@ -8,11 +8,6 @@
 (define `U18 (concat U9 T9))
 (define `U27 (concat U18 T9))
 
-(define (repeat-words lst len)
-  (if (subst 0 nil len)
-      (if (word len lst)
-          (wordlist 1 len lst)
-          (repeat-words (concat lst " " lst) len))))
 
 ;; Decimal digits to U:  (U 123) --> "01 011 0111"
 ;;

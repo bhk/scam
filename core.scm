@@ -753,6 +753,7 @@
       (f (first v) (foldr f z (rest v)))
       z))
 
+
 ;; Insert VALUE into VEC between every two adjacent items.  If VEC is empty,
 ;; the result is empty.  Otherwise, the result has one less than twice as
 ;; many elements as VEC.
@@ -761,3 +762,14 @@
   &public
   (subst " " (concat " " [value] " ")
          vec))
+
+
+;; Return a list of N words, constructed by appending copies of V.
+;; N must be an integer; if less than one, the result is empty.
+;;
+(define (repeat-words v n)
+  &public
+  (if (filter-out "-% 0" n)
+      (if (word n (concat v " " v " " v))
+          (wordlist 1 n (concat v " " v " " v))
+          (repeat-words (concat v " " v " " v) n))))

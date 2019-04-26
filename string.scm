@@ -235,14 +235,8 @@
   (concat-vec (bytes-from-bytecodes codes)))
 
 
-(define (nwords num str)
-  (if (word num str)
-      (wordlist 1 num str)
-      (nwords num (concat str " " str " " str))))
-
-
 ;; Return a string that consists of NUM copies of STR concatenated.
 ;;
 (define (string-repeat str num)
   &public
-  (subst " " "" "." str (if (filter-out "-%" (subst 0 "" num)) (nwords num ". . ."))))
+  (subst " " "" "." str (repeat-words ". . . . ." num)))
