@@ -281,6 +281,7 @@
 (define let&-where
   "(let& ((VAR VALUE)...) BODY)")
 
+
 (define (let&-env pairs env depth)
   (define `p (first pairs))
   (define `p-binding
@@ -292,13 +293,15 @@
       (let&-env (rest pairs) (append p-binding env) depth)
       env))
 
+
 (define (ml.special-let& env sym args)
   (let ((body (rest args))
         (pairs (read-pairs (first args) sym let&-where))
         (env env))
     (case pairs
       ((PError _ _) pairs)
-      (else (c0-block body (let&-env pairs env (current-depth env)))))))
+      (else (c0-block body (let&-env pairs (sym-macro-env env)
+                                     (concat "." (current-depth env))))))))
 
 
 ;;--------------------------------
@@ -309,8 +312,8 @@
 ;;   ARGS = VAR LIST BODY   in   `(for VAR LIST BODY)
 ;;   WHERE = syntax synopsis of the containing form, including "VAR"
 ;;           "BODY" (and optionally "DELIM")
-;;   VAR-XFORM = transformation to apply to VAR's IL node
-;;               where it is mentioned in BODY
+;;   VAR-XFORM = transformation to apply to the underlying dynamic variable
+;;               to yield the bound variable
 ;;   BODY-XFORM = transformation to apply to BODY after it is evaluated
 ;;
 (define (c0-for env sym args where var-xform body-xform)
@@ -322,7 +325,9 @@
   (case var
     ((PSymbol _ name)
      (define `var-defn
-       (EIL "" "-" (var-xform (IVar name))))
+       (EIL (concat "." (current-depth env))
+            "-"
+            (var-xform (IArg (concat "=" name) ".."))))
      (define `body-node
        (body-xform (c0-block body (append { =name: var-defn } env))))
      (if body
@@ -334,6 +339,7 @@
                        where)))
     (else
      (err-expected "S" var sym "VAR" where))))
+
 
 ;; (foreach VAR LIST BODY) : Unlike in the Make builtin "foreach", VAR is a
 ;; symbol, not a quoted string.

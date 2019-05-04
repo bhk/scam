@@ -106,6 +106,10 @@
 (expect (c1-IArg "10+" ".")  "$(wordlist 2,99999999,$9)")
 (expect (c1-IArg "10+" "...")  "$--(call ^E,$--(wordlist 2,99999999,$--9),`)")
 
+(expect (c1-IArg "=x" ".")  "$(x)")
+(expect (c1-IArg "=x" "..")  "$-(call ^E,$-(x))")
+
+
 ;; Funcall: call an anonymous function
 
 (expect "$(call ^Y,,,,,,,,,,$1)"

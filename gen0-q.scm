@@ -388,12 +388,12 @@
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)"
                      {x: (EVar "x" "")})
-        { I: (EIL "" "p" (IString 7)),
+        { I: (EIL "." "p" (IString 7)),
           x: (EVar "x" "") })
 
 (expect (text-to-env "(define `I &public 7)"
                      {x: (EVar "x" "")})
-        { I: (EIL "" "x" (IString 7)),
+        { I: (EIL "." "x" (IString 7)),
           x: (EVar "x" "") })
 
 ;; (define ...) errors

@@ -110,7 +110,8 @@
       (IArg n (ups-add-sub deeper ups ".")))
 
      ;; replace macro arg?
-     ((and args (filter out (concat ups ".")))
+;;     ((and args (filter out (concat ups ".")))
+     ((and args (filter out (concat ups ".")) (filter-out "=%" n))
       (xlat (if (findstring "+" n)
                 (il-vector (nth-rest (subst "+" nil n) args))
                 (nth n args))
@@ -255,7 +256,8 @@
      (IBuiltin "value" [(IString gname)]))
 
     ((EIL depth _ il)
-     (c0-macro "." (current-depth env) depth il sym))
+;;     (c0-macro "." (current-depth env) depth il sym))
+     (c0-macro ".." (current-depth env) depth il sym))
 
     ((ERecord encs _ tag)
      (c0-ctor env sym encs))
@@ -562,13 +564,19 @@
 ;;--------------------------------
 
 
+(define `(sym-macro-env env)
+  &public
+  (append (lambda-marker (concat "." (current-depth env)))
+          env))
+
+
 (define (c0-def-symbol env n name flags body is-define is-macro)
   (or (c0-check-body n (first body) is-define)
 
-      (let ((value (c0-block body env))
+      (let ((value (c0-block body (sym-macro-env env)))
             (scope (if (filter "&public" flags) "x" "p"))
             (gname (gen-native-name name flags))
-            (depth (current-depth env))
+            (depth (concat "." (current-depth env)))
             (is-define is-define)
             (is-macro is-macro))
 

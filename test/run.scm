@@ -169,6 +169,11 @@
 ;; Regression tests
 ;;--------------------------------
 
+;; automatic var captures
+
+(expect ((foreach N 3 (lambda () N)))
+        3)
+
 ;; rest arg captures
 
 (expect ((lambda (...z) (let ((a 9)) z)) 1 2 3)

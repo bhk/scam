@@ -207,17 +207,23 @@
            (concat "<" ups)))
 
   (define `argval
-    (if (findstring "+" ndx)
-        ;; "rest" argument
-        (if (filter ndx "1+ 2+ 3+ 4+ 5+ 6+ 7+ 8+")
-            (concat "$(foreach N," (subst "+" nil ndx) ",$(^v))")
-            (if (filter "9+" ndx)
-                "$9"
-                (concat "$(wordlist " (i-8 (subst "+" nil ndx)) ",99999999,$9)")))
-        ;; single argument
-        (if (filter ndx "1 2 3 4 5 6 7 8")
-            (concat "$" ndx)
-            (concat "$(call ^n," (i-8 ndx) ",$9)"))))
+    (cond
+     ((filter ndx "1 2 3 4 5 6 7 8")
+      (concat "$" ndx))
+
+     ((filter "=%" ndx)
+      (patsubst "=%" "$(%)" ndx))
+
+     ((findstring "+" ndx)
+      ;; "rest" argument
+      (if (filter ndx "1+ 2+ 3+ 4+ 5+ 6+ 7+ 8+")
+          (concat "$(foreach N," (subst "+" nil ndx) ",$(^v))")
+          (if (filter "9+" ndx)
+              "$9"
+              (concat "$(wordlist " (i-8 (subst "+" nil ndx)) ",99999999,$9)"))))
+     (else
+      (concat "$(call ^n," (i-8 ndx) ",$9)"))))
+
 
   (define `e-level
     (filter "%`" (concat "," (ups-repeat "`" ".."))))
