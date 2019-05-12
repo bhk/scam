@@ -568,10 +568,13 @@ Rest parameters may not be used with macros.
 ## Variables
 
 Variables are symbols that name already-computed values.  Variables can be
-either local or global.
+either global or local.
 
-Local variables are created with `let` expressions, or as function
-parameters in a `lambda` expression or function definition.  Local variables
+Global variables are defined by the `(define NAME ...)` and `(define (NAME
+...ARGS) ...)` special forms.
+
+Local variables include function parameters and names defined with `let`,
+`let&`, `for`, `foreach`, and pattern matching expressions.  Local variables
 are immutable. They are assigned a value when initialized, and they cannot
 be assigned a different value.  The visibility and lifetime of a local
 variable is limited to the expression in which it is defined. See
