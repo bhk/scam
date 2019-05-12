@@ -134,10 +134,10 @@
 ;;--------------------------------
 
 (define (cqq text)
-  (c0-ser text { sym: (EIL "" "-" (IString "SYM")),
+  (c0-ser text { sym: (EIL "" "p" (IString "SYM")),
                  var: (EVar "VAR" "."),
                  ;; args = [`a `b]
-                 args: (EIL "" "-" (IString [(PSymbol 1 "a")
+                 args: (EIL "" "p" (IString [(PSymbol 1 "a")
                                              (PSymbol 2 "b")])) }))
 
 (expect (c0 (p1 "`x") nil) (IString (p1 " x")))

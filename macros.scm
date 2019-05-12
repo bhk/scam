@@ -282,26 +282,32 @@
   "(let& ((VAR VALUE)...) BODY)")
 
 
-(define (let&-env pairs env depth)
+;; ENV = environment for compiling macro values
+;; DEPTH = nesting depth of ENV
+;;
+(define (let&-env pairs env depth ?bindings)
   (define `p (first pairs))
   (define `p-binding
     (case (first p)
       ((PSymbol _ name)
-       { =name: (EIL depth "-" (c0 (nth 2 p) env)) })))
+       { =name: (EIL depth "p" (c0 (nth 2 p) (append bindings env))) })))
 
   (if pairs
-      (let&-env (rest pairs) (append p-binding env) depth)
-      env))
+      (let&-env (rest pairs) env depth (append p-binding bindings))
+      bindings))
 
 
 (define (ml.special-let& env sym args)
   (let ((body (rest args))
         (pairs (read-pairs (first args) sym let&-where))
-        (env env))
+        (env env)
+        (next-depth (concat "." (current-depth env))))
+    (define `macro-env
+      (append (lambda-marker next-depth) env))
     (case pairs
       ((PError _ _) pairs)
-      (else (c0-block body (let&-env pairs (sym-macro-env env)
-                                     (concat "." (current-depth env))))))))
+      (else (c0-block body (append (let&-env pairs macro-env next-depth)
+                                   env))))))
 
 
 ;;--------------------------------
@@ -326,7 +332,7 @@
     ((PSymbol _ name)
      (define `var-defn
        (EIL (concat "." (current-depth env))
-            "-"
+            "p"
             (var-xform (IArg (concat "=" name) ".."))))
      (define `body-node
        (body-xform (c0-block body (append { =name: var-defn } env))))
@@ -681,26 +687,35 @@
 (define case-where
   "(case VALUE (PATTERN BODY)...)")
 
-;; Return bindings for arguments in a (CTOR ARG...) pattern.
-(define (arg-bindings args encs value-node depth)
+
+;; Extract a member from a record (in the value of an EIL binding)
+;;
+;; DEFN = an EIL binding for a record.
+;; NDX = index (1-based) of the member.
+;; ENCODING = "S", "W", or "L"
+;; Result = an EIL binding for the member.
+;;
+(define `(extract-member defn ndx encoding)
+  (define `il-ndx (IString (1+ ndx)))
+  (case defn
+    ((EIL depth scope node)
+     (EIL depth scope
+          (cond
+           ((eq? "S" encoding) (ICall "^n" [il-ndx node]))
+           ((eq? "W" encoding) (IBuiltin "word" [il-ndx node]))
+           (else (IBuiltin "wordlist" [il-ndx (IString 99999999) node])))))))
+
+
+(define (member-bindings args encodings value-defn)
   (foreach
-   n (indices encs)
-   (let& ((enc (word n encs))
-          (arg (nth n args))
-          (ndx-node (IString (1+ n)))
-          (arg-node
-           (cond
-            ((eq? "S" enc) (ICall "^n" [ndx-node value-node]))
-            ((eq? "W" enc) (IBuiltin "word" [ndx-node value-node]))
-            (else (IBuiltin "wordlist" [ ndx-node
-                                        (IString 99999999)
-                                        value-node])))))
-         { (symbol-name arg): (EIL depth "-" arg-node) })))
+      n (indices encodings)
+      { (symbol-name (nth n args)):
+         (extract-member value-defn n (word n encodings))}))
 
 
 ;; Compile a vector of (PATTERN BODY) cases
 ;;
-(define (c0-clauses cases value-node env)
+(define (c0-clauses cases value-node value-defn env)
   (for
    c cases    ; c = `(PATTERN BODY)
    (case c
@@ -712,9 +727,7 @@
         (case pattern
           ;; (SYM BODY)
           ((PSymbol n var-name)
-           (c0-block body (append { =var-name:
-                                    (EIL (current-depth env) "-" value-node) }
-                                  env)))
+           (c0-block body (append {=var-name: value-defn} env)))
 
           ;; ((CTOR ARG...) BODY)
           ((PList n syms)
@@ -723,6 +736,7 @@
            (or
             (let ((defn (resolve ctor-form env))
                   (value-node value-node)
+                  (value-defn value-defn)
                   (ctor-args ctor-args)
                   (ctor-form ctor-form)
                   (body body))
@@ -734,7 +748,7 @@
                                         (IBuiltin "word" [ (IString 1)
                                                            value-node]) ]))
                  (define `bindings
-                   (arg-bindings ctor-args encs value-node (current-depth env)))
+                   (member-bindings ctor-args encs value-defn))
 
                  (define `then-node
                    (c0-block body (append bindings env)))
@@ -823,11 +837,17 @@
 (define (ml.special-case env sym args)
   (define `value-form (first args))
   (if value-form
-      (let ((value (c0 value-form env))
+      (let ((value (c0 value-form (sym-macro-env env (current-depth env))))
             (args args)
             (env env))
+        (define `value-defn
+          (EIL (concat "." (current-depth env)) "p" value))
+        (define `value-node
+          (c0-macro "." ".." value sym))
+        (define `clauses
+          (c0-clauses (rest args) value-node value-defn env))
         (case value
           ((PError _ _) value)
-          (else (case-fold (clauses-merge (c0-clauses (rest args) value env))))))
+          (else (case-fold (clauses-merge clauses)))))
       ;; no value-form
       (err-expected "" value-form sym "VALUE" case-where)))

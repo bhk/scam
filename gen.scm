@@ -90,16 +90,14 @@
 ;;     "i" => defn was imported
 ;;     "p" => defn is private
 ;;     "x" => public (exported)
-;;     "-" => private or don't care
 ;;
 ;; ARITY = how many arguments are required by the function, in the form of a
 ;;    list of valid argument counts, or `N+` for "N or more".
 ;;
 ;; DEPTH = Lambda nesting depth (absolute); see current-depth.  For ELocal:
-;;    the depth at which the variable is bound.  For EMacro, EIL: the depth
-;;    at which their arguments were bound; this is the basis for
-;;    interpreting captures (any relative IArg references beyond the "top"
-;;    of the IL node).
+;;    the depth at which the variable is bound.  For EMacro and EIL: the
+;;    depth that is the basis for resolving UPS for IArg record within IL.
+;;    See c0-macro for more.
 ;;
 ;; IL = the macro definition, an IL record.
 ;;

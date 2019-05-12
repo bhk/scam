@@ -228,7 +228,7 @@
   (case x
     ((C a b c)
      (let ((B b))
-       (concat a "," B "," c)))))
+       (concat a "," b "," c)))))
 
 ;; gets "3,2 3," instead
 (expect "1,2 3,4" (fun-in-case (C 1 "2 3" 4)))

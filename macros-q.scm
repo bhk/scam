@@ -131,17 +131,22 @@
 ;; (let& ((VAR VAL)...) BODY)
 ;;--------------------------------
 
-(expect (let&-env [ [ (PSymbol 0 "x") (PString 0 1) ]
-                    [ (PSymbol 0 "y") (PSymbol 0 "Y") ] ]
-                  { Y: (EVar "yname" "x") }
+(expect (let&-env [ [ (PSymbol 0 "x") (PSymbol 0 "X") ]
+                    [ (PSymbol 0 "y") (PSymbol 0 "x") ] ]
+                  { X: (EVar "xname" "p") }
                   ".")
-        { y: (EIL "." "-" (IVar "yname")),
-          x: (EIL "." "-" (IString 1)),
-          Y: (EVar "yname" "x") })
+        { y: (EIL "." "p" (IVar "xname")),
+          x: (EIL "." "p" (IVar "xname")) })
 
 (expect "1" (c0-ser "(let& ((a 1)) a)"))
 (expect "2" (c0-ser "(let& ((a 1) (b 2)) b)"))
 (expect "3" (c0-ser "(let& ((a 1) (b 2) (a 3)) a)"))
+
+;; capture in sym macro value
+(c0-ser "(foreach n 1 (let& ((m n)) (concat m (lambda () m))))"
+        "(.foreach n,1,{n}`{.n})")
+(c0-ser "(let& ((m (foreach n,1,n))) (concat m (lambda () m))))"
+        "(.foreach n,1,{n})`(.foreach n,1,{n})")
 
 ;;--------------------------------
 ;; (foreach VAR LIST BODY)
@@ -321,24 +326,32 @@
 ;; (case VALUE (PATTERN BODY)... )
 ;;--------------------------------
 
-(expect
- (arg-bindings [ (PSymbol 0 "a") (PSymbol 0 "b") ]
-               "W S"
-               (IString 123)
-               ".")
- { a: (EIL "." "-" (IBuiltin "word" [ (IString 2) (IString 123) ])),
-   b: (EIL "." "-" (ICall "^n" [ (IString 3) (IString 123) ])) })
+(define tc-node (IArg 1 ".."))
+(define tc-defn (EIL ".." "p" (IArg 1 "..")))
+
+(expect (extract-member tc-defn 1 "S")
+        (EIL ".." "p" (ICall "^n" [(IString "2") tc-node])))
+
+(expect (member-bindings [(PSymbol 0 "a!") (PSymbol 0 "b") (PSymbol 0 "c")]
+                         ["S" "W" "L"]
+                         tc-defn)
+        { a!: (EIL ".." "p" (ICall "^n" [(IString "2") tc-node])),
+          b: (EIL ".." "p" (IBuiltin "word" [(IString "3") tc-node])),
+          c: (EIL ".." "p" (IBuiltin "wordlist" [(IString "4")
+                                                 (IString 99999999)
+                                                 tc-node]))})
+
+(define tc-env
+  (append { C: (ERecord "S W L" "." "!:T0") }
+          { D: (ERecord "S W" "." "!:T1") }
+          default-env))
 
 ;; single case
-(expect (c0-ser "(case v ((Ctor s w v) v))"
-               (append { Ctor: (ERecord "S W L" "." "!:T0") }
-                       default-env))
+(expect (c0-ser "(case v ((C s w v) v))" tc-env)
         "(.if (.filter !:T0,(.word 1,{V})),(.wordlist 4,99999999,{V}))")
 
 ;; multiple cases
-(expect (c0-ser "(case v ((Ctor s w l) l) (a a))"
-                (append { Ctor: (ERecord "S W L" "." "!:T0") }
-                        default-env))
+(expect (c0-ser "(case v ((C s w l) l) (a a))" tc-env)
         "(.if (.filter !:T0,(.word 1,{V})),(.wordlist 4,99999999,{V}),{V})")
 
 ;; non-ctor in pattern
@@ -350,14 +363,21 @@
         "!(PError 4 'undefined variable: `bogus`')")
 
 ;; wrong number of arguments
-(expect (c0-ser "(case v ((Ctor s l) l))"
-                (append { Ctor: (ERecord "S W L" "." "!:T0") }
-                        default-env))
-        "!(PError 8 '`Ctor` accepts 3 arguments, not 2')")
+(expect (c0-ser "(case v ((C s l) l))" tc-env)
+        "!(PError 8 '`C` accepts 3 arguments, not 2')")
+
+;; captures in value
+(expect (c0-ser "(lambda (v) (case v ((C a b c) a)))" tc-env)
+        "`(.if (.filter !:T0,(.word 1,{1})),(^n 2,{1}))")
+(expect (c0-ser "(lambda (v) (case v ((C a b c) (lambda () a))))" tc-env)
+        "`(.if (.filter !:T0,(.word 1,{1})),`(^n 2,{.1}))")
+(expect (c0-ser "(foreach v 1 (case v ((C a b c) (lambda () a))))" tc-env)
+        "(.foreach v,1,(.if (.filter !:T0,(.word 1,{v})),`(^n 2,{.v})))")
+;; non-capture arg
+(expect (c0-ser "(case (foreach v 1 v) ((C a b c) (lambda () a)))" tc-env)
+        (concat "(.if (.filter !:T0,(.word 1,(.foreach v,1,{v}))),"
+                "`(^n 2,(.foreach v,1,{v})))"))
 
 ;; collapse clauses with equivalent bodies
-(expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))"
-                (append { C: (ERecord "S W L" "." "!:T0") }
-                        { D: (ERecord "S W" "." "!:T1") }
-                        default-env))
+(expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))" tc-env)
         "(.if (.filter !:T0 !:T1,(.word 1,{V})),(.word 3,{V}),{V})")

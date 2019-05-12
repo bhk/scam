@@ -110,7 +110,6 @@
       (IArg n (ups-add-sub deeper ups ".")))
 
      ;; replace macro arg?
-;;     ((and args (filter out (concat ups ".")))
      ((and args (filter out (concat ups ".")) (filter-out "=%" n))
       (xlat (if (findstring "+" n)
                 (il-vector (nth-rest (subst "+" nil n) args))
@@ -198,16 +197,30 @@
 ;;--------------------------------
 
 
-;; Return "value" of a compound macro:  (lambda (a b c...) (MACRO a b c...))
+;; Instantiate a symbol macro or compound macro.
 ;;
-;; OUT = ".." for a compound macro, "." for a symbol macro
+;; When a macro is defined, the body of the definition is compiled to an IL
+;; node.  When the macro is instantiated, we translate its IL to the new
+;; context, potentially more deeply nested in lambdas than the macro
+;; definition.
+;;
+;; When an IArg in the macro indexes up beyond the top of the macro -- this
+;; would be an UPS value greater than 1 at the top level, or greater than 2
+;; within a nested lambda, and so on -- it is a "capture" and it must be
+;; adjusted to the nesting depth where the macro is being instantiated.
+;;
+;; When an IArg indexes the top of the macro -- e.g. UPS=1 at the top level
+;; of the macro -- then it refers to an argument of a compound macro, or to
+;; an automatic (foreach) variable defined at the top level of the macro.
+;;
 ;; DEPTH = level at which the definition appeared; any captures are at
 ;;     this level or higher.
 ;;
-;; For compoune macros, the (ILambda ...) wrapper is missing, so OUT="..".
+;; For compound macros, the (ILambda ...) wrapper is missing, so OUT="..".
 ;;
-(define (c0-macro out at-depth depth il sym)
-  (xlat il out (ups-add-sub at-depth "." depth) nil (form-index sym)))
+(define (c0-macro at-depth depth il sym)
+  &public
+  (xlat il ".." (ups-add-sub at-depth "." depth) nil (form-index sym)))
 
 
 ;;--------------------------------
@@ -250,14 +263,13 @@
      (IVar gname))
 
     ((EMacro depth scope _ il)
-     (ILambda (c0-macro ".." (current-depth env) depth il sym)))
+     (ILambda (c0-macro (current-depth env) depth il sym)))
 
     ((EFunc gname _ _)
      (IBuiltin "value" [(IString gname)]))
 
     ((EIL depth _ il)
-;;     (c0-macro "." (current-depth env) depth il sym))
-     (c0-macro ".." (current-depth env) depth il sym))
+     (c0-macro (current-depth env) depth il sym))
 
     ((ERecord encs _ tag)
      (c0-ctor env sym encs))
@@ -563,26 +575,24 @@
 ;; (define  NAME FLAGS... BODY)
 ;;--------------------------------
 
-
-(define `(sym-macro-env env)
+(define `(sym-macro-env env depth)
   &public
-  (append (lambda-marker (concat "." (current-depth env)))
-          env))
+  (append (lambda-marker (concat "." depth)) env))
 
 
-(define (c0-def-symbol env n name flags body is-define is-macro)
+(define (c0-def-symbol env depth n name flags body is-define is-macro)
   (or (c0-check-body n (first body) is-define)
 
-      (let ((value (c0-block body (sym-macro-env env)))
+      (let ((value (c0-block body (sym-macro-env env depth)))
             (scope (if (filter "&public" flags) "x" "p"))
             (gname (gen-native-name name flags))
-            (depth (concat "." (current-depth env)))
+            (next-depth (concat "." depth))
             (is-define is-define)
             (is-macro is-macro))
 
         (define `env-out
           { =name: (if is-macro
-                       (EIL depth scope value)
+                       (EIL next-depth scope value)
                        (EVar gname scope)) })
 
         (or (il-error-node value)
@@ -652,7 +662,8 @@
    ;; get NAME, ARGS
    (case what
      ((PSymbol n name)
-      (c0-def-symbol env n name flags body is-define is-macro))
+      (c0-def-symbol env (current-depth env)
+                     n name flags body is-define is-macro))
 
      ((PList list-n forms)
       (case (first forms)
