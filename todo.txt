@@ -3,9 +3,6 @@ TODO
 Enhancements
 ----
 
- * Prefix automatic variables to avoid conflicts with globals, making them
-   functionally equivalent to locals.
-
  * Forbid shadowing of variables
     - allow `(let ((x x)) ...)` or `&override` exceptions
     - validate `define` against prior `declare`
