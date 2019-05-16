@@ -7,6 +7,21 @@
 (require "gen.scm")
 (require "gen0.scm")
 
+
+;; One of these is added to the environment at each `foreach` nesting level.
+;;
+(define `AutoMarker
+  { ":a": 1 })
+
+
+;; Generate a name for an automatic variable that does not conflict
+;; with other automatics or globals.  We prefix automatics with ["]
+;; and globals with ['] or [`] (user or compiler).
+;;
+(define `(auto-arg-name env)
+  (concat "\"" (words (filter AutoMarker env))))
+
+
 ;; Functions named "ml.special-NAME" implement special forms.  They are
 ;; executed at compile-time when a list form starting with the corresponding
 ;; NAME is encountered.  These functions are passed a list of arguments
@@ -715,7 +730,12 @@
 
 ;; Compile a vector of (PATTERN BODY) cases
 ;;
-(define (c0-clauses cases value-node value-defn env)
+;; VALUE-NODE = IL record to use for the value in filter expressions
+;; VALUE-DEFN = an environment entry that evaluates to the value
+;; IS-WORD = true when VALUE-NODE is an automatic variable containing
+;;     a demoted value
+;;
+(define (c0-clauses cases value-node value-defn is-word env)
   (for
    c cases    ; c = `(PATTERN BODY)
    (case c
@@ -744,9 +764,14 @@
                 ((ERecord encs _ tag)
 
                  (define `test-node
-                   (IBuiltin "filter" [ (IString tag)
-                                        (IBuiltin "word" [ (IString 1)
-                                                           value-node]) ]))
+                   (IBuiltin
+                    "filter"
+                    (if is-word
+                        [(IString [(concat tag " %")])
+                         (IConcat [value-node (IString "!0")])]
+                        [(IString tag)
+                         (IBuiltin "word" [(IString 1) value-node])])))
+
                  (define `bindings
                    (member-bindings ctor-args encs value-defn))
 
@@ -842,20 +867,40 @@
       clauses))
 
 
+(define (c0-case cases next-depth value value-defn sym env)
+  (define `filter-value (c0-macro "." ".." value sym))
+  (define `defn (or value-defn (EIL next-depth "p" value)))
+  (define `clauses (c0-clauses cases filter-value defn (if value-defn 1) env))
+  (define `simple (case-fold (clauses-merge clauses)))
+
+  (case value
+    ((PError _ _) value)
+    ((IArg _ _) simple)
+    ((IVar _) simple)
+    ;; Prevent multiple evaluation of a complex expression: wrap in
+    ;; "(foreach X (to-word EXPR) ...)"
+    (else
+     (define `arg-name
+       (auto-arg-name env))
+     (define `cw-filter-value
+       (IArg (concat "=" arg-name) "."))
+     (define `cw-value-defn
+       (EIL next-depth "p" (il-promote (IArg (concat "=" arg-name) ".."))))
+     (define `body
+       (c0-case cases next-depth cw-filter-value cw-value-defn sym
+                (append AutoMarker env)))
+
+     (IBuiltin "foreach" [(IString arg-name) (il-demote filter-value) body]))))
+
+
 (define (ml.special-case env sym args)
   (define `value-form (first args))
   (if value-form
-      (let ((value (c0 value-form (sym-macro-env env (current-depth env))))
-            (args args)
-            (env env))
-        (define `value-defn
-          (EIL (concat "." (current-depth env)) "p" value))
-        (define `value-node
-          (c0-macro "." ".." value sym))
-        (define `clauses
-          (c0-clauses (rest args) value-node value-defn env))
-        (case value
-          ((PError _ _) value)
-          (else (case-fold (clauses-merge clauses)))))
+      (c0-case (rest args)
+               (concat "." (current-depth env))
+               (c0 value-form (sym-macro-env env (current-depth env)))
+               nil
+               sym
+               env)
       ;; no value-form
       (err-expected "" value-form sym "VALUE" case-where)))

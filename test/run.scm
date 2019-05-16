@@ -87,10 +87,10 @@
 ;; (*after* expansion) in `define VARNAME ...  endef`.  We don't need to
 ;; worry about making native-name well-defined, since it isn't an exposed
 ;; building block in SCAM anymore.  We just need to worry about it handling
-;; SCAM symbols, of which make keywords and words containing any of "#+=?\\"
-;; are or concern.
+;; the native names of SCAM symbols.  Of note, characters "#+=?\\" are a
+;; concern for make.
 
-(for name [ "a#b" "a+" "a?" "a=" "a?=" "a\\#" "override" "include" ]
+(for name [ "a#b" "a+" "a?" "a=" "a?=" "a\\#" "override" "include" "'a" "\"a" "`a"]
      (set-native name name)
      (expect (concat "simple:" name) (concat (flavor name) ":" name))
      (expect name (value name))

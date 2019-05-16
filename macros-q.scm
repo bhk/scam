@@ -375,6 +375,7 @@
 (define tc-env
   (append { C: (ERecord "S W L" "." "!:T0") }
           { D: (ERecord "S W" "." "!:T1") }
+          { F: (EFunc "F" "p" 0) }
           default-env))
 
 ;; single case
@@ -404,10 +405,16 @@
         "`(.if (.filter !:T0,(.word 1,{1})),`(^n 2,{.1}))")
 (expect (c0-ser "(foreach v 1 (case v ((C a b c) (lambda () a))))" tc-env)
         "(.foreach v,1,(.if (.filter !:T0,(.word 1,{v})),`(^n 2,{.v})))")
-;; non-capture arg
-(expect (c0-ser "(case (foreach v 1 v) ((C a b c) (lambda () a)))" tc-env)
-        (concat "(.if (.filter !:T0,(.word 1,(.foreach v,1,{v}))),"
-                "`(^n 2,(.foreach v,1,{v})))"))
+
+;; complex value => use `foreach`
+(expect (c0-ser "(case (F) ((C a b c) (lambda () a)))" tc-env)
+        (concat "(.foreach \"0,(^d (F )),(.if (.filter !1:T0!0%,{\"0}!0),"
+                "`(^n 2,(^u {.\"0}))))"))
+
+;; nested complex value => generate unique auto var
+(expect (c0-ser "(case (F) ((C a b c) (case (F) (else 1))))" tc-env)
+        (concat "(.foreach \"0,(^d (F )),(.if (.filter !1:T0!0%,{\"0}!0),"
+                "(.foreach \"1,(^d (F )),1)))"))
 
 ;; collapse clauses with equivalent bodies
 (expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))" tc-env)
