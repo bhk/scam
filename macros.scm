@@ -729,16 +729,16 @@
           ((PSymbol n var-name)
            (c0-block body (append {=var-name: value-defn} env)))
 
-          ;; ((CTOR ARG...) BODY)
+          ;; ((NAME ARGS...) BODY)
           ((PList n syms)
-           (define `ctor-form (first syms))
+           (define `ctor-name (first syms))
            (define `ctor-args (rest syms))
            (or
-            (let ((defn (resolve ctor-form env))
+            (let ((defn (resolve ctor-name env))
                   (value-node value-node)
                   (value-defn value-defn)
                   (ctor-args ctor-args)
-                  (ctor-form ctor-form)
+                  (ctor-name ctor-name)
                   (body body))
               (case defn
                 ((ERecord encs _ tag)
@@ -753,16 +753,16 @@
                  (define `then-node
                    (c0-block body (append bindings env)))
 
-                 (or (check-arity (words encs) ctor-args ctor-form)
+                 (or (check-arity (words encs) ctor-args ctor-name)
                      ;; Success
                      (IBuiltin "if" [ test-node then-node ])))))
 
-            (case ctor-form
+            (case ctor-name
               ((PSymbol _ name)
-               (gen-error ctor-form "symbol `%s` is not a record constructor"
+               (gen-error ctor-name "symbol `%s` is not a record constructor"
                           name))
               (else
-               (err-expected "S" ctor-form pattern "CTOR" case-where)))))
+               (err-expected "S" ctor-name pattern "CTOR" case-where)))))
 
           (else (err-expected "L S" pattern c "PATTERN" case-where)))))
      (else (err-expected "L" c nil "(PATTERN BODY)" case-where)))))
@@ -789,39 +789,44 @@
 (define (clause-pvt node)
   (case node
     ((IBuiltin if? if-args)
-     (case (first if-args)
-       ((IBuiltin filter? f-args)
-        (let ((if-args if-args)
-              (f-args f-args)
-              (if? if?)
-              (filter? filter?))
-          (and (filter "if" if?)
-               (not (word 3 if-args))
-               (filter "filter" filter?)
-               (case (first f-args)
-                 ((IString p)
-                  [p (nth 2 f-args) (nth 2 if-args)])))))))))
+     (and (filter "if" if?)
+          (not (word 3 if-args))
+          (case (first if-args)
+            ((IBuiltin filter? f-args)
+             (if (filter "filter" filter?)
+                 (case (first f-args)
+                   ((IString p)
+                    [p (nth 2 f-args) (nth 2 if-args)])))))))))
 
 
-(define (clauses-merge-loop clause in out)
-  (if in
-      (let ((pvt1 (clause-pvt clause))
-            (pvt2 (clause-pvt (first in)))
-            (clause clause)
-            (clause2 (first in))
-            (others (rest in))
-            (out out))
-        (if (and pvt1
-                 (eq? (rest pvt1) (rest pvt2)))
-            ;; merge
-            (let& ((p (IString (concat (first pvt1) " " (first pvt2))))
-                   (flt-node (IBuiltin "filter" [p (nth 2 pvt1)]))
-                   (if-node (IBuiltin "if" [flt-node (nth 3 pvt1)])))
-              (clauses-merge-loop if-node others out))
-            ;; emit clause; look at next pair
-            (clauses-merge-loop clause2 others (conj out clause))))
-      ;; no more
-      (conj out clause)))
+;; CLAUSE1 = first clause
+;; PVT1 = (clause-pvt CLAUSE)
+;; CLAUSE2 = second clause
+;; PVT2 = (clause-pvt CLAUSE2)
+;; IN = rest of clauses
+;;
+(define (clauses-merge-loop clause1 pvt1 clause2 pvt2 in)
+  (define `(recur clause pvt)
+    (clauses-merge-loop clause pvt
+                        (first in) (clause-pvt (first in))
+                        (rest in)))
+
+  (cond
+   ;; merge
+   ((and pvt1 (eq? (rest pvt1) (rest pvt2)))
+    (define `p (concat (first pvt1) " " (first pvt2)))
+    (define `v (nth 2 pvt1))
+    (define `t (nth 3 pvt1))
+    (recur (IBuiltin "if" [ (IBuiltin "filter" [(IString p) v]) t])
+           (cons p (rest pvt1))))
+
+   ;; shift
+   (clause2
+    (append [clause1] (recur clause2 pvt2)))
+
+   ;; done
+   (else
+    [clause1])))
 
 
 ;; Merge adjacent clauses where the following applies:
@@ -830,8 +835,11 @@
 ;;     result -> (if (filter "A B" V) T)
 ;;
 (define (clauses-merge clauses)
-  (if clauses
-      (clauses-merge-loop (first clauses) (rest clauses) nil)))
+  (if (word 2 clauses)
+      (clauses-merge-loop (first clauses) (clause-pvt (first clauses))
+                          (nth 2 clauses) (clause-pvt (nth 2 clauses))
+                          (nth-rest 3 clauses))
+      clauses))
 
 
 (define (ml.special-case env sym args)

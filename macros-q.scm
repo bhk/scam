@@ -341,6 +341,37 @@
                                                  (IString 99999999)
                                                  tc-node]))})
 
+;; clauses-merge
+
+(define `(check-merge pvs)
+  (define `clauses
+    (for pv pvs
+         (if (word 2 pv)
+             (IBuiltin "if" [ (IBuiltin "filter" [(IString (first pv))
+                                                  (IArg 1 ".")])
+                              (IString (nth 2 pv)) ])
+             (IString pv))))
+
+  (for il (clauses-merge clauses)
+       (il-ser il)))
+
+
+(expect (check-merge [ "a X"])
+        ["(.if (.filter a,{1}),X)"])
+
+(expect (check-merge [ "a X" "b X"])
+        ["(.if (.filter a b,{1}),X)"])
+
+(expect (check-merge [ "a X" "b X" "c X"])
+        ["(.if (.filter a b c,{1}),X)"])
+
+(expect (check-merge [ "a X" "b Y" 1])
+        ["(.if (.filter a,{1}),X)"
+         "(.if (.filter b,{1}),Y)"
+         "1"])
+
+;; c0-case
+
 (define tc-env
   (append { C: (ERecord "S W L" "." "!:T0") }
           { D: (ERecord "S W" "." "!:T1") }
