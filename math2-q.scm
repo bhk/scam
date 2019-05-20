@@ -137,6 +137,11 @@
 (expect 3 (psrch (UV 01) (d2u [30 03 02 01]) nil))
 (expect 4 (psrch (UV 001) (d2u [30 03 02 01]) nil))
 
+;; m-powers
+
+(expect 116 (words cached-m-powers))
+(expect 233 (words (subst 0 " 0" (lastword cached-m-powers))))
+
 ;; uf-log-fr
 
 (uf±1 (UV 20923241675108496126)
