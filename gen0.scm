@@ -32,24 +32,27 @@
                 ((PSymbol n name) name))))
 
 
-;; Return forms in FORMS following flags, where flags begin at the second element.
+;; Return forms in FORMS following flags. Flags begin at the second element.
 ;;
 (define (skip-flags args)
   &public
   (nth-rest (1+ (scan-flags args 2 1)) args))
 
 
-;; Return A-B dots.  Assumes A >= B.
+;; Remove B from the initial part of A.
 ;;
-(define `(ups-sub a b)
+;; len(Result) = len(A) - len(B) [if len(A) <= len(B); otherwise, A is
+;; returned unchanged]
+;;
+(define `(str-sub a b)
     (patsubst (concat b "%") "%" a))
 
 
-;; Return A+B-C dots.  Assumes A+B >= C.
+;; Return A+B-C (in domain of string lengths)
+;; Assumes A+B >= C.
 ;;
-(define `(ups-add-sub a b c)
+(define `(str-add-sub a b c)
     (patsubst (concat c "%") "%" (concat a b)))
-
 
 ;; Construct a string describing the number of parameters:
 ;;   "a b c"      ==>   "3"
@@ -80,44 +83,65 @@
               (check-args (rest args) nil)))))
 
 
-;; Translate IL record NODE to a new nesting depth, and replace arguments.
+;; Translate function argument references, automatic variable definitions
+;; and references, and replace macro arguments.
 ;;
-;; NODE = an IL record
-;; OUT = minimum value for UPS to indicate a capture
-;; DEEPER = amount to increment UPS (*after* removing one layer)
-;; ARGS = If non-nil, replace macro arguments (where UPS+1 = OUT) with
-;;    corresponding elements of ARGS.
+;; NODE = an IL record to translate
+;; TOP = distance from NODE to the "top" level of the macro (the top is the
+;;     level at which arguments are to be replaced, and the level at which
+;;     auto variables need to be adjusted) in the form of the UPS value that
+;;     would refer to the TOP level if NODE were an IArg
+;; AD = the "new" auto-depth of NODE (number of enclosing IFor's *within*
+;;     the nearest enclosing ILambda, where NODE will be instantiated)
+;; OLD-AD = auto depth where the macro was defined
+;; NEW-AD = auto depth where the macro is being instantiated
+;; ARGS = arguments passed to macro
+;; SHIFT = number of UPS to add to captures, plus 1
 ;;
-;; IArg nodes inside NODE can be one of the following:
-;;  1. UPS >= OUT: A capture (to be translated)
-;;  2. UPS < OUT:
-;;      a) If ARGS and UPS == OUT-1, a macro arg (to be replaced).
-;;      b) Otherwise, an internal arg (to be unchanged).
-;;
-;; Translation involves adjusting the UPS member of IArg nodes for an
-;; increase or decrease in the lamda nesting level.  When we replace an
-;; argument reference with an actual argument's IL, we likewise translate
-;; *that* IL to the new (possibly greater) nesting depth.
-;;
-(define (xlat node out deeper args pos)
+(define (xlat node top ad old-ad new-ad args shift pos)
+  (define `(recur r-node r-top r-ad)
+    (xlat r-node r-top r-ad old-ad new-ad args shift pos))
+
+  ;; Shift an auto var's name to adjust for change in auto nesting level at
+  ;; top of macro
+  (define `(auto-shift name)
+    (str-add-sub name new-ad old-ad))
+
+  ;; Translate a vector of nodes
   (define `(x* nodes)
-    (for n nodes (xlat n out deeper args pos)))
+    (for n nodes
+         (recur n top ad)))
 
-  (define `(xarg n ups node)
+  ;; IFor: track foreach nesting (at this lambda level)
+  (define `(xfor name list body)
+    (define `new-name
+      (if (filter "." top)
+          (auto-shift name)
+          name))
+    (IFor new-name (recur list top ad) (recur body top (concat ad ";"))))
+
+  ;; IArg: translate lambda argument or auto variable
+  (define `(xarg name ups node)
     (cond
-     ;; translate capture?
-     ((findstring out ups)
-      (IArg n (ups-add-sub deeper ups ".")))
+     ;; Macro arg => replace with args[ndx]
+     ((and (filter top ups) args (filter-out ";%" name))
+      (define `arg-node
+        (if (findstring "+" name)
+            (il-vector (nth-rest (subst "+" nil name) args))
+            (nth name args)))
+      (xlat arg-node "." ad new-ad ad nil ups pos))
 
-     ;; replace macro arg?
-     ((and args (filter out (concat ups ".")) (filter-out "=%" n))
-      (xlat (if (findstring "+" n)
-                (il-vector (nth-rest (subst "+" nil n) args))
-                (nth n args))
-            "." (patsubst ".%" "%" out) nil nil))
+     ;; Top-level auto within the macro => rename auto
+     ((and (filter top ups) (findstring (concat old-ad ";") name))
+      (IArg (auto-shift name) ups))
 
-     ;; interior capture
-     (else node)))
+     ;; Capture => shift
+     ;;   UPS>=TOP and not MACRO-ARG and not RENAMED-AUTO
+     ((findstring top ups)
+      (IArg name (str-add-sub ups shift ".")))
+
+     (else
+      node)))
 
   (case node
     ((IString s) node)
@@ -127,9 +151,37 @@
     ((IFuncall nodes) (IFuncall (x* nodes)))
     ((IConcat nodes) (IConcat (x* nodes)))
     ((IBlock nodes) (IBlock (x* nodes)))
-    ((ILambda body) (ILambda (xlat body (concat "." out) deeper args pos)))
-    ((IWhere p) (if pos (IWhere pos) node))
+    ((IFor name list body) (xfor name list body))
+    ((ILambda body) (ILambda (recur body (concat "." top) nil)))
+    ((IWhere p) (if p (IWhere pos) node))
     (else node)))
+
+
+;; A substring that identifies an IWhere anywhere within an IL record.
+;;
+(define IWhere-sig
+  (word 1 (subst "!" nil (IWhere nil))))
+
+
+;; OLD-DEPTH = depth at which NODE was compiled
+;; NEW-DEPTH = depth to which NODE is being translated
+;; ARGS = for symbol macros, nil.  For compound macros, a *non-nil* vector
+;;     of arguments to the macro: IL nodes compiled at NEW-DEPTH.
+;; POS = parsing token index of location of instantiation
+;;
+(define (translate node old-depth new-depth args pos)
+  (define `old-ad (depth.a old-depth))
+  (define `new-ad (depth.a new-depth))
+  (define `shift (str-add-sub (depth.l new-depth) "." (depth.l old-depth)))
+
+  ;; if no-args and old-depth=new-depth and no-IWheres: return node
+  (if (or args
+          (subst (concat ">" old-depth "<") nil (concat ">" new-depth "<"))
+          (findstring IWhere-sig node))
+      ;; translate
+      (xlat node "." new-ad old-ad new-ad args shift pos)
+      ;; no word required
+      node))
 
 
 ;;--------------------------------
@@ -176,20 +228,20 @@
 
 ;; Return IL for a local variable reference.
 ;;
-;; ARGN = argument index
-;; DEPTH = argument depth ("." = top-most lambda)
-;; AT-DEPTH = current depth (what ups="." refers to)
+;; NAME = argument index or auto nesting level
+;; DEPTH = ELocal depth ("." = top-most lambda)
+;; AT-DEPTH = current (lambda nesting) depth
 ;; SYM = symbol form for the local variable reference
 ;;
-(define (c0-local argn depth at-depth sym)
+(define (c0-local name depth at-depth sym)
   (if (and *warn-upvals*
-           (findstring (concat "." depth) at-depth))
+           (not (findstring at-depth depth)))
       (info (describe-error
              (gen-error sym "reference to upvalue `%s`" (symbol-name sym))
              (pdec *compile-subject*)
              *compile-file*)))
 
-  (IArg argn (concat "." (patsubst (concat depth "%") "%" at-depth))))
+  (IArg name (concat (str-add-sub at-depth "." depth))))
 
 
 ;;--------------------------------
@@ -197,30 +249,13 @@
 ;;--------------------------------
 
 
-;; Instantiate a symbol macro or compound macro.
+;; Generate a lambda value from a macro definition.  This is the value
+;; that is produced when the macro name is used in a context other than
+;; the first form in compound form.
 ;;
-;; When a macro is defined, the body of the definition is compiled to an IL
-;; node.  When the macro is instantiated, we translate its IL to the new
-;; context, potentially more deeply nested in lambdas than the macro
-;; definition.
-;;
-;; When an IArg in the macro indexes up beyond the top of the macro -- this
-;; would be an UPS value greater than 1 at the top level, or greater than 2
-;; within a nested lambda, and so on -- it is a "capture" and it must be
-;; adjusted to the nesting depth where the macro is being instantiated.
-;;
-;; When an IArg indexes the top of the macro -- e.g. UPS=1 at the top level
-;; of the macro -- then it refers to an argument of a compound macro, or to
-;; an automatic (foreach) variable defined at the top level of the macro.
-;;
-;; DEPTH = level at which the definition appeared; any captures are at
-;;     this level or higher.
-;;
-;; For compound macros, the (ILambda ...) wrapper is missing, so OUT="..".
-;;
-(define (c0-macro at-depth depth il sym)
-  &public
-  (xlat il ".." (ups-add-sub at-depth "." depth) nil (form-index sym)))
+(define (c0-macro depth node env sym)
+  (translate (ILambda node) (str-sub depth ".") (current-depth env)
+             nil (form-index sym)))
 
 
 ;;--------------------------------
@@ -257,19 +292,19 @@
 (define (c0-S env sym name defn)
   (case defn
     ((ELocal argn depth)
-     (c0-local argn depth (current-depth env) sym))
+     (c0-local argn depth (depth.l (current-depth env)) sym))
 
     ((EVar gname _)
      (IVar gname))
 
-    ((EMacro depth scope _ il)
-     (ILambda (c0-macro (current-depth env) depth il sym)))
+    ((EMacro depth _ _ il)
+     (c0-macro depth il env sym))
 
     ((EFunc gname _ _)
      (IBuiltin "value" [(IString gname)]))
 
     ((EIL depth _ il)
-     (c0-macro (current-depth env) depth il sym))
+     (translate il depth (current-depth env) nil (form-index sym)))
 
     ((ERecord encs _ tag)
      (c0-ctor env sym encs))
@@ -414,19 +449,6 @@
   (for f forms (c0 f env)))
 
 
-;; NODE = compiled lambda body
-;; FROM-DEPTH = depth at which macro was defined.  The body of the macro
-;;              is actually nested one level deeper.
-;; TO-DEPTH = lambda nesting level (unary) where macro is being expanded.
-;;
-(define (expand-macro node depth to-depth args sym)
-  (xlat node
-        ".."
-        (ups-sub to-depth depth)
-        (or args [(IString "")])  ;; ensure ARGS is non-nil
-        (form-index sym)))
-
-
 ;; DEFN = (resolve (first subforms) env), which is either:
 ;;     * "-" if op is not a symbol
 ;;     * nil if op is an unbound symbol
@@ -442,7 +464,10 @@
 
     ((EMacro depth _ arity il)
      (or (check-arity arity args sym)
-         (expand-macro il depth (current-depth env) (c0-vec args env) sym)))
+         (translate il depth (current-depth env)
+                    (or (c0-vec args env)
+                        [(IString "")])  ;; ensure ARGS is non-nil
+                    (form-index sym))))
 
     ((EBuiltin realname _ arity)
      (or (check-arity arity args sym)
@@ -499,9 +524,9 @@
 
 (define (c0-lambda env args body)
   (define `(arg-env env syms)
-    (foreach depth (concat "." (current-depth env))
-             (append (lambda-marker depth)
-                     (arg-locals syms 1 depth)
+    (foreach ldepth (depth.l (concat "." (current-depth env)))
+             (append (depth-marker ldepth)
+                     (arg-locals syms 1 ldepth)
                      env)))
 
   (or (check-args args)
@@ -552,6 +577,7 @@
     ((PError _ _) [node])
     ((IBuiltin _ args) (r* args))
     ((ICall _ args) (r* args))
+    ((IFor _ list body) (append (il-errors list) (il-errors body)))
     ((IFuncall nodes) (r* nodes))
     ((IConcat nodes) (r* nodes))
     ((IBlock nodes) (r* nodes))
@@ -575,24 +601,19 @@
 ;; (define  NAME FLAGS... BODY)
 ;;--------------------------------
 
-(define `(sym-macro-env env depth)
-  &public
-  (append (lambda-marker (concat "." depth)) env))
+(define (c0-def-symbol env pos name flags body is-define is-macro)
+  (or (c0-check-body pos (first body) is-define)
 
-
-(define (c0-def-symbol env depth n name flags body is-define is-macro)
-  (or (c0-check-body n (first body) is-define)
-
-      (let ((value (c0-block body (sym-macro-env env depth)))
+      (let ((value (c0-block body env))
             (scope (if (filter "&public" flags) "x" "p"))
             (gname (gen-native-name name flags))
-            (next-depth (concat "." depth))
+            (depth (current-depth env))
             (is-define is-define)
             (is-macro is-macro))
 
         (define `env-out
           { =name: (if is-macro
-                       (EIL next-depth scope value)
+                       (EIL depth scope value)
                        (EVar gname scope)) })
 
         (or (il-error-node value)
@@ -624,7 +645,7 @@
 
       ;; compile function/macro body
       (let ((body-il (c0-lambda body-env args body))
-            (depth (current-depth env))
+            (body-depth (depth.l (concat "." (current-depth env))))
             (is-define is-define)
             (is-macro is-macro)
             (arity arity)
@@ -634,7 +655,8 @@
 
         (define `defn
           (if is-macro
-              (EMacro depth scope arity (case body-il ((ILambda node) node)))
+              (EMacro body-depth scope arity
+                      (case body-il ((ILambda node) node)))
               (EFunc gname scope arity)))
 
         (or (il-error-node body-il)
@@ -662,8 +684,7 @@
    ;; get NAME, ARGS
    (case what
      ((PSymbol n name)
-      (c0-def-symbol env (current-depth env)
-                     n name flags body is-define is-macro))
+      (c0-def-symbol env n name flags body is-define is-macro))
 
      ((PList list-n forms)
       (case (first forms)

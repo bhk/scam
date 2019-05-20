@@ -414,9 +414,9 @@ access their members in a type-safe manner.
     8
 
 The first parameter is the value to be matched, and the remainder of the
-forms are `(PATTERN BODY)` pairs.  It tests these in order, and when the
-first pattern matches the value it evaluates and returns BODY.  If no
-patterns match, `nil` is returned.
+forms are `(PATTERN BODY)` pairs.  It tests these in order, and if a PATTERN
+matches it will evaluate and return the corresponding BODY.  If no patterns
+match, `nil` is returned.
 
 A pattern can be a (CONSTRUCTOR-NAME ARG...) where each ARG is a symbol.
 When the match is made, these symbols are bound to the corresponding members
@@ -574,11 +574,11 @@ Global variables are defined by the `(define NAME ...)` and `(define (NAME
 ...ARGS) ...)` special forms.
 
 Local variables include function parameters and names defined with `let`,
-`let&`, `for`, `foreach`, and pattern matching expressions.  Local variables
-are immutable. They are assigned a value when initialized, and they cannot
-be assigned a different value.  The visibility and lifetime of a local
-variable is limited to the expression in which it is defined. See
-[`let`](#let).
+`let&`, for-expressions (`for`, `foreach`, `concat-for`, ...) and pattern
+matching expressions.  Local variables are immutable. They are assigned a
+value when initialized, and they cannot be assigned a different value.  The
+visibility and lifetime of a local variable is limited to the expression in
+which it is defined. See [`let`](#let).
 
 Global variables are mutable and have unlimited lifetime.  They are visible to
 other SCAM modules, which means that if two modules in your program declare

@@ -59,6 +59,11 @@
 (expect "$(info a)"
         (c1 (IBuiltin "info" [ (IString "a") ])))
 
+;; IFor
+
+(expect "$(foreach ;,1,2)"
+        (c1 (IFor ";" (IString 1) (IString 2))))
+
 ;; and & or:  protect against trimming
 
 (expect "$(or $(if ,, a ))"
@@ -106,8 +111,9 @@
 (expect (c1-IArg "10+" ".")  "$(wordlist 2,99999999,$9)")
 (expect (c1-IArg "10+" "...")  "$--(call ^E,$--(wordlist 2,99999999,$--9),`)")
 
-(expect (c1-IArg "=x" ".")  "$(x)")
-(expect (c1-IArg "=x" "..")  "$-(call ^E,$-(x))")
+(expect (c1-IArg ";" ".")  "$;")
+(expect (c1-IArg ";" "..")  "$-(call ^E,$-;)")
+(expect (c1-IArg ";;" "..")  "$-(call ^E,$-(;;))")
 
 
 ;; Funcall: call an anonymous function

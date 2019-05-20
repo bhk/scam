@@ -135,6 +135,7 @@
     ((ICall _ _)    1)
     ((IVar _)       1)
     ((IBuiltin _ _) 1)
+    ((IFor _ _ _)   1)
     ((IFuncall _)   1)
     ((IArg _ _)   1)))
 
@@ -178,6 +179,7 @@
                                   (native-name c1-arg))))
           ")"))
 
+
 ;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
 ;;
 (define (c1-args9 nodes)
@@ -208,11 +210,11 @@
 
   (define `argval
     (cond
-     ((filter ndx "1 2 3 4 5 6 7 8")
+     ((filter ndx "1 2 3 4 5 6 7 8 ;")
       (concat "$" ndx))
 
-     ((filter "=%" ndx)
-      (patsubst "=%" "$(%)" ndx))
+     ((filter ";%" ndx)
+      (concat "$(" ndx ")"))
 
      ((findstring "+" ndx)
       ;; "rest" argument
@@ -243,7 +245,7 @@
   (or
    ;; make common and simple case fast
    (if (filter "." ups)
-       (addprefix "$" (filter ndx "1 2 3 4 5 6 7 8")))
+       (addprefix "$" (filter ndx "1 2 3 4 5 6 7 8 ;")))
    (c1-ugly-arg ndx ups)))
 
 
@@ -284,6 +286,7 @@
     ((IBlock nodes) (c1-Block nodes))
     ((IFuncall nodes) (c1-Funcall nodes))
     ((IBuiltin name args) (c1-Builtin name args))
+    ((IFor name list body) (c1-Builtin "foreach" [(IString name) list body]))
     ((IWhere pos) (c1-Where pos))
     ((ICrumb key value) (crumb key value))
     ((IEnv _ node) (c1 node))

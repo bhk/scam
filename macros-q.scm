@@ -133,10 +133,14 @@
 
 (expect (let&-env [ [ (PSymbol 0 "x") (PSymbol 0 "X") ]
                     [ (PSymbol 0 "y") (PSymbol 0 "x") ] ]
-                  { X: (EVar "xname" "p") }
-                  ".")
-        { y: (EIL "." "p" (IVar "xname")),
-          x: (EIL "." "p" (IVar "xname")) })
+                  (append
+                   { X: (EVar "xname" "p") }
+                   (depth-marker ".")))
+        (append
+         { y: (EIL "." "p" (IVar "xname")) }
+         { x: (EIL "." "p" (IVar "xname")) }
+         { X: (EVar "xname" "p") }
+         (depth-marker ".")))
 
 (expect "1" (c0-ser "(let& ((a 1)) a)"))
 (expect "2" (c0-ser "(let& ((a 1) (b 2)) b)"))
@@ -144,24 +148,26 @@
 
 ;; capture in sym macro value
 (c0-ser "(foreach n 1 (let& ((m n)) (concat m (lambda () m))))"
-        "(.foreach n,1,{n}`{.n})")
+        "(.foreach \"0,1,{\"0}`{.n\"0})")
 (c0-ser "(let& ((m (foreach n,1,n))) (concat m (lambda () m))))"
-        "(.foreach n,1,{n})`(.foreach n,1,{n})")
+        "(.foreach \"0,1,{\"0})`(.foreach \"0,1,{\"0})")
 
 ;;--------------------------------
 ;; (foreach VAR LIST BODY)
 ;;--------------------------------
 
-(expect (c0-ser "(foreach v \"1 2 3\" v)")
-        "(.foreach v,1 2 3,{v})")
+(expect (c0-ser "(foreach v \"1 2 3\" v)" "-")
+        "(.foreach ;,1 2 3,{;})")
+(expect (c0-ser "(foreach x \"1 2 3\" (foreach y 4 (concat x y)))")
+        "(.foreach ;,1 2 3,(.foreach ;;,4,{;}{;;}))")
 (expect (c0-ser "(lambda (a) (define `m a) m)")
         "`{1}")
 (expect (c0-ser "(begin (define `m (foreach v \"1 2 3\" v)) m)")
-        "(.foreach v,1 2 3,{v})")
+        "(.foreach ;,1 2 3,{;})")
 (expect (c0-ser "(foreach N 3 (lambda () N))")
-        "(.foreach N,3,`{.N})")
+        "(.foreach ;,3,`{.;})")
 (expect (c0-ser "(begin (define `m (foreach v \"1 2 3\" v)) (lambda () m))")
-        "`(.foreach v,1 2 3,{v})")
+        "`(.foreach ;,1 2 3,{;})")
 (expect (c0-ser "(foreach a b)")
         "!(PError 2 'missing BODY in (foreach VAR LIST BODY)')")
 (expect (c0-ser "(foreach a)")
@@ -176,14 +182,14 @@
 ;;--------------------------------
 
 (expect (c0-ser "(for x \"1 2 3\" (and x))")
-        "(.foreach x,1 2 3,(^d (.and (^u {x}))))")
+        "(.foreach ;,1 2 3,(^d (.and (^u {;}))))")
 
 ;;--------------------------------
 ;; (append-for VAR VEC BODY)
 ;;--------------------------------
 
 (expect (c0-ser "(append-for x \"1 2 3\" x)")
-        "(.filter %,(.foreach x,1 2 3,(^u {x})))")
+        "(.filter %,(.foreach ;,1 2 3,(^u {;})))")
 
 ;;--------------------------------
 ;; (concat-for VAR VEC DELIM BODY)
@@ -195,17 +201,16 @@
         (il-ser (il-subst "b" "B" (IVar "V"))))
 
 ;; delim == " "
-(expect "(.foreach x,a b,(^u {x}))"
-        (c0-ser "(concat-for x \"a b\" \" \" x)"))
+(expect "(.foreach ;,a b,(^u {;}))"
+        (c0-ser "(concat-for x \"a b\" \" \" x)" { d: (EVar "D" nil) }))
 
 ;; delim == IString
-(expect "(.subst |1,|,(.subst |0, ,(.subst  ,|1,(.foreach x,a b,(.subst  ,|0,(.subst |,|1,(^u {x})))))))"
-        (c0-ser "(concat-for x \"a b\" \"|\" x)"))
+(expect "(.subst |1,|,(.subst |0, ,(.subst  ,|1,(.foreach ;,a b,(.subst  ,|0,(.subst |,|1,(^u {;})))))))"
+        (c0-ser "(concat-for x \"a b\" \"|\" x)" { d: (EVar "D" nil) }))
 
 ;; general case
-(expect "(.subst |1,|,(.subst |0, ,(.subst  ,(.subst |,|1,{D}),(.foreach x,a b,(.subst  ,|0,(.subst |,|1,(^u {x})))))))"
-        (c0-ser "(concat-for x \"a b\" d x)"
-                { d: (EVar "D" nil) }))
+(expect "(.subst |1,|,(.subst |0, ,(.subst  ,(.subst |,|1,{D}),(.foreach ;,a b,(.subst  ,|0,(.subst |,|1,(^u {;})))))))"
+        (c0-ser "(concat-for x \"a b\" d x)" { d: (EVar "D" nil) }))
 
 ;;--------------------------------
 ;; (cond (TEST BODY)...)
@@ -372,6 +377,10 @@
 
 ;; c0-case
 
+;; error
+(expect (c0-ser "(case)")
+        "!(PError 2 'missing VALUE in (case VALUE (PATTERN BODY)...)')")
+
 (define tc-env
   (append { C: (ERecord "S W L" "." "!:T0") }
           { D: (ERecord "S W" "." "!:T1") }
@@ -404,17 +413,17 @@
 (expect (c0-ser "(lambda (v) (case v ((C a b c) (lambda () a))))" tc-env)
         "`(.if (.filter !:T0,(.word 1,{1})),`(^n 2,{.1}))")
 (expect (c0-ser "(foreach v 1 (case v ((C a b c) (lambda () a))))" tc-env)
-        "(.foreach v,1,(.if (.filter !:T0,(.word 1,{v})),`(^n 2,{.v})))")
+        "(.foreach ;,1,(.if (.filter !:T0,(.word 1,{;})),`(^n 2,{.;})))")
 
 ;; complex value => use `foreach`
 (expect (c0-ser "(case (F) ((C a b c) (lambda () a)))" tc-env)
-        (concat "(.foreach \"0,(^d (F )),(.if (.filter !1:T0!0%,{\"0}!0),"
-                "`(^n 2,(^u {.\"0}))))"))
+        (concat "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
+                "`(^n 2,(^u {.;}))))"))
 
 ;; nested complex value => generate unique auto var
 (expect (c0-ser "(case (F) ((C a b c) (case (F) (else 1))))" tc-env)
-        (concat "(.foreach \"0,(^d (F )),(.if (.filter !1:T0!0%,{\"0}!0),"
-                "(.foreach \"1,(^d (F )),1)))"))
+        (concat "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
+                "(.foreach ;;,(^d (F )),1)))"))
 
 ;; collapse clauses with equivalent bodies
 (expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))" tc-env)

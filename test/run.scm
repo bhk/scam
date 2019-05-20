@@ -12,6 +12,7 @@
 (define `(fl0)
   (current-file-line))
 
+
 ;; WARNING: fragile tests... Just update line numbers if they have changed.
 (expect "run.scm:17"
         (notdir (current-file-line)))
@@ -168,6 +169,10 @@
 ;;--------------------------------
 ;; Regression tests
 ;;--------------------------------
+
+(begin
+  (define `(id x) (foreach v 1 x))
+  (expect [1 2 3] (foreach v [1 2 3] (id v))))
 
 ;; automatic var captures
 

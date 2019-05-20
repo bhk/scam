@@ -8,20 +8,6 @@
 (require "gen0.scm")
 
 
-;; One of these is added to the environment at each `foreach` nesting level.
-;;
-(define `AutoMarker
-  { ":a": 1 })
-
-
-;; Generate a name for an automatic variable that does not conflict
-;; with other automatics or globals.  We prefix automatics with ["]
-;; and globals with ['] or [`] (user or compiler).
-;;
-(define `(auto-arg-name env)
-  (concat "\"" (words (filter AutoMarker env))))
-
-
 ;; Functions named "ml.special-NAME" implement special forms.  They are
 ;; executed at compile-time when a list form starting with the corresponding
 ;; NAME is encountered.  These functions are passed a list of arguments
@@ -300,34 +286,41 @@
 ;; ENV = environment for compiling macro values
 ;; DEPTH = nesting depth of ENV
 ;;
-(define (let&-env pairs env depth ?bindings)
+(define (let&-env pairs env)
   (define `p (first pairs))
   (define `p-binding
     (case (first p)
       ((PSymbol _ name)
-       { =name: (EIL depth "p" (c0 (nth 2 p) (append bindings env))) })))
+       { =name: (EIL (current-depth env) "p" (c0 (nth 2 p) env)) })))
 
   (if pairs
-      (let&-env (rest pairs) env depth (append p-binding bindings))
-      bindings))
+      (let&-env (rest pairs) (append p-binding env))
+      env))
 
 
 (define (ml.special-let& env sym args)
   (let ((body (rest args))
         (pairs (read-pairs (first args) sym let&-where))
-        (env env)
-        (next-depth (concat "." (current-depth env))))
-    (define `macro-env
-      (append (lambda-marker next-depth) env))
+        (env env))
     (case pairs
       ((PError _ _) pairs)
-      (else (c0-block body (append (let&-env pairs macro-env next-depth)
-                                   env))))))
+      (else (c0-block body (let&-env pairs env))))))
 
 
 ;;--------------------------------
 ;; (foreach VAR LIST BODY)
 ;;--------------------------------
+
+
+(define `(for-arg new-depth)
+  (IArg (depth.a new-depth) "."))
+
+(define `(for-node new-depth list body)
+  (IFor (depth.a new-depth) list body))
+
+(define `(for-env new-depth env)
+  (append (depth-marker new-depth) env))
+
 
 ;; c0-for
 ;;   ARGS = VAR LIST BODY   in   `(for VAR LIST BODY)
@@ -337,36 +330,39 @@
 ;;               to yield the bound variable
 ;;   BODY-XFORM = transformation to apply to BODY after it is evaluated
 ;;
-(define (c0-for env sym args where var-xform body-xform)
-  (define `var (first args))
-  (define `list (nth 2 args))
-  (define `body-index (words (rest where)))  ;; 3- or 4-arg form
-  (define `body (nth-rest body-index args))
+(define (c0-for env sym var list body where var-xform body-xform)
+  (foreach
+      depth (concat (current-depth env) ";")
 
-  (case var
-    ((PSymbol _ name)
-     (define `var-defn
-       (EIL (concat "." (current-depth env))
-            "p"
-            (var-xform (IArg (concat "=" name) ".."))))
-     (define `body-node
-       (body-xform (c0-block body (append { =name: var-defn } env))))
-     (if body
-         ;; list, delim, and body ok
-         (IBuiltin "foreach" [ (IString name) (c0 list env) body-node ])
-         ;; body (and maybe list and delim) missing
-         (err-expected "" nil sym
-                       (word (words (concat ". . " args)) (subst ")" "" where))
-                       where)))
-    (else
-     (err-expected "S" var sym "VAR" where))))
+      (case var
+        ((PSymbol _ name)
+         (define `var-defn
+           (EIL depth "p" (var-xform (for-arg depth))))
+         (define `body-node
+           (body-xform (c0-block body (append { =name: var-defn }
+                                              (for-env depth env)))))
+
+         (if body
+             ;; list, delim, and body ok
+             (for-node depth (c0 list env) body-node)
+             ;; body (and maybe list and delim) missing
+             (err-expected "" nil sym
+                           (if list "BODY" (filter "VEC LIST" where))
+                           where)))
+        (else
+         (err-expected "S" var sym "VAR" where)))))
+
+
+(define (c0-for-3 env sym args where var-xform body-xform)
+  (c0-for env sym (first args) (nth 2 args) (nth-rest 3 args)
+          where var-xform body-xform))
 
 
 ;; (foreach VAR LIST BODY) : Unlike in the Make builtin "foreach", VAR is a
 ;; symbol, not a quoted string.
 ;;
 (define (ml.special-foreach env sym args)
-  (c0-for env sym args "(foreach VAR LIST BODY)" identity identity))
+  (c0-for-3 env sym args "(foreach VAR LIST BODY)" identity identity))
 
 
 ;;--------------------------------
@@ -376,7 +372,7 @@
 ;; --> (foreach "&f" VEC (^d (let& ((VAR (^u &f))) BODY)))
 ;;
 (define (ml.special-for env sym args)
-  (c0-for env sym args "(for VAR VEC BODY)" il-promote il-demote))
+  (c0-for-3 env sym args "(for VAR VEC BODY)" il-promote il-demote))
 
 
 ;;--------------------------------
@@ -389,7 +385,7 @@
 ;;
 (define (ml.special-append-for env sym args)
   (define `for-value
-    (c0-for env sym args "(append-for VAR VEC BODY)" il-promote identity))
+    (c0-for-3 env sym args "(append-for VAR VEC BODY)" il-promote identity))
 
   (IBuiltin "filter" [ (IString "%") for-value ]))
 
@@ -410,14 +406,13 @@
 (define (il-spc-decode node)
   (il-subst "|1" "|" (il-subst "|0" " " node)))
 
+
 (define (ml.special-concat-for env sym args)
   (define `delim (nth 3 args))
-  (define `for-value
-    (c0-for env sym args concat-for-where il-promote identity))
 
   (define `(for-result value-xform)
-    (c0-for env sym args concat-for-where
-            il-promote value-xform))
+    (c0-for env sym (first args) (nth 2 args) (nth-rest 4 args)
+            concat-for-where il-promote value-xform))
 
   (or (case delim
         ((PString n value)
@@ -730,12 +725,12 @@
 
 ;; Compile a vector of (PATTERN BODY) cases
 ;;
-;; VALUE-NODE = IL record to use for the value in filter expressions
+;; FILTER-VALUE = IL record to use for the value in filter expressions
 ;; VALUE-DEFN = an environment entry that evaluates to the value
-;; IS-WORD = true when VALUE-NODE is an automatic variable containing
-;;     a demoted value
+;; IS-WORD = true when FILTER-VALUE is an automatic variable containing
+;;     (demote value); otherwise FILTER-VALUE is the actual value.
 ;;
-(define (c0-clauses cases value-node value-defn is-word env)
+(define (c0-clauses cases filter-value value-defn is-word env)
   (for
    c cases    ; c = `(PATTERN BODY)
    (case c
@@ -755,7 +750,7 @@
            (define `ctor-args (rest syms))
            (or
             (let ((defn (resolve ctor-name env))
-                  (value-node value-node)
+                  (filter-value filter-value)
                   (value-defn value-defn)
                   (ctor-args ctor-args)
                   (ctor-name ctor-name)
@@ -768,9 +763,9 @@
                     "filter"
                     (if is-word
                         [(IString [(concat tag " %")])
-                         (IConcat [value-node (IString "!0")])]
+                         (IConcat [filter-value (IString "!0")])]
                         [(IString tag)
-                         (IBuiltin "word" [(IString 1) value-node])])))
+                         (IBuiltin "word" [(IString 1) filter-value])])))
 
                  (define `bindings
                    (member-bindings ctor-args encs value-defn))
@@ -867,10 +862,9 @@
       clauses))
 
 
-(define (c0-case cases next-depth value value-defn sym env)
-  (define `filter-value (c0-macro "." ".." value sym))
-  (define `defn (or value-defn (EIL next-depth "p" value)))
-  (define `clauses (c0-clauses cases filter-value defn (if value-defn 1) env))
+(define (c0-case cases depth value value-defn sym env)
+  (define `defn (or value-defn (EIL depth "p" value)))
+  (define `clauses (c0-clauses cases value defn (if value-defn 1) env))
   (define `simple (case-fold (clauses-merge clauses)))
 
   (case value
@@ -880,27 +874,19 @@
     ;; Prevent multiple evaluation of a complex expression: wrap in
     ;; "(foreach X (to-word EXPR) ...)"
     (else
-     (define `arg-name
-       (auto-arg-name env))
-     (define `cw-filter-value
-       (IArg (concat "=" arg-name) "."))
-     (define `cw-value-defn
-       (EIL next-depth "p" (il-promote (IArg (concat "=" arg-name) ".."))))
-     (define `body
-       (c0-case cases next-depth cw-filter-value cw-value-defn sym
-                (append AutoMarker env)))
+     (define `f-depth (concat depth ";"))
+     (define `f-filter-value (for-arg f-depth))
+     (define `f-value-defn (EIL f-depth "p" (il-promote (for-arg f-depth))))
+     (define `f-body
+       (c0-case cases f-depth f-filter-value f-value-defn sym
+                (for-env f-depth env)))
 
-     (IBuiltin "foreach" [(IString arg-name) (il-demote filter-value) body]))))
+     (for-node f-depth (il-demote value) f-body))))
 
 
 (define (ml.special-case env sym args)
-  (define `value-form (first args))
-  (if value-form
-      (c0-case (rest args)
-               (concat "." (current-depth env))
-               (c0 value-form (sym-macro-env env (current-depth env)))
-               nil
-               sym
-               env)
+  (if args
+      (c0-case (rest args) (current-depth env) (c0 (first args) env)
+               nil sym env)
       ;; no value-form
-      (err-expected "" value-form sym "VALUE" case-where)))
+      (err-expected nil nil sym "VALUE" case-where)))

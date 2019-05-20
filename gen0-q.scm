@@ -67,36 +67,86 @@
 (expect (IArg 3 "...") (c0-local 3 "."  "..." nil))
 
 
-;; xlat
+;; translate
 
-(expect (xlat (IString "x") "." "." [] 9)
+(expect (translate (IString "x") "." "." [] 9)
         (IString "x"))
 ;; IWhere
-(expect (xlat (IWhere 2) "." "." [] 9)
+(expect (translate (IWhere 2) "." "." [] 9)
         (IWhere 9))
+
 ;; symbol macro with capture
-(expect (xlat (IArg 2 "..") ".." ".." [] 9)
+(expect (translate (IArg 2 ".") "." "..." [] 9)
         (IArg 2 "..."))
-;; macro argument
-(expect (xlat (IArg 2 ".") ".." "." [(IString "a") (IString "b")] 9)
-        (IString "b"))
-;; macro "rest" argument
-(expect (xlat (IArg "1+" ".") ".." "." [(IString "a") (IString "b")] 9)
-        (il-vector [(IString "a") (IString "b")]))
-;; interior arg
-(expect (xlat (ILambda (IArg 2 ".")) ".." "." [(IString "x")] 9)
+;; symbol macro with interior arg
+(expect (translate (ILambda (IArg 2 ".")) "." "..." [] 9)
         (ILambda (IArg 2 ".")))
-;; interior arg (macro as value)
-(expect (xlat (IArg 2 ".") ".." ".." nil 9)
+;; symbol macro with auto arg
+(expect (translate (IArg ";" ".") ";" ";" [] 9)
+        (IArg ";" "."))
+
+
+;; compound macro with capture
+(expect (translate (IArg 2 "..") ".." "..." [(IString "a")] 9)
+        (IArg 2 "..."))
+(expect (translate (IArg 2 "..") ".." "." [(IString "a")] 9)
         (IArg 2 "."))
-;; macro argument w/ capture
-(expect (xlat (IArg 1 ".") ".." "" [(IArg 2 ".")] 9)
+;; compound macro with auto capture
+(expect (translate (IArg ";" "..") ".." ".;" [(IString 1)] 9)
+        (IArg ";" "."))
+
+(expect (translate (IArg 2 "..") ".." ".;;" [(IString "a")] 9)
         (IArg 2 "."))
-(expect (xlat (ILambda (IArg 1 "..")) ".." "." [(IArg 2 ".")] 9)
-        (ILambda (IArg 2 "..")))
-;; macro argument w/ interior arg
-(expect (xlat (ILambda (IArg 1 "..")) ".." ".." [(ILambda (IArg 1 "."))] 9)
-        (ILambda (ILambda (IArg 1 "."))))
+;; compound macro with interior arg
+(expect (translate (ILambda (IArg 2 ".")) ".." "..." [(IString "x")] 9)
+        (ILambda (IArg 2 ".")))
+;; compound macro with argument
+(expect (translate (IArg 2 ".") ".." "..." [(IString "a") (IString "b")] 9)
+        (IString "b"))
+
+;; compound macro with "rest" argument
+(expect (translate (IArg "1+" ".") ".." "..." [(IString "a") (IString "b")] 9)
+        (il-vector [(IString "a") (IString "b")]))
+
+;; macro argument w/ lambda capture
+(foreach
+    to-depth ". .. ..."
+    (expect (translate (IArg 1 ".") ".." to-depth [(IArg 2 ".")] 9)
+            (IArg 2 "."))
+    (expect (translate (ILambda (IArg 1 "..")) ".." to-depth [(IArg 2 ".")] 9)
+            (ILambda (IArg 2 "..")))
+    ;; macro argument w/ interior arg
+    (expect (translate (ILambda (IArg 1 "..")) ".." to-depth
+                       [(ILambda (IArg 1 "."))] 9)
+            (ILambda (ILambda (IArg 1 ".")))))
+
+;; symbol macro with auto vars & old-ad
+(expect (translate (IFor ";;" (IArg ";" ".") (IArg ";;" "."))
+                   "..;" "...;;" nil 9)
+        (IFor ";;;" (IArg ";" "..") (IArg ";;;" ".")))
+(expect (translate (IFor ";;;" (IArg ";" ".") (IConcat [(IArg ";;" ".")
+                                                        (IArg ";;;" ".")]))
+                   "..;;" "..." nil 9)
+        (IFor ";" (IArg ";" "..") (IConcat [(IArg ";;" "..")
+                                            (IArg ";" ".")])))
+
+;; macro argument w/ interior auto; AD != OLD-AD
+(expect (translate (IFor ";" (IArg ";" "..")
+                         (IConcat [(IArg 1 ".")
+                                   (IArg 2 ".")
+                                   (ILambda (IArg 1 ".."))
+                                   (ILambda (IArg 2 ".."))
+                                   (IArg ";" ".")]))
+                   ".." "...;;"
+                   [(IArg ";;" ".")
+                    (IFor ";;;" (IArg ";;" ".") (IArg ";;;" "."))
+                    ] 9)
+        (IFor ";;;" (IArg ";" "...")
+              (IConcat [(IArg ";;" ".")
+                        (IFor ";;;;" (IArg ";;" ".") (IArg ";;;;" "."))
+                        (ILambda (IArg ";;" ".."))
+                        (ILambda (IFor ";" (IArg ";;" "..") (IArg ";" ".")))
+                        (IArg ";;;" ".")])))
 
 
 ;;--------------------------------
@@ -193,25 +243,36 @@
 
 ;; local variable
 (expect (c0 (PSymbol 9 "a") (append {a: (ELocal 1 ".")}
-                                    (lambda-marker ".")))
+                                    (depth-marker ".")))
         (IArg 1 "."))
 
 (expect (c0 (PSymbol 9 "a") (append {a: (ELocal 1 ".")}
-                                    (lambda-marker "..")))
+                                    (depth-marker "..")))
         (IArg 1 ".."))
+
+(expect (c0 (PSymbol 9 "a") (append {a: (ELocal ";" nil)}
+                                    (depth-marker ";")))
+        (IArg ";" "."))
+
 
 ;; compound macro [and see macro round-trip tests, below]
 
+
+;; (lambda (x)
+;;   (define `(cm a _ c)
+;;      (concat a x (lambda (z) z)))
+;;   cm)
+;;
 (define `cm
   (IConcat [(IArg 1 ".")                  ;; macro arg
             (IArg 2 "..")                 ;; capture
             (ILambda (IArg 3 "."))]))     ;; internal arg
 
-(expect (c0 (PSymbol 9 "m") (append {m: (EMacro "." "p" 1 cm)}
-                                    (lambda-marker "..")))
+(expect (c0 (PSymbol 9 "m") (append {m: (EMacro ".." "p" 1 cm)}
+                                    (depth-marker ".")))
         (ILambda
          (IConcat [(IArg 1 ".")
-                   (IArg 2 "...")
+                   (IArg 2 "..")
                    (ILambda (IArg 3 "."))])))
 
 
@@ -258,16 +319,26 @@
         "1")
 
 ;; (lambda (x y) (define `(f a) (concat a y)) *(f 7)* )    [capture]
-(expect (c0-ser "(f 7)" (append {f: (EMacro "." "p" 1
-                                          (IConcat [(IArg 1 ".")
-                                                    (IArg 2 "..")]))}
-                              (lambda-marker ".")))
+(expect (c0-ser "(f 7)" (append {f: (EMacro ".." "p" 1
+                                            (IConcat [(IArg 1 ".")
+                                                      (IArg 2 "..")]))}
+                                (depth-marker ".")))
         "7{2}")
 
 ;; (define `(f) (lambda (x) x)) *(f)*
 (expect (c0-ser "(f)" { f: (EMacro "." "p" 0 (ILambda (IArg 1 "."))) })
         "`{1}")
 
+
+;; macro defined in ".;;" and expanded at ".;;" with an arg (IArg ";;" ".")
+
+;; (lambda (_)
+;;   (foreach a XXX
+;;      (define `(cm x) a)
+;;      (cm 1)))
+(expect (c0-ser "(cm 1)" (append { cm: (EMacro ".." "p" 1 (IArg ";" "..")) }
+                                 (depth-marker ".;")))
+        "{;}")
 
 ;; PList = (<builtin> ...)
 
@@ -291,7 +362,8 @@
 
 ;; PList = (arg ...)
 
-(expect (c0-ser "(var 7)" { var: (ELocal 1 ".") })
+(expect (c0-ser "(var 7)" (append (depth-marker ".")
+                                  { var: (ELocal 1 ".") }))
         "(^Y {1},7)")
 
 
@@ -379,21 +451,21 @@
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (words a))")
-        {M: (EMacro "" "p" 1 (IBuiltin "words" [(IArg 1 ".")]))})
+        {M: (EMacro "." "p" 1 (IBuiltin "words" [(IArg 1 ".")]))})
 
 (expect (text-to-env "(define `(M a) &public (words a))")
-        {M: (EMacro "" "x" 1 (IBuiltin "words" [(IArg 1 ".")]))})
+        {M: (EMacro "." "x" 1 (IBuiltin "words" [(IArg 1 ".")]))})
 
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)"
                      {x: (EVar "x" "")})
-        { I: (EIL "." "p" (IString 7)),
+        { I: (EIL "" "p" (IString 7)),
           x: (EVar "x" "") })
 
 (expect (text-to-env "(define `I &public 7)"
                      {x: (EVar "x" "")})
-        { I: (EIL "." "x" (IString 7)),
+        { I: (EIL "" "x" (IString 7)),
           x: (EVar "x" "") })
 
 ;; (define ...) errors

@@ -29,12 +29,29 @@
 ;; the target VM, GNU Make 3.81, wherein all values (including functions)
 ;; are strings.  A `nil` value in IL represents an empty string.
 ;;
-;; IArg: References a local variable -- a positional argument NDX (1...N) to
-;;     some parent lambda, or "=AUTO" where AUTO is an automatic (foreach)
-;;     variable.  UPS is a de Bruijn index in string form: "." for the
-;;     enclosing lambda, ".." for its parent, and so on.
+;; IArg: References a local variable -- a lambda argument of automatic
+;;     (foreach) variable.  UPS is a de Bruijn index in string form: "."
+;;     refers to an argument of the current (nearest enclosing) function or
+;;     an automatic variable bound in the current function; ".." refers to
+;;     locals in the parent function, and so on.
+;;
+;;     If the local variable is a function argument, NAME is a positional
+;;     argument index (decimal), which may be followed by "+" (in which case
+;;     the IArg denotes a vector of all arguments beginning at the
+;;     positional index).
+;;
+;;     If the local is a foreach iterator, NAME is one or more ";"
+;;     characters.  The top-most foreach within a lambda is assigned the
+;;     name ";", a nested foreach (within the same lambda) is assigned ";;",
+;;     and so on.
+;;
+;; ILambda: An anonymous function whose body is NODE, an IL record.
 ;;
 ;; IFuncall: Calls an anonymous function with a vector of arguments.
+;;
+;; IFor: A GNU Make `foreach` sstatement, where NAME is the automatic
+;;     variable name (";", ";;", ";;;", depending on nesting level within
+;;     the current lambda).  LIST and BODY are IL records.
 ;;
 ;; IBlock: An IBlock is a sequences of expressions, as in a `begin`
 ;;     expression or a function body.  All code within a block is executed,
@@ -62,8 +79,9 @@
 (data IL
   &public
   (IArg     &word ndx  &word ups)       ; "$(ndx)"
+  (ILambda  node)                       ; (lambda-quote (c1 NODE))
   (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
-  (ILambda  node)                       ; (lambda-quote (c1 node))
+  (IFor     &word name list &list body) ; "$(foreach NAME,LIST,BODY)"
   (IString  value)                      ; "value"
   (IVar     &word name)                 ; "$(name)"
   (IBuiltin &word name  &list nodes)    ; "$(name NODES...)"
@@ -80,28 +98,33 @@
 ;;
 ;; The environment is a stack of bindings: a dictionary with newer
 ;; (lexically closer) bindings toward the beginning.  When used as a
-;; dictionary, it maps a symbol name to its in-scope *definition*.  Each
-;; definition is a vector in one of the following formats:
-;;
-;; NAME = the actual (global) name of the function/variable or builtin.
+;; dictionary, it maps a symbol name to its in-scope *definition*.
 ;;
 ;; SCOPE describes the scope and origin of top-level bindings:
-;;
 ;;     "i" => defn was imported
 ;;     "p" => defn is private
 ;;     "x" => public (exported)
 ;;
+;; NAME = the actual (global) name of the function/variable or builtin
+;;     function.  In the case of ELocal, NAME is as defined for IVar.
+;;
 ;; ARITY = how many arguments are required by the function, in the form of a
 ;;    list of valid argument counts, or `N+` for "N or more".
 ;;
-;; DEPTH = Lambda nesting depth (absolute); see current-depth.  For ELocal:
-;;    the depth at which the variable is bound.  For EMacro and EIL: the
-;;    depth that is the basis for resolving UPS for IArg record within IL.
-;;    See c0-macro for more.
+;; DEPTH = (concat LDEPTH ADEPTH).  For EMacro and EIL, this describes
+;;     the context of the associated IL node.
+;;
+;; LDEPTH = the number of lambdas enclosing the IL node, encoded as one "."
+;;     for each lambda.  For ELocal records, LDEPTH refers to the top-most
+;;     context in which the variables are visible.  LDEPTH=`nil` refers to
+;;     auto variables bound outside any lambda, LDEPTH="." refers to
+;;     arguments of a top-level lambda or auto variables bound in a
+;;     top-level lambda, and so on.
+;;
+;; ADEPTH = the number of enclosing `foreach` constructs in the current
+;;     (lowest) enclosing lambda: one ";" for each `foreach`.
 ;;
 ;; IL = the macro definition, an IL record.
-;;
-;; ARGN = argument index: 1, 2, ... .
 ;;
 ;; EMarker values embed contextual data other than variable bindings.  They
 ;; use keys that begin with ":" to distinguish them from variable names.
@@ -115,7 +138,7 @@
   (EXMacro  name &word scope)                  ;; executable macro
   (ERecord  encs &word scope tag)              ;; data record type
   (EBuiltin name &word scope arity)            ;; builtin function
-  (ELocal   &word argn &word depth)            ;; function argument
+  (ELocal   &word name &word ldepth)           ;; function argument
   (EMarker  &word data))                       ;; marker
 
 
@@ -124,15 +147,16 @@
   (word 3 defn))
 
 
-;; The current function nesting level: ".", "..", "...", and so on.
-(define `LambdaMarkerKey
-  &public
+;; Not a legal symbol name; this key is used to distinguish EMarker records
+;; used to convey current lambda recursion depth.
+;;
+(define `DepthMarkerKey
   ":")
 
 
-(define `(lambda-marker depth)
+(define `(depth-marker depth)
   &public
-  { =LambdaMarkerKey: (EMarker depth) })
+  { =DepthMarkerKey: (EMarker depth) })
 
 
 ;; Merge consecutive (IString ...) nodes into one node.  Retain all other
@@ -231,21 +255,29 @@
       name))
 
 
-;; Return current lambda nesting depth.
+;; Return current nesting depth as indicated in the current environment.
 ;;
-;; Depth values use a unary counting system:
-;;     ""   = top-level
-;;     "."  = within a function
-;;     ".." = within a function within a function
-;;
-;; The current level is indicated by a marker record in ENV.  When compiling
-;; the body of a lambda, a new marker is added to increment the depth.
+;; Result = (concat LDEPTH ADEPTH) as described for EDefn records.
 ;;
 (define (current-depth env)
   &public
-  (let ((defn (dict-get LambdaMarkerKey env)))
+  (let ((defn (dict-get DepthMarkerKey env)))
     (case defn
       ((EMarker depth) depth))))
+
+
+;; Return ADEPTH given DEPTH
+;;
+(define `(depth.a depth)
+  &public
+  (subst "." nil depth))
+
+
+;; Return LDEPTH given DEPTH
+;;
+(define `(depth.l depth)
+  &public
+  (subst ";" nil depth))
 
 
 ;; Generate a unique symbol derived from symbol BASE.  Returns new symbol.
