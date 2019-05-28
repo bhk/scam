@@ -294,22 +294,22 @@
     ((ELocal argn depth)
      (c0-local argn depth (depth.l (current-depth env)) sym))
 
-    ((EVar gname _)
+    ((EVar _ gname)
      (IVar gname))
 
-    ((EMacro depth _ _ il)
+    ((EMacro _ depth _ il)
      (c0-macro depth il env sym))
 
-    ((EFunc gname _ _)
+    ((EFunc _ gname _)
      (IBuiltin "value" [(IString gname)]))
 
-    ((EIL depth _ il)
+    ((EIL _ depth il)
      (translate il depth (current-depth env) nil (form-index sym)))
 
-    ((ERecord encs _ tag)
+    ((ERecord _ encs tag)
      (c0-ctor env sym encs))
 
-    ((EBuiltin name _ arity)
+    ((EBuiltin _ name arity)
      (c0-builtin env name arity))
 
     (else (c0-S-error sym defn))))
@@ -458,27 +458,27 @@
   (define `symname (symbol-name sym))
 
   (case defn
-    ((EFunc realname _ arity)
+    ((EFunc _ realname arity)
      (or (check-arity arity args sym)
          (ICall realname (c0-vec args env))))
 
-    ((EMacro depth _ arity il)
+    ((EMacro _ depth arity il)
      (or (check-arity arity args sym)
          (translate il depth (current-depth env)
                     (or (c0-vec args env)
                         [(IString "")])  ;; ensure ARGS is non-nil
                     (form-index sym))))
 
-    ((EBuiltin realname _ arity)
+    ((EBuiltin _ realname arity)
      (or (check-arity arity args sym)
          (IBuiltin realname (c0-vec args env))))
 
-    ((EXMacro name scope)
+    ((EXMacro scope name)
      (if (eq? scope "x")
          (gen-error sym "cannot use xmacro in its own file")
          (c0 (call name args) env)))
 
-    ((ERecord encodings _ tag)
+    ((ERecord _ encodings tag)
      (c0-record env sym args encodings tag))
 
     (else
@@ -613,8 +613,8 @@
 
         (define `env-out
           { =name: (if is-macro
-                       (EIL depth scope value)
-                       (EVar gname scope)) })
+                       (EIL scope depth value)
+                       (EVar scope gname)) })
 
         (or (il-error-node value)
             (IEnv env-out
@@ -639,7 +639,7 @@
   (define `body-env
     (if is-macro
         env
-        (append { =name: (EFunc gname scope arity) } env)))
+        (append { =name: (EFunc scope gname arity) } env)))
 
   (or (c0-check-body n (first body) is-define)
 
@@ -655,9 +655,9 @@
 
         (define `defn
           (if is-macro
-              (EMacro body-depth scope arity
+              (EMacro scope body-depth arity
                       (case body-il ((ILambda node) node)))
-              (EFunc gname scope arity)))
+              (EFunc scope gname arity)))
 
         (or (il-error-node body-il)
             (IEnv {=name: defn}

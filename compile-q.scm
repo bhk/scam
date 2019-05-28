@@ -24,8 +24,8 @@
 
 ;; A has no imported bindings
 (define mod-A-env
-  { g: (EFunc "F" "x" 1),
-    q: (EFunc "Q" "p" 1) })
+  { g: (EFunc "x" "F" 1),
+    q: (EFunc "p" "Q" 1) })
 
 ;; env-compress
 
@@ -49,31 +49,31 @@
              all))
 
 (define e1
-  { f: (EFunc "f" "x" 2),
-       x: (EVar "X" "x"),
-       g: (EFunc "g" "p" 1),  ;; private
-       g: (EFunc "g" "i" 1),  ;; imported, shadowed
-       z: (EFunc "z" "i" 1),  ;; imported
-       m: (EIL "" "x" nil),
-       "a:n\n,x": (EVar "xyz" "x") })
+  { f: (EFunc "x" "f" 2),
+       x: (EVar "x" "X"),
+       g: (EFunc "p" "g" 1),  ;; private
+       g: (EFunc "i" "g" 1),  ;; imported, shadowed
+       z: (EFunc "i" "z" 1),  ;; imported
+       m: (EIL "x" "" nil),
+       "a:n\n,x": (EVar "x" "xyz") })
 
 ;; import public members
 (fexpect (export-round-trip e1 nil)
-         { f: (EFunc "f" "i" 2),
-           x: (EVar "X" "i"),
-           m: (EIL "" "i" nil),
-           "a:n\n,x": (EVar "xyz" "i")})
+         { f: (EFunc "i" "f" 2),
+           x: (EVar "i" "X"),
+           m: (EIL "i" "" nil),
+           "a:n\n,x": (EVar "i" "xyz")})
 
 ;; import public AND private members
 ;;   Only ony definition for `g` is retained because the dictionary is compacted.
 ;;   Public members preceded private members.
 ;;   All entries are marked scope="i"
 (fexpect (export-round-trip e1 1)
-         { f: (EFunc "f" "i" 2),
-           x: (EVar "X" "i"),
-           m: (EIL "" "i" nil),
-           "a:n\n,x": (EVar "xyz" "i"),
-           g: (EFunc "g" "i" 1)})
+         { f: (EFunc "i" "f" 2),
+           x: (EVar "i" "X"),
+           m: (EIL "i" "" nil),
+           "a:n\n,x": (EVar "i" "xyz"),
+           g: (EFunc "i" "g" 1)})
 
 
 ;;--------------------------------------------------------------
@@ -153,7 +153,7 @@
 
 (define (mock-get-module name base private)
   (ModSuccess (subst ".scm" "" name)
-              {f: (EVar "f" "i")}))
+              {f: (EVar "i" "f")}))
 
 (let-global ((get-module mock-get-module))
   ;; get-module success
@@ -170,13 +170,13 @@
   (expect "" (dict-get "errors" o))
   (expect "a := 1\n" (dict-get "code" o))
   (expect (dict-get "a" (dict-get "env" o))
-          (EVar "a" "p")))
+          (EVar "p" "a")))
 
 ;; for eval
 (let ((o (parse-and-gen "(define a &native 1)" "" "(test)" "")))
   (expect "" (dict-get "errors" o))
   (expect "$(call ^set,a,1)" (dict-get "code" o))
-  (expect { a: (EVar "a" "p") }
+  (expect { a: (EVar "p" "a") }
           (dict-get "env" o)))
 
 

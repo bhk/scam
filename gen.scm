@@ -131,20 +131,25 @@
 
 (data EDefn
   &public
-  (EVar     name &word scope)                  ;; simple global variable
-  (EFunc    name &word scope arity)            ;; recursive global variable
-  (EMacro   depth &word scope arity &list il)  ;; compound macro
-  (EIL      depth &word scope &list il)        ;; symbol macro
-  (EXMacro  name &word scope)                  ;; executable macro
-  (ERecord  encs &word scope tag)              ;; data record type
-  (EBuiltin name &word scope arity)            ;; builtin function
+  (EVar     &word scope name)                  ;; simple global variable
+  (EFunc    &word scope name arity)            ;; recursive global variable
+  (EMacro   &word scope depth arity &list il)  ;; compound macro
+  (EIL      &word scope depth &list il)        ;; symbol macro
+  (EXMacro  &word scope name)                  ;; executable macro
+  (ERecord  &word scope encs tag)              ;; data record type
+  (EBuiltin &word scope name arity)            ;; builtin function
   (ELocal   &word name &word ldepth)           ;; function argument
   (EMarker  &word data))                       ;; marker
 
 
 (define `(EDefn.scope defn)
   &public
-  (word 3 defn))
+  (word 2 defn))
+
+
+(define `(EDefn.set-scope rec scope)
+  &public
+  (concat (word 1 rec) " " scope " " (nth-rest 3 rec)))
 
 
 ;; Not a legal symbol name; this key is used to distinguish EMarker records
@@ -364,19 +369,19 @@
 (define base-env
   (append
    (foreach b builtins-1
-            { =b: (EBuiltin (subst "." nil b) "i" 1) })
+            { =b: (EBuiltin "i" (subst "." nil b) 1) })
    (foreach b builtins-2
-            { =b: (EBuiltin b "i" 2) })
+            { =b: (EBuiltin "i" b 2) })
    (foreach b builtins-3
-            { =b: (EBuiltin (subst "." nil b) "i" 3)})
+            { =b: (EBuiltin "i" (subst "." nil b) 3)})
    (foreach b "and or call"
-            { =b: (EBuiltin b "i" "0+") })
-   {if: (EBuiltin "if" "i" "2 3")}
+            { =b: (EBuiltin "i" b "0+") })
+   {if: (EBuiltin "i" "if" "2 3")}
 
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
    (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
-            { =v: (EVar v "i") })))
+            { =v: (EVar "i" v) })))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.

@@ -119,8 +119,8 @@
     (case sym
       ((PSymbol pos var-name)
        (case binding
-         ((EVar name _) (il-set "^set" name))
-         ((EFunc name _ _) (il-set "^fset" name))
+         ((EVar _ name) (il-set "^set" name))
+         ((EFunc _ name _) (il-set "^fset" name))
          (else
           (gen-error sym "`%s` is not a global variable" (symbol-name sym)))))
       (else
@@ -161,8 +161,8 @@
            (define `(trace ctor name)
              (ctor "^t" (cons (IString name) (c0-vec func-args env))))
            (case defn
-             ((EFunc name _ _) (trace ICall name))
-             ((EBuiltin name _ _) (trace IBuiltin name)))))
+             ((EFunc _ name _) (trace ICall name))
+             ((EBuiltin _ name _) (trace IBuiltin name)))))
 
      (if defn
          (gen-error func "FUNC in (? FUNC ...) is not traceable")
@@ -291,7 +291,7 @@
   (define `p-binding
     (case (first p)
       ((PSymbol _ name)
-       { =name: (EIL (current-depth env) "p" (c0 (nth 2 p) env)) })))
+       { =name: (EIL "p" (current-depth env) (c0 (nth 2 p) env)) })))
 
   (if pairs
       (let&-env (rest pairs) (append p-binding env))
@@ -337,7 +337,7 @@
       (case var
         ((PSymbol _ name)
          (define `var-defn
-           (EIL depth "p" (var-xform (for-arg depth))))
+           (EIL "p" depth (var-xform (for-arg depth))))
          (define `body-node
            (body-xform (c0-block body (append { =name: var-defn }
                                               (for-env depth env)))))
@@ -483,9 +483,9 @@
 
 (define (defn-native-name defn)
   (case defn
-    ((EFunc name _ _) name)
-    ((EVar name _) name)
-    ((EBuiltin name _ _) name)))
+    ((EFunc _ name _) name)
+    ((EVar _ name) name)
+    ((EBuiltin _ name _) name)))
 
 (define (ml.special-native-name env sym args)
   (define `var (first args))
@@ -520,7 +520,7 @@
         ;; compile as a function
         (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
                         env))
-              (new-env { =name: (EXMacro (gen-native-name name env) "x") }))
+              (new-env { =name: (EXMacro "x" (gen-native-name name env)) }))
           (IEnv new-env
                 ;; discard the env entries returned by `define`
                 (case node
@@ -679,7 +679,7 @@
         (append-for ty types
                     (case ty
                       ((DataType tag name encodings argnames)
-                       { =name: (ERecord encodings scope tag) }))))
+                       { =name: (ERecord scope encodings tag) }))))
 
       ;; Add tag/pattern bindings to ^tags
       (define `node
@@ -708,8 +708,8 @@
 (define `(extract-member defn ndx encoding)
   (define `il-ndx (IString (1+ ndx)))
   (case defn
-    ((EIL depth scope node)
-     (EIL depth scope
+    ((EIL scope depth node)
+     (EIL scope depth
           (cond
            ((eq? "S" encoding) (ICall "^n" [il-ndx node]))
            ((eq? "W" encoding) (IBuiltin "word" [il-ndx node]))
@@ -756,7 +756,7 @@
                   (ctor-name ctor-name)
                   (body body))
               (case defn
-                ((ERecord encs _ tag)
+                ((ERecord _ encs tag)
 
                  (define `test-node
                    (IBuiltin
@@ -863,7 +863,7 @@
 
 
 (define (c0-case cases depth value value-defn sym env)
-  (define `defn (or value-defn (EIL depth "p" value)))
+  (define `defn (or value-defn (EIL "p" depth value)))
   (define `clauses (c0-clauses cases value defn (if value-defn 1) env))
   (define `simple (case-fold (clauses-merge clauses)))
 
@@ -876,7 +876,7 @@
     (else
      (define `f-depth (concat depth ";"))
      (define `f-filter-value (for-arg f-depth))
-     (define `f-value-defn (EIL f-depth "p" (il-promote (for-arg f-depth))))
+     (define `f-value-defn (EIL "p" f-depth (il-promote (for-arg f-depth))))
      (define `f-body
        (c0-case cases f-depth f-filter-value f-value-defn sym
                 (for-env f-depth env)))

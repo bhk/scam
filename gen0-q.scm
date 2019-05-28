@@ -184,10 +184,10 @@
 ;;--------------------------------
 
 (define (cqq text)
-  (c0-ser text { sym: (EIL "" "p" (IString "SYM")),
-                 var: (EVar "VAR" "."),
+  (c0-ser text { sym: (EIL "p" "" (IString "SYM")),
+                 var: (EVar "p" "VAR"),
                  ;; args = [`a `b]
-                 args: (EIL "" "p" (IString [(PSymbol 1 "a")
+                 args: (EIL "p" "" (IString [(PSymbol 1 "a")
                                              (PSymbol 2 "b")])) }))
 
 (expect (c0 (p1 "`x") nil) (IString (p1 " x")))
@@ -230,11 +230,11 @@
 ;;--------------------------------
 
 ;; global data variable
-(expect (c0 (PSymbol 9 "d") {d: (EVar "~d" "p")})
+(expect (c0 (PSymbol 9 "d") {d: (EVar "p" "~d")})
         (IVar "~d") )
 
 ;; global function variable
-(expect (c0 (PSymbol 9 "f") {f: (EFunc "~f" "p" 1)})
+(expect (c0 (PSymbol 9 "f") {f: (EFunc "p" "~f" 1)})
         (IBuiltin "value" [(IString "~f")]))
 
 ;; undefined
@@ -268,7 +268,7 @@
             (IArg 2 "..")                 ;; capture
             (ILambda (IArg 3 "."))]))     ;; internal arg
 
-(expect (c0 (PSymbol 9 "m") (append {m: (EMacro ".." "p" 1 cm)}
+(expect (c0 (PSymbol 9 "m") (append {m: (EMacro "p" ".." 1 cm)}
                                     (depth-marker ".")))
         (ILambda
          (IConcat [(IArg 1 ".")
@@ -277,7 +277,7 @@
 
 
 ;; builtin
-(expect (c0 (PSymbol 9 "a") {a: (EBuiltin "words" "p" 1)})
+(expect (c0 (PSymbol 9 "a") {a: (EBuiltin "p" "words" 1)})
         (ILambda (IBuiltin "words" [ (IArg 1 ".") ])))
 
 ;; vararg builtins
@@ -315,18 +315,18 @@
 ;; PList = (macro ...)
 
 ;; (define `(f a) a) *(f 1)*
-(expect (c0-ser "(f 1)" (append {f: (EMacro "." "p" 1 (IArg 1 "."))}))
+(expect (c0-ser "(f 1)" (append {f: (EMacro "p" "." 1 (IArg 1 "."))}))
         "1")
 
 ;; (lambda (x y) (define `(f a) (concat a y)) *(f 7)* )    [capture]
-(expect (c0-ser "(f 7)" (append {f: (EMacro ".." "p" 1
+(expect (c0-ser "(f 7)" (append {f: (EMacro "p" ".." 1
                                             (IConcat [(IArg 1 ".")
                                                       (IArg 2 "..")]))}
                                 (depth-marker ".")))
         "7{2}")
 
 ;; (define `(f) (lambda (x) x)) *(f)*
-(expect (c0-ser "(f)" { f: (EMacro "." "p" 0 (ILambda (IArg 1 "."))) })
+(expect (c0-ser "(f)" { f: (EMacro "p" "." 0 (ILambda (IArg 1 "."))) })
         "`{1}")
 
 
@@ -336,7 +336,7 @@
 ;;   (foreach a XXX
 ;;      (define `(cm x) a)
 ;;      (cm 1)))
-(expect (c0-ser "(cm 1)" (append { cm: (EMacro ".." "p" 1 (IArg ";" "..")) }
+(expect (c0-ser "(cm 1)" (append { cm: (EMacro "p" ".." 1 (IArg ";" "..")) }
                                  (depth-marker ".;")))
         "{;}")
 
@@ -373,7 +373,7 @@
   (define (test-xmacro form)
     (PString 1 "hi"))
   (define `test-xm-env
-    { var: (EXMacro (native-name test-xmacro) "i")})
+    { var: (EXMacro "i" (native-name test-xmacro))})
 
   (expect (c0-ser "(var 7)" test-xm-env)
           "hi"))
@@ -415,15 +415,15 @@
 ;;--------------------------------
 
 (expect (text-to-env "(declare var)")
-        { var: (EVar (gen-native-name "var" nil) "p") })
+        { var: (EVar "p" (gen-native-name "var" nil)) })
 (expect (text-to-env "(declare var &public)")
-        { var: (EVar (gen-native-name "var" nil) "x") })
+        { var: (EVar "x" (gen-native-name "var" nil)) })
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        { fn: (EFunc (gen-native-name "fn" nil) "p" 2) })
+        { fn: (EFunc "p" (gen-native-name "fn" nil) 2) })
 (expect (text-to-env "(declare (fn a b) &public)")
-        { fn: (EFunc (gen-native-name "fn" nil) "x" 2) })
+        { fn: (EFunc "x" (gen-native-name "fn" nil) 2) })
 
 ;; declare errors
 (expect (c0-ser "(declare)")
@@ -438,7 +438,7 @@
 (p1-block-cc
  "(define x 1) (info x)"
  (lambda (env sil)
-   (expect env { x: (EVar (xns "~x") "p") })
+   (expect env { x: (EVar "p" (xns "~x")) })
    (expect sil (xns "(IBlock (^set ~x,1),(.info {~x}))"))))
 
 
@@ -447,26 +447,26 @@
         (xns "(^fset ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
-        (xns { f: (EFunc "~f" "p" 1) }))
+        (xns { f: (EFunc "p" "~f" 1) }))
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (words a))")
-        {M: (EMacro "." "p" 1 (IBuiltin "words" [(IArg 1 ".")]))})
+        {M: (EMacro "p" "." 1 (IBuiltin "words" [(IArg 1 ".")]))})
 
 (expect (text-to-env "(define `(M a) &public (words a))")
-        {M: (EMacro "." "x" 1 (IBuiltin "words" [(IArg 1 ".")]))})
+        {M: (EMacro "x" "." 1 (IBuiltin "words" [(IArg 1 ".")]))})
 
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)"
-                     {x: (EVar "x" "")})
-        { I: (EIL "" "p" (IString 7)),
-          x: (EVar "x" "") })
+                     {x: (EVar "p" "x")})
+        { I: (EIL "p" "" (IString 7)),
+          x: (EVar "p" "x") })
 
 (expect (text-to-env "(define `I &public 7)"
-                     {x: (EVar "x" "")})
-        { I: (EIL "" "x" (IString 7)),
-          x: (EVar "x" "") })
+                     {x: (EVar "p" "x")})
+        { I: (EIL "x" "" (IString 7)),
+          x: (EVar "p" "x") })
 
 ;; (define ...) errors
 
@@ -536,12 +536,12 @@
 ;;--------------------------------
 
 (expect (il-ser
-         (c0-ctor {Ctor: (ERecord "S L" "." "!:T0")}
+         (c0-ctor {Ctor: (ERecord "p" "S L" "!:T0")}
                   (PSymbol 0 "Ctor")
                   "S L"))
         "`!:T0 (^d {1}) {2}")
 
-(expect (c0-ser "C" {C: (ERecord "S W L" "." "!:T0")})
+(expect (c0-ser "C" {C: (ERecord "p" "S W L" "!:T0")})
         "`!:T0 (^d {1}) {2} {3}")
 
 
@@ -549,7 +549,7 @@
 ;; gen0
 ;;--------------------------------
 
-(expect [ {A: (EVar "'A" "p")}
+(expect [ {A: (EVar "p" "'A")}
           (ICall "^set" [(IString "'A") (IString "1")])
           (IVar "'A") ]
         (let-global ((*is-boot* nil))

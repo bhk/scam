@@ -208,17 +208,12 @@
                                        "%" lines))))))
 
 
-(define (export-defn name rec)
-  (define `(EDefn.set-scope rec scope)
-    (append (wordlist 1 2 rec) scope (nth-rest 4 rec)))
-
-  (concat (EDefn.scope rec) ":"
-          {=name: (EDefn.set-scope rec "i")}))
-
-
 ;; Generate two comment lines that describe public and private bindings.
 ;;
 (define `(env-export-lines env)
+  (define `(export-defn name rec)
+    (concat (EDefn.scope rec) ":" {=name: (EDefn.set-scope rec "i")}))
+
   ;; Prefix each entry with its scope (e.g. "x:..." or "p:...")
   ;; and replace the scope with "i".
   (define `(prefix-entries e)
@@ -229,6 +224,7 @@
   (let ((e (prefix-entries env)))
     (concat "# Exports: " (env-compress (filtersub "x:%" "%" e)) "\n"
             "# Private: " (env-compress (filtersub "p:%" "%" e)) "\n")))
+
 
 ;;--------------------------------------------------------------
 ;; Module management

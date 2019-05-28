@@ -56,7 +56,7 @@
 (expect (gensym (PSymbol 0 "foo") nil)
         (PSymbol 0 "foo&"))
 (expect (gensym (PSymbol 0 "foo")
-                {(symbol-name (gensym (PSymbol 0 "foo") nil)): (EVar "x" ".")})
+                {(symbol-name (gensym (PSymbol 0 "foo") nil)): (EVar "p" "x")})
         (PSymbol 0 "foo&1"))
 
 ;; gen-error
@@ -81,5 +81,5 @@
 
 ;; base-env and resolve
 
-(expect (resolve (PSymbol 0 "d!0!") { "d!0!": (EVar "D!0!" nil)})
-        (EVar "D!0!" nil))
+(expect (resolve (PSymbol 0 "d!0!") { "d!0!": (EVar "p" "D!0!")})
+        (EVar "p" "D!0!"))

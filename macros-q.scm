@@ -94,7 +94,7 @@
 (expect (c0-ser "(? f 1)")
         "(^t F,1)")
 (expect (c0-ser "(? m a)"
-                { m: (EMacro "." "p" 1 (IArg 0 ".")) })
+                { m: (EMacro "p" "." 1 (IArg 0 ".")) })
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
@@ -134,12 +134,12 @@
 (expect (let&-env [ [ (PSymbol 0 "x") (PSymbol 0 "X") ]
                     [ (PSymbol 0 "y") (PSymbol 0 "x") ] ]
                   (append
-                   { X: (EVar "xname" "p") }
+                   { X: (EVar "p" "xname") }
                    (depth-marker ".")))
         (append
-         { y: (EIL "." "p" (IVar "xname")) }
-         { x: (EIL "." "p" (IVar "xname")) }
-         { X: (EVar "xname" "p") }
+         { y: (EIL "p" "." (IVar "xname")) }
+         { x: (EIL "p" "." (IVar "xname")) }
+         { X: (EVar "p" "xname") }
          (depth-marker ".")))
 
 (expect "1" (c0-ser "(let& ((a 1)) a)"))
@@ -202,15 +202,15 @@
 
 ;; delim == " "
 (expect "(.foreach ;,a b,(^u {;}))"
-        (c0-ser "(concat-for x \"a b\" \" \" x)" { d: (EVar "D" nil) }))
+        (c0-ser "(concat-for x \"a b\" \" \" x)" { d: (EVar "p" "D") }))
 
 ;; delim == IString
 (expect "(.subst |1,|,(.subst |0, ,(.subst  ,|1,(.foreach ;,a b,(.subst  ,|0,(.subst |,|1,(^u {;})))))))"
-        (c0-ser "(concat-for x \"a b\" \"|\" x)" { d: (EVar "D" nil) }))
+        (c0-ser "(concat-for x \"a b\" \"|\" x)" { d: (EVar "p" "D" ) }))
 
 ;; general case
 (expect "(.subst |1,|,(.subst |0, ,(.subst  ,(.subst |,|1,{D}),(.foreach ;,a b,(.subst  ,|0,(.subst |,|1,(^u {;})))))))"
-        (c0-ser "(concat-for x \"a b\" d x)" { d: (EVar "D" nil) }))
+        (c0-ser "(concat-for x \"a b\" d x)" { d: (EVar "p" "D") }))
 
 ;;--------------------------------
 ;; (cond (TEST BODY)...)
@@ -247,7 +247,7 @@
   (case out
     ((IEnv env il)
      (fexpect env
-              (xns { foo: (EXMacro "~foo" "x") }))
+              (xns { foo: (EXMacro "x" "~foo") }))
      (expect (il-ser (case il
                        ((IEnv _ node) node)
                        (else il)))
@@ -260,7 +260,7 @@
  "(defmacro (foo a) a)"
  (lambda (env sil)
    (expect sil (xns "(^fset ~foo,`{1})"))
-   (expect env (xns { foo: (EXMacro "~foo" "x") }))))
+   (expect env (xns { foo: (EXMacro "x" "~foo") }))))
 
 
 ;;--------------------------------
@@ -315,7 +315,7 @@
  "(data T (CA a &word b &list c) (CB))"
  (lambda (env sil)
    (expect (dict-get "CA" env)
-           (ERecord "S W L" "p" "!:T0"))
+           (ERecord "p" "S W L" "!:T0"))
    ;; ^at is &native
    (expect sil
            "(^at !1:T0!=CA!0S!0W!0L !1:T1!=CB)")))
@@ -324,7 +324,7 @@
  "(data T &public (CA a &word b &list c))"
  (lambda (env sil)
    (expect (dict-get "CA" env)
-           (ERecord "S W L" "x" "!:T0"))))
+           (ERecord "x" "S W L" "!:T0"))))
 
 
 ;;--------------------------------
@@ -332,17 +332,17 @@
 ;;--------------------------------
 
 (define tc-node (IArg 1 ".."))
-(define tc-defn (EIL ".." "p" (IArg 1 "..")))
+(define tc-defn (EIL "p" ".." (IArg 1 "..")))
 
 (expect (extract-member tc-defn 1 "S")
-        (EIL ".." "p" (ICall "^n" [(IString "2") tc-node])))
+        (EIL "p" ".." (ICall "^n" [(IString "2") tc-node])))
 
 (expect (member-bindings [(PSymbol 0 "a!") (PSymbol 0 "b") (PSymbol 0 "c")]
                          ["S" "W" "L"]
                          tc-defn)
-        { a!: (EIL ".." "p" (ICall "^n" [(IString "2") tc-node])),
-          b: (EIL ".." "p" (IBuiltin "word" [(IString "3") tc-node])),
-          c: (EIL ".." "p" (IBuiltin "wordlist" [(IString "4")
+        { a!: (EIL "p" ".." (ICall "^n" [(IString "2") tc-node])),
+          b: (EIL "p" ".." (IBuiltin "word" [(IString "3") tc-node])),
+          c: (EIL "p" ".." (IBuiltin "wordlist" [(IString "4")
                                                  (IString 99999999)
                                                  tc-node]))})
 
@@ -382,9 +382,9 @@
         "!(PError 2 'missing VALUE in (case VALUE (PATTERN BODY)...)')")
 
 (define tc-env
-  (append { C: (ERecord "S W L" "." "!:T0") }
-          { D: (ERecord "S W" "." "!:T1") }
-          { F: (EFunc "F" "p" 0) }
+  (append { C: (ERecord "p" "S W L" "!:T0") }
+          { D: (ERecord "p" "S W" "!:T1") }
+          { F: (EFunc "p" "F" 0) }
           default-env))
 
 ;; single case
