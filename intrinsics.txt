@@ -655,6 +655,12 @@
 (declare (native-name var-name) &internal)
 
 
+;; Evaluate a GNU Make variable.  Unlike `value`, native-var will trigger
+;; expansion of recursive variables.
+;;
+(declare (native-var var-name) &internal)
+
+
 ;; Call function variable whose native name is NAME with elements of vector
 ;; ARGV as arguments.
 ;;
