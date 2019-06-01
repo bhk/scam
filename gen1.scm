@@ -32,7 +32,7 @@
 ;; replaced with "$`" so that after one round of expansion they evaulate
 ;; to "$".  (The SCAM runtime defines the variable "`" as "$".)
 ;;
-;;   (define (f x) (concat "$" x))
+;;   (define (f x) (.. "$" x))
 ;;   -->  f = $`$1
 ;;
 ;; When function code expands to an anonymous function, two levels of
@@ -44,7 +44,7 @@
 ;; When there is a *capture*, the runtime function `^E` is used to encode
 ;; that captured value as part of the anonymous function:
 ;;
-;;   (define (f x) (lambda (y) (concat "$" y x)))
+;;   (define (f x) (lambda (y) (.. "$" y x)))
 ;;   -->  $``$`1$(call ^E,$1)
 ;;
 ;; Note that the value of `x` results in the code `$(call ^E,$1)`.  The steps
@@ -67,7 +67,7 @@
 (define (c1-Where pos)
   (define `lnum
     (get-subject-line pos *compile-subject*))
-  (escape (concat *compile-file* (if pos (concat ":" lnum)))))
+  (escape (.. *compile-file* (if pos (.. ":" lnum)))))
 
 
 ;; Lambda-escape CODE
@@ -94,7 +94,7 @@
 ;; Construct a crumb.
 ;;
 (define (crumb key value)
-  (concat "$.{" (crumb-encode {=key: value}) "$.}"))
+  (.. "$.{" (crumb-encode {=key: value}) "$.}"))
 
 
 ;; Extract crumbs.  Returns { code: CODE, errors: ERRORS }.
@@ -120,8 +120,8 @@
 
 
 (define `one-char-names
-  (concat "a b c d e f g h i j k l m n o p q r s t u v w x y z "
-          "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"))
+  (._. "a b c d e f g h i j k l m n o p q r s t u v w x y z"
+       "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"))
 
 
 (declare (c1 node))
@@ -165,29 +165,29 @@
   (crumb "errors"
          (case node
            ((PError pos msg) node)
-           (else (PError 0 (concat "internal:bad IL: " node))))))
+           (else (PError 0 (.. "internal:bad IL: " node))))))
 
 
 ;; Call built-in function
 (define (c1-Builtin name args)
   ;; (demote <builtin>) == <builtin> for all builtins
-  (concat "$("
-          (if (filter-out "=" name)
-              ;; this space is necessary even when there are no arguments
-              (concat name " "))
-          (protect-ltrim (c1-vec args ","
-                              (if (filter "and or" name)
-                                  (native-name c1-arg-trim)
-                                  (native-name c1-arg))))
-          ")"))
+  (.. "$("
+      (if (filter-out "=" name)
+          ;; this space is necessary even when there are no arguments
+          (.. name " "))
+      (protect-ltrim (c1-vec args ","
+                             (if (filter "and or" name)
+                                 (native-name c1-arg-trim)
+                                 (native-name c1-arg))))
+      ")"))
 
 
 ;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
 ;;
 (define (c1-args9 nodes)
   (if (word 9 nodes)
-      (concat (c1-vec (wordlist 1 8 nodes) "," (native-name c1-arg))
-              (concat "," (protect-arg (c1 (il-vector (nth-rest 9 nodes))))))
+      (.. (c1-vec (wordlist 1 8 nodes) "," (native-name c1-arg))
+          "," (protect-arg (c1 (il-vector (nth-rest 9 nodes)))))
       (c1-vec nodes "," (native-name c1-arg))))
 
 
@@ -196,7 +196,7 @@
 (define (c1-Call name args)
   (define `ename (protect-ltrim (escape name)))
 
-  (concat "$(call " ename (if args ",") (c1-args9 args) ")"))
+  (.. "$(call " ename (if args ",") (c1-args9 args) ")"))
 
 
 (define (i-8 n)
@@ -206,39 +206,39 @@
 (define (c1-ugly-arg ndx ups)
   ;; Return one copy of STR per dot in UPS, after subtracting SUB from UPS.
   (define `(ups-repeat str sub)
-    (subst (concat "<" sub) nil
+    (subst (.. "<" sub) nil
            "." str
-           (concat "<" ups)))
+           (.. "<" ups)))
 
   (define `argval
     (cond
      ((filter ndx "1 2 3 4 5 6 7 8 ;")
-      (concat "$" ndx))
+      (.. "$" ndx))
 
      ((filter ";%" ndx)
-      (concat "$(" ndx ")"))
+      (.. "$(" ndx ")"))
 
      ((findstring "+" ndx)
       ;; "rest" argument
       (if (filter ndx "1+ 2+ 3+ 4+ 5+ 6+ 7+ 8+")
-          (concat "$(foreach N," (subst "+" nil ndx) ",$(^v))")
+          (.. "$(foreach N," (subst "+" nil ndx) ",$(^v))")
           (if (filter "9+" ndx)
               "$9"
-              (concat "$(wordlist " (i-8 (subst "+" nil ndx)) ",99999999,$9)"))))
+              (.. "$(wordlist " (i-8 (subst "+" nil ndx)) ",99999999,$9)"))))
      (else
-      (concat "$(call ^n," (i-8 ndx) ",$9)"))))
+      (.. "$(call ^n," (i-8 ndx) ",$9)"))))
 
 
   (define `e-level
-    (filter "%`" (concat "," (ups-repeat "`" ".."))))
+    (filter "%`" (.. "," (ups-repeat "`" ".."))))
 
   (subst "%" argval
-         "$" (concat "$" (ups-repeat "-" "."))
+         "$" (.. "$" (ups-repeat "-" "."))
          (if (filter "." ups)
              ;; argument of immediately enclosing function
              "%"
              ;; capture
-             (concat "$(call ^E,%" e-level ")"))))
+             (.. "$(call ^E,%" e-level ")"))))
 
 
 ;; Local variable
@@ -257,24 +257,24 @@
   (define `args (rest nodes))
   (define `fnval (protect-arg (c1 func)))
   (define `commas
-    (subst " " "" (or (wordlist (words (concat "x" args)) 9
+    (subst " " "" (or (wordlist (words (.. "x" args)) 9
                                 ", , , , , , , , ,")
                       ",")))
 
-  (concat "$(call ^Y," (c1-args9 args) commas fnval ")"))
+  (.. "$(call ^Y," (c1-args9 args) commas fnval ")"))
 
 
 ;; Block: evaluate all nodes and return value of last node
 (define (c1-Block nodes)
   (if (word 2 nodes)
-      (concat "$(and " (c1-vec nodes "1," (native-name c1-arg)) ")")
+      (.. "$(and " (c1-vec nodes "1," (native-name c1-arg)) ")")
       (if nodes
           (c1 (first nodes)))))
 
 
 (define (c1-Var name)
-  (concat "$" (or (filter one-char-names name)
-                  (concat "(" (escape name) ")"))))
+  (.. "$" (or (filter one-char-names name)
+              (.. "(" (escape name) ")"))))
 
 
 (define (c1 node)
@@ -311,7 +311,7 @@
 ;; Embed a function-syntax expression in file syntax
 ;;
 (define `(c1-file-expr expr)
-  (concat (protect-expr expr) "\n"))
+  (.. (protect-expr expr) "\n"))
 
 
 ;; Construct a file-syntax assignment for a simple variable
@@ -319,7 +319,7 @@
 ;; After "LHS := RHS", $(LHS) or $(value LHS) == RHS.
 ;;
 (define `(c1-file-set lhs rhs)
-  (concat (protect-lhs lhs) " := " (protect-rhs rhs) "\n"))
+  (.. (protect-lhs lhs) " := " (protect-rhs rhs) "\n"))
 
 
 ;; Construct a file-syntax assignment for a recursive variable
@@ -334,7 +334,7 @@
           (findstring "$`." rhs))
       ;; RHS is non-const (has un-escaped "$"), or would contain "$."
       (c1-file-expr
-       (concat "$(call ^fset," (protect-arg lhs) "," (protect-arg rhs) ")"))
+       (.. "$(call ^fset," (protect-arg lhs) "," (protect-arg rhs) ")"))
       ;; RHS is const
       (if (or (findstring "#" rhs)
               (findstring "\n" rhs)
@@ -343,10 +343,10 @@
 
           ;; Use 'define ... endef' so that $(value F) will be *identical*
           ;; to RHS almost always.
-          (concat "define " (protect-lhs lhs) "\n"
-                  (protect-define (unescape rhs))
-                  "\nendef\n")
-          (concat (protect-lhs lhs) " = " (unescape (protect-rhs rhs)) "\n"))))
+          (.. "define " (protect-lhs lhs) "\n"
+              (protect-define (unescape rhs))
+              "\nendef\n")
+          (.. (protect-lhs lhs) " = " (unescape (protect-rhs rhs)) "\n"))))
 
 
 ;; Compile a vector of expressions to file syntax.
@@ -368,7 +368,7 @@
       (case (first args)
         ((IString value)
          (if (filter "eval" name)
-             (concat value "\n")
+             (.. value "\n")
              (if (filter "call" name)
                  (c1-file (ICall value (rest args))))))))
 

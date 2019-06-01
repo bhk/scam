@@ -40,7 +40,7 @@
 (expect "0 + 01"     (fp-norm "01 + 0 01"))
 (expect "-011 + 01"  (fp-norm "-01 + 0 01"))
 (expect "-0111 - 01" (fp-norm "01 - 0 0 0 0 01"))
-(expect "-0100 - 01" (fp-norm (concat "01 - " (repeat-words 0 101) " 01")))
+(expect "-0100 - 01" (fp-norm (.. "01 - " (repeat-words 0 101) " 01")))
 
 ;; u2fp
 
@@ -51,10 +51,10 @@
 (expect (FP 01) "01 + 01")
 (expect (FP 00) "0 + 0")
 ;; (word 10 (spread u))
-(expect (FP (concat 1 (smash (repeat-words 0 200))))
-        (concat "011001 + 01 " (repeat-words 0 200)))
-(expect (FP (concat "0." (smash (repeat-words 0 200)) "1"))
-        (concat "-01100 + 01"))
+(expect (FP (.. 1 (smash (repeat-words 0 200))))
+        (.. "011001 + 01 " (repeat-words 0 200)))
+(expect (FP (.. "0." (smash (repeat-words 0 200)) "1"))
+        (.. "-01100 + 01"))
 ;; cond: (findstring "E" (subst "e" "E" u))
 (expect (FP "1E1") "011 + 01")
 (expect (FP "1e1") "011 + 01")
@@ -83,8 +83,8 @@
 (expect (FP -12.34e-3) "-01 - 01 011 0111 01111")
 ;; disallow extraneous spaces
 (for n [1 -1 "1.2" "1e3" "1.2e3" "1.2e+3" "1.2e-3" ]
-     (expect nil (FP (concat " " n)))
-     (expect nil (FP (concat n " "))))
+     (expect nil (FP (.. " " n)))
+     (expect nil (FP (.. n " "))))
 
 ;; fp2d & fp2u
 

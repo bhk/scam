@@ -45,14 +45,14 @@
 ;; returned unchanged]
 ;;
 (define `(str-sub a b)
-    (patsubst (concat b "%") "%" a))
+    (patsubst (.. b "%") "%" a))
 
 
 ;; Return A+B-C (in domain of string lengths)
 ;; Assumes A+B >= C.
 ;;
 (define `(str-add-sub a b c)
-    (patsubst (concat c "%") "%" (concat a b)))
+    (patsubst (.. c "%") "%" (.. a b)))
 
 ;; Construct a string describing the number of parameters:
 ;;   "a b c"      ==>   "3"
@@ -62,8 +62,8 @@
 (define (get-arity args)
   (if (filter "...% ?%" (lastword args))
       (if (filter "...%" (lastword args))
-          (concat (words (filter-out "...% ?%" args)) "+")
-          (concat (get-arity (butlast args)) " " (words args)))
+          (.. (words (filter-out "...% ?%" args)) "+")
+          (.. (get-arity (butlast args)) " " (words args)))
       (words args)))
 
 
@@ -118,7 +118,7 @@
       (if (filter "." top)
           (auto-shift name)
           name))
-    (IFor new-name (recur list top ad) (recur body top (concat ad ";"))))
+    (IFor new-name (recur list top ad) (recur body top (.. ad ";"))))
 
   ;; IArg: translate lambda argument or auto variable
   (define `(xarg name ups node)
@@ -132,7 +132,7 @@
       (xlat arg-node "." ad new-ad ad nil ups pos))
 
      ;; Top-level auto within the macro => rename auto
-     ((and (filter top ups) (findstring (concat old-ad ";") name))
+     ((and (filter top ups) (findstring (.. old-ad ";") name))
       (IArg (auto-shift name) ups))
 
      ;; Capture => shift
@@ -152,7 +152,7 @@
     ((IConcat nodes) (IConcat (x* nodes)))
     ((IBlock nodes) (IBlock (x* nodes)))
     ((IFor name list body) (xfor name list body))
-    ((ILambda body) (ILambda (recur body (concat "." top) nil)))
+    ((ILambda body) (ILambda (recur body (.. "." top) nil)))
     ((IWhere p) (if p (IWhere pos) node))
     (else node)))
 
@@ -176,7 +176,7 @@
 
   ;; if no-args and old-depth=new-depth and no-IWheres: return node
   (if (or args
-          (subst (concat ">" old-depth "<") nil (concat ">" new-depth "<"))
+          (subst (.. ">" old-depth "<") nil (.. ">" new-depth "<"))
           (findstring IWhere-sig node))
       ;; translate
       (xlat node "." new-ad old-ad new-ad args shift pos)
@@ -242,7 +242,7 @@
              (pdec *compile-subject*)
              *compile-file*)))
 
-  (IArg name (concat (str-add-sub at-depth "." depth))))
+  (IArg name (str-add-sub at-depth "." depth)))
 
 
 ;;--------------------------------
@@ -396,7 +396,7 @@
 ;;
 (define (c0-block-cc env forms k ?results ?o)
   (define `new-results
-    (concat results " " [o]))
+    (._. results [o]))
 
   (case o
     ((IEnv bindings node)
@@ -439,7 +439,7 @@
 ;;
 (define `(special-form-func name)
   (declare (ml.special-))
-  (concat (native-name ml.special-) name))
+  (.. (native-name ml.special-) name))
 
 
 ;; Compile a vector of expressions independently, as in an argument list.
@@ -510,7 +510,7 @@
 (define `(arg-defn name n depth)
   (if (filter "...%" name)
       ;; "...FOO" or "..."
-      { (or (patsubst "...%" "%" name) name): (ELocal (concat n "+") depth) }
+      { (or (patsubst "...%" "%" name) name): (ELocal (.. n "+") depth) }
       ;; "?FOO" or "FOO"
       { (patsubst "?%" "%" name): (ELocal n depth) }))
 
@@ -526,7 +526,7 @@
 
 (define (c0-lambda env args body)
   (define `(arg-env env syms)
-    (foreach ldepth (depth.l (concat "." (current-depth env)))
+    (foreach ldepth (depth.l (.. "." (current-depth env)))
              (append (depth-marker ldepth)
                      (arg-locals syms 1 ldepth)
                      env)))
@@ -648,7 +648,7 @@
 
       ;; compile function/macro body
       (let ((body-il (c0-lambda body-env args body))
-            (body-depth (depth.l (concat "." (current-depth env))))
+            (body-depth (depth.l (.. "." (current-depth env))))
             (is-define is-define)
             (is-macro is-macro)
             (arity arity)
@@ -730,7 +730,7 @@
 (define (c0-ctor env sym encs)
   (define `args
     (for i (indices encs)
-         (PSymbol 0 (concat "a" i))))
+         (PSymbol 0 (.. "a" i))))
   (c0-lambda env args [ (PList 0 (cons sym args)) ]))
 
 
@@ -780,7 +780,7 @@
       (replace QQS sub)
       (if (findstring [QQS] template)
           (replace [QQS] (il-demote sub))
-          (PError 0 (concat "c0-qq-form: template='" template "'")))))
+          (PError 0 (.. "c0-qq-form: template='" template "'")))))
 
 
 ;; Expand a single form within a quasiquoted expression.

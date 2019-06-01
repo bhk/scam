@@ -10,7 +10,7 @@
 ;; crumbs
 
 (expect { code: "a b c", errors: [1 2], x: ["!=%"] }
-        (crumb-extract (concat "a b"
+        (crumb-extract (.. "a b"
                                (crumb "errors" 1)
                                " "
                                (crumb "errors" 2)
@@ -166,7 +166,7 @@
 (expect "f = $\n"
         (c1-file-fset "f" "$`"))  ;; "$`" expands to "$" == $(value f)
 
-(expect (concat "$(call " "^fset" ",f,$(foo))\n")
+(expect "$(call ^fset,f,$(foo))\n"
         (c1-file-fset "f" "$(foo)"))
 
 (expect "define f\n $1\n$2 \nendef\n"

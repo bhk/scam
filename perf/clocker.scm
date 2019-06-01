@@ -32,16 +32,16 @@ int main(int argc, char **argv)
 ;; Build timems if it isn't there...
 (define (build-timems)
   (define timems-loc
-    (concat (get-tmp-dir) "timems"))
+    (.. (get-tmp-dir) "timems"))
 
   (define `echo-cmd
-    (concat "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" timems.c))))
+    (.. "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" timems.c))))
 
   (set *timems*
        (or (wildcard timems-loc)
            (begin
              (expect "" (mkdir-p (dir timems-loc)))
-             (expect 0 (first (pipe (concat "cc -o " timems-loc " -x c -")
+             (expect 0 (first (pipe (.. "cc -o " timems-loc " -x c -")
                                     timems.c)))
              timems-loc)))
   *timems*)

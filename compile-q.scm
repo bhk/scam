@@ -45,7 +45,7 @@
 
 (define (export-round-trip env all)
   (env-parse (split "\n"
-                    (concat "# comment\n" (env-export-lines env) "# f f f\n"))
+                    (.. "# comment\n" (env-export-lines env) "# f f f\n"))
              all))
 
 (define e1
@@ -94,9 +94,9 @@
 ;; modid-deps & modid-read-lines
 (set-native "[mod-cqtx]" "# Requires: a!0b var\n# xyz")
 (define test-dir (get-tmp-dir))
-(write-file (concat test-dir "cqtx.o") "# Requires: a!0b boot-file\n# xyz\n")
-(write-file (concat test-dir "cqtx.scm.o") "# Requires: .tmp/a!0b .tmp/file\n# xyz\n")
-(write-file (concat test-dir "nil.scm.o") "# Requires: \n")
+(write-file (.. test-dir "cqtx.o") "# Requires: a!0b boot-file\n# xyz\n")
+(write-file (.. test-dir "cqtx.scm.o") "# Requires: .tmp/a!0b .tmp/file\n# xyz\n")
+(write-file (.. test-dir "nil.scm.o") "# Requires: \n")
 
 
 (let-global ((*is-boot* nil)
@@ -106,7 +106,7 @@
   (expect (modid-deps (module-id "cqtx.scm"))
           [".tmp/a b" ".tmp/file"])
   (expect (modid-deps-all (module-id "nil.scm"))
-          [(concat test-dir "nil.scm") "runtime"]))
+          [(.. test-dir "nil.scm") "runtime"]))
 
 
 (let-global ((*is-boot* 1)
@@ -143,8 +143,8 @@
 
   ;; non-string
   (expect (c0-ser "(require MOD)")
-          (concat "!(PError 4 'invalid STRING in (require STRING); "
-                  "expected a literal string')"))
+          (.. "!(PError 4 'invalid STRING in (require STRING); "
+              "expected a literal string')"))
 
   ;; get-module failure
   (expect (c0-ser "(require \"mod\")")
@@ -182,6 +182,6 @@
 
 (expect "a := 1\nb := 2\n"
         (dict-get "code"
-                  (parse-and-gen (concat "(define a &native 1) "
-                                        "(define b &native 2)")
+                  (parse-and-gen (._. "(define a &native 1)"
+                                      "(define b &native 2)")
                                 "" "(test)" "test.tmp")))

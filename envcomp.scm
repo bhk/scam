@@ -112,7 +112,7 @@
 
 (define (compile-cmp subs subchars)
   (define `(format-string str)
-    (concat "\"" (subst "\\" "\\\\" "\"" "\\\"" str) "\""))
+    (.. "\"" (subst "\\" "\\\\" "\"" "\\\"" str) "\""))
   (define `chars-used
     (wordlist 1 (words subs) subchars))
 

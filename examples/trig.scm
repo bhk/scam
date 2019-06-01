@@ -46,7 +46,7 @@
 
   (if (> N pi-digits)
       (begin
-        (set pi-value (calc-pi (concat "-" (+ N 5))))
+        (set pi-value (calc-pi (.. "-" (+ N 5))))
         (set pi-digits N)))
   (round pi-value N))
 
@@ -138,8 +138,8 @@
   (foreach
       loop-digits (+ 2 (or digits-in 16))
       (or (filter "NaN" loop-digits)
-          (round (fn x (concat "-" loop-digits))
-                 (concat "-" (or digits-in 16))))))
+          (round (fn x (.. "-" loop-digits))
+                 (.. "-" (or digits-in 16))))))
 
 
 (define (sin x ?digits)

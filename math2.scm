@@ -43,14 +43,14 @@
       r (smash (wsub c count))
 
       (define `not50*
-        (subst ".011111" nil "0" nil (concat "." r)))
+        (subst ".011111" nil "0" nil (.. "." r)))
       (define `not49*
-        (subst ".01111" nil U9 nil (concat "." r)))
+        (subst ".01111" nil U9 nil (.. "." r)))
 
       (and not49*
            not50*
            (if (filter "011111%" r)
-               (uf-carry (concat (wordlist 1 (words count) c) 1))
+               (uf-carry (.. (wordlist 1 (words count) c) 1))
                (wordlist 1 (words count) c)))))
 
 
@@ -62,8 +62,8 @@
 ;; COUNT = a list of N words
 ;;
 (define (get-uf-const fname count)
-  (define `value-var (concat fname "/v"))
-  (define `count-var (concat fname "/c"))
+  (define `value-var (.. fname "/v"))
+  (define `count-var (.. fname "/c"))
   (define `(compute-value nw)
     (rest (uf-round (words nw) DIV-NEAREST (call fname nw))))
 
@@ -71,7 +71,7 @@
       (if (word 1 count)
           (begin
             (set-native count-var
-                        (patsubst "%" 0 (+_+ "0 0 0 0 0"
+                        (patsubst "%" 0 (._. "0 0 0 0 0"
                                              (join count (value count-var)))))
             (set-native value-var (compute-value (value count-var)))
             (get-uf-const fname count)))))
@@ -105,7 +105,7 @@
   ;; (uf-div A B) requires A < B.
   (define `q
     (uf-div (>>1 uf) (u2uv u) n DIV-NEAREST))
-  (nth-rest 3 (concat (subst 1 nil 0 "0 " u) q)))
+  (nth-rest 3 (.. (subst 1 nil 0 "0 " u) q)))
 
 
 ;; uf-atan-loop(x,a,b) = ∑ [n ≥ 0] x * aⁿ / (2n + b)
@@ -130,12 +130,12 @@
   (define `remainder
     (if (word (words (>>1 alz)) count)
         ;; uf-add accepts extra spaces and/or nil
-        (+_+ alz (uf-atan-loop x*anz alz anz is-sub b+2 (wsub count alz)))))
+        (._. alz (uf-atan-loop x*anz alz anz is-sub b+2 (wsub count alz)))))
 
   (if count
       (if (filter 0 (word 1 x))
           (if (filter 0 (word 2 x))
-              (+_+ "0 0" (uf-atan-loop (nth-rest 3 x) alz anz is-sub b
+              (._. "0 0" (uf-atan-loop (nth-rest 3 x) alz anz is-sub b
                                        (nth-rest 3 count)))
               (>>1 (uf-atan-loop (rest x) alz anz is-sub b (rest count))))
           (uf-addsub x/b remainder is-sub))))
@@ -144,7 +144,7 @@
 (define (uf-atanh-3 xnz alz anz count)
   ;; We handle the first iteration of the loop here, mostly to improve
   ;; accuracy (no truncation in the initial X/1 term).
-  (uf-add (+_+ alz (uf-atan-loop (uf-mulp xnz anz (words count))
+  (uf-add (._. alz (uf-atan-loop (uf-mulp xnz anz (words count))
                                  alz anz nil U3
                                  (wsub count alz)))
           xnz))
@@ -152,7 +152,7 @@
 
 (define (uf-atanh-2 xlz xnz x² count)
   (if xnz
-      (.strip (+_+ xlz (uf-atanh-3 xnz (uf-get-lz x²) (uf-trim-lz x²)
+      (.strip (._. xlz (uf-atanh-3 xnz (uf-get-lz x²) (uf-trim-lz x²)
                                    (wsub count xlz))))
       0))
 
@@ -195,7 +195,7 @@
 ;;
 (define `(uf-log-pos x-1 digit-zeros)
   (uf-log x-1              ;; x-1        < 0.2
-          (+_+ "011" x-1)  ;; (x+1)/10   > 0.2
+          (._. "011" x-1)  ;; (x+1)/10   > 0.2
           digit-zeros))
 
 
@@ -208,7 +208,7 @@
     (uf-carry (uf-complement x)))
 
   (uf-log (uf-invert x)  ;; 1-x       < 0.18
-          (+_+ "01" x)   ;; (1+x)/10  > 0.182
+          (._. "01" x)   ;; (1+x)/10  > 0.182
           digit-zeros))
 
 
@@ -216,12 +216,12 @@
 ;; and uf-exp-med.
 ;;
 (define `um-frac "0 011")               ;; M = 1.02
-(define `um/10 (concat "01 " um-frac))
+(define `um/10 (._. "01" um-frac))
 (define `um-top/10 "01 0 01")           ;; Top = (1+M)/2
 
 
 (define (log-M count)
-  (uf-log-pos um-frac (+_+ "0 0" count)))
+  (uf-log-pos um-frac (._. "0 0" count)))
 
 
 (define `(const-log-M count)
@@ -236,8 +236,8 @@
   (if (findstring 1 (word 1 x/100))
       (set m-powers v v)
       (calc-m-powers (rest (uf-mul x/100 um/10))
-                     (concat v (if v " ")
-                             (patsubst "00%" "0%" (smash x/100))))))
+                     (.. v (if v " ")
+                         (patsubst "00%" "0%" (smash x/100))))))
 
 (define `cached-m-powers
   (or m-powers (calc-m-powers (>>1 um/10) nil)))
@@ -273,24 +273,24 @@
       (words valuesgt)
       ;; pick midpoint
       (foreach
-          ndx (words (subst "0 0" 0 (patsubst "%" 0 (+_+ values valuesgt))))
+          ndx (words (subst "0 0" 0 (patsubst "%" 0 (._. values valuesgt))))
           (if (uf-lt? ux (spread (word ndx values)))
               ;; midpoint > ux
               (psrch ux values (wordlist 1 ndx values))
               ;; midpoint <= ux
-              (psrch ux (wordlist 2 ndx (concat "0 " values)) valuesgt)))))
+              (psrch ux (wordlist 2 ndx (.. "0 " values)) valuesgt)))))
 
 
 (define (uf-log-fr2 a p digit-zeros)
   (define `a-mod-1 (rest a))
   (define `p-len (words p))
-  (define `m-digit-words (concat digit-zeros " 0 " p))
+  (define `m-digit-words (._. digit-zeros 0 p))
 
   (define `p*logm/10
     (nth-rest p-len (uf-mul (const-log-M m-digit-words) p)))
 
   (define `count
-    (concat digit-zeros " 0 " (word 75 digit-zeros)))
+    (.. digit-zeros " 0 " (word 75 digit-zeros)))
 
   (if (filter "01%" (word 1 a))  ;; a>=1
       (uf-sub p*logm/10 (>>1 (uf-log-pos a-mod-1 count)))
@@ -321,13 +321,13 @@
       (define `a
         (if (filter 0 dp)
             (>>1 x)
-            (uf-mulp Mᵖ x (words (concat "0 0 " digit-zeros)))))
+            (uf-mulp Mᵖ x (words (._. "0 0" digit-zeros)))))
 
       (uf-log-fr2 a (u2uv (d2u dp)) digit-zeros)))
 
 
 (define (log-10 count)
-  (uf-log-fr U1 (+_+ "0 0" count)))
+  (uf-log-fr U1 (._. "0 0" count)))
 
 (define `(const-log-10 count)
   (get-uf-const (native-name log-10) count))
@@ -358,8 +358,8 @@
         ;; "0010" with "0001" insize UF.
         (begin
           (define `lz
-            (word 1 (subst " " nil "001000" "000100" "01" " " (concat uf "000"))))
-          (concat "-0" (subst 0 1 lz)))))
+            (word 1 (subst " " nil "001000" "000100" "01" " " (.. uf "000"))))
+          (.. "-0" (subst 0 1 lz)))))
 
    ((filter 0 exp)
     ;; 0.1 ≤ X < 1
@@ -367,7 +367,7 @@
         ;; 0.3 ≤ X < 1
         (if (findstring T9 (word 1 uf))
             ;; Count number of 9's after "0.".
-            (concat "-0" (word 1 (subst U9 1  " 1" 1 uf)))
+            (.. "-0" (word 1 (subst U9 1  " 1" 1 uf)))
             ;; 0.3 ≤ x < 0.9
             "0")
         ;; X < 0.3  [X < 0.368 would be closer, but requires more code]
@@ -376,7 +376,7 @@
    (else
     ;; exp >= 6 or exp <= -5
     ;; result = 1 + digitsin(-exp/5) = digitsin(exp*2)
-    (concat 0 (subst 1 nil 0 1 (patsubst "011111%" "00%" (subst "-" nil exp)))))))
+    (.. 0 (subst 1 nil 0 1 (patsubst "011111%" "00%" (subst "-" nil exp)))))))
 
 
 ;; Estimate the exponent of log(FX), or 1+floor(log₁₀(logₑ(FX))).  The
@@ -405,19 +405,19 @@
   ;; log(10)*0.1 ≈ 0.23.  This will be multiplied by the exponent, so add as
   ;; many digits as in the exponent.
   (define `log-10*0.1
-    (const-log-10 (concat count " 0 0 " (spread (abs exp)))))
+    (const-log-10 (._. count "0 0" (spread (abs exp)))))
 
   (if (uf-lt? um/10 uf)
       ;; 0.102 < X < 1
       (fp-add (if (findstring 1 exp)
-                  (fp-mul (concat "01 + " log-10*0.1)
+                  (fp-mul (.. "01 + " log-10*0.1)
                           (u2fp exp))
                   FP0)
-              (concat "01 - " (log-frac*0.1)))
+              (.. "01 - " (log-frac*0.1)))
       ;; 0.1 <= X <= 0.102
-      (fp-add (fp-mul (concat "01 + " log-10*0.1)
+      (fp-add (fp-mul (.. "01 + " log-10*0.1)
                       (u2fp (u-sub exp "01")))
-              (concat "0 - " (uf-log-pos (rest uf) (>>1 count))))))
+              (.. "0 - " (uf-log-pos (rest uf) (>>1 count))))))
 
 
 ;; Count digits to the right of the decimal point, given a starting place
@@ -430,7 +430,7 @@
 (define (adjust-digit-count count place)
   (if (filter "-%" place)
       ;; PLACE is negative: add -SIZE words to COUNT
-      (concat count (subst "-0" nil 1 " 1" place))
+      (.. count (subst "-0" nil 1 " 1" place))
       ;; PLACE is positive: remove that many words from COUNT
       (nth-rest (words (subst 1 " 1" place)) count)))
 
@@ -462,10 +462,10 @@
     (if (pod-is-place? pod)
         ;; POD = place: U value (negative => left of decimal; non-negative => right)
         (adjust-digit-count
-         (adjust-digit-count (+_+ "0 0" (u-zeros pod)) (0- a-place))
+         (adjust-digit-count (._. "0 0" (u-zeros pod)) (0- a-place))
          b-place)
         ;; POD = decimal number of digits
-        (+_+ "0 " (nzeros pod))))
+        (._. "0 " (nzeros pod))))
 
   (define `result
     (foreach
@@ -501,7 +501,7 @@
 ;; COUNT = list of N words, where N is number of digits of accuracy
 ;;
 (define (uf-exp-loop t x k+1 count)
-  (define `(>>2 u) (concat "0 0 " u))
+  (define `(>>2 u) (._. "0 0" u))
   (define `k+2 (u-add-ones k+1 1))
 
   ;; The remaining terms...
@@ -552,7 +552,7 @@
               (define `a
                 (uf-sub u (nth-rest (words p) (uf-mul lm p))))
               (define `a-count
-                (concat count (if (filter "0111%" wm) " 0")))
+                (.. count (if (filter "0111%" wm) " 0")))
 
               (uf-mul (uf-exp-small (rest a) a-count)
                       mᵖ/10))
@@ -574,7 +574,7 @@
 ;; We compute eᵃ using uf-exp-small.  log(M) and powers of M are cached.
 ;;
 (define `(uf-exp-med uf count)
-  (uf-exp-med-2 uf count (const-log-M (+_+ "0 0" count))))
+  (uf-exp-med-2 uf count (const-log-M (._. "0 0" count))))
 
 
 ;;----------------------------------------------------------------
@@ -630,8 +630,8 @@
 ;;
 (define (fp2su fx)
   (if (n>0? (fp.xpo fx))
-      (concat (findstring "-" (fp.sign fx))
-              (smash (uf-fix (fp.uf fx) (u2d (fp.xpo fx)))))
+      (.. (findstring "-" (fp.sign fx))
+          (smash (uf-fix (fp.uf fx) (u2d (fp.xpo fx)))))
       0))
 
 
@@ -654,7 +654,7 @@
            (if (word 9 (spread pos))
                nil
                (nth-rest (u2d pos) (nth-rest 4 fx)))
-           (.strip (+_+ (if (findstring 1 pos)
+           (.strip (._. (if (findstring 1 pos)
                             (u-zeros (abs pos)))
                         (fp.uf fx)))))
    0))
@@ -684,7 +684,7 @@
 (define (exp-2 fx count)
   ;; number of digits needed for log(10)
   (define `KL
-    (concat count " 0 0 " (u-zeros (fp.xpo fx))))
+    (._. count "0 0" (u-zeros (fp.xpo fx))))
 
   (if count
       (exp-3 fx count (make-fp "01" "+" (const-log-10 KL)))
@@ -769,7 +769,7 @@
         (fp-exp (fp-mul fy fz) pod)))
 
   (define `x-and-y-non-zero?
-    (findstring 101 (concat (word 3 fx) (word 3 fy))))
+    (findstring 101 (.. (word 3 fx) (word 3 fy))))
 
   (and fx
        fy
@@ -798,7 +798,7 @@
         (x² (uf-mul x x))
         (count count))
     (if xnz
-        (.strip (+_+ xlz (uf-atan-loop xnz (uf-get-lz x²) (uf-trim-lz x²)
+        (.strip (._. xlz (uf-atan-loop xnz (uf-get-lz x²) (uf-trim-lz x²)
                                        "-" U1 (wsub count xlz))))
         0)))
 
@@ -832,7 +832,7 @@
 (define (uf-sin-loop k x m count)
   (define `x*m/k/k+1
     (foreach
-        n (words (+_+ "0" count))
+        n (words (._. "0" count))
         (uf-divu (uf-divu (uf-mul x m) k n) (u-add-ones k 1) n)))
 
   (if (findstring 1 (word 1 x))
@@ -873,7 +873,7 @@
   (define `π/2 (make-fp "01" "+" (uf*0.5 (const-pi (>>1 count)))))
   (define `π*2
     (make-fp "01" "+" (uf*2 (const-pi
-                             (concat (u-zeros (fp.xpo fx)) " 0 " count)))))
+                             (._. (u-zeros (fp.xpo fx)) 0 count)))))
 
   (cond
    ;; x < 0 :  sin -x = -sin(x) ;  cos x = cos(x)
@@ -923,7 +923,7 @@
          is-sin
          (not (findstring 1 (wordlist 1 count-extra (fp2uf fx 0))))
          (xsin-reduce fx-orig is-sin-orig nil
-                      (concat xlz " 0 " (wordlist 1 n count))
+                      (._. xlz 0 (wordlist 1 n count))
                       (native-name xsin-small) fx-orig is-sin-orig n)))
 
   (or get-more-digits
@@ -981,7 +981,7 @@
 ;;
 (define (fp-atan-unflip theta flips count count-lz)
   (define `small-count
-    (+_+ count (if count-lz (uf-get-lz (fp2uf theta 0)))))
+    (._. count (if count-lz (uf-get-lz (fp2uf theta 0)))))
 
   (define `is-sub (filter "| /" flips))
   (define `is-add-π (filter "|" flips))
@@ -1007,7 +1007,7 @@
 ;;
 (define (fp-atan-tiny ufm count count-lz)
   (define `small-count
-    (+_+ count (if count-lz (uf-get-lz ufm))))
+    (._. count (if count-lz (uf-get-lz ufm))))
 
   (make-fp "0" "+" (uf-atan ufm small-count)))
 
@@ -1051,7 +1051,7 @@
     (fp-atan2 fy (fp-abs fx) pod "|"))
 
    ((fp-lt? fx fy)
-    (fp-atan2 fx fy pod (concat flip "/")))
+    (fp-atan2 fx fy pod (.. flip "/")))
 
    ((and (fp!=0? fx) fx fy)
     (fp-atan-small (fp-div fy fx (pod+1 pod) DIV-NEAREST) flip pod

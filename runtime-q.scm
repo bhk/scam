@@ -14,7 +14,7 @@
 ;; use of `^set`.
 
 (define (expect-x o i file-line)
-  (if (findstring (concat o 1) (findstring (concat i 1) (concat o 1)))
+  (if (findstring (.. o 1) (findstring (.. i 1) (.. o 1)))
       ""
       (error
        (print file-line ": error: assertion failed"
@@ -32,7 +32,7 @@
 
 ;; ^n
 
-(expect "a b" (nth 2 (concat "1 " (demote "a b") " 3")))
+(expect "a b" (nth 2 (.. "1 " (demote "a b") " 3")))
 
 ;; ^set
 
@@ -58,7 +58,7 @@
 ;; apply
 
 (define (rev a b c d e f g h i j k)
-  (concat k j i h g f e d c b a))
+  (.. k j i h g f e d c b a))
 
 (expect "321" (apply rev [1 2 3]))
 (expect "11 10 321" (apply rev [ 1 2 3 "" "" "" "" "" "" "10 " "11 "]))
@@ -157,15 +157,15 @@
 (define *log* nil)
 
 (define (log str)
-  (set *log* (concat *log* str)))
+  (set *log* (.. *log* str)))
 (define (logln str)
-  (set *log* (concat *log* str "\n")))
+  (set *log* (.. *log* str "\n")))
 
 (define (hijack-info fnbody)
-  (subst "$(info " (concat "$(call " (native-name logln) " ,") fnbody))
+  (subst "$(info " (.. "$(call " (native-name logln) " ,") fnbody))
 
 (define (hook-trace-info a ?b ?c ?d)
-  (log (concat a b c d "\n")))
+  (log (.. a b c d "\n")))
 
 
 ;; trace-digits
@@ -188,7 +188,7 @@
 (define (fx a b c d e f g h i j k)
   (logln "fx")
   (if b
-      (concat a (fx b c d e f g h i j k nil))
+      (.. a (fx b c d e f g h i j k nil))
       a))
 
 (define initial-fx fx)
@@ -226,7 +226,7 @@
 
 ;;-------- trace-body p
 
-(set fx (trace-body (concat "p" [(lambda () (log "P"))])
+(set fx (trace-body (.. "p" [(lambda () (log "P"))])
                         "FX" "ID" initial-fx))
 
 (let-global ((*log* nil))
@@ -241,7 +241,7 @@
 (set fx (hijack-info (trace-body "t" "FX" "ID" initial-fx)))
 
 (let-global ((^tp (lambda (name value)
-                    (log (concat name " " value "\n"))
+                    (log (.. name " " value "\n"))
                     value))
              (*log* nil))
   (expect "123" (fx 1 2 3 nil nil nil nil nil nil nil nil))
@@ -261,7 +261,7 @@
 ;;-------- trace-body f
 
 (let-global ((^tp (lambda (name value)
-                    (log (concat name " " value "\n"))
+                    (log (.. name " " value "\n"))
                     value))
              (fx (hijack-info (trace-body "f" "FX" "ID" initial-fx)))
              (*log* nil))
@@ -306,20 +306,20 @@
 (expect nil (trace (native-name data)))
 
 ;; *do-not-trace*
-(let-global ((*do-not-trace* (concat *do-not-trace* " " fx-name)))
-  (expect nil (trace (concat fx-name ":" "p" [(lambda () (log "P"))])))
+(let-global ((*do-not-trace* (._. *do-not-trace* fx-name)))
+  (expect nil (trace (.. fx-name ":" "p" [(lambda () (log "P"))])))
   (expect fx initial-fx))
 
 ;; trace instruments and backs up
 (set *log* nil)
-(expect fx-name (trace (concat fx-name ":" "p" [(lambda () (log "P"))])))
+(expect fx-name (trace (.. fx-name ":" "p" [(lambda () (log "P"))])))
 (expect initial-fx fx-save)
 (expect "123" (fx 1 2 3 nil nil nil nil nil nil nil nil))
 (expect "Pfx\nPfx\nPfx\n" *log*)
 
 ;; trace `c` replaces previous intrumentation
 (set *log* nil)
-(expect fx-name (trace (concat fx-name ":c")))
+(expect fx-name (trace (.. fx-name ":c")))
 (expect 0 fx-count)
 (expect initial-fx fx-save)
 (expect "123" (fx 1 2 3 nil nil nil nil nil nil nil nil))
@@ -328,13 +328,13 @@
 (define fx-c fx)
 
 ;; trace `x:-` removes `x` from instrumentation
-(expect nil (trace (concat fx-name " " fx-name ":-")))
-(expect nil (trace (concat fx-name " %:-")))
-(expect fx-name (trace (concat fx-name " foo:-")))
+(expect nil (trace (.. fx-name " " fx-name ":-")))
+(expect nil (trace (.. fx-name " %:-")))
+(expect fx-name (trace (.. fx-name " foo:-")))
 (expect 3 fx-count)
 
 ;; repeated trace `c` does not re-zero counts and does not change instrumentation
-(expect fx-name (trace (concat fx-name ":c")))
+(expect fx-name (trace (.. fx-name ":c")))
 (expect 3 fx-count)
 (expect fx-c fx)
 

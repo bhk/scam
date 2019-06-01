@@ -45,10 +45,10 @@
 
 (define (describe-binding bound-name defn all)
   (define `(describe-arity arity)
-    (concat (subst " " " or "
-                   "+" " or more"
-                   arity)
-            "arguments"))
+    (.. (subst " " " or "
+               "+" " or more"
+               arity)
+        "arguments"))
 
   (if (or all (not (filter "i%" (EDefn.scope defn))))
       (case defn
@@ -61,9 +61,9 @@
         ((EVar _ name)
          "variable")
         ((EIL _ _ node)
-         (concat "symbol macro: " (format node)))
+         (.. "symbol macro: " (format node)))
         ((EXMacro _ name)
-         (concat "executable macro"))
+         "executable macro")
         ((ERecord _ encs tag)
          "constructor")
         (else ""))))
@@ -165,16 +165,16 @@
          state)
 
         (else
-         (eval-and-print (concat text line)
+         (eval-and-print (.. text line)
                          prompts obj-dir is-quiet env)))))))
 
 
 (define `initial-env
   (begin
     (define `env-text
-      (concat (foreach lib LIBS (concat "(require \"" lib "\")"))
-              "(declare *1)"
-              "(declare *2)"))
+      (.. (foreach lib LIBS (.. "(require \"" lib "\")"))
+          "(declare *1)"
+          "(declare *2)"))
     (let ((o (compile-text env-text "[stdin]" nil nil nil)))
       (define `fn (dict-get "code" o))
       (fn) ;; load modules referenced by the environment

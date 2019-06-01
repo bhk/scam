@@ -5,7 +5,7 @@
 
 
 (define TMPDIR (get-tmp-dir "memo-q.XXXX"))
-(define db-file (concat TMPDIR "db.txt"))
+(define db-file (.. TMPDIR "db.txt"))
 
 ;; Utilities
 
@@ -18,7 +18,7 @@
 (define *log* nil)
 
 ;; Increment count for event EVT
-(define (log evt) (set *log* (concat *log* " " evt)))
+(define (log evt) (set *log* (._. *log* evt)))
 
 ;; Get number of occurrences of event EVT
 (define (log-count evt) (words (filter evt *log*)))
@@ -83,7 +83,7 @@
 (define (fn-ab a b)
   (log "fn-ab")
   ;; include some potentially problematic encoding cases
-  (concat a "$!1 \n\t" b " "))
+  (.. a "$!1 \n\t" b " "))
 
 (define ab-out (fn-ab 1 2))
 
@@ -122,15 +122,15 @@
 ;; during record and playback modes. [TODO: i j]
 (define (fetch a b c d e f g h i j)
   (log "fetch")
-  (expect 2345678910 (concat b c d e f g h i j))
+  (expect 2345678910 (.. b c d e f g h i j))
   (dict-get a fetch-tbl))
 
 (define (fa a b)
   (log "fa")
-  (concat a "="
-          (while (lambda (name) (filter "A B C" name))
-                 (lambda (name) (memo-io (native-name fetch) name 2 3 4 5 6 7 8 9 10))
-                 a)))
+  (.. a "="
+      (while (lambda (name) (filter "A B C" name))
+             (lambda (name) (memo-io (native-name fetch) name 2 3 4 5 6 7 8 9 10))
+             a)))
 
 ;; Assert: memo-io works outside of memo context, and does not disturb
 ;; cache.
@@ -217,8 +217,8 @@
 
 (define (outer a b)
   (log "outer")
-  (concat (memo-io (native-name lookup) a)
-          (memo-call (native-name inner) b)))
+  (.. (memo-io (native-name lookup) a)
+      (memo-call (native-name inner) b)))
 
 (reset-cache)
 (memo-session
@@ -363,7 +363,7 @@
 ;; File IO
 ;;----------------------------------------------------------------
 
-(define xyz-file (concat TMPDIR "xyz"))
+(define xyz-file (.. TMPDIR "xyz"))
 
 ;; memo-hash-file
 
@@ -407,7 +407,7 @@
 
 ;; memo-read-file
 
-(define abc-file (concat TMPDIR "abc"))
+(define abc-file (.. TMPDIR "abc"))
 (write-file abc-file "A B C")
 
 (define (file-words name)
@@ -436,7 +436,7 @@
 
 ;; memo-write-file
 
-(define out-file (concat TMPDIR "out"))
+(define out-file (.. TMPDIR "out"))
 (define (copy-file in out)
   (log "copy-file")
   (memo-write-file out (memo-read-file in)))

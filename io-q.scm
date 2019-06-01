@@ -33,24 +33,24 @@
 (define `thisfile (lastword MAKEFILE_LIST))
 
 (define `test-string
-  (concat (string-from-bytecodes
-           (concat "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19"
-                   " 20 21 22 23 24 25 26 27 28 29 30 31 32 127"))
-          "\na¢€￦\n"
-          ;; <CR><LF> required special handling
-          "abc\x0d\nxyz"))
+  (.. (string-from-bytecodes
+       (._. "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19"
+            "20 21 22 23 24 25 26 27 28 29 30 31 32 127"))
+      "\na¢€￦\n"
+      ;; <CR><LF> required special handling
+      "abc\x0d\nxyz"))
 
-(expect (concat test-string "X")
-        (let ((tmpfile (concat TMPDIR "rwtest")))
+(expect (.. test-string "X")
+        (let ((tmpfile (.. TMPDIR "rwtest")))
           (expect nil (write-file tmpfile test-string))
-          (shell (concat "echo -n X >> " tmpfile))
+          (shell (.. "echo -n X >> " tmpfile))
           (read-file tmpfile)))
 
-(define `non-file (concat TMPDIR "io-q-dir"))
-(shell (concat "mkdir -p " (quote-sh-arg non-file)))
+(define `non-file (.. TMPDIR "io-q-dir"))
+(shell (.. "mkdir -p " (quote-sh-arg non-file)))
 (expect 1 (see "directory" (write-file non-file "xyz")))
 ;; ensure it cleaned up the temp file
-(expect nil (file-exists? (concat non-file "_[tmp]")))
+(expect nil (file-exists? (.. non-file "_[tmp]")))
 
 ;; read-file
 
@@ -66,33 +66,33 @@
 
 (define io-q (concat-vec io-q-lines "\n"))
 
-(define `test-file (concat SOURCEDIR "test/io-q.txt"))
+(define `test-file (.. SOURCEDIR "test/io-q.txt"))
 
 (expect io-q (read-file test-file))
 (expect io-q-lines (read-lines test-file))
 (expect (wordlist 2 5 io-q-lines) (read-lines test-file 2 5))
 
-(expect nil (read-lines (concat SOURCEDIR "does-not-exist")))
+(expect nil (read-lines (.. SOURCEDIR "does-not-exist")))
 
 ;; file-exists?
 
 (expect (current-file) (file-exists? (current-file)))
-(expect nil (file-exists? (concat SOURCEDIR "does-not-exist")))
+(expect nil (file-exists? (.. SOURCEDIR "does-not-exist")))
 
 ;; cp-file
 
 (expect 1 (see "No such" (cp-file "does-not-exist" "shall-not-exist")))
 (expect nil (file-exists? "shall-not-exist"))
-(expect nil (cp-file test-file (concat test-file ".2")))
-(expect io-q (read-file (concat test-file ".2")))
+(expect nil (cp-file test-file (.. test-file ".2")))
+(expect io-q (read-file (.. test-file ".2")))
 
 
 ;; hash-file & hash-files
 
-(define TMP_XYZ (concat TMPDIR "io-q-hash"))
+(define TMP_XYZ (.. TMPDIR "io-q-hash"))
 (write-file TMP_XYZ "xyz")
 ;; Exercise multiple files and space within a file name.
-(define TMP_XYZ2 (concat TMPDIR " io-q! hash"))
+(define TMP_XYZ2 (.. TMPDIR " io-q! hash"))
 (write-file TMP_XYZ2 "xyz2")
 
 (expect nil *hash-cmd*)
@@ -154,7 +154,7 @@
 
 (define `(escape-rt str)
   (expect str (unescape-path (escape-path str)))
-  (expect 1 (words (escape-path (concat "x" str "x")))))
+  (expect 1 (words (escape-path (.. "x" str "x")))))
 
 (escape-rt "/../..a$*!#//x")
 (escape-rt "+ !#\\$:;=%~*?|\t\n")
@@ -166,5 +166,5 @@
 
 (let ((tmp (get-tmp-dir "io-q.XXX")))
   (assert (filter-out "/%" tmp))
-  (expect 0 (first (pipe (concat "ls " (quote-sh-file tmp)))))
-  (shell (concat "rm -rf " (quote-sh-file tmp))))
+  (expect 0 (first (pipe (.. "ls " (quote-sh-file tmp)))))
+  (shell (.. "rm -rf " (quote-sh-file tmp))))

@@ -19,14 +19,14 @@
 ;;
 (define (quote-sh-arg arg)
   &public
-  (concat "'" (subst "'" "'\\''" arg) "'"))
+  (.. "'" (subst "'" "'\\''" arg) "'"))
 
 
 ;; Quote FILENAME for POSIX shells and ensure it does not begin with '-'.
 ;;
 (define (quote-sh-file filename)
   &public
-  (quote-sh-arg (concat (if (filter "-%" [filename]) "./") filename)))
+  (quote-sh-arg (.. (if (filter "-%" [filename]) "./") filename)))
 
 
 (define `sed-esc-chars
@@ -38,10 +38,10 @@
 ;;
 (define (shell-wrap cmd ?start ?end)
   (define `shell-cmd
-    (concat "( " cmd " ) | sed -e '"
-            (if start
-                (concat start "," end "!d;"))
-            sed-esc-chars ";s/^$/!./'"))
+    (.. "( " cmd " ) | sed -e '"
+        (if start
+            (.. start "," end "!d;"))
+        sed-esc-chars ";s/^$/!./'"))
   (subst "!r" "\x0d" (ioshell shell-cmd)))
 
 
@@ -55,7 +55,7 @@
 ;;
 (define (shell-lines cmd)
   &public
-  (shell-wrap (concat cmd " ; echo ")))
+  (shell-wrap (.. cmd " ; echo ")))
 
 
 ;; Execute CMD, providing STDIN as input, capturing `stdout` and `stderr`.
@@ -70,19 +70,19 @@
     (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str)))
 
   (define `(label n)
-    (concat "| sed 's/^/" n "/;" sed-esc-chars "'"))
+    (.. "| sed 's/^/" n "/;" sed-esc-chars "'"))
 
   ;; Label each line with "1" or "2"
   (define `label-cmd
-    (concat (if stdin
-                (concat "printf '%b' " (quote-printf-arg stdin) " | ")
-                "cat /dev/null | ")
-            "( ( ( " cmd " ; echo 1$? >&3 ; echo ; echo >&2 ) " (label 2) " ) "
-            "3>&2 2>&1 1>&3 " (label 3) " ) 2>&1"))
+    (.. (if stdin
+            (.. "printf '%b' " (quote-printf-arg stdin) " | ")
+            "cat /dev/null | ")
+        "( ( ( " cmd " ; echo 1$? >&3 ; echo ; echo >&2 ) " (label 2) " ) "
+        "3>&2 2>&1 1>&3 " (label 3) " ) 2>&1"))
 
   (let ((lines (subst "!r" "\x0d" (ioshell label-cmd))))
     (foreach fd [1 2 3]
-             (or (subst " " "\n" (filtersub (concat fd "%") "%" lines))
+             (or (subst " " "\n" (filtersub (.. fd "%") "%" lines))
                  "!."))))
 
 
@@ -107,9 +107,9 @@
 ;;
 (define (echo-small bytes suffix file is-append)
   (ioshell
-   (concat "printf '%b' '" (concat-vec bytes) "' "
-           (subst "{>}" (if is-append ">>" ">") suffix)
-           file)))
+   (.. "printf '%b' '" (concat-vec bytes) "' "
+       (subst "{>}" (if is-append ">>" ">") suffix)
+       file)))
 
 
 (declare (echo-bytes bytes suffix file is-append))
@@ -119,7 +119,7 @@
   ;; "'" should only appear within "' \\ ' '"
   (if (filter "' \\" (lastword (subst "\\ \\" nil "' \\ ' '" nil b-first)))
       ;; get one more character
-      (echo-split (concat b-first " " (word 1 b-rest))
+      (echo-split (.. b-first " " (word 1 b-rest))
                   (rest b-rest)
                   suffix file is-append)
       (or (echo-small b-first suffix file is-append)
@@ -154,7 +154,7 @@
   (define `redirs
     (if (filter 2 fd)
         "9>&2 2>&1 >&9"
-        (concat "2>&1 >&" (patsubst 1 9 fd))))
+        (.. "2>&1 >&" (patsubst 1 9 fd))))
 
   (echo-bytes (get-echo-bytes data) redirs nil))
 
@@ -194,8 +194,7 @@
 ;;
 (define (chmod-file filename mode)
   &public
-  (ioshell (concat "chmod " (quote-sh-arg mode)
-                   " " (quote-sh-file filename) " 2>&1")))
+  (ioshell (._. "chmod" (quote-sh-arg mode) (quote-sh-file filename) "2>&1")))
 
 
 ;; Read contents of file FILENAME and return a vector of lines.  The number
@@ -207,7 +206,7 @@
 (define (read-lines filename ?start ?end)
   &public
   (shell-wrap
-   (concat "cat " (quote-sh-file filename) " 2>/dev/null && echo")
+   (._. "cat" (quote-sh-file filename) "2>/dev/null && echo")
    start end))
 
 
@@ -224,10 +223,9 @@
 ;;
 (define (cp-file src dst ?make-dst-dir)
   &public
-  (ioshell (concat
-            (if make-dst-dir
-                (concat "mkdir -p " (quote-sh-file (dir dst)) " 2>&1 && "))
-            "cp " (quote-sh-file src) " " (quote-sh-file dst) " 2>&1")))
+  (ioshell (.. (if make-dst-dir
+                   (.. "mkdir -p " (quote-sh-file (dir dst)) " 2>&1 && "))
+               "cp " (quote-sh-file src) " " (quote-sh-file dst) " 2>&1")))
 
 
 ;; Return FILENAME if file FILENAME exists.  The `wildcard` built-in
@@ -236,7 +234,7 @@
 ;;
 (define (file-exists? filename)
   &public
-  (if (ioshell (concat "[[ -f " (quote-sh-file filename) " ]] && echo t"))
+  (if (ioshell (.. "[[ -f " (quote-sh-file filename) " ]] && echo t"))
       filename))
 
 
@@ -244,7 +242,7 @@
 ;;
 (define (mkdir-p dir)
   &public
-  (ioshell (concat "mkdir -p " (quote-sh-file dir) " 2>&1")))
+  (ioshell (.. "mkdir -p " (quote-sh-file dir) " 2>&1")))
 
 
 (define *hash-cmd*
@@ -274,9 +272,9 @@
 
   ;; Limit the first word on each line (the hash) to 16 bytes
   (define `cmd
-    (concat (hash-cmd) " " quoted-names " 2>/dev/null"
-            " | sed 's/\\(^................\\)[^ ]*/\\1/;"
-            "s/!/!1/g;s/ /!0/g;s/\t/!+/g'"))
+    (.. (hash-cmd) " " quoted-names " 2>/dev/null"
+        " | sed 's/\\(^................\\)[^ ]*/\\1/;"
+        "s/!/!1/g;s/ /!0/g;s/\t/!+/g'"))
 
   ;; Output is one line per file containing HASH and FILENAME seperated
   ;; by one space (md5 -r) or two spaces (all others).
@@ -285,7 +283,7 @@
   (foreach dline (ioshell cmd)
            (foreach hash (word 1 (subst "!0" " " dline))
                     (define `dfile
-                      (patsubst (concat hash "!0" extra "%") "%" dline))
+                      (patsubst (.. hash "!0" extra "%") "%" dline))
                     {(promote dfile): hash})))
 
 
@@ -304,14 +302,14 @@
   (define `hashpipe
     (if (filter "md5" (basename (hash-cmd)))
         "md5 -q"
-        (concat (hash-cmd) " -")))
-  (ioshell (concat "( " cmd " ) | " hashpipe
-                   " | sed 's/\\(^................\\).*/\\1/'")))
+        (.. (hash-cmd) " -")))
+  (ioshell (.. "( " cmd " ) | " hashpipe
+               " | sed 's/\\(^................\\).*/\\1/'")))
 
 
 (define (mktemp dir-name)
   (ioshell
-   (concat "mktemp " (quote-sh-file (concat dir-name "blob.XXXX")))))
+   (.. "mktemp " (quote-sh-file (.. dir-name "blob.XXXX")))))
 
 
 (define (write-blob file data)
@@ -325,10 +323,10 @@
     (if (echo-bytes (get-echo-bytes data) "2>&1 {>} " file-arg)
         nil
         (ioshell
-         (concat "( o=" file-arg
-                 " && h=$(" (hash-cmd) " \"$o\")"
-                 " && mv -f \"$o\" " dir-arg "\"${h:0:16}\""
-                 " && echo \"${h:0:16}\" ) 2>/dev/null"))))
+         (.. "( o=" file-arg
+             " && h=$(" (hash-cmd) " \"$o\")"
+             " && mv -f \"$o\" " dir-arg "\"${h:0:16}\""
+             " && echo \"${h:0:16}\" ) 2>/dev/null"))))
 
   (addprefix (dir file) hash))
 
@@ -349,13 +347,13 @@
   ;; next path element
   (define `e (word 1 path))
   ;; emit ".." if path element is ".." and stack is empty
-  (define `emit (filter ".." (concat e (word 1 stk))))
+  (define `emit (filter ".." (.. e (word 1 stk))))
   ;; remove last path element when E is "..", otherwise append E
   (define `next-stk
-    (subst "/" " " (filter-out "%/.." (concat stk "/" e))))
+    (subst "/" " " (filter-out "%/.." (.. stk "/" e))))
 
   (if path
-      (concat emit " " (clean-path-x (rest path) next-stk))
+      (.. emit " " (clean-path-x (rest path) next-stk))
       stk))
 
 
@@ -369,7 +367,7 @@
   (define `elems (filter-out "." (subst "/" " " [path])))
   (define `o (subst " " "/" (strip (clean-path-x elems))))
 
-  (promote (patsubst "/./" "/" (concat prefix (or o ".") suffix))))
+  (promote (patsubst "/./" "/" (.. prefix (or o ".") suffix))))
 
 
 ;; Combine a directory name and a path (relative or absolute).
@@ -378,7 +376,7 @@
   &public
   (clean-path (if (filter "/%" path)
                   path
-                  (concat dir "/" path))))
+                  (.. dir "/" path))))
 
 
 ;; Escape a relative path or absolute path, so that the result is:
@@ -424,7 +422,7 @@
     (or (value "SCAM_DIR") (value "SCAM_TMP") ".scam/"))
 
   (if tmpl
-      (let ((o (pipe (concat "mktemp -d " (quote-sh-file (concat tmp tmpl))))))
+      (let ((o (pipe (.. "mktemp -d " (quote-sh-file (.. tmp tmpl))))))
         (or (first (word 2 (subst "\n" " " o)))
-            (error (concat "get-tmp-dir failed: " (nth 2 o)))))
+            (error (.. "get-tmp-dir failed: " (nth 2 o)))))
       tmp))

@@ -11,7 +11,7 @@
 
 (define (read-file-assert file)
   (or (read-file file)
-      (error (concat "file " file " not found"))))
+      (error (.. "file " file " not found"))))
 
 
 (define (clock-gen1 file)
@@ -26,7 +26,7 @@
   (let ((o (gen1 nodes 1)))
     (expect nil (dict-get "errors" o)))
 
-  (clk-show (concat "gen1 " file)
+  (clk-show (.. "gen1 " file)
             (gen1 nodes 1)))
 
 

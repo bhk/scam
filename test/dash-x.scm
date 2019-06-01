@@ -12,9 +12,9 @@
 
 (define (conc vec delim)
   (if vec
-      (concat (first vec)
-              (if (word 2 vec) delim)
-              (conc (rest vec) delim))))
+      (.. (first vec)
+          (if (word 2 vec) delim)
+          (conc (rest vec) delim))))
 
 (define (main argv)
   ;; return exit code (check content and lenth of words

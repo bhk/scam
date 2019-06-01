@@ -36,7 +36,7 @@
 (define (spread-tokens v subj)
   (if v
       (spread-tokens (rest v)
-                     (subst (word 1 v) (concat " " (word 1 v) " ") subj))
+                     (subst (word 1 v) (.. " " (word 1 v) " ") subj))
       (strip subj)))
 
 
@@ -56,7 +56,7 @@
 (define (gen-lex tokens)
   &public
   (gen-polysub (for t tokens [t])
-               (for t tokens (concat " " [t] " "))
+               (for t tokens (.. " " [t] " "))
                (lambda (text) [text])))
 
 

@@ -52,6 +52,8 @@
 ;;--------------------------------
 
 (expect "ab(.or 1)" (c0-ser "(concat \"a\" \"b\" (or 1))"))
+(expect "ab(.or 1)" (c0-ser "(.. \"a\" \"b\" (or 1))"))
+(expect "a b (.or 1)" (c0-ser "(._. \"a\" \"b\" (or 1))"))
 
 ;;--------------------------------
 ;; (subst FROM TO {FROM TO}... STR)
@@ -96,17 +98,15 @@
 (expect (c0-ser "(let ((a 1) (b \"q\")) (f a b))")
         (c0-ser "((lambda (a b) (f a b)) 1 \"q\")"))
 (expect (c0-ser "(let a a)")
-        (concat
+        (..
          "!(PError 4 'invalid ((VAR VALUE)...) in (let ((VAR VALUE)...) BODY)"
          "; expected a list')"))
 (expect (c0-ser "(let (a) a)")
-        (concat
-         "!(PError 5 'invalid (VAR VALUE) in (let ((VAR VALUE)...) BODY)"
-         "; expected a list')"))
+        (.. "!(PError 5 'invalid (VAR VALUE) in (let ((VAR VALUE)...) BODY)"
+            "; expected a list')"))
 (expect (c0-ser "(let ((\"a\")) a)")
-        (concat
-         "!(PError 6 'invalid VAR in (let ((VAR VALUE)...) BODY)"
-         "; expected a symbol')"))
+        (.. "!(PError 6 'invalid VAR in (let ((VAR VALUE)...) BODY)"
+            "; expected a symbol')"))
 (expect (c0-ser "(let ((a)) a)")
         "!(PError 5 'missing VALUE in (let ((VAR VALUE)...) BODY)')")
 
@@ -139,9 +139,9 @@
 (expect "3" (c0-ser "(let& ((a 1) (b 2) (a 3)) a)"))
 
 ;; capture in sym macro value
-(c0-ser "(foreach n 1 (let& ((m n)) (concat m (lambda () m))))"
+(c0-ser "(foreach n 1 (let& ((m n)) (.. m (lambda () m))))"
         "(.foreach \"0,1,{\"0}`{.n\"0})")
-(c0-ser "(let& ((m (foreach n,1,n))) (concat m (lambda () m))))"
+(c0-ser "(let& ((m (foreach n,1,n))) (.. m (lambda () m))))"
         "(.foreach \"0,1,{\"0})`(.foreach \"0,1,{\"0})")
 
 ;;--------------------------------
@@ -150,7 +150,7 @@
 
 (expect (c0-ser "(foreach v \"1 2 3\" v)" "-")
         "(.foreach ;,1 2 3,{;})")
-(expect (c0-ser "(foreach x \"1 2 3\" (foreach y 4 (concat x y)))")
+(expect (c0-ser "(foreach x \"1 2 3\" (foreach y 4 (.. x y)))")
         "(.foreach ;,1 2 3,(.foreach ;;,4,{;}{;;}))")
 (expect (c0-ser "(lambda (a) (define `m a) m)")
         "`{1}")
@@ -165,9 +165,8 @@
 (expect (c0-ser "(foreach a)")
         "!(PError 2 'missing LIST in (foreach VAR LIST BODY)')")
 (expect (c0-ser "(foreach)")
-        (concat
-         "!(PError 2 'missing VAR in (foreach VAR LIST BODY)"
-         "; expected a symbol')"))
+        (.. "!(PError 2 'missing VAR in (foreach VAR LIST BODY)"
+            "; expected a symbol')"))
 
 ;;--------------------------------
 ;; (for VAR VEC BODY)
@@ -197,13 +196,13 @@
         (c0-ser "(concat-for x \"a b\" \" \" x)" { d: (EVar "p" "D") }))
 
 ;; delim == IString
-(expect (concat "(.subst ~1,~,(.subst ~ ,|,(.subst ~x,,"
+(expect (.. "(.subst ~1,~,(.subst ~ ,|,(.subst ~x,,"
                 "(.or (.foreach ;,a b,(.subst ~,~1,(^u {;}))~),~)x)))")
         (c0-ser "(concat-for x \"a b\" \"|\" x)" { d: (EVar "p" "D" ) }))
 
 ;; general case
-(expect (concat "(.subst ~1,~,(.subst ~ ,(.subst ~,~1,{D}),(.subst ~x,,"
-                "(.or (.foreach ;,a b,(.subst ~,~1,(^u {;}))~),~)x)))")
+(expect (.. "(.subst ~1,~,(.subst ~ ,(.subst ~,~1,{D}),(.subst ~x,,"
+            "(.or (.foreach ;,a b,(.subst ~,~1,(^u {;}))~),~)x)))")
         (c0-ser "(concat-for x \"a b\" d x)" { d: (EVar "p" "D") }))
 
 ;;--------------------------------
@@ -421,13 +420,13 @@
 
 ;; complex value => use `foreach`
 (expect (c0-ser "(case (F) ((C a b c) (lambda () a)))" tc-env)
-        (concat "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
-                "`(^n 2,(^u {.;}))))"))
+        (.. "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
+            "`(^n 2,(^u {.;}))))"))
 
 ;; nested complex value => generate unique auto var
 (expect (c0-ser "(case (F) ((C a b c) (case (F) (else 1))))" tc-env)
-        (concat "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
-                "(.foreach ;;,(^d (F )),1)))"))
+        (.. "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
+            "(.foreach ;;,(^d (F )),1)))"))
 
 ;; collapse clauses with equivalent bodies
 (expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))" tc-env)

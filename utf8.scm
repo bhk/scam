@@ -44,7 +44,7 @@
 (define (plex2 strings)
   (foreach a strings
            (foreach b strings
-                    (concat a b))))
+                    (.. a b))))
 
 (define byte-to-bin-a (rest (plex2 (plex2 "00 01 10 11"))))
 
@@ -87,7 +87,7 @@
   ;; Get ASCII values in decimal; high bytes in binary.
   (define `nums
     (foreach dec bytes
-             (or (filter "1%" (concat (byte-to-bin dec) "b"))
+             (or (filter "1%" (.. (byte-to-bin dec) "b"))
                  dec)))
 
   ;; Combine continuing bytes with preceding high bytes.

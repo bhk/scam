@@ -11,7 +11,7 @@
 
 (define (read-file-assert file)
   (or (read-file file)
-      (error (concat "file " file " not found"))))
+      (error (.. "file " file " not found"))))
 
 
 (define (clock-c0 file)
@@ -22,7 +22,7 @@
 
   (let-global ((*compile-subject*  (penc text))
                (*compile-file*     file))
-    (clk-show (concat "c0: " file)
+    (clk-show (.. "c0: " file)
               (c0-block-cc env ast nil))))
 
 

@@ -77,9 +77,9 @@ $(if ,, ) :=
 (declare (^v)
          &native)
 
-(set ^v (concat "$(subst !.,!. ,$(filter-out %!,$(subst !. ,!.,"
-                "$(foreach n,$(wordlist $N,9,1 2 3 4 5 6 7 8),"
-                "$(call ^d,$($n)))$(if $9, $9) !)))"))
+(set ^v (.. "$(subst !.,!. ,$(filter-out %!,$(subst !. ,!.,"
+            "$(foreach n,$(wordlist $N,9,1 2 3 4 5 6 7 8),"
+            "$(call ^d,$($n)))$(if $9, $9) !)))"))
 
 (declare (^av)
          &native)
@@ -90,22 +90,22 @@ $(if ,, ) :=
 
 (declare (^apply fn argv) &native)
 
-(set ^apply (concat "$(call ^Y,$(call ^n,1,$2),$(call ^n,2,$2),$(call ^n,3,$2),"
-                    "$(call ^n,4,$2),$(call ^n,5,$2),$(call ^n,6,$2),"
-                    "$(call ^n,7,$2),$(call ^n,8,$2),$(wordlist 9,99999999,$2),$1)"))
+(set ^apply (.. "$(call ^Y,$(call ^n,1,$2),$(call ^n,2,$2),$(call ^n,3,$2),"
+                "$(call ^n,4,$2),$(call ^n,5,$2),$(call ^n,6,$2),"
+                "$(call ^n,7,$2),$(call ^n,8,$2),$(wordlist 9,99999999,$2),$1)"))
 
 ;; Call function named NAME with elements of vector ARGV as arguments.
 ;;
 (define (^na name argv)
   &native
   (define `call-expr
-    (concat "$(call " name
-            (subst " ," ","
-                   (foreach n (wordlist 1 (words argv) "1 2 3 4 5 6 7 8")
-                            (concat ",$(call ^n," n ",$2)")))
-            (if (word 9 argv)
-                (concat ",$(wordlist 9,99999999,$2)"))
-            ")"))
+    (.. "$(call " name
+        (subst " ," ","
+               (foreach n (wordlist 1 (words argv) "1 2 3 4 5 6 7 8")
+                        (.. ",$(call ^n," n ",$2)")))
+        (if (word 9 argv)
+            (.. ",$(wordlist 9,99999999,$2)"))
+        ")"))
   (call "if" "" "" call-expr))
 
 
@@ -118,35 +118,34 @@ $(if ,, ) :=
 ;;
 (define (^f a)
   &native
-  (concat "\""
-          (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" a)
-          "\""))
+  (.. "\""
+      (subst "\\" "\\\\" "\"" "\\\"" "\n" "\\n" a)
+      "\""))
 
 ;; Display a value to stdout and return it.
 ;;
 (define (^tp name value)
   &native
-  (concat
-   (info (concat name " " (^f value)))
-   value))
+  (.. (info (.. name " " (^f value)))
+      value))
 
 ;; ^tc : call function named by $1, and shift all other args left
 ;;
 (declare (^tc fn ...args) &native)
-(set ^tc (concat "$(call $1,$2,$3,$4,$5,$6,$7,$8,$(call ^n,1,$9),$(wordlist 2,9999,$9))"))
+(set ^tc (.. "$(call $1,$2,$3,$4,$5,$6,$7,$8,$(call ^n,1,$9),$(wordlist 2,9999,$9))"))
 
 
 ;; ^ta : format arguments for display
 ;;
 (declare (^ta ...args) &native)
 
-(set ^ta (concat "$(if $(or $1,$2,$3,$4,$5,$6,$7,$8,$9), $(^f)$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9))"))
+(set ^ta (.. "$(if $(or $1,$2,$3,$4,$5,$6,$7,$8,$9), $(^f)$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9))"))
 
 ;; ^t : trace function call with arguments and results.  Generated code will
 ;;      evaluate this as a variable -- `$(^t)` -- rather than via `call`.
 ;;
 (declare (^t) &native)
-(set ^t (concat "$(info --> ($1$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9)))$(call ^tp,<-- $1:,$(call ^tc,$1,$2,$3,$4,$5,$6,$7,$8,$9))"))
+(set ^t (.. "$(info --> ($1$(call ^tc,^ta,$2,$3,$4,$5,$6,$7,$8,$9)))$(call ^tp,<-- $1:,$(call ^tc,$1,$2,$3,$4,$5,$6,$7,$8,$9))"))
 
 
 ;;--------------------------------------------------------------
@@ -159,20 +158,20 @@ $(if ,, ) :=
 
 (define (esc-LHS str)
   ;; $(if ,,...) protects ":", "=", *keywords*, and leading/trailing spaces
-  (concat "$(if ,,"
-          (subst "(" "$["
-                 ")" "$]" (esc-RHS str))
-          ")"))
+  (.. "$(if ,,"
+      (subst "(" "$["
+             ")" "$]" (esc-RHS str))
+      ")"))
 
 
 ;; Assign a new value to a simple variable, and return RETVAL.
 ;;
 (define (^set name value ?retval)
   &native
-  (concat (eval (concat (esc-LHS name)
-                        " :=$ "
-                        (esc-RHS value)))
-          retval))
+  (.. (eval (.. (esc-LHS name)
+                " :=$ "
+                (esc-RHS value)))
+      retval))
 
 ;; Assign a new value to a recursive variable, and return RETVAL.
 ;;
@@ -182,9 +181,9 @@ $(if ,, ) :=
   (define `qbody (subst "endef" "$ endef"
                          "define" "$ define"
                          "\\\n" "\\$ \n"
-                         (concat value "\n")))
+                         (.. value "\n")))
 
-  (eval (concat "define " qname "\n" qbody "endef\n"))
+  (eval (.. "define " qname "\n" qbody "endef\n"))
   retval)
 
 
@@ -201,14 +200,13 @@ $(if ,, ) :=
 ;;
 (define (^E str ?pre)
   &native
-  (subst "$" (concat "$" pre)
-         (concat
-          "$(if ,,"
-          (subst "$" "$`"
-                 ")" "$]"
-                 "(" "$["
-                 "\n" "$'" str)
-          ")")))
+  (subst "$" (.. "$" pre)
+         (.. "$(if ,,"
+             (subst "$" "$`"
+                    ")" "$]"
+                    "(" "$["
+                    "\n" "$'" str)
+             ")")))
 
 ;;--------------------------------------------------------------
 ;; Support for fundamental data types, and utility functions
@@ -274,7 +272,7 @@ $(if ,, ) :=
 ;;
 (define (^at str)
   &native
-  (set ^tags (concat ^tags " " (filter-out ^tags str))))
+  (set ^tags (._. ^tags (filter-out ^tags str))))
 
 
 ;;--------------------------------------------------------------
@@ -289,11 +287,11 @@ $(if ,, ) :=
 (define (^load id)
   &native
   (define `(mod-var id)
-    (concat "[mod-" id "]"))
+    (.. "[mod-" id "]"))
 
   (if (bound? (mod-var id))
       (eval (value (mod-var id)))
-      (eval (concat "include " (concat (value "SCAM_DIR") id ".o"))))
+      (eval (.. "include " (.. (value "SCAM_DIR") id ".o"))))
   ;; return value is useful when viewing trace of load sequence
   id)
 
@@ -304,7 +302,7 @@ $(if ,, ) :=
   &native
   (or (filter id *required*)
       (begin
-        (set *required* (concat *required* " " id))
+        (set *required* (._. *required* id))
         (^load id)))
   nil)
 
@@ -328,7 +326,7 @@ $(if ,, ) :=
 
 
 (define (trace-info a ?b ?c ?d)
-  (info (concat "TRACE: " a b c d)))
+  (info (.. "TRACE: " a b c d)))
 
 
 ;; Initialize count variables to this representation of 0.
@@ -345,11 +343,11 @@ $(if ,, ) :=
       (trace-digits (subst "/1111111111" "1/" k))
 
       ;; convert to ASCII
-      (let& ((digits (foreach d (concat "/" (subst "/" " /" k))
+      (let& ((digits (foreach d (.. "/" (subst "/" " /" k))
                               (words (subst "1" " 1" "/" "" d)))))
         ;; Convert leading 0's to :'s, but leave 0 if in 1's place.
         (subst " " "" ":0000" ":::::" ":00" ":::" ":0" "::" ":!" "0!" "!:" ""
-               (concat "!:" digits "!:")))))
+               (.. "!:" digits "!:")))))
 
 
 ;; Construct a string with N words.
@@ -357,15 +355,15 @@ $(if ,, ) :=
 (define (trace-words n ?str)
   (if (word n str)
       str
-      (trace-words n (concat "1 " str))))
+      (trace-words n (._. 1 str))))
 
 
 (define `(save-var id)
-  (concat "[S-" id "]"))
+  (.. "[S-" id "]"))
 
 
 (define `(count-var id)
-  (concat "[K-" id "]"))
+  (.. "[K-" id "]"))
 
 
 ;; ENAME = function name *encoded* for RHS of asssignment
@@ -377,12 +375,12 @@ $(if ,, ) :=
      ((filter "c" mode)
       (define `cv (count-var id))
       (set-native cv (or (value cv) zero))
-      (concat "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1)):D"))
+      (.. "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1)):D"))
 
      ;; prefix
      ((filter "p%" mode)
       ;; prevent unintential processing of template code
-      (concat (subst ":" ":$ " (promote (patsubst "p%" "%" mode))) ":D"))
+      (.. (subst ":" ":$ " (promote (patsubst "p%" "%" mode))) ":D"))
 
      ;; trace invocations and arguments
      ((filter "t f" mode)
@@ -398,17 +396,17 @@ $(if ,, ) :=
      ((filter "x%" mode)
       (define `reps (or (patsubst "x%" "%" mode) 11))
       (define `ws (rest (trace-words reps "1")))
-      (concat "$(foreach ^X,1,:C)"
-              "$(if $(^X),,$(if $(foreach ^X," ws ",$(if :C,)),))"))
+      (.. "$(foreach ^X,1,:C)"
+          "$(if $(^X),,$(if $(foreach ^X," ws ",$(if :C,)),))"))
 
      (else
-      (error (concat "TRACE: Unknown mode: '" mode "'")))))
+      (error (.. "TRACE: Unknown mode: '" mode "'")))))
 
   ;; Expand an instrumentation template.
   (subst
    ":I" "info $(^TI)"
    ":E" "$(eval ^TI:=$$(^TI) ):C$(eval ^TI:=$$(subst x ,,x$$(^TI)))"
-   ":C" (concat "$(call " (save-var id) ",$1,$2,$3,$4,$5,$6,$7,$8,$9)")
+   ":C" (.. "$(call " (save-var id) ",$1,$2,$3,$4,$5,$6,$7,$8,$9)")
    ":N" (patsubst "'%" "%" ename)
    ":D" defn ;; do this last, because we don't know what it contains
    template))
@@ -422,7 +420,7 @@ $(if ,, ) :=
   (foreach
       ns-pat (if (filter "'% `% \"%" pat)
                  (patsubst "\"%" "%" pat)
-                 (concat "'" pat))
+                 (.. "'" pat))
 
       (define `avoid-pats
         (foreach p "^% `% `trace% `esc-% `set-native-fn `filtersub"
@@ -441,10 +439,10 @@ $(if ,, ) :=
 ;; assign one; otherwise return nil.
 ;;
 (define (trace-id name ?create)
-  (or (filtersub (concat name ":%") "%" *trace-ids*)
+  (or (filtersub (.. name ":%") "%" *trace-ids*)
       (if create
           (set *trace-ids*
-               (concat *trace-ids* " " (concat name ":" (words *trace-ids*)))
+               (.. *trace-ids* " " name ":" (words *trace-ids*))
                (words *trace-ids*)))))
 
 
@@ -490,12 +488,13 @@ $(if ,, ) :=
   (define `(match-funcs pat)
     (declare .VARIABLES &native)
     (define `eligible-vars
-      (filter-out (concat *do-not-trace* " " dangerous-vars " "
-                          (filtersub "%:-" "%" specs))
+      (filter-out (._. *do-not-trace*
+                       dangerous-vars
+                       (filtersub "%:-" "%" specs))
                   .VARIABLES))
 
     (foreach v (trace-match pat eligible-vars)
-             (if (filter "filerec%" (concat (origin v) (flavor v)))
+             (if (filter "filerec%" (.. (origin v) (flavor v)))
                  v)))
 
   ;; Apply instrumentation to a function
@@ -531,7 +530,7 @@ $(if ,, ) :=
 
 (define (trace-rev lst)
   (if lst
-      (concat (trace-rev (wordlist 2 99999 lst)) " " (word 1 lst))))
+      (._. (trace-rev (wordlist 2 99999 lst)) (word 1 lst))))
 
 
 ;; Print function counts and reset them.
@@ -543,7 +542,7 @@ $(if ,, ) :=
                       (if (findstring 1 k)
                           (begin
                             (set-native (count-var (trace-id name)) zero)
-                            [(concat (subst ":" " " (trace-digits k)) " " name)])))))
+                            [(._. (subst ":" " " (trace-digits k)) name)])))))
 
   (for line (sort lines)
            (trace-info line)))
@@ -572,7 +571,7 @@ $(if ,, ) :=
 ;; Add vars to the list of variables not to trace.
 (define (do-not-trace vars)
   &public
-  (set *do-not-trace* (concat *do-not-trace* " " vars)))
+  (set *do-not-trace* (._. *do-not-trace* vars)))
 
 ;; Activate tracing *only* during evaluation of EXPR.
 ;;
@@ -584,7 +583,7 @@ $(if ,, ) :=
 (define (start-trace main-mod)
   ;; Activate tracing if [_]SCAM_TRACE is set
   (define `env-prefix (if (filter "scam" main-mod) "_"))
-  (trace (value (concat env-prefix "SCAM_TRACE"))))
+  (trace (value (.. env-prefix "SCAM_TRACE"))))
 
 
 ;;----------------------------------------------------------------
@@ -606,9 +605,9 @@ $(if ,, ) :=
 ;; prepend new function so they are run in reverse order
 (define (at-exit fn ?unique)
   &public
-  (if (and unique (findstring (concat " " [fn] " ") (concat " " *atexits* " ")))
+  (if (and unique (findstring (.. " " [fn] " ") (.. " " *atexits* " ")))
       nil
-      (set *atexits* (concat [fn] " " *atexits*))))
+      (set *atexits* (._. [fn] *atexits*))))
 
 
 (define (run-at-exits)
@@ -626,7 +625,7 @@ $(if ,, ) :=
            (patsubst "-%" "%" (subst " " "x" "\t" "x" code))))
 
   (if (non-integer? code)
-      (error (concat "scam: main returned '" code "'"))
+      (error (.. "scam: main returned '" code "'"))
       (or code 0)))
 
 
@@ -636,7 +635,7 @@ $(if ,, ) :=
   ;; Allow module loading to be traced.
   (start-trace main-mod)
   ;; Now it's dangerous to trace...
-  (do-not-trace (concat "^R ^load"))
+  (do-not-trace (.. "^R ^load"))
 
   (^R main-mod)
   (start-trace main-mod)
@@ -648,16 +647,16 @@ $(if ,, ) :=
     (let ((exit-arg (check-exit ((value main-func) args))))
       ;; Read .DEFAULT_GOAL *after* running main.  Ensure [exit] will run
       ;; last.  There we run exit hooks and deliver main's exit code.
-      (concat ".DEFAULT_GOAL :=\n"
-              ".PHONY: [exit]\n"
-              "[exit]: " .DEFAULT_GOAL ";"
-              "@exit " exit-arg (lambda () (run-at-exits)))))
+      (.. ".DEFAULT_GOAL :=\n"
+          ".PHONY: [exit]\n"
+          "[exit]: " .DEFAULT_GOAL ";"
+          "@exit " exit-arg (lambda () (run-at-exits)))))
 
   (eval rules))
 
 
 ;; these will be on the stack
-(do-not-trace (concat (native-name ^start) " " (native-name start-trace)))
+(do-not-trace (._. (native-name ^start) (native-name start-trace)))
 (at-exit (lambda () (trace-dump known-names)))
 
 

@@ -164,7 +164,7 @@
 
 (format-add (lambda (str)
               (if (filter "!-!-%" (word 1 str))
-                  (concat "[" str "]"))))
+                  (.. "[" str "]"))))
 
 (expect "[!-!-abc]" (format "!-!-abc"))
 
@@ -214,7 +214,7 @@
 (define mprefix "")
 
 (define (mtest a b c)
-  (concat mprefix c b a))
+  (.. mprefix c b a))
 
 (memoize (native-name mtest))
 
@@ -253,12 +253,12 @@
 (expect 0 (index-of ["!" " " "\t"] "a"))
 
 ;; foldl
-(expect "((0!)2)" (foldl (lambda (a b) (concat "(" a b ")")) 0 ["!" 2]))
-(expect "0" (foldl (lambda (a b) (concat "(" a b ")")) 0 []))
-(expect "(01)" (foldl (lambda (a b) (concat "(" a b ")")) 0 [1]))
+(expect "((0!)2)" (foldl (lambda (a b) (.. "(" a b ")")) 0 ["!" 2]))
+(expect "0" (foldl (lambda (a b) (.. "(" a b ")")) 0 []))
+(expect "(01)" (foldl (lambda (a b) (.. "(" a b ")")) 0 [1]))
 
 ;; foldr
-(expect "(!(20))" (foldr (lambda (a b) (concat "(" a b ")")) 0 ["!" 2]))
+(expect "(!(20))" (foldr (lambda (a b) (.. "(" a b ")")) 0 ["!" 2]))
 
 ;; intersperse
 (expect [1 9 "cat dog" 9 3] (intersperse 9 [1 "cat dog" 3]))

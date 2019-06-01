@@ -7,12 +7,12 @@
 
 (define (read-file-assert file)
   (or (read-file file)
-      (error (concat "file " file " not found"))))
+      (error (.. "file " file " not found"))))
 
 
 (define (clock-parse file)
   (define text (read-file-assert file))
-  (clk-show (concat "parse " file)
+  (clk-show (.. "parse " file)
             (parse-text text)))
 
 

@@ -1,4 +1,4 @@
 
 (define (dup a)
   &public
-  (concat a a))
+  (.. a a))

@@ -318,7 +318,7 @@
 ;;
 (define (c0-for env sym var list body where var-xform body-xform)
   (foreach
-      depth (concat (current-depth env) ";")
+      depth (.. (current-depth env) ";")
 
       (case var
         ((PSymbol _ name)
@@ -583,7 +583,7 @@
        (if (not (filter "&%" arg-name))
            ;; argument name
            (read-type-r (rest args) form tag
-                        (concat pattern " " (arg-enc flag (word 2 args)))
+                        (._. pattern (arg-enc flag (word 2 args)))
                         (conj names arg-name)
                         nil))
 
@@ -626,7 +626,7 @@
 ;;
 (define (read-types parent tag-base ctor-forms ?counter ?prev-ctor ?others)
   (define `index (words counter))
-  (define `tag (concat tag-base index))
+  (define `tag (.. tag-base index))
   (define `all-ctors (append others
                              (if prev-ctor
                                  [prev-ctor])))
@@ -649,7 +649,7 @@
   (let ((types
          (case type
            ((PSymbol _ name)
-            (read-types sym (concat "!:" name) ctor-forms))
+            (read-types sym (.. "!:" name) ctor-forms))
            (else
             (err-expected "S" type sym "NAME" data-where))))
         (scope (if (filter "&public" flags) "x" "p")))
@@ -742,7 +742,7 @@
                  (IBuiltin
                   "filter"
                   (if is-word
-                      [(IString [(concat tag " %")])
+                      [(IString [(.. tag " %")])
                        (IConcat [filter-value (IString "!0")])]
                       [(IString tag)
                        (IBuiltin "word" [(IString 1) filter-value])])))
@@ -814,7 +814,7 @@
   (cond
    ;; merge
    ((and pvt1 (eq? (rest pvt1) (rest pvt2)))
-    (define `p (concat (first pvt1) " " (first pvt2)))
+    (define `p (._. (first pvt1) (first pvt2)))
     (define `v (nth 2 pvt1))
     (define `t (nth 3 pvt1))
     (recur (IBuiltin "if" [ (IBuiltin "filter" [(IString p) v]) t])
@@ -873,7 +873,7 @@
    ((eval-only-once? value)
     ;; Prevent multiple evaluation of a complex expression: wrap in
     ;; "(foreach X (to-word EXPR) ...)"
-    (define `f-depth (concat depth ";"))
+    (define `f-depth (.. depth ";"))
     (define `f-filter-value (for-arg f-depth))
     (define `f-value-defn (EIL "p" f-depth (il-promote (for-arg f-depth))))
     (define `f-body

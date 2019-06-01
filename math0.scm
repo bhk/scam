@@ -5,10 +5,6 @@
 (require "core.scm")
 
 
-(define `(+_+ a b)
-  (concat a " " b))
-
-
 ;; Convert decimal digits to unary digits.
 ;;
 (define `(d2u-macro d)
@@ -69,7 +65,7 @@
 
 ;; This is exported later in math.scm
 (define `(0- x)
-  (subst "--" "" (concat "-" x)))
+  (subst "--" "" (.. "-" x)))
 
 
 ;; Get leading zeros in UF value U.
@@ -97,13 +93,13 @@
 
 
 (define `(uf-ends-in-0? u)
-  (filter "09" (concat u "9")))
+  (filter "09" (.. u "9")))
 
 
 (define (u-carry-fn u nines zeros)
-  (subst (concat nines 1) (concat 1 zeros)
-         (if (findstring (concat nines nines 1) u)
-             (u-carry-fn u (concat nines nines) (concat zeros zeros))
+  (subst (.. nines 1) (.. 1 zeros)
+         (if (findstring (.. nines nines 1) u)
+             (u-carry-fn u (.. nines nines) (.. zeros zeros))
              u)))
 
 
@@ -137,7 +133,7 @@
 ;; Remove extraneous leading zeros from a U-encoded non-negative integer.
 ;;
 (define `(u-norm-uns u)
-  (concat 0 (smash (rest (subst "01" "0 1" u)))))
+  (.. 0 (smash (rest (subst "01" "0 1" u)))))
 
 
 (define `(neg-digits u)
@@ -174,22 +170,22 @@
 ;; to (1 - UF) mod 1.
 ;;
 (define `(uf-complement uf)
-  (concat (uv-complement-digits uf) 1))
+  (.. (uv-complement-digits uf) 1))
 
 
 ;; Assert: at most one "~" in each digit
 (define (borrow-n u zeros)
-  (if (findstring (concat zeros "~") u)
-      (subst (concat zeros "~") (concat "~" (subst 0 U9 zeros))
+  (if (findstring (.. zeros "~") u)
+      (subst (.. zeros "~") (.. "~" (subst 0 U9 zeros))
              "1~" nil
-             (borrow-n u (concat zeros zeros)))
+             (borrow-n u (.. zeros zeros)))
       u))
 
 
 ;; Zero-extend X on the left to have numdigits(X) + numdigits(Y) digits
 ;;
 (define `(lzpad x y)
-  (spread (concat (subst 1 "" y) x)))
+  (spread (.. (subst 1 "" y) x)))
 
 
 ;; Eliminate "~" digits by borrowing from 1's in more significant places.
@@ -218,7 +214,7 @@
                 (borrow-macro
                  (if (filter "~%" (subst 0 nil u))
                      ;; negative
-                     (concat "- " (neg-swap u))
+                     (.. "- " (neg-swap u))
                      ;; positive
                      u)))
                (u-norm-uns u))))
@@ -247,13 +243,13 @@
   (define `ua (subst "-" nil a))
   (define `ub (subst "-" nil b))
 
-  (if (findstring "-" (concat a b))
-      (if (findstring 1 (concat a b))
+  (if (findstring "-" (.. a b))
+      (if (findstring 1 (.. a b))
           (if (findstring "-" a)
               ;; a is negative
               (if (findstring "-" b)
                   ;; both negative
-                  (concat "-" (u-add-unsigned-fn ua ub))
+                  (.. "-" (u-add-unsigned-fn ua ub))
                   ;; b non-negative
                   (u-sub-unsigned b ua))
               ;; a non-negative
@@ -298,8 +294,8 @@
 ;;   If A<B, return "~..."  (word consisting of ~'s)
 ;;
 (define (u-cmp a b)
-  (if (findstring "-" (concat a b))
-      (if (findstring 1 (concat a b))
+  (if (findstring "-" (.. a b))
+      (if (findstring 1 (.. a b))
           (if (findstring "-" a)
               (if (findstring "-" b)
                   (u-cmp (subst "-" nil b) (subst "-" nil a))
@@ -329,8 +325,8 @@
 ;;
 (define (uf-sign-sub a b negate?)
   ;; expect normalized numbers
-  (define `prefix+ (concat (if negate? "-" "+") " "))
-  (define `prefix- (concat (if negate? "+" "-") " "))
+  (define `prefix+ (.. (if negate? "-" "+") " "))
+  (define `prefix- (.. (if negate? "+" "-") " "))
 
   (define `(sub-reduce u)
     (subst "111110~~~~~" 0     ;; max remaining reduction is "11110~~~~"
@@ -347,10 +343,10 @@
                 (borrow-macro
                  (if (filter "~%" (subst 0 nil u))
                      ;; negative
-                     (concat prefix- (neg-swap u))
+                     (.. prefix- (neg-swap u))
                      ;; positive
-                     (concat prefix+ u))))
-               (concat prefix+ (u2uv u)))))
+                     (.. prefix+ u))))
+               (.. prefix+ (u2uv u)))))
 
 
 ;; Propagate carry until all digits are proper (9 or less).
@@ -367,20 +363,20 @@
 ;; an arbitrary number of "1" characters.
 ;;
 (define (u-add-ones e ones)
-  (or (filter-out "-% %1111111111" (concat e ones))
-      (u-add e (u-carry-all (concat "0" ones)))))
+  (or (filter-out "-% %1111111111" (.. e ones))
+      (u-add e (u-carry-all (.. "0" ones)))))
 
 
 ;; Subtract 1 from a U-value (possibly include a "-" sign).
 ;;
 (define (u-1 e)
   (or (patsubst "%1" "%" (filter-out "-% %0" e))
-      (filter-out "0% %1111111111" (concat e 1))
+      (filter-out "0% %1111111111" (.. e 1))
       (u-add e "-01")))
 
 
 (define `(u+1 u)
-  (or (filter-out "-% %1111111111" (concat u 1))
+  (or (filter-out "-% %1111111111" (.. u 1))
       (u-add u "01")))
 
 
@@ -422,16 +418,16 @@
 
 
 (define `(>>1 uf)
-  (concat "0 " uf))
+  (.. "0 " uf))
 
 (define `(j>>1 a b)
-  (join a (concat "0 " b)))
+  (join a (.. "0 " b)))
 
 (define `(j>>2 a b)
-  (join a (concat "0 0 " b)))
+  (join a (.. "0 0 " b)))
 
 (define `(j>>4 a b)
-  (join a (concat "0 0 0 0 " b)))
+  (join a (.. "0 0 0 0 " b)))
 
 
 ;; Add two values without performing a carry operation (leaving large digit
@@ -448,13 +444,13 @@
   (define `(space-carry u)
     (subst T10 "X " " X" "1" u))
 
-  (concat 0 (subst " " " 0" (space-carry (subst 0 nil u)))))
+  (.. 0 (subst " " " 0" (space-carry (subst 0 nil u)))))
 
 
 ;; True when A's length > B's length.
 ;;
 (define `(longer? a b)
-  (word (words (concat "1 " b)) a))
+  (word (words (.. "1 " b)) a))
 
 
 ;; Multiply by single digit (UF values in & out), and do not carry.
@@ -485,10 +481,10 @@
          "x" "11" u))
 
 
-(define `(uf*0.1 u)  (concat "0 " u))
-(define `(uf*0.2 u)  (uf*2 (concat "0 " u)))
-(define `(uf*0.4 u)  (uf*4 (concat "0 " u)))
-(define `(uf*0.5 a)  (subst "11" "2" "1 0" " 011111" "2" 1 (concat a " 0")))
+(define `(uf*0.1 u)  (.. "0 " u))
+(define `(uf*0.2 u)  (uf*2 (.. "0 " u)))
+(define `(uf*0.4 u)  (uf*4 (.. "0 " u)))
+(define `(uf*0.5 a)  (subst "11" "2" "1 0" " 011111" "2" 1 (.. a " 0")))
 
 (define `(uf*0.3_10 u) (uf-carry_27_10 (>>1 (subst 1 111 u))))
 (define `(uf*0.7_10 u) (uf-carry_81_10 (>>1 (subst 1 1111111 u))))
@@ -523,7 +519,7 @@
 (define (vmul-9 b u1 u2 u3 u4 u5 u7 u9)
   (declare (A*))
   (define `(d n)
-    (native-var (concat (native-name A*) (word n b))))
+    (native-var (.. (native-name A*) (word n b))))
 
   ;; max digit = 9*11=99 --> 9+9=18
   (merge-and-carry
@@ -537,7 +533,7 @@
 ;;
 (define (vmul-loop b u1 u2 u3 u4 u5 u7 u9)
   (define `(>>9 u)
-    (concat "0 0 0 0 0 0 0 0 0 " u))
+    (.. "0 0 0 0 0 0 0 0 0 " u))
 
   (if (word 10 b)
       (uf-carry_45_27
@@ -554,8 +550,8 @@
 ;;
 (define (vmul-0 a b)
   (if (findstring 1 b)
-      (concat (vmul a (uf-trim-tz b)) " " (uf-get-tz b))
-      (concat (patsubst "%" 0 a) " " b)))
+      (._. (vmul a (uf-trim-tz b)) (uf-get-tz b))
+      (._. (patsubst "%" 0 a) b)))
 
 
 (define (vmul a b)
@@ -576,7 +572,7 @@
 ;;
 (define `(uf-mul-fixed a b)
   (declare (uf*b a b))
-  (native-var (concat (native-name uf*b) (words b))))
+  (native-var (.. (native-name uf*b) (words b))))
 
 
 (define (uf*b1 a b)
@@ -630,7 +626,7 @@
 
 
 (define `(merge2 w1 w2)
-  (concat (subst 1 T10 w1) w2))
+  (.. (subst 1 T10 w1) w2))
 
 
 ;; Compute second argument for `guess-digit`.
@@ -653,7 +649,7 @@
   (define `ahi (subst 0 nil (merge2 (merge2 (word 1 a) (word 2 a)) (word 3 a))))
   ;; min(floor(ahi/bhi),9)
   (define `q (subst bhi "x" 1 nil "x" 1 ahi))
-  (concat 0 (subst T10 T9 q)))
+  (.. 0 (subst T10 T9 q)))
 
 
 (define `DIV-TRUNCATE  1)
@@ -679,7 +675,7 @@
                               (subst "11" nil (lastword q/10)))))))
 
   (if round-up
-      (uf-carry (concat q/10 1))
+      (uf-carry (.. q/10 1))
       (if (filter DIV-REMAINDER mode)
           rem
           ;; TRUNCATE or round down
@@ -717,7 +713,7 @@
     ;; Assert: Z == U9
     (div-loop (>>1 (uf-add a b))
               b bhi num-digits mode
-              (subst "1x" "" (concat digits "x"))))
+              (subst "1x" "" (.. digits "x"))))
 
    ;; done?
    ((word num-digits digits)
@@ -732,7 +728,7 @@
         (define `next-za
           (uf-sub a (uf*digit b d)))
         (div-loop next-za b bhi num-digits mode
-                  (concat digits (if digits " ") d))))))
+                  (.. digits (if digits " ") d))))))
 
 
 ;; uf-div-long: handle arbitrarily long divisors
@@ -791,13 +787,13 @@
          "1 0" " 0112"
          "22" 1
          "2 0" " 011111"
-         (concat x " 0 0")))
+         (._. x "0 0")))
 
 
 (define `(uf*1.5 x)
   (uf-carry (subst "11" "x"
                    "1 0" " 0xxxxx"
-                   "x" "111" (concat x " " 0))))
+                   "x" "111" (._. x 0))))
 
 
 ;; Add X to Y, returning a non-canonical value (digits up to 10).
@@ -815,9 +811,9 @@
       ;; Exact  = A + Residue
       ;; Result = A + 1>>N
       ;;        = Exact + 1>>N - Residue
-      (wordlist 1 (words zeros) (uf-add a (concat zeros 1)))
-      (power-seq-1 (uf-add_10 a (concat zeros " " a))
-                   (concat zeros " " zeros)
+      (wordlist 1 (words zeros) (uf-add a (.. zeros 1)))
+      (power-seq-1 (uf-add_10 a (._. zeros a))
+                   (._. zeros zeros)
                    n0 n1)))
 
 
@@ -850,7 +846,7 @@
             (findstring " 01" (nth-rest n u)))))
 
   (if round-up?
-      (uf-carry (concat q/10 1))
+      (uf-carry (.. q/10 1))
       q/10))
 
 
@@ -865,7 +861,7 @@
     (if (word n a) (words a) n))
 
   (define `x1
-    (words (concat b " 1 1 1")))
+    (words (.. b " 1 1 1")))
 
   (power-seq-1 m zs x0 x1))
 
@@ -913,10 +909,10 @@
   (define `next-r
     (subst divisor "x" (subst "x" nil 1 T10 r)))
 
-  (concat (subst 1 nil r)
-          (if (filter "1 %x1" r)
-              nil
-              (concat " " (recip-loop divisor next-r)))))
+  (.. (subst 1 nil r)
+      (if (filter "1 %x1" r)
+          nil
+          (.. " " (recip-loop divisor next-r)))))
 
 
 ;; Calculate a repeating decimal reciprocal for a 2-digit number that is
@@ -933,7 +929,7 @@
 
 
 (define (recip-div2 x y n r)
-  (rest (rdiv x y n (concat "0 " (patsubst "%" 0 r)) (uf-mul x r))))
+  (rest (rdiv x y n (.. "0 " (patsubst "%" 0 r)) (uf-mul x r))))
 
 
 (define (uf-div2 x y n mode)
@@ -981,20 +977,19 @@
 (define (sdiv-done yt xt x n)
   ;; Include next digit and then one more non-zero digit if
   ;; any value remains in X or XT
-  (concat (subst "01" " " (concat 0 xt 1)) (findstring 1 x)))
+  (.. (subst "01" " " (.. 0 xt 1)) (findstring 1 x)))
 
 
 (define (sdiv-loop yt xt x n ?zeros)
   (define `xstep
     ;; (subst 0 nil ...) removes 0's from X and 0's denoting Y in XT
-    (subst 0 nil (concat (subst 1 T10 xt) (word 1 x))))
+    (subst 0 nil (.. (subst 1 T10 xt) (word 1 x))))
 
-  (concat
-   (concat (subst 1 nil xt)) " "
-   (call (if (word n zeros)
-             (native-name sdiv-done)
-             (native-name sdiv-loop))
-         yt (subst yt 0 xstep) (rest x) n (concat zeros " 0"))))
+  (._. (subst 1 nil xt)
+       (call (if (word n zeros)
+                 (native-name sdiv-done)
+                 (native-name sdiv-loop))
+             yt (subst yt 0 xstep) (rest x) n (.. zeros " 0"))))
 
 
 (define `(tally3 x)
@@ -1068,7 +1063,7 @@
 
    (else
     ;; call uf-div1, uf-div2, or uf-div3
-    (call (concat (native-name uf-div) (words b)) a b n mode))))
+    (call (.. (native-name uf-div) (words b)) a b n mode))))
 
 
 ;; Divide UA by UB, rounding down to the nearest integer.  If UB==0, nil is
@@ -1082,7 +1077,7 @@
 (define (u-fdiv ua ub mode)
   (cond
    ;; extraneous leading zeros
-   ((filter "00%" (concat ua " " ub))
+   ((filter "00%" (._. ua ub))
     (u-fdiv (patsubst "00%" "0%" ua) (patsubst "00%" "0%" ub) mode))
 
    ((and ua (findstring 1 ub))
@@ -1097,5 +1092,5 @@
               (if (filter DIV-REMAINDER mode)
                   ua
                   0)
-              (uf-div (concat "0" _a) (.strip _b) num-digits mode))))
+              (uf-div (.. "0" _a) (.strip _b) num-digits mode))))
     (u-norm-uns (smash uresult)))))

@@ -73,8 +73,8 @@
 (define (protect-ltrim str)
   &public
   (define `(begins-white str)
-    (findstring (word 1 (concat 0 str 0)) 0))
-  (concat (if (begins-white str) "$ ") str))
+    (findstring (word 1 (.. 0 str 0)) 0))
+  (.. (if (begins-white str) "$ ") str))
 
 
 ;; Prevent leading and trailing whitespace from being trimmed by enclosing
@@ -87,7 +87,7 @@
            (filter-out "%\n" (lastword s)))
       s
       (if s
-          (concat "$(if ,," s ")"))))
+          (.. "$(if ,," s ")"))))
 
 
 ;; `balance-match` operates on a demoted string in which "(" and )" have
@@ -98,7 +98,7 @@
 
 (define (balance2 e)
   (promote (if (findstring "!C" e)
-               (concat "$(if ,," (subst "!C" "" e) ")")
+               (.. "$(if ,," (subst "!C" "" e) ")")
              e)))
 
 ;; `stack` is a list of words -- one for each unmatched !L plus one (the
@@ -114,22 +114,22 @@
            (cond
             ;; !L
             ((filter "!L%" w)
-             (concat stack " " w))
+             (.. stack " " w))
 
             ;; !R matching !L
             ((and (filter "!R" w)
                   (word 2 stack))
 
              ;; butlast is a bit ugly
-             (let& ((paired (concat "("
-                                    (subst "!C" "" "!L" ""
-                                           (lastword stack))
-                                    ")")))
-                 ;; butlast is inefficient; we know that stack contents are
-                 ;; word-encoded, so we can do this:
-                 (concat (filter-out "%!" (concat stack "!")) paired)))
+             (let& ((paired (.. "("
+                                (subst "!C" "" "!L" ""
+                                       (lastword stack))
+                                ")")))
+               ;; butlast is inefficient; we know that stack contents are
+               ;; word-encoded, so we can do this:
+               (.. (filter-out "%!" (.. stack "!")) paired)))
             ;; other
-            (else (concat stack w))))
+            (else (.. stack w))))
       stack))
 
 
@@ -157,8 +157,8 @@
 (define (check-balance-r str)
   (if (word 2 str)
       (check-balance-r
-       (concat (subst " " "" (filter-out "!L%!R" (subst "!L" " !L" (word 1 str))))
-               (rest str)))
+       (.. (subst " " "" (filter-out "!L%!R" (subst "!L" " !L" (word 1 str))))
+           (rest str)))
       str))
 
 (define (check-balance str)
@@ -173,7 +173,7 @@
   (if (findstring "!" chk)
       (balance str)
       (if (findstring "," chk)
-          (concat "$(if ,," str ")")
+          (.. "$(if ,," str ")")
           str)))
 
 
@@ -211,8 +211,8 @@
 (define (protect-lhs str)
   &public
   (define `keywords
-    (concat "ifeq ifneq ifdef ifndef else endif define endef override "
-            "include sinclude -include export unexport private undefine vpath"))
+    (._. "ifeq ifneq ifdef ifndef else endif define endef override"
+         "include sinclude -include export unexport private undefine vpath"))
 
   (replace-hash
    (subst "X" (replace-nl (protect-arg str))
@@ -249,11 +249,11 @@
           (findstring "\\" str))
       (begin
         (define `(protect-line line)
-          (concat (if (filter "define endef" (word 1 line))
-                      "$ ")
-                  line
-                  (if (filter "%\\" [line])
-                      "$ ")))
+          (.. (if (filter "define endef" (word 1 line))
+                  "$ ")
+              line
+              (if (filter "%\\" [line])
+                  "$ ")))
 
         (concat-for w (split "\n" str) "\n"
                     (protect-line w)))

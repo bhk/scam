@@ -402,7 +402,7 @@
 ;; Increase/decrease precision PREC by N positions
 (define `(prec+ prec n)
   (if (filter "+% -%" prec)
-      (subst "+-" "-" (concat "+" (- (subst "+" nil prec) n)))
+      (subst "+-" "-" (.. "+" (- (subst "+" nil prec) n)))
       (max 1 (+ prec n))))
 
 

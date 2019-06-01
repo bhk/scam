@@ -71,7 +71,7 @@
   (define `ns
     (string-repeat " " (string-len name)))
   (printf "%s: [ ‹%s› ]" name
-          (subst "!0" "·" "\n" "␤" " " (concat "›\n" ns "    ‹") value)))
+          (subst "!0" "·" "\n" "␤" " " (.. "›\n" ns "    ‹") value)))
 
 
 ;; - Combine consecutive comment lines into a single word.
@@ -86,7 +86,7 @@
   (define `b
     (foreach line a
              (if (filter ";%" line)
-                 (concat line "!.")
+                 (.. line "!.")
                  (word 1 (subst ";" " " line)))))      ;;(subst "!0" "!s" ...)
 
   ;; Combine comment lines
@@ -113,10 +113,8 @@
   ;; Trim trailing newlines to exactly one
   (if comments
       (promote
-       (concat
-        (subst " " "\n"
-               (nth-rest 1 (subst "\n" nil lines)))
-        "\n"))))
+       (.. (subst " " "\n" (nth-rest 1 (subst "\n" nil lines)))
+           "\n"))))
 
 
 
@@ -153,14 +151,14 @@
 
 
 (define `test1
-  (concat ";; # Header\n"
-          "\n"
-          ";; Comment\n"
-          "\n"
-          "(define (f a) &public) nil)\n"
-          "(define (g a)) nil)\n"
-          "(define (h x)\n"
-          "   &public) nil)\n"))
+  (.. ";; # Header\n"
+      "\n"
+      ";; Comment\n"
+      "\n"
+      "(define (f a) &public) nil)\n"
+      "(define (g a)) nil)\n"
+      "(define (h x)\n"
+      "   &public) nil)\n"))
 
 (expect (extract-defns test1)
         [ {text: "# Header\n"}
@@ -184,7 +182,7 @@
   (promote (subst " " nil vsubst)))
 
 
-(expect (expand-template "a {f} c" {f: (lambda (a1 a2) (concat a2 a1))} "A" "B")
+(expect (expand-template "a {f} c" {f: (lambda (a1 a2) (.. a2 a1))} "A" "B")
         "a BA c")
 
 ;;--------------------------------
@@ -204,7 +202,7 @@
 
 (define (md-funcname text)
   ;; Back-tick escaping quotes all special characters
-  (concat "`" text "`"))
+  (.. "`" text "`"))
 
 
 ;; Generate "| MODULE | EXPORTS |" rows for an index of exports.
@@ -220,10 +218,10 @@
   (define `(fmt-exports exports)
     (concat-for
         d exports " "
-        (concat "[" (md-funcname (first (dict-get "proto" d))) "]"
-                "(#"
-                (md-anchor (concat-vec (dict-get "proto" d)))
-                ")")))
+        (.. "[" (md-funcname (first (dict-get "proto" d))) "]"
+            "(#"
+            (md-anchor (concat-vec (dict-get "proto" d)))
+            ")")))
 
   (define `(fmt-row name exports sections)
     (sprintf "| [%s](#%s) | %s |\n"
@@ -240,20 +238,19 @@
 ;;
 (define (fmt-modules mod-defns)
   (define `(fmt-proto proto)
-    (concat (first proto)
-            (concat-vec (string-upper (rest proto)))))
+    (.. (first proto)
+        (concat-vec (string-upper (rest proto)))))
 
   (define `(fmt-module name exports sections)
-    (concat
-     ;; Module-level documentation
-     "\n\n"
-     (concat-for e sections nil
-                 (concat (dict-get "text" e) "\n"))
-     "## Exports\n\n"
-     ;; Exports and export documentation
-     (concat-for d exports "\n\n"
-                 (concat "##### `(" (fmt-proto (dict-get "proto" d)) ")`\n\n"
-                         (dict-get "doc" d)))))
+    ;; Module-level documentation
+    (.. "\n\n"
+        (concat-for e sections nil
+                    (.. (dict-get "text" e) "\n"))
+        "## Exports\n\n"
+        ;; Exports and export documentation
+        (concat-for d exports "\n\n"
+                    (.. "##### `(" (fmt-proto (dict-get "proto" d)) ")`\n\n"
+                        (dict-get "doc" d)))))
 
    (concat-for m mod-defns nil
                (case m
@@ -298,7 +295,7 @@
 
 
 (define template
-  (concat
+  (..
    "# SCAM Libraries\n"
    "\n"
    "| Module | Exports |\n"

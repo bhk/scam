@@ -111,7 +111,7 @@
 ;; ARITY = how many arguments are required by the function, in the form of a
 ;;    list of valid argument counts, or `N+` for "N or more".
 ;;
-;; DEPTH = (concat LDEPTH ADEPTH).  For EMacro and EIL, this describes
+;; DEPTH = (.. LDEPTH ADEPTH).  For EMacro and EIL, this describes
 ;;     the context of the associated IL node.
 ;;
 ;; LDEPTH = the number of lambdas enclosing the IL node, encoded as one "."
@@ -149,7 +149,7 @@
 
 (define `(EDefn.set-scope rec scope)
   &public
-  (concat (word 1 rec) " " scope " " (nth-rest 3 rec)))
+  (._. (word 1 rec) scope (nth-rest 3 rec)))
 
 
 ;; Not a legal symbol name; this key is used to distinguish EMarker records
@@ -170,7 +170,7 @@
 (define (il-merge-strings nodes accum)
   (case (first nodes)
     ((IString value)
-     (il-merge-strings (rest nodes) (concat accum value)))
+     (il-merge-strings (rest nodes) (.. accum value)))
     (else
      (append (if accum
                  [(IString accum)])
@@ -254,15 +254,15 @@
 ;;
 (define (gensym-name base env suff)
   &public
-  (define `name (concat base "&" suff))
-  (if (filter (concat name "!=%") env)
-      (gensym-name base (concat env " .") (words env))
+  (define `name (.. base "&" suff))
+  (if (filter (.. name "!=%") env)
+      (gensym-name base (.. env " .") (words env))
       name))
 
 
 ;; Return current nesting depth as indicated in the current environment.
 ;;
-;; Result = (concat LDEPTH ADEPTH) as described for EDefn records.
+;; Result = (.. LDEPTH ADEPTH) as described for EDefn records.
 ;;
 (define (current-depth env)
   &public
@@ -317,11 +317,10 @@
 (define (err-expected types form parent what where ?arg1 ?arg2)
   &public
   (gen-error (or form parent)
-             (concat
-              (if form "invalid" "missing") " " what " in " where
-              (if types (concat "; expected a "
-                                (concat-for ty types " or "
-                                            (form-description ty)))))
+             (.. (if form "invalid" "missing") " " what " in " where
+                 (if types (.. "; expected a "
+                               (concat-for ty types " or "
+                                           (form-description ty)))))
              arg1 arg2))
 
 
@@ -333,7 +332,7 @@
 (define (check-arity arity args sym)
   &public
   (define `ok
-    (or (filter (concat "0+ " (words args)) arity)
+    (or (filter (.. "0+ " (words args)) arity)
         (and (findstring "+" arity)
              (word (patsubst "%+" "%" arity) args))))
 
@@ -348,9 +347,9 @@
 
 
 (define builtins-1
-  (concat "abspath basename dir error eval firstword flavor"
-          " info lastword notdir origin realpath shell sort"
-          " .strip suffix value warning wildcard words"))
+  (._. "abspath basename dir error eval firstword flavor"
+       "info lastword notdir origin realpath shell sort"
+       ".strip suffix value warning wildcard words"))
 
 (define builtins-2
   "addprefix addsuffix filter filter-out findstring join word")
@@ -360,10 +359,10 @@
 
 (define builtin-names
   &public
-  (patsubst ".%" "%" (concat builtins-1 " "
-                             builtins-2 " "
-                             builtins-3 " "
-                             "and or call if")))
+  (patsubst ".%" "%" (._. builtins-1
+                          builtins-2
+                          builtins-3
+                          "and or call if")))
 
 (define base-env
   (append
@@ -393,7 +392,7 @@
   &public
   (define `(find-name name dict)
     ;; equivalent to `(dict-find (symbol-name form) dict)` but quicker
-    (filter (concat (subst "!" "!1" name) "!=%") dict))
+    (filter (.. (subst "!" "!1" name) "!=%") dict))
 
   (case form
     ((PSymbol n name) (dict-value (or (find-name name env)
@@ -402,10 +401,10 @@
 
 
 (define conflict-pats
-  (addprefix "%" (concat builtin-names
-                         " guile "
-                         (foreach c "@ < ? ^ + | *"
-                                  (concat c "D " c "F " c)))))
+  (addprefix "%" (._. builtin-names
+                      "guile"
+                      (foreach c "@ < ? ^ + | *"
+                               (.. c "D " c "F " c)))))
 
 
 ;; Return the native name to use for SCAM variable NAME.
@@ -414,5 +413,5 @@
   &public
   (cond
    ((filter "%&native" flags) name)
-   (*is-boot* (concat "`" name))
-   (else (concat "'" name))))
+   (*is-boot* (.. "`" name))
+   (else (.. "'" name))))

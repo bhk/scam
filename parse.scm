@@ -45,26 +45,26 @@
   &public
   (case form
     ((PSymbol n value) value)
-    (else (concat "ERROR:symbol-name(" form ")"))))
+    (else (.. "ERROR:symbol-name(" form ")"))))
 
 ;; convert symbol form to string form
 (define (symbol-to-string form)
   &public
   (case form
     ((PSymbol n value) (PString n value))
-    (else (concat "ERROR:symbol-to-string(" form ")"))))
+    (else (.. "ERROR:symbol-to-string(" form ")"))))
 
 (define (string-value form)
   &public
   (case form
     ((PString n value) value)
-    (else (concat "ERROR:string-value(" form ")"))))
+    (else (.. "ERROR:string-value(" form ")"))))
 
 (define (PList-is-empty? form)
   &public
   (case form
     ((PList n forms) (not forms))
-    (else (concat "ERROR:PList.is-empty?(" form ")"))))
+    (else (.. "ERROR:PList.is-empty?(" form ")"))))
 
 (define (form-index form)
   &public
@@ -99,12 +99,12 @@
   &public
   (case form
     ((PList n forms)
-     (concat "(" (concat-for f forms " " (format-form f)) ")"))
+     (.. "(" (concat-for f forms " " (format-form f)) ")"))
     ((PString n value) (format value))
     ((PSymbol n value) value)
-    ((PQuote n frm) (concat "'" (format-form frm)))
-    ((PQQuote n frm) (concat "`" (format-form frm)))
-    (else (concat "," (format form)))))
+    ((PQuote n frm) (.. "'" (format-form frm)))
+    ((PQQuote n frm) (.. "`" (format-form frm)))
+    (else (.. "," (format form)))))
 
 
 ;;--------------------------------------------------------------
@@ -139,7 +139,7 @@
   (subst " " "" "!s" " " "; ;" ";;"
          (foreach c (subst " " "!s" "\"" " \"" "\\" " \\" "\n" " \n" ";" " ;" str)
                   (if (filter ";%" c)
-                      (concat (subst "!s" "" c) "!s")
+                      (.. (subst "!s" "" c) "!s")
                       c))))
 
 ;; When compressing, don't replace the initial "!0" character in a word
@@ -160,7 +160,7 @@
     (subst "," " , " ", @" ",@ " "`" " ` " "'" " ' " "\\\\" "!b" "\\\"" "!Q"
            ";" " ; " "!0" " !0 " "\n" " \n " "\"" " \" " "]" " ] " "[" " [ "
            "{" " { " "}" " } " ")" " ) " "(" " ( " "$" " $ " ":" " : "
-           "\\" " \\" "%" " !p " ["\t"] (concat " " ["\t"] " ") "  " " "
+           "\\" " \\" "%" " !p " ["\t"] (.. " " ["\t"] " ") "  " " "
            "!0 !0" "!0!0" "!0 !0" "!0!0"
            (if text (demote text))))))
 
@@ -202,7 +202,7 @@
 ;;   FORM = instatce `data P` type.
 ;;
 (define `(POut pos form)
-  (concat pos " " form))
+  (._. pos form))
 
 (define `(POut-pos st)
   (word 1 st))
@@ -232,7 +232,7 @@
 (define (hh-to-dec digits)
   (define `d1 (word 1 digits))
   (define `d2 (word 2 digits))
-  (define `(tick+ a b) (concat a " " b))
+  (define `(tick+ a b) (._. a b))
   (define `(tick*16 a) (subst ":" ": : : : : : : : : : : : : : : :" a))
   (words (tick+ (tick*16 (hex-ticks d1)) (hex-ticks d2))))
 
@@ -250,21 +250,21 @@
   ;; If w matches "\xHH" this will contain one word: `H\nH`
   (define `match-hh
     (foreach d1 hex-digits
-             (if (filter (concat "\\x" d1 "%") w)
+             (if (filter (.. "\\x" d1 "%") w)
                  (foreach d2 hex-digits
-                          (if (filter (concat "\\x" d1 d2 "%") w)
-                              (concat d1 "\n" d2))))))
+                          (if (filter (.. "\\x" d1 d2 "%") w)
+                              (.. d1 "\n" d2))))))
 
   (or (if (filter "\\n% \\t%" w)
           (parse-string subj start (1+ pos)
-                        (concat wstr (subst "\\n" "\n" "\\t" ["\t"] w))))
+                        (.. wstr (subst "\\n" "\n" "\\t" ["\t"] w))))
 
       ;; Match `\xHH`
       (foreach hh match-hh
                (define `hex (subst "\n" "" hh))
                (define `byte (bytes-from-bytecodes (hh-to-dec (.strip hh))))
                (parse-string subj start (1+ pos)
-                             (concat wstr (subst (concat "\\x" hex) byte w))))
+                             (.. wstr (subst (.. "\\x" hex) byte w))))
 
       (PQError subj pos "!B")))
 
@@ -282,7 +282,7 @@
               ;; Note the odd escaping required for `\%` with filter.
               (if (filter "\\\\%" w)
                   (parse-string-bs subj start pos wstr w)
-                  (parse-string subj start (1+ pos) (concat wstr w)))))
+                  (parse-string subj start (1+ pos) (.. wstr w)))))
 
       (POut pos (PError start "\""))))
 
@@ -304,7 +304,7 @@
         ;; EOF: unterminated sequence
         (PError start-pos (subst ")" "(" "]" "[" term))
         ;; other error
-        (PError err-n (concat err-desc " " term))))
+        (PError err-n (._. err-desc term))))
 
   (POut err-n err-form))
 
@@ -338,7 +338,7 @@
 ;; parse-dict
 
 
-;; Advance to next "significant" word in SUBJ.  Return (concat POS " " WORD).
+;; Advance to next "significant" word in SUBJ.  Return (.. POS " " WORD).
 (define (parse-skip subj pos)
   (if (filter "!0% !+% \n% ;%" (word pos subj))
       (parse-skip subj (1+ pos))
@@ -363,7 +363,7 @@
      (if (eq? "." desc)
          (POut n (PError start-pos "{"))
          (if (not (filter ok-codes [desc]))
-             (POut n (PError n (concat desc " }"))))))))
+             (POut n (PError n (.. desc " }"))))))))
 
 ;; expect KEY or "}"
 (define (parse-dict-1 subj start-pos pairs out)
@@ -415,7 +415,7 @@
           ((filter "`" w)  PQQuote)
           ((filter "," w)  PUnquote)
           ((filter ",@" w) PSplice)
-          (else (lambda () (PError pos (concat "internal:parse-x2:" w))))))
+          (else (lambda () (PError pos (.. "internal:parse-x2:" w))))))
 
   (case (POut-form out)
     ((PError n desc) out)
@@ -481,7 +481,7 @@
 ;;
 (define (get-subject-line pos subj)
   &public
-  (words (filter "\n%" (wordlist 1 (or pos 1) (concat "\n " subj)))))
+  (words (filter "\n%" (wordlist 1 (or pos 1) (.. "\n " subj)))))
 
 
 ;; Get "LINE:COL" or POS in SUBJ.
@@ -489,8 +489,8 @@
 (define `(get-subject-line-col pos subj)
   ;; prefix lines with "\n" to handle POS when at start of line
   (let ((lines (subst " " "" "\n" " \n"
-                      (wordlist 1 (or pos 1) (concat "\n " subj)))))
-    (concat (words lines) ":" (string-len (pdec (lastword lines))))))
+                      (wordlist 1 (or pos 1) (.. "\n " subj)))))
+    (.. (words lines) ":" (string-len (pdec (lastword lines))))))
 
 
 ;; Return description line, given error code or description string.
@@ -500,10 +500,10 @@
     (word 1 desc))
 
   (cond ((filter "` '" code)
-         (concat "prefix \"" code "\" must immediately precede expression"))
+         (.. "prefix \"" code "\" must immediately precede expression"))
 
         ((filter "( ) [ ] { }" code)
-         (concat "unmatched \"" code "\""))
+         (.. "unmatched \"" code "\""))
 
         ((filter "\"" code)
          "unterminated string")
@@ -522,7 +522,7 @@
 
         ;; match "%" and "$"
         ((filter code "$")
-         (concat "invalid symbol character \"" code "\""))
+         (.. "invalid symbol character \"" code "\""))
 
         (else desc)))
 
@@ -540,7 +540,7 @@
        (define `lnum (word 1 (subst ":" " " lc)))
        (define `col (word 2 (subst ":" " " lc)))
        (define `line-text (nth lnum (split "\n" text)))
-       (define `ptr (subst " ^" "^" (concat (string-repeat " " col) "^")))
+       (define `ptr (subst " ^" "^" (.. (string-repeat " " col) "^")))
        (if (word-index? pos)
            (sprintf "%s:%s: %s\n%s\n%s\n" filename lc msg line-text ptr)
            (sprintf "%s: %s\n" filename desc))))))

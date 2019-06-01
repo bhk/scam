@@ -33,7 +33,7 @@
 ;;
 (define (log-small x digits)
   (define `place
-    (concat "-" digits))
+    (.. "-" digits))
 
   ;; log(x) = 2 * arctanh ((x-1)/(x+1))
   (*~ 2 (arctanh-seq (/ (- x 1) (+ x 1) place) place) place))
@@ -60,7 +60,7 @@
 
 (define (m-powers-loop x max)
   (if (< x max)
-      (concat x " " (m-powers-loop (* x scale-m) max))))
+      (._. x (m-powers-loop (* x scale-m) max))))
 
 ;; [M M² M³ ...] up to but not including Mⁿ > scale-max*10
 (define m-powers
@@ -80,10 +80,10 @@
 
   (if (eq? values valuesgt)
       (words valuesgt)
-      (let ((mid (words/2 (concat values " " valuesgt))))
+      (let ((mid (words/2 (._. values valuesgt))))
         (if (> (word mid values) x)
             (count-gt x values (wordlist 1 mid values))
-            (count-gt x (wordlist 2 mid (concat "0 " values)) valuesgt)))))
+            (count-gt x (wordlist 2 mid (._. 0 values)) valuesgt)))))
 
 
 (expect 0 (count-gt 10 "5 4 3 2 1"))
@@ -140,7 +140,7 @@
       (if (filter-out "0 -%" m)
           (round (+ (log-fr m (1+ digits))
                     (* e (log-10 (max 1 (+ digits log10-e)))))
-                 (concat "-" digits)))))
+                 (.. "-" digits)))))
   (or result "NaN"))
 
 
@@ -169,7 +169,7 @@
 
 
 (define (exp-small x digits)
-  (exp-loop 1 1 0 x (concat "-" digits)))
+  (exp-loop 1 1 0 x (.. "-" digits)))
 
 
 (expect 2.7182818284590452 (exp-small 1 16))
@@ -188,7 +188,7 @@
       (let ((p (// x L10)))
         (let& ((lz (- x (* p L10))))
           ;; log(Z) ∈ [0,~2.3]  Z ∈ [1,~10]
-          (round (* (exp-small lz digits) (concat "1e" p))
+          (round (* (exp-small lz digits) (.. "1e" p))
                  digits-in))))))
 
 

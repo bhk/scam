@@ -66,7 +66,7 @@
 ;;
 (define (build-message action file)
   (or *is-quiet*
-      (write 2 (concat "... " action " " file "\n"))))
+      (write 2 (.. "... " action " " file "\n"))))
 
 
 (define `(drop-if cond ?on-fail ?on-succ)
@@ -83,14 +83,14 @@
 ;;
 (define `(compile-cache-file)
   (declare ^uid &native)
-  (concat *obj-dir* ^uid ".db"))
+  (.. *obj-dir* ^uid ".db"))
 
 
 ;; Evaluate EXPR within a memo session for compilation.
 ;;
 (define `(compile-memo-on obj-dir is-quiet expr)
   (let-global ((*obj-dir* (if obj-dir
-                              (patsubst "%//" "%/" (concat obj-dir "/"))
+                              (patsubst "%//" "%/" (.. obj-dir "/"))
                               ".scam/"))
                (*is-quiet* is-quiet))
     (memo-on (compile-cache-file) expr)))
@@ -102,7 +102,7 @@
 (define (descendants fn children ?out)
   (define `new-children
     (vec-subtract (fn (first children))
-                  (concat children " " out)))
+                  (.. children " " out)))
 
   (if children
       (descendants fn (append (rest children) new-children)
@@ -162,17 +162,15 @@
 ;;
 (define `(tokenize-key v)
   (foreach w v
-           (concat
-            (word 1 (subst "!=" "!= " w))
-            (subst "%" "!p" (word 1 (subst "!=" " " w)) "%"
-                   (word 2 (subst "!=" "!= " w))))))
+           (.. (word 1 (subst "!=" "!= " w))
+               (subst "%" "!p" (word 1 (subst "!=" " " w)) "%"
+                      (word 2 (subst "!=" "!= " w))))))
 
 (define `(detokenize-key v)
   (foreach w v
-           (concat
-            (word 1 (subst "!=" "!= " w))
-            (subst "%" (word 1 (subst "!=" " " w)) "!p" "%"
-                   (word 2 (subst "!=" "!= " w))))))
+           (.. (word 1 (subst "!=" "!= " w))
+               (subst "%" (word 1 (subst "!=" " " w)) "!p" "%"
+                      (word 2 (subst "!=" "!= " w))))))
 
 
 ;; Prepare environment V for inclusion in a line of text in the MIN file.
@@ -204,7 +202,7 @@
   (subst "!n" "\n"
          (env-expand
           (foreach prefix (append "Exports" (if all "Private"))
-                   (promote (filtersub (concat ["# "] prefix [": %"])
+                   (promote (filtersub (.. ["# "] prefix [": %"])
                                        "%" lines))))))
 
 
@@ -212,7 +210,7 @@
 ;;
 (define `(env-export-lines env)
   (define `(export-defn name rec)
-    (concat (EDefn.scope rec) ":" {=name: (EDefn.set-scope rec "i")}))
+    (.. (EDefn.scope rec) ":" {=name: (EDefn.set-scope rec "i")}))
 
   ;; Prefix each entry with its scope (e.g. "x:..." or "p:...")
   ;; and replace the scope with "i".
@@ -222,8 +220,8 @@
                      (export-defn (dict-key b) (dict-value b)))))
 
   (let ((e (prefix-entries env)))
-    (concat "# Exports: " (env-compress (filtersub "x:%" "%" e)) "\n"
-            "# Private: " (env-compress (filtersub "p:%" "%" e)) "\n")))
+    (.. "# Exports: " (env-compress (filtersub "x:%" "%" e)) "\n"
+        "# Private: " (env-compress (filtersub "p:%" "%" e)) "\n")))
 
 
 ;;--------------------------------------------------------------
@@ -262,8 +260,8 @@
 ;;
 (define `(modid-file id)
   (if *is-boot*
-      (concat *obj-dir* id ".o")
-      (concat id ".o")))
+      (.. *obj-dir* id ".o")
+      (.. id ".o")))
 
 
 ;; Return the bundle variable that holds (or will hold) the modules's code.
@@ -271,7 +269,7 @@
 ;; Note: this must be kept consistent with the behavior of `^load`.
 ;;
 (define `(modid-var id)
-  (concat "[mod-" id "]"))
+  (.. "[mod-" id "]"))
 
 
 ;; Non-nil when ID names a module being compiled from source, not read from
@@ -299,7 +297,7 @@
   (let ((lines (modid-read-lines id 4)))
     ;; should not happen... module was not compiled?
     (assert lines)
-    (promote (filtersub [(concat "# Requires: %")] "%" lines))))
+    (promote (filtersub ["# Requires: %"] "%" lines))))
 
 
 ;; Return the environment exported from a module, given its ID.
@@ -313,7 +311,7 @@
 ;;
 (define (module-id path-or-bundle)
   (if (and (modid-is-file path-or-bundle) (not *is-boot*))
-      (concat *obj-dir* (escape-path path-or-bundle))
+      (.. *obj-dir* (escape-path path-or-bundle))
       (basename path-or-bundle)))
 
 
@@ -357,9 +355,9 @@
                    (if keep-syms
                        ["# Req%" "# Exp%"])))
 
-  (concat "\ndefine " (modid-var id) "\n"
-          (concat-vec body "\n") "\n"
-          "endef\n"))
+  (.. "\ndefine " (modid-var id) "\n"
+      (concat-vec body "\n") "\n"
+      "endef\n"))
 
 
 
@@ -371,20 +369,20 @@
 ;; needed to enable SCAM's UTF-8 support.
 ;;
 (define `(construct-file main-mod bundles uid)
-  (concat
-   ;; Initial line = bash "boot"
-   "#!/bin/bash\n"
-   ":; for v in \"${@//!/!1}\" ; "
-   "do v=${v// /!0} ; v=${v//\t/!+}; a[++n]=${v:-!.} ; done ; "
-   "LC_ALL=C "
-   "SCAM_ARGS=${a[*]} "
-   "exec make -Rr --no-print-directory -f\"$0\" 9>&1\n"
-   ;; Remaining lines = makefile content
-   "SCAM_MAIN := " (protect-rhs
-                    (concat main-mod ":" (gen-native-name "main" nil))) "\n"
-   "^uid := " uid "\n"
-   bundles
-   "$(eval $(value " (modid-var "runtime") "))\n"))
+  ;; Initial line = bash "boot"
+  (.. "#!/bin/bash\n"
+      ":; for v in \"${@//!/!1}\" ; "
+      "do v=${v// /!0} ; v=${v//\t/!+}; a[++n]=${v:-!.} ; done ; "
+      "LC_ALL=C "
+      "SCAM_ARGS=${a[*]} "
+      "exec make -Rr --no-print-directory -f\"$0\" 9>&1\n"
+      ;; Remaining lines = makefile content
+      "SCAM_MAIN := "
+      (protect-rhs
+       (.. main-mod ":" (gen-native-name "main" nil))) "\n"
+       "^uid := " uid "\n"
+       bundles
+       "$(eval $(value " (modid-var "runtime") "))\n"))
 
 
 ;;----------------------------------------------------------------
@@ -550,21 +548,21 @@
               (is-file is-file))
           (define `env-out (first o))
           (define `nodes (rest o))
-          (concat (gen1 nodes is-file) " " {env: env-out})))))
+          (._. (gen1 nodes is-file) {env: env-out})))))
 
 
 ;; Replace the first line with a blank line if it begins with "#".
 ;;
 (define (trim-hashbang text)
   (if (filter "#%" (word 1 text))
-      (concat "\n" (concat-vec (rest (split "\n" text)) "\n"))
+      (.. "\n" (concat-vec (rest (split "\n" text)) "\n"))
       text))
 
 
 (define `(check-cycle file)
   (if (vec-intersect *compiling* [file])
-      (bail-if (concat "dependency loop: "
-                       (concat-vec (conj *compiling* file) " -> ")))))
+      (bail-if (.. "dependency loop: "
+                   (concat-vec (conj *compiling* file) " -> ")))))
 
 
 ;; Compile a SCAM source file and all its dependencies.
@@ -592,9 +590,9 @@
        (define `reqs (dict-get "require" o))
        (define `outfile (modid-file (module-id file)))
        (define `content
-         (concat "# Requires: " reqs "\n"
-                 (env-export-lines env-out)
-                 exe))
+         (.. "# Requires: " reqs "\n"
+             (env-export-lines env-out)
+             exe))
 
        (drop-if
         errors
@@ -636,11 +634,10 @@
                     (construct-bundle id keep-syms)))
 
       (define `uid
-        (hash-output (concat
-                      "cat "
-                      (foreach id mod-ids
-                               (if (modid-is-file id)
-                                   (quote-sh-arg (modid-file id)))))))
+        (hash-output (.. "cat "
+                         (foreach id mod-ids
+                                  (if (modid-is-file id)
+                                      (quote-sh-arg (modid-file id)))))))
 
       (construct-file main-id bundles uid)))
 
@@ -671,16 +668,16 @@
   (declare MAKE &native)
 
   (define `scam-main
-    (concat mod ":" (gen-native-name "main" nil)))
+    (.. mod ":" (gen-native-name "main" nil)))
 
   (define `cmd-line
-    (concat "SCAM_ARGS=" (quote-sh-arg argv) " "
-            MAKE " -Rr --no-print-directory -f" (quote-sh-arg runner) " "
-            "SCAM_MAIN=" (quote-sh-arg scam-main) " "
-            (if *is-boot*
-                (concat "SCAM_DIR=" (quote-sh-arg *obj-dir*) " "))
-            (concat "SCAM_TMP=" (quote-sh-arg *obj-dir*) " ")
-            "1>&9 ; echo \" $?\""))
+    (.. "SCAM_ARGS=" (quote-sh-arg argv) " "
+        MAKE " -Rr --no-print-directory -f" (quote-sh-arg runner) " "
+        "SCAM_MAIN=" (quote-sh-arg scam-main) " "
+        (if *is-boot*
+            (.. "SCAM_DIR=" (quote-sh-arg *obj-dir*) " "))
+        (.. "SCAM_TMP=" (quote-sh-arg *obj-dir*) " ")
+        "1>&9 ; echo \" $?\""))
 
   (drop-if (filter-out 0 (lastword (shell cmd-line)))))
 
@@ -697,7 +694,7 @@
       (and (memo-hash-file test-src)
            (or (m-compile-module test-src)
                (if (memo-call (native-name run) test-src nil 1)
-                   (bail-if (concat test-src " failed")))))))
+                   (bail-if (.. test-src " failed")))))))
 
 
 ;; Compile a SCAM program.

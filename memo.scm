@@ -93,7 +93,7 @@
 
 ;; The database key to use for a call initiation
 (define `(call-key fname args)
-  (concat fname " " args))
+  (._. fname args))
 
 
 (data PMDB
@@ -112,7 +112,7 @@
 
 
 (define (memo-playback key)
-  (let ((o (dict-get key (concat *memo-cache* " " *memo-db*))))
+  (let ((o (dict-get key (._. *memo-cache* *memo-db*))))
     (case o
       ((Result v) o)
 
@@ -181,7 +181,7 @@
 
 
 (define `(memo-log-call fname args result)
-  (memo-log-io (concat ":" fname) args result))
+  (memo-log-io (.. ":" fname) args result))
 
 
 ;; Perform an IO operation.  Log the IO as an additional input to the
@@ -254,7 +254,7 @@
 
 
 (define `(memo-db-encode data)
-  (concat (subst "\n" "!n" " " "\n" "!0" " " data) "\n"))
+  (.. (subst "\n" "!n" " " "\n" "!0" " " data) "\n"))
 
 (define `(memo-db-decode data)
   (strip (subst " " "!0" "\n" " " "!n" "\n" data)))
@@ -270,8 +270,8 @@
 
 (define `(memo-write-db)
   (define `memo-file-data
-    (concat *memo-tag* "\n"
-            (memo-db-encode *memo-db*)))
+    (.. *memo-tag* "\n"
+        (memo-db-encode *memo-db*)))
 
   ;; create memo dir if it has not been already
   (memo-dir)
@@ -339,8 +339,8 @@
   (foreach pair *memo-db*
            (case (dict-value pair)
              ((IO tag op args)
-              (if (filter op (concat (native-name do-hash-file) " "
-                                     (native-name do-write-blob)))
+              (if (filter op (._. (native-name do-hash-file)
+                                  (native-name do-write-blob)))
                   (word 1 args))))))
 
 

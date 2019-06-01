@@ -194,11 +194,11 @@
 (expect (cqq "`,sym") "SYM")
 (expect (cqq "`,var") "{VAR}")
 (expect (cqq "`(a 1 ,var)")
-        (concat (PList 2 [ (PSymbol 3 "a") (PString 5 1) ]) " (^d {VAR})"))
+        (.. (PList 2 [ (PSymbol 3 "a") (PString 5 1) ]) " (^d {VAR})"))
 
 ;; nested quote/unquote
 (begin
-  (define `(dd node) (concat "(^d " node ")"))
+  (define `(dd node) (.. "(^d " node ")"))
   (define (cc ...nodes) (IConcat nodes))
 
   ;; Some demote operations are deferred until run-time, some are already
@@ -260,7 +260,7 @@
 
 ;; (lambda (x)
 ;;   (define `(cm a _ c)
-;;      (concat a x (lambda (z) z)))
+;;      (.. a x (lambda (z) z)))
 ;;   cm)
 ;;
 (define `cm
@@ -318,7 +318,7 @@
 (expect (c0-ser "(f 1)" (append {f: (EMacro "p" "." 1 (IArg 1 "."))}))
         "1")
 
-;; (lambda (x y) (define `(f a) (concat a y)) *(f 7)* )    [capture]
+;; (lambda (x y) (define `(f a) (.. a y)) *(f 7)* )    [capture]
 (expect (c0-ser "(f 7)" (append {f: (EMacro "p" ".." 1
                                             (IConcat [(IArg 1 ".")
                                                       (IArg 2 "..")]))}

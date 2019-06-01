@@ -26,7 +26,7 @@
         ((PQQuote  n sub) (PQQuote pos (recur sub)))
         ((PUnquote n sub) (PUnquote pos (recur sub)))
         ((PSplice  n sub) (PSplice pos (recur sub)))
-        (else (concat "ERROR:form-set-indices(" form ")")))))
+        (else (.. "ERROR:form-set-indices(" form ")")))))
 
 
 ;; form-set-indices
@@ -41,22 +41,22 @@
 (define (il-ser node)
   &public
   (define `(call-ser pre args)
-    (concat "(" pre " " (concat-for a args "," (il-ser a)) ")"))
+    (.. "(" pre " " (concat-for a args "," (il-ser a)) ")"))
 
   (case node
     ((IString value) value)
-    ((IVar name) (concat "{" name "}"))
-    ((IBuiltin name args) (call-ser (concat "." name) args))
+    ((IVar name) (.. "{" name "}"))
+    ((IBuiltin name args) (call-ser (.. "." name) args))
     ((IFor name list body) (call-ser ".foreach" [(IString  name) list body]))
     ((ICall name args) (call-ser name args))
-    ((IArg ndx ups) (concat "{" (if ups (patsubst ".%" "%" ups) "!")
-                            (patsubst "=%" "%" ndx) "}"))
+    ((IArg ndx ups) (.. "{" (if ups (patsubst ".%" "%" ups) "!")
+                        (patsubst "=%" "%" ndx) "}"))
     ((IFuncall nodes) (call-ser "^Y" nodes))
     ((IConcat values) (concat-for v values "" (il-ser v)))
     ((IBlock nodes) (if (word 2 nodes)
                        (call-ser "IBlock" nodes)
                        (il-ser (first nodes))))
-    ((ILambda code) (concat "`" (il-ser code)))
+    ((ILambda code) (.. "`" (il-ser code)))
     (else (if node
               ;; convert (") to (') to simplify assertions
               (subst "\"" "'" (sprintf "!%q" node))))))
@@ -96,7 +96,7 @@
   &public
   (let ((o (parse-text text)))
     (if (word 2 o)
-        (concat "EXTRA NODES: " o))
+        (.. "EXTRA NODES: " o))
     (first o)))
 
 ;; Compile one or more expressions a a block, calling k with `sil` and `env`

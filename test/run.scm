@@ -25,7 +25,7 @@
 (define (make-lambda a)
   (lambda (b)
     (lambda (c)
-      (concat a b c))))
+      (.. a b c))))
 
 (expect " $1  $2  $3 " (( (make-lambda " $1 ") " $2 ") " $3 "))
 
@@ -93,11 +93,11 @@
 
 (for name [ "a#b" "a+" "a?" "a=" "a?=" "a\\#" "override" "include" "'a" "\"a" "`a"]
      (set-native name name)
-     (expect (concat "simple:" name) (concat (flavor name) ":" name))
+     (expect (.. "simple:" name) (.. (flavor name) ":" name))
      (expect name (value name))
 
      (set-native-fn name name)
-     (expect (concat "recursive:" name) (concat (flavor name) ":" name))
+     (expect (.. "recursive:" name) (.. (flavor name) ":" name))
      (expect name (value name)))
 
 ;; append-for
@@ -107,7 +107,7 @@
 ;; concat-for
 
 (expect " |\t| " (concat-for a [" " "\t" " "] "|" a))
-(expect "(1) (2) (3)" (concat-for a "1 2 3" " " (concat "(" a ")")))
+(expect "(1) (2) (3)" (concat-for a "1 2 3" " " (.. "(" a ")")))
 
 ;; Flies in the ointment (function values)
 
@@ -128,11 +128,11 @@
 ;;
 ;; (define TA 0)
 ;; (when 1
-;;    (set TA (concat TA 1))
-;;    (set TA (concat TA 2)))
+;;    (set TA (.. TA 1))
+;;    (set TA (.. TA 2)))
 ;; (when nil
-;;    (set TA (concat TA 4))
-;;    (set TA (concat TA 5)))
+;;    (set TA (.. TA 4))
+;;    (set TA (.. TA 5)))
 ;;
 ;; (expect TA "012")
 
@@ -147,11 +147,11 @@
 
 (expect "1 3"
         (case (CA 1 " " 3)
-          ((CA a b c)  (concat a b c))
+          ((CA a b c)  (.. a b c))
           ((CB)        2)))
 (expect "2"
         (case (CB)
-          ((CA a b c)  (concat a b c))
+          ((CA a b c)  (.. a b c))
           ((CB)        2)))
 
 
@@ -160,8 +160,8 @@
 (expect 12
         (let ((a 1))
           (define `M
-            (concat a (let ((b 2))
-                        b)))
+            (.. a (let ((b 2))
+                    b)))
           (let ((c 3))
             M)))
 
@@ -187,7 +187,7 @@
 ;; macro arguments
 
 (define `(m10 a b c d e f g h i j)
-  (concat "9:" i ":10:" j))
+  (.. "9:" i ":10:" j))
 (expect (m10 1 2 3 4 5 6 7 "a b" "c d" "e f")
         ;; was "9:c:10:d"
         "9:c d:10:e f")
@@ -202,7 +202,7 @@
 (begin
   (define (f a1 a2 a3 a4 a5 a6 a7 a8 a9 a10)
     (let ((a 1))
-      (concat a9 a10)))
+      (.. a9 a10)))
 
   (expect 910 (f 1 2 3 4 5 6 7 8 9 10)))
 
@@ -233,7 +233,7 @@
   (case x
     ((C a b c)
      (let ((B b))
-       (concat a "," b "," c)))))
+       (.. a "," b "," c)))))
 
 ;; gets "3,2 3," instead
 (expect "1,2 3,4" (fun-in-case (C 1 "2 3" 4)))
@@ -247,7 +247,7 @@
 ;; Value of macro in different nesting context (up-value must be adjusted)
 ;;
 (expect ((let ((a 7))
-           (define `(M x) (concat a x))
+           (define `(M x) (.. a x))
            (let ((b 1))
              M)) 2)
         72)
