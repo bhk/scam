@@ -840,26 +840,50 @@
       clauses))
 
 
-(define (c0-case cases depth value value-defn sym env)
-  (define `defn (or value-defn (EIL "p" depth value)))
-  (define `clauses (c0-clauses cases value defn (if value-defn 1) env))
-  (define `simple (case-fold (clauses-merge clauses)))
 
-  (case value
-    ((PError _ _) value)
-    ((IArg _ _) simple)
-    ((IVar _) simple)
+;; True if NODE should be evaluated only once when used as the value of a
+;; case statement.  Any impure expression must be evaluated only once.
+;; Additionally, we choose to eval complex expressions only once.
+;;
+(define `(eval-only-once? node)
+  (define `(call-once? name nodes)
+    (or (filter-out "^u ^n wordlist" name)
+        (word 1 (foreach n nodes
+                         (case (promote n)
+                           ((IArg _ _) nil)
+                           ((IVar _) nil)
+                           ((IString _) nil)
+                           (else 1))))))
+  (case node
+    ((IArg _ _) nil)
+    ((IVar _) nil)
+    ((IString _) nil)
+    ((IBuiltin name nodes) (call-once? name nodes))
+    ((ICall name nodes) (call-once? name nodes))
+    (else 1)))
+
+
+(define (c0-case cases depth value value-defn sym env)
+  (cond
+   ((case value ((PError _ _) 1))
+    value)
+
+   ((eval-only-once? value)
     ;; Prevent multiple evaluation of a complex expression: wrap in
     ;; "(foreach X (to-word EXPR) ...)"
-    (else
-     (define `f-depth (concat depth ";"))
-     (define `f-filter-value (for-arg f-depth))
-     (define `f-value-defn (EIL "p" f-depth (il-promote (for-arg f-depth))))
-     (define `f-body
-       (c0-case cases f-depth f-filter-value f-value-defn sym
-                (for-env f-depth env)))
+    (define `f-depth (concat depth ";"))
+    (define `f-filter-value (for-arg f-depth))
+    (define `f-value-defn (EIL "p" f-depth (il-promote (for-arg f-depth))))
+    (define `f-body
+      (c0-case cases f-depth f-filter-value f-value-defn sym
+               (for-env f-depth env)))
 
-     (for-node f-depth (il-demote value) f-body))))
+    (for-node f-depth (il-demote value) f-body))
+
+   (else
+    (define `defn (or value-defn (EIL "p" depth value)))
+    (define `clauses (c0-clauses cases value defn (if value-defn 1) env))
+    (case-fold (clauses-merge clauses)))))
 
 
 (define (ml.special-case env sym args)

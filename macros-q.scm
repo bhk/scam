@@ -376,6 +376,17 @@
          "(.if (.filter b,{1}),Y)"
          "1"])
 
+;; eval-only-once?
+
+(expect nil (eval-only-once? (IArg ";" ".")))
+(expect nil (eval-only-once? (IVar "x")))
+(expect nil (eval-only-once? (IString "x")))
+(expect nil (eval-only-once? (ICall "^n" [(IString 1) (IVar "x")])))
+(expect nil (eval-only-once? (IBuiltin "wordlist" [(IString 1) (IVar "x")])))
+(assert (eval-only-once? (ICall "^n" [(IString 1) (IBlock [])])))
+(assert (eval-only-once? (ICall "foo" [])))
+(assert (eval-only-once? (IBlock [])))
+
 ;; c0-case
 
 ;; error
