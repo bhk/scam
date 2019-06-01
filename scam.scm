@@ -38,7 +38,7 @@ Options:
   1)
 
 
-(define `version "1.5x")
+(define `version "1.6x")
 
 
 (define (main argv)

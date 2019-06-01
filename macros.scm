@@ -68,10 +68,20 @@
 
 ;;--------------------------------
 ;; (concat FORM...)
+;; (.. FORM...)
+;; (._. FORM...)
 ;;--------------------------------
 
 (define (ml.special-concat env sym args)
   (il-concat (c0-vec args env)))
+
+
+(define (ml.special-.. env sym args)
+  (il-concat (c0-vec args env)))
+
+
+(define (ml.special-._. env sym args)
+  (il-concat (c0-vec (intersperse (PString 0 " ") args) env)))
 
 
 ;;--------------------------------

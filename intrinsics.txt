@@ -453,6 +453,17 @@
 (declare (concat ...values) &public)
 
 
+;; This special form concatenates all of its arguments.
+;;
+(declare (.. ...values) &public)
+
+
+;; This special form concatenates all of its arguments, separating them with
+;; a single space character.
+;;
+(declare (._. ...values) &public)
+
+
 ;; This special form replaces substrings with replacement strings within the
 ;; given VALUE.  For example:
 ;;
