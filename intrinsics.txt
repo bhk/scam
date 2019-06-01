@@ -462,11 +462,6 @@
 (declare (subst from to {from to}... value) &public)
 
 
-;; Construct a vector containing each argument.
-;;
-(declare (vector ...values) &public)
-
-
 ;; Concatenate all values and write them to `stdout`.
 ;;
 (declare (print ...values) &public)
