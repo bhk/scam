@@ -289,7 +289,6 @@
 
 (define (uf-mul-fixed-fn a b)
   (uf-mul-fixed a b))
-(fix-native-var (native-name uf-mul-fixed-fn))
 
 (define (umf a b)
   (u2d (smash (uf-carry (uf-mul-fixed-fn (UV a) (UV b))))))

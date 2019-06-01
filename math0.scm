@@ -506,14 +506,6 @@
 ;;    (len(B)+9) * (len(A)+80) * 0.135
 ;;----------------------------------------------------------------
 
-;; VOODOO: Implement `native-var` before officially supported.
-(declare (native-var name) &native)
-
-;; Each function using `native-var` must be fixed-up using this:
-(define (fix-native-var fname)
-  (set-native-fn fname (subst "$(call native-var," "$(" (value fname))))
-
-
 ;; Multiply by a digit, given precomputed results:
 
 (define (A*0 b u1 u2 u3 u4 u5 u7 u9) nil)
@@ -553,9 +545,6 @@
                (native-var (native-name vmul-9))))
       (native-var (native-name vmul-9))))
 
-
-(fix-native-var (native-name vmul-loop))
-(fix-native-var (native-name vmul-9))
 
 (declare (vmul a b))
 
@@ -633,9 +622,6 @@
       (uf-carry
        (or (uf-mul-fixed a b)
            (vmul a b)))))
-
-
-(fix-native-var (native-name uf-mul))
 
 
 ;;--------------------------------
