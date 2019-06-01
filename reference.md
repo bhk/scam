@@ -314,7 +314,7 @@ operations on word lists:
     +--------------------+------------------------+-----------------------------+
     | Operation          | Vectors                | Word Lists                  |
     +====================+========================+=============================+
-    | Create             | `[A B C]`              | `(concat A " " B " " C)`    |
+    | Create             | `[A B C]`              | `(._. A B C)`               |
     +--------------------+------------------------+-----------------------------+
     | Get item N         | `(nth N VEC)`          | `(word N LIST)`             |
     +--------------------+------------------------+-----------------------------+
@@ -322,11 +322,11 @@ operations on word lists:
     +--------------------+------------------------+-----------------------------+
     | Get last item      | `(last VEC)`           | `(lastword LIST)`           |
     +--------------------+------------------------+-----------------------------+
-    | Add item to front  | `(cons ITEM VEC)`      | `(concat WORD " " LIST)`    |
+    | Add item to front  | `(cons ITEM VEC)`      | `(._. WORD LIST)`           |
     +--------------------+------------------------+-----------------------------+
-    | Add item to back   | `(conj VEC ITEM)`      | `(concat LIST " " WORD)`    |
+    | Add item to back   | `(conj VEC ITEM)`      | `(._. LIST WORD)`           |
     +--------------------+------------------------+-----------------------------+
-    | Append sequences   | `(append V1 V2...)`    | `(append LIST1 " " LIST2)`  |
+    | Append sequences   | `(append V1 V2...)`    | `(._. LIST1 LIST2)`         |
     +--------------------+------------------------+-----------------------------+
     | Count items        | `(words VEC)`          | `(words LIST)`              |
     +--------------------+------------------------+-----------------------------+
@@ -510,7 +510,7 @@ invoked when a compound form is evaluated and the first item in the compound
 form is function value.
 
     > (define (f x y)
-    +   (concat x y))
+    +   (.. x y))
     > (f "a" "b")
     "ab"
 
@@ -656,7 +656,7 @@ as an argument argument may be evaluated zero or more times, depending on
 how many times the parameter ends up being evaluated within the macro body.
 For example:
 
-    > (define `(m a) (concat a a a) "done")
+    > (define `(m a) (.. a a a) "done")
     > (m (print 1))
     1
     1
@@ -686,7 +686,7 @@ binding that was in scope where the macro was defined.
     >  (let ((a 1))
     +     (define `X a)
     +     (let ((a 2))
-    +        (define `(f z) (concat X a z))
+    +        (define `(f z) (.. X a z))
     +        (let ((a 3))
     +           (f a))))
     123
