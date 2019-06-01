@@ -400,11 +400,18 @@
 (define concat-for-where
   "(concat-for VAR VEC DELIM BODY)")
 
-(define (il-spc-encode node)
-  (il-subst " " "|0" (il-subst "|" "|1" node)))
 
-(define (il-spc-decode node)
-  (il-subst "|1" "|" (il-subst "|0" " " node)))
+(define `(il-enc-item node)
+  (il-concat [(il-subst "~" "~1" node) (IString "~")]))
+
+
+(define `(il-finish delim all)
+  (define `all-x
+    (il-concat [(IBuiltin "or" [all (IString "~")]) (IString "x")]))
+  (il-subst "~1" "~"
+            (IBuiltin "subst" [(IString "~ ")
+                               (il-subst "~" "~1" delim)
+                               (il-subst "~x" nil all-x)])))
 
 
 (define (ml.special-concat-for env sym args)
@@ -421,10 +428,7 @@
              (for-result identity))))
 
       ;; General case
-      (il-spc-decode
-       (IBuiltin "subst" [ (IString " ")
-                          (il-subst "|" "|1" (c0 delim env))
-                          (for-result il-spc-encode) ]))))
+      (il-finish (c0 delim env) (for-result il-enc-item))))
 
 
 ;;--------------------------------

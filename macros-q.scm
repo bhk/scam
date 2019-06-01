@@ -205,11 +205,13 @@
         (c0-ser "(concat-for x \"a b\" \" \" x)" { d: (EVar "p" "D") }))
 
 ;; delim == IString
-(expect "(.subst |1,|,(.subst |0, ,(.subst  ,|1,(.foreach ;,a b,(.subst  ,|0,(.subst |,|1,(^u {;})))))))"
+(expect (concat "(.subst ~1,~,(.subst ~ ,|,(.subst ~x,,"
+                "(.or (.foreach ;,a b,(.subst ~,~1,(^u {;}))~),~)x)))")
         (c0-ser "(concat-for x \"a b\" \"|\" x)" { d: (EVar "p" "D" ) }))
 
 ;; general case
-(expect "(.subst |1,|,(.subst |0, ,(.subst  ,(.subst |,|1,{D}),(.foreach ;,a b,(.subst  ,|0,(.subst |,|1,(^u {;})))))))"
+(expect (concat "(.subst ~1,~,(.subst ~ ,(.subst ~,~1,{D}),(.subst ~x,,"
+                "(.or (.foreach ;,a b,(.subst ~,~1,(^u {;}))~),~)x)))")
         (c0-ser "(concat-for x \"a b\" d x)" { d: (EVar "p" "D") }))
 
 ;;--------------------------------
