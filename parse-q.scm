@@ -147,8 +147,7 @@
 (fexpect (POut 5 (PError 5 "] )"))                            (p1 "( a ]"))
 
 ;; vectors
-(fexpect (POut 5 (PList 1 [ (PSymbol 0 "vector")
-                           (PString 2 1) (PString 4 293) ]))
+(fexpect (POut 5 (PVec 1 [ (PString 2 1) (PString 4 293) ]))
         (p1 "[1 293] 3"))
 (fexpect (POut 2 (PError 1 "[") ) (p1 "["))
 (fexpect (POut 3 (PError 3 ") ]")) (p1 "[ ) ]"))

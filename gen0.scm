@@ -216,6 +216,7 @@
     ((PString n value) (IString value))
     ((PSymbol n value) (c0-S env form value (resolve form env)))
     ((PDict n pairs) (c0-D env n pairs))
+    ((PVec n forms) (il-vector (for f forms (c0 f env))))
     ((PQuote n subform) (IString subform))
     ((PQQuote n subform) (c0-qq env subform))
     (else (c0-error form))))

@@ -17,7 +17,9 @@
       (PQQuote  &word n &list form)   ; quasi-quoted expression
       (PUnquote &word n &list form)   ; unquoted expression
       (PSplice  &word n &list form)   ; unquoted splice expression
-      (PError   &word n desc))        ; parsing error
+      (PError   &word n desc)         ; parsing error
+      (PVec     &word n forms))       ; vector constructor
+
 
 ;; N = word index at which form began
 ;;
@@ -307,7 +309,7 @@
   (POut err-n err-form))
 
 
-(define (parse-seq subj term start-pos out lst)
+(define (parse-seq subj term start-pos out lst ctor)
   (case (POut-form out)
     ((PError n desc)
      ;; A ")" or "]" error closes this sequence UNLESS it is nested, as in:
@@ -315,21 +317,22 @@
      ;; In such a case, desc will be ") [" and not ")".
      (if (eq? term desc)
          ;; Done (matching terminator)
-         (POut (POut-pos out) (PList start-pos lst))
+         (POut (POut-pos out) (ctor start-pos lst))
          ;; Error (mis-matched terminator)
          (parse-seq-err term start-pos n desc)))
 
     (else
      (parse-seq subj term start-pos
                 (parse-exp subj (1+ (POut-pos out)))
-                (conj lst (POut-form out))))))
+                (conj lst (POut-form out))
+                ctor))))
 
 
 (define `(parse-list subj pos)
-  (parse-seq subj ")" pos (parse-exp subj (1+ pos)) nil))
+  (parse-seq subj ")" pos (parse-exp subj (1+ pos)) nil PList))
 
-(define (parse-array subj pos)
-  (parse-seq subj "]" pos (parse-exp subj (1+ pos)) [(PSymbol 0 "vector")]))
+(define (parse-vector subj pos)
+  (parse-seq subj "]" pos (parse-exp subj (1+ pos)) nil PVec))
 
 
 ;; parse-dict
@@ -444,7 +447,7 @@
           ((filter "(" w)        (parse-list subj pos))
           ((filter "\"" w)       (parse-string subj pos (1+ pos)))
           ((filter ";%" w)       (parse-exp subj (1+ (find-word subj pos "\n%"))))
-          ((filter "[" w)        (parse-array subj pos))
+          ((filter "[" w)        (parse-vector subj pos))
           ((filter "{" w)        (parse-dict subj pos))
           ((filter "' ` , ,@" w) (parse-x w subj pos))
           ((numeric? w)          (POut pos (PString pos w)))
@@ -458,7 +461,7 @@
 ;;
 (define (parse-subject subj)
   &public
-  (case (POut-form (parse-seq subj "." 0 (parse-exp subj 1) nil))
+  (case (POut-form (parse-seq subj "." 0 (parse-exp subj 1) nil PList))
     ((PList pos lst) lst)
     (form [form])))
 
