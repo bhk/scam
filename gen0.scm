@@ -589,8 +589,9 @@
 ;; Otherwise, return nil.
 ;;
 (define (il-error-node node)
-  (let ((errors (il-errors node)))
-    (if errors
+  (if (findstring (subst "!" nil (word 1 (PError nil nil)))
+                  node)
+      (let ((errors (il-errors node)))
         (if (word 2 errors)
             (IBlock errors)
             (first errors)))))
