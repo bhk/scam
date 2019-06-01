@@ -171,8 +171,10 @@
 ;; Call built-in function
 (define (c1-Builtin name args)
   ;; (demote <builtin>) == <builtin> for all builtins
-  (concat "$(" name
-          " " ; this space is necessary even when there are no arguments
+  (concat "$("
+          (if (filter-out "=" name)
+              ;; this space is necessary even when there are no arguments
+              (concat name " "))
           (protect-ltrim (c1-vec args ","
                               (if (filter "and or" name)
                                   (native-name c1-arg-trim)

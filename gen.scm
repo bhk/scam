@@ -377,6 +377,9 @@
             { =b: (EBuiltin "i" b "0+") })
    {if: (EBuiltin "i" "if" "2 3")}
 
+   ;; Computed variable reference
+   {native-var: (EBuiltin "i" "=" 1)}
+
    ;; Make special variables & SCAM-defined variables
    ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
    (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
