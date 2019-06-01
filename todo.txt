@@ -26,7 +26,7 @@ Enhancements
 
  * "spread" with "..." syntax.
 
- * Macros don't have a good way to generate error messages or gensym.
+ * XMacros don't have a good way to generate error messages or gensym.
 
  * aliases: (define `g f) assigns g the correct value, but arity information
    is lost, and it compiles to a lambda-call, not a call-by-name.

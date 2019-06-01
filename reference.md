@@ -543,9 +543,10 @@ function definition or declaration:
     (g 1 2 3)
      ^
 
-Functions can also deal with a variable number of arguments.  When the last
-parameter name is prefixed with `...`, that parameter will capture in a
-vector zero the rest of the arguments passed to the function.  For example:
+Functions and macros can also deal with a variable number of arguments.
+When the last parameter name is prefixed with `...`, that parameter will
+capture in a vector zero the rest of the arguments passed to the function.
+For example:
 
     > (define (f a b ...others)
     +   others)
@@ -561,9 +562,6 @@ value.
 "Rest" parameters (`...NAME`) may appear only as the last of the formal
 parameter.  Optional `?NAME` parameters may not be followed by non-optional,
 non-rest parameters.
-
-Rest parameters may not be used with macros.
-
 
 ## Variables
 
