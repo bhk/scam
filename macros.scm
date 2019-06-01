@@ -104,27 +104,19 @@
 ;;--------------------------------
 
 (define (c0-set env sym value-node retval-node what where)
-  (let ((binding (resolve sym env))
-        (sym sym)
-        (value-node value-node)
-        (retval-node retval-node)
-        (what what)
-        (where where)
-        (env env))
-
-    (define `(il-set setter varname)
-      (ICall setter (append [ (IString varname) value-node ]
-                           (if retval-node
-                               [retval-node]))))
-    (case sym
-      ((PSymbol pos var-name)
-       (case binding
-         ((EVar _ name) (il-set "^set" name))
-         ((EFunc _ name _) (il-set "^fset" name))
-         (else
-          (gen-error sym "`%s` is not a global variable" (symbol-name sym)))))
-      (else
-       (err-expected "S" sym nil what where)))))
+  (define `(il-set setter varname)
+    (ICall setter (append [ (IString varname) value-node ]
+                          (if retval-node
+                              [retval-node]))))
+  (case sym
+    ((PSymbol pos var-name)
+     (case (resolve sym env)
+       ((EVar _ name) (il-set "^set" name))
+       ((EFunc _ name _) (il-set "^fset" name))
+       (else
+        (gen-error sym "`%s` is not a global variable" (symbol-name sym)))))
+    (else
+     (err-expected "S" sym nil what where))))
 
 
 (define (ml.special-set env sym args)
@@ -148,25 +140,18 @@
 (define (ml.special-? env sym args)
   (define `func (first args))
   (define `func-args (rest args))
-  (define `defn (resolve func env))
+  (define `(trace ctor name)
+    (ctor "^t" (cons (IString name) (c0-vec func-args env))))
 
-  (let ((defn (resolve func env))
-        (env env)
-        (sym sym)
-        (args args))
-    (or
-     (if (eq? "-" defn)
-         (err-expected "S" func sym "FUNC" "(? FUNC ARGS...)")
-         (begin
-           (define `(trace ctor name)
-             (ctor "^t" (cons (IString name) (c0-vec func-args env))))
-           (case defn
-             ((EFunc _ name _) (trace ICall name))
-             ((EBuiltin _ name _) (trace IBuiltin name)))))
-
-     (if defn
-         (gen-error func "FUNC in (? FUNC ...) is not traceable")
-         (gen-error func "undefined variable: `%s`" (symbol-name sym))))))
+  (case (resolve func env)
+    ((EFunc _ name _) (trace ICall name))
+    ((EBuiltin _ name _) (trace IBuiltin name))
+    (defn
+      (if (eq? "-" defn)
+          (err-expected "S" func sym "FUNC" "(? FUNC ARGS...)")
+          (if defn
+              (gen-error func "FUNC in (? FUNC ...) is not traceable")
+              (gen-error func "undefined variable: `%s`" (symbol-name sym)))))))
 
 
 ;;--------------------------------
@@ -299,12 +284,11 @@
 
 
 (define (ml.special-let& env sym args)
-  (let ((body (rest args))
-        (pairs (read-pairs (first args) sym let&-where))
-        (env env))
-    (case pairs
-      ((PError _ _) pairs)
-      (else (c0-block body (let&-env pairs env))))))
+  (case (read-pairs (first args) sym let&-where)
+    ((PError pos str)
+     (PError pos str))
+    (pairs
+     (c0-block (rest args) (let&-env pairs env)))))
 
 
 ;;--------------------------------
@@ -522,14 +506,11 @@
      (case m-name
        ((PSymbol _ name)
         ;; compile as a function
-        (let ((node (c0 (PList 0 (cons (PSymbol 0 "define") args))
-                        env))
-              (new-env { =name: (EXMacro "x" (gen-native-name name env)) }))
-          (IEnv new-env
-                ;; discard the env entries returned by `define`
-                (case node
-                  ((IEnv _ subnode) subnode)
-                  (else node)))))
+        (IEnv { =name: (EXMacro "x" (gen-native-name name env)) }
+              ;; discard the env entries returned by `define`
+              (case (c0 (PList 0 (cons (PSymbol 0 "define") args)) env)
+                ((IEnv _ subnode) subnode)
+                (other other))))
        (else (err-expected "S" m-name sym "NAME" defmacro-where))))
     (else (err-expected "L" what sym "(NAME ARG...)" defmacro-where))))
 
@@ -753,33 +734,26 @@
            (define `ctor-name (first syms))
            (define `ctor-args (rest syms))
            (or
-            (let ((defn (resolve ctor-name env))
-                  (filter-value filter-value)
-                  (value-defn value-defn)
-                  (ctor-args ctor-args)
-                  (ctor-name ctor-name)
-                  (body body))
-              (case defn
-                ((ERecord _ encs tag)
+            (case (resolve ctor-name env)
+              ((ERecord _ encs tag)
+               (define `test-node
+                 (IBuiltin
+                  "filter"
+                  (if is-word
+                      [(IString [(concat tag " %")])
+                       (IConcat [filter-value (IString "!0")])]
+                      [(IString tag)
+                       (IBuiltin "word" [(IString 1) filter-value])])))
 
-                 (define `test-node
-                   (IBuiltin
-                    "filter"
-                    (if is-word
-                        [(IString [(concat tag " %")])
-                         (IConcat [filter-value (IString "!0")])]
-                        [(IString tag)
-                         (IBuiltin "word" [(IString 1) filter-value])])))
+               (define `bindings
+                 (member-bindings ctor-args encs value-defn))
 
-                 (define `bindings
-                   (member-bindings ctor-args encs value-defn))
+               (define `then-node
+                 (c0-block body (append bindings env)))
 
-                 (define `then-node
-                   (c0-block body (append bindings env)))
-
-                 (or (check-arity (words encs) ctor-args ctor-name)
-                     ;; Success
-                     (IBuiltin "if" [ test-node then-node ])))))
+               (or (check-arity (words encs) ctor-args ctor-name)
+                   ;; Success
+                   (IBuiltin "if" [ test-node then-node ]))))
 
             (case ctor-name
               ((PSymbol _ name)

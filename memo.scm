@@ -194,12 +194,9 @@
 
 (define (memo-do-apply fname args)
   (define `(playback-or-record fname args)
-    (let ((o (memo-playback (call-key fname args)))
-          (fname fname)
-          (args args))
-      (case o
-        ((Result v) v)
-        (else (memo-record (call-key fname args) fname args)))))
+    (case (memo-playback (call-key fname args))
+      ((Result v) v)
+      (else (memo-record (call-key fname args) fname args))))
 
   (let ((pair (dict-find (call-key fname args) *memo-cache*))
         (fname fname)

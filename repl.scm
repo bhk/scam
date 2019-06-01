@@ -213,6 +213,5 @@
 ;;
 (define (repl-ep text ?obj-dir ?is-quiet)
   &public
-  (let ((state (eval-and-print text nil obj-dir is-quiet initial-env)))
-    (case state
-      ((REPL _ _ _ _ error _) error))))
+  (case (eval-and-print text nil obj-dir is-quiet initial-env)
+    ((REPL _ _ _ _ error _) error)))

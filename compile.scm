@@ -486,14 +486,12 @@
 
    (case module
      ((PString _ name)
-      (let ((o (get-module name *compile-file* read-priv))
-            (module module))
-        (case o
-          ((ModError message)
-           (gen-error module "require: %s" message))
-          ((ModSuccess id exports)
-           (define `arg (IConcat [(IString id) (ICrumb "require" id)]))
-           (IEnv exports (ICall "^R" [arg]))))))
+      (case (get-module name *compile-file* read-priv)
+        ((ModError message)
+         (gen-error module "require: %s" message))
+        ((ModSuccess id exports)
+         (define `arg (IConcat [(IString id) (ICrumb "require" id)]))
+         (IEnv exports (ICall "^R" [arg])))))
      (else
       (err-expected "Q" module sym "STRING" "(require STRING)")))))
 
@@ -518,12 +516,11 @@
 ;;
 (define (compile-prelude source)
   (define `(get-module-env name)
-    (let ((o (get-module name "." nil)))
-      (case o
-        ((ModSuccess id exports)
-         exports)
-        ((ModError desc)
-         (error desc)))))
+    (case (get-module name "." nil)
+      ((ModSuccess id exports)
+       exports)
+      ((ModError desc)
+       (error desc))))
 
   (foreach m (runtime-module-name source)
            (get-module-env m)))

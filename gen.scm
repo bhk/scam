@@ -266,9 +266,8 @@
 ;;
 (define (current-depth env)
   &public
-  (let ((defn (dict-get DepthMarkerKey env)))
-    (case defn
-      ((EMarker depth) depth))))
+  (case (dict-get DepthMarkerKey env)
+    ((EMarker depth) depth)))
 
 
 ;; Return ADEPTH given DEPTH

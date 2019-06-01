@@ -458,10 +458,9 @@
 ;;
 (define (parse-subject subj)
   &public
-  (let ((form (POut-form (parse-seq subj "." 0 (parse-exp subj 1) nil))))
-    (case form
-      ((PList pos lst) lst)
-      (else [form]))))
+  (case (POut-form (parse-seq subj "." 0 (parse-exp subj 1) nil))
+    ((PList pos lst) lst)
+    (form [form])))
 
 
 (define (parse-text text)

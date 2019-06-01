@@ -322,12 +322,13 @@
 ;; Return IL for a dictionary key.
 ;;
 (define (c0-dict-key form env)
-  (let ((node (il-demote (c0 form env))))
-    (or (case node
-          ((ICall name args)
-           (if (eq? name "^d")
-               (ICall "^k" args))))
-        (il-subst "%" "!8" node))))
+  (case (il-demote (c0 form env))
+    ((ICall name args)
+     (if (eq? name "^d")
+         (ICall "^k" args)
+         (ICall name args)))
+    (node
+     (il-subst "%" "!8" node))))
 
 
 (define (c0-D env n pairs)
