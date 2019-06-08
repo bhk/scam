@@ -3,9 +3,9 @@
 | Module | Exports |
 | :-- | :-- |
 | [compile](#compile-scam-compilation) | [`build-program`](#build-program-src-file-exe-file-obj-dir-is-quiet) [`compile-text`](#compile-text-text-file-env-in-obj-dir-is-quiet) [`run-program`](#run-program-src-file-argv-obj-dir-is-quiet) |
-| [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
+| [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`repeat-words`](#repeat-words-v-n) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
-| [intrinsics](#intrinsics) | [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`vector`](#vector-values) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
+| [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
 | [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd) [`mkdir-p`](#mkdir-p-dir) [`pipe`](#pipe-cmd-stdin) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
@@ -146,7 +146,7 @@ Return the first vector in VECV whose first item is KEY.
 
 ##### `(assoc-initial PREFIX VEC)`
 
-Return items that match PREFIX or begin with `(concat PREFIX " ")`.
+Return items that match PREFIX or begin with `(.. PREFIX " ")`.
 
 
 ##### `(assoc-vec KEY-VEC VECV)`
@@ -326,6 +326,12 @@ Display a message to stdout, followed by a newline.  See `vsprintf` for
 handling of FMT and VALUES.
 
 
+##### `(repeat-words V N)`
+
+Return a list of N words, constructed by appending copies of V.
+N must be an integer; if less than one, the result is empty.
+
+
 ##### `(reverse LIST)`
 
 Reverse word list (or vector) LIST.
@@ -334,6 +340,9 @@ Reverse word list (or vector) LIST.
 ##### `(see SUBSTR STR)`
 
 Return 1 if SUBSTR appears within STR.  Print a diagnostic otherwise.
+This is intended for use in unit tests, as follows:
+
+    (expect 1 (see SUBSTR STR))
 
 
 ##### `(select-vec FN LIST)`
@@ -494,6 +503,17 @@ provided by the language itself.  Special forms are not functions, so
 they do not have values and cannot be passed to other functions.
 
 ## Exports
+
+##### `(.. ...VALUES)`
+
+This special form concatenates all of its arguments.
+
+
+##### `(._. ...VALUES)`
+
+This special form concatenates all of its arguments, separating them with
+a single space character.
+
 
 ##### `(? FN ...ARGS)`
 
@@ -987,16 +1007,13 @@ operations, repetition of expressions should not alter the behavior of
 the program.  This can be used to identify and quantify hotspots in a
 program.
 
+See the [reference manual](reference.md#debugging) for examples.
+
 
 ##### `(untrace NAMES ?RETVAL)`
 
 Remove instrumentation from functions listed in NAMES, or functions
 matched by patterns in NAMES.
-
-
-##### `(vector ...VALUES)`
-
-Construct a vector containing each argument.
 
 
 ##### `(wildcard PATTERNS)`
@@ -1769,6 +1786,8 @@ Evaluate TEXT and print results and errors as REPL mode does.
 TEXT = SCAM source text containing zero or more expressions.\
 OBJ-DIR = [object directory](#object-directory); `nil` for default.\
 IS-QUIET = When non-nil, suppresses compilation progress messaged.\
+
+Result = non-nil on error.
 
 
 # string: String Manipulation
