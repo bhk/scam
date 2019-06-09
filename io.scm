@@ -58,9 +58,17 @@
   (shell-wrap (.. cmd " ; echo ")))
 
 
+;; Execute CMD, capturing STDERR and STDOUT, return exit code
+;; Result = [CODE LINES...]
+;;
+(define (shell-ok cmd)
+  (let ((o (shell-wrap (.. cmd " 2>&1 ; echo $?"))))
+    (._. (lastword o) (butlast o))))
+
+
 ;; Execute CMD, providing STDIN as input, capturing `stdout` and `stderr`.
 ;; Return the exit status and output.  The output is returned unmolested,
-;; except that zero bytes may result in truncated lines.
+;; except that NUL bytes may result in truncated lines.
 ;;
 ;; Result = [STATUS STDOUT STDERR]
 ;;
@@ -116,7 +124,7 @@
 
 
 (define (echo-split b-first b-rest suffix file is-append)
-  ;; "'" should only appear within "' \\ ' '"
+  ;; Do not split in the middle of an escape sequence: "\\" or "'\''"
   (if (filter "' \\" (lastword (subst "\\ \\" nil "' \\ ' '" nil b-first)))
       ;; get one more character
       (echo-split (.. b-first " " (word 1 b-rest))
@@ -161,11 +169,31 @@
 
 ;; Write DATA to file FILENAME.
 ;;
-;; On success, nil is returned.  Otherwise, an error description is returned.
+;; On success, return nil.  On failure, return an error description.
 ;;
 (define (write-file file-name data)
   &public
   (echo-bytes (get-echo-bytes data) "2>&1 {>} " (quote-sh-file file-name)))
+
+
+;; Move file FROM to TO.
+;;
+;; On success, return nil.  On failure, return an error description.
+;;
+(define (mv-file from to)
+  &public
+  (shell (._. "mv -f" (quote-sh-file from) (quote-sh-file to) " 2>&1")))
+
+
+(define (write-file-atomic file-name data)
+  &public
+  (let ((o (shell-ok (.. "mktemp " (quote-sh-file
+                                    (.. file-name ".tmp.XXXX"))))))
+    (define `tmp-name (nth 2 o))
+    (if (filter-out 0 (word 1 o))
+        (nth 2 o)
+        (or (write-file tmp-name data)
+            (mv-file tmp-name file-name)))))
 
 
 ;; Format text and write to a file descriptor, 0 through 8.  See `vsprintf`

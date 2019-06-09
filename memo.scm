@@ -275,7 +275,7 @@
 
   ;; create memo dir if it has not been already
   (memo-dir)
-  (expect nil (write-file *memo-db-file* memo-file-data))
+  (expect nil (write-file-atomic *memo-db-file* memo-file-data))
   (set *memo-db-disk* *memo-db*))
 
 

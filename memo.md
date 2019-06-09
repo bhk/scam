@@ -9,8 +9,8 @@ should be aware of when using memo.scm.
 ### Wrapping a function call or expression.
 
 In order to utilize memoization, the programmer must identify what
-procedures are to be memoized and replace an existing expression or function
-call with a caching wrapper.  For example, we can replace:
+procedures are to be memoized and "wrap" all calls to them.  For example, we
+can replace:
 
     (foo a b c)
 
@@ -18,26 +18,26 @@ call with a caching wrapper.  For example, we can replace:
 
     (memo-apply (global-name foo) [a b c])
 
-We say that a function call is "memoized" when it is replaced with a
-caching wrapper (e.g. memo-apply or memo-call).
+We say that a function call is "memoized" when calls to it are made through
+a caching wrapper (e.g. memo-apply or memo-call).
 
 Memoization of a function call is *valid* when the memoized form is
 *equivalent* to the original form.  By "equivalent" we mean that the
 behavior of the program will not be affected by the transformation
-(except for time of execution, and except for strictly
-memoization-related activity such as reading and writing cache files).
+(ignoring, of course, time of execution and writes to cache files done by
+the memoization module itself).
 
-For any SCAM function is "pure functions" -- that is, its result value is
-uniquely determined by their inputs, and it has no side effects -- supplying
-a cached value from previous invocation (with the same inputs) will be
-indistinguishable from invoking the procedure again.  Use of memoization
-with pure functions is therefore valid.
+For any SCAM function that is a "pure function" -- that is, its result value
+is uniquely determined by its inputs, and it has no side effects --
+supplying a cached value from previous invocation (with the same inputs)
+will be indistinguishable from invoking the procedure again.  Therefore,
+memoization of any pure function will always be valid.
 
 
 ### IO
 
-Memo supports memoization of procedures that perform IO as long as the IO
-operations meet the following constraints:
+The `memo` module supports memoization of procedures that perform IO as long
+as the IO operations meet the following constraints:
 
  - Operations that mutate external state must have an idempotent effect.
    (Performing the operation once must be equivalent to performing it two
@@ -83,13 +83,11 @@ entries remain relevant and usable.
 
 ### Sessions
 
-A session is a span of time during which we place constraints on changes
-to external state: During a session, any IO operation when called with
-the same arguments will return the same value.
-
-For example: Files being read by the program must not be modified by
-external entities during a session, and no file may be modified by the
-program itself *after* it has been read.
+A session is a span of time during which we place constraints on changes to
+external state: During a session, the memozation code can assume that
+supported IO operations will return the same result.  This means that files
+read by the program must not be modified later in the session -- either by
+the program itself or by external entities.
 
 The `memo-on` call is used to indicate the duration of sessions.
 
@@ -97,12 +95,13 @@ These assumptions are important for enabling certain implementation
 approaches and for constructing an argument for validity of memoization.
 
 For example, during a compiler invocation we assume that source files are
-not being modified by external entities.  This assumption is reasonable
-because it would be extremely difficult to define compilation results in
-such a scenario.  For memoization, this assumption allows more efficient
-caching.  We can treat a compiler "invocation" as a session, and then the
-memo module can safely use cached results from earlier in the session
-without re-validating input operations.
+not being modified.  This assumption is reasonable because we would not be
+able to define the behavior of the compiler under such a condition in any
+reasonable and implementable way.  With the assumption that source files
+(and output files) are not being modified by external entities, we can treat
+a compiler "invocation" as a session, and then the memo module can safely
+use cached results from earlier in the session without re-validating input
+operations.
 
 
 ### Ephemeral vs. Persistent Memoization
@@ -164,3 +163,38 @@ This will prevent persistent caching of the current invocation, discarding
 the cache data relevant to it.  This can be used in error scenarios in order
 to avoid cluttering the database with entries that are unlikely to be
 valuable.
+
+
+### Cache Files, Instances, and Conflicts
+
+Persistent caching makes use of a database file, whose name is passed to
+`memo-on`.  In addition to the database file, BLOB files are also written
+into the directory that containts the database file.
+
+In order for one session to take advantage of cached results from a previous
+session, both sessions will have to name the same database file.
+
+Generally speaking, different programs should use different database files.
+The database uses function names to identify memoized operations, and two
+different programs might assign different definitions to the same name
+(especially when the two programs are different versions of the same
+project).  Different database files can co-exist in the same directory (the
+BLOB files are written atomically, so there is no potential for confusion).
+The SCAM compiler hashes the its own source files to generate a unique ID.
+
+If global state differs between two invocations of the same program --
+e.g. current directory, or environment variables -- persistent memoization
+results might be invalid unless care is taken to avoid this problem.  One
+valid approach to this is to use `memo-io` to make memoization aware of this
+external variable.  A more efficient approach is to incorporate the external
+context information into the database file name (this will result in
+multiple independent database files, instead of one large one containing
+multiple independent histories).  The SCAM compiler hashes the current
+working directory, together with its own source file hash, to obtain its
+database file name.
+
+If two instances of a program run concurrently -- with the same memo
+database file -- the last one to complete will overwrite the database
+results of the other.  This will not cause invalid results; it will just
+mean that work done by one of those instances will not be persistently
+cached.
