@@ -83,7 +83,13 @@
 ;;
 (define `(compile-cache-file)
   (declare ^uid &native)
-  (.. *obj-dir* ^uid ".db"))
+  (define `name
+    (hash-output (.. "echo " ^uid " $(pwd)")))
+
+  (declare cache-file-name)
+  (or cache-file-name
+      (set cache-file-name (.. *obj-dir* name ".db"))
+      cache-file-name))
 
 
 ;; Evaluate EXPR within a memo session for compilation.
