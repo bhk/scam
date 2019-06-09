@@ -417,7 +417,7 @@
       ;; 0.1 <= X <= 0.102
       (fp-add (fp-mul (.. "01 + " log-10*0.1)
                       (u2fp (u-sub exp "01")))
-              (.. "0 - " (uf-log-pos (rest uf) (>>1 count))))))
+              (.. "0 + " (uf-log-pos (rest uf) (>>1 count))))))
 
 
 ;; Count digits to the right of the decimal point, given a starting place
