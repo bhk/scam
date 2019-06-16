@@ -34,15 +34,11 @@ int main(int argc, char **argv)
   (define timems-loc
     (.. (get-tmp-dir) "timems"))
 
-  (define `echo-cmd
-    (.. "printf '%b' " (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" timems.c))))
-
   (set *timems*
        (or (wildcard timems-loc)
            (begin
              (expect "" (mkdir-p (dir timems-loc)))
-             (expect 0 (first (pipe (.. "cc -o " timems-loc " -x c -")
-                                    timems.c)))
+             (expect 0 (first (pipe timems.c "cc -o %A -x c -" timems-loc)))
              timems-loc)))
   *timems*)
 

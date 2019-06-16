@@ -8,21 +8,33 @@
 (define TMPDIR
   (get-tmp-dir))
 
+
+;; io-vsprintf
+
+(expect "echo './-a'\\''a' '-b' c"
+        (io-vsprintf "echo %F %A %s" ["-a'a" "-b" "c"]))
+
+;; io-sprintf
+
+(expect "echo 'a b' '' 'c d'"
+        (io-sprintf "echo %V" ["a b" "" "c d"]))
+(expect "echo "
+        (io-sprintf "echo %V" []))
+
 ;; shell-lines
 
-(expect [""] (shell-lines "printf ''"))
-(expect ["a b c"] (shell-lines "printf 'a b c'"))
-(expect ["a b c" ""] (shell-lines "printf '%b' 'a b c\\n'"))
-(expect ["a b c" "" " "] (shell-lines "printf '%b' 'a b c\\n\\n '"))
+(expect ["a b c"] (shell-lines "printf %A" "a b c"))
+(expect ["a b c" ""] (shell-lines "printf '%%b' %A" "a b c\\n"))
+(expect ["a b c" "" " "] (shell-lines "printf '%%b' %A" "a b c\\n\\n "))
 
 ;; pipe
 
-(expect [0 "a b \n \n" ""] (pipe "printf '%b' 'a b \\n \\n'"))
-(expect [0 "" "a b \n \n"] (pipe "printf '%b' 'a b \\n \\n' >&2"))
-(expect [0 "a b \n" " c d"] (pipe "echo 'a b ' && echo -n ' c d' >&2"))
-(expect [0 "11\n22\n" ""] (pipe "sed 's/\\(.*\\)/\\1\\1/'" "1\n2\n"))
-(expect [0 "123" ""] (pipe "cat" "123"))
-(expect [1 "" ""] (pipe "false"))
+(expect [0 "a b \n \n" ""] (pipe nil "printf '%b' 'a b \\n \\n'"))
+(expect [0 "" "a b \n \n"] (pipe nil "printf '%b' 'a b \\n \\n' >&2"))
+(expect [0 "a b \n" " c d"] (pipe nil "echo 'a b ' && echo -n ' c d' >&2"))
+(expect [0 "11\n22\n" ""] (pipe "1\n2\n" "sed 's/\\(.*\\)/\\1\\1/'"))
+(expect [0 "123" ""] (pipe "123" "cat"))
+(expect [1 "" ""] (pipe nil "false"))
 
 ;; write
 
@@ -116,7 +128,7 @@
         (subst "d3b07384d113edec" "ok"   ;; md5
                "f1d2d2f924e986ac" "ok"   ;; shasum, sha1sum
                "9aa85db27d6a074c" "ok"   ;; Windows subsystem for Linux(?)
-               (hash-output "echo foo")))
+               (hash-output "echo %A" "foo")))
 
 ;; blob functions
 
@@ -172,5 +184,5 @@
 
 (let ((tmp (get-tmp-dir "io-q.XXX")))
   (assert (filter-out "/%" tmp))
-  (expect 0 (first (pipe (.. "ls " (quote-sh-file tmp)))))
+  (expect 0 (first (pipe nil "ls %F" tmp)))
   (shell (.. "rm -rf " (quote-sh-file tmp))))

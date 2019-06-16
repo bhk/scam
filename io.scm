@@ -29,6 +29,40 @@
   (quote-sh-arg (.. (if (filter "-%" [filename]) "./") filename)))
 
 
+;; Format a string, similarly to vsprintf, but with the following format
+;; sequences supported:
+;;    `%s` : the argument is output literally
+;;    `%A` : the argument is quoted for a POSIX shell
+;;    `%V` : the argument is treated as a vector of strings, each to be
+;;           quoted as an argument to a POSIX shell
+;;    `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`.
+;;
+(define (io-vsprintf fmt args)
+  (define `(shell-fmt code v)
+    (cond ((filter "A" code) (quote-sh-arg v))
+          ((filter "F" code) (quote-sh-file v))
+          ((filter "V" code) (subst " " [" "]
+                                    (foreach f (promote v)
+                                             (quote-sh-arg f))))
+          (else v)))
+
+  (vsprintfx fmt args "s A F V" shell-fmt))
+
+
+;; [See `io-vsprintf`.]
+;;
+(define (io-sprintf fmt ...args)
+  &public
+  (io-vsprintf fmt args))
+
+
+;; Format a command using `io-vsprintf` and execute it using `shell`.
+;;
+(define (shellf cmd-fmt ...args)
+  &public
+  (ioshell (io-vsprintf cmd-fmt args)))
+
+
 (define `sed-esc-chars
   "s/!/!1/g;s/ /!0/g;s/\t/!+/g;s/\x0d/!r/g")
 
@@ -36,44 +70,58 @@
 ;; Return a vector of lines output by CMD, optionally starting/stopping at
 ;; START/END.
 ;;
-(define (shell-wrap cmd ?start ?end)
+(define (shell-vwrap cmd-fmt args ?start ?end)
   (define `shell-cmd
-    (.. "( " cmd " ) | sed -e '"
+    (.. "( " (io-vsprintf cmd-fmt args) " ) | sed -e '"
         (if start
             (.. start "," end "!d;"))
         sed-esc-chars ";s/^$/!./'"))
   (subst "!r" "\x0d" (ioshell shell-cmd)))
 
 
-;; Execute command CMD, returning data written to `stdout` as a vector of
+;; Execute command, returning data written to `stdout` as a vector of
 ;; lines, split at "\n" characters.  To obtain the original output as one
 ;; string, do the following:
 ;;
 ;;     (concat-vec RESULT "\n")
 ;;
+;; CMD-FMT = format string as per `io-vsprintf`
+;; ARGS = arguments references by CMD-FMT
+;;
 ;; Note: Zero bytes in the output may result in truncated lines.
 ;;
-(define (shell-lines cmd)
+(define (shell-lines cmd-fmt ...args)
   &public
-  (shell-wrap (.. cmd " ; echo ")))
+  (shell-vwrap (.. cmd-fmt " ; echo ") args))
 
 
-;; Execute CMD, capturing STDERR and STDOUT, return exit code
+;; Execute command, capturing STDERR and STDOUT, return exit code
+;;
+;; CMD-FMT = format string as per `io-vsprintf`
+;; ARGS = arguments references by CMD-FMT
+;;
 ;; Result = [CODE LINES...]
 ;;
-(define (shell-ok cmd)
-  (let ((o (shell-wrap (.. cmd " 2>&1 ; echo $?"))))
+(define (shell-ok cmd-fmt ...args)
+  (let ((o (shell-vwrap (.. cmd-fmt " 2>&1 ; echo $?") args)))
     (._. (lastword o) (butlast o))))
 
 
-;; Execute CMD, providing STDIN as input, capturing `stdout` and `stderr`.
+;; Execute a command, providing STDIN as input, capturing `stdout` and `stderr`.
 ;; Return the exit status and output.  The output is returned unmolested,
 ;; except that NUL bytes may result in truncated lines.
 ;;
+;; STDIN = bytes to provide as input to the command.  If nil, /dev/null is
+;;    supplied.  The size of STDIN may be limited by the maximum command size.
+;; FMT ...ARGS = arguments passed to `io-vsprintf` to construct the command.
+;;
 ;; Result = [STATUS STDOUT STDERR]
 ;;
-(define (pipe cmd ?stdin)
+(define (pipe stdin fmt ...args)
   &public
+  (define `cmd
+    (io-vsprintf fmt args))
+
   (define `(quote-printf-arg str)
     (quote-sh-arg (subst "\\" "\\\\" "\n" "\\n" str)))
 
@@ -113,38 +161,42 @@
 ;;
 ;; Return `nil` on success; error message otherwise.
 ;;
-(define (echo-small bytes suffix file is-append)
+(define (echo-small bytes suffix-fmt suffix-arg is-append)
   (ioshell
    (.. "printf '%b' '" (concat-vec bytes) "' "
-       (subst "{>}" (if is-append ">>" ">") suffix)
-       file)))
+       (io-vsprintf (if is-append
+                        (patsubst ">%F" ">>%F" suffix-fmt)
+                        suffix-fmt)
+                    [suffix-arg]))))
 
 
-(declare (echo-bytes bytes suffix file is-append))
+(declare (echo-bytes bytes suffix-fmt suffix-arg is-append))
 
 
-(define (echo-split b-first b-rest suffix file is-append)
+(define (echo-split b-first b-rest suffix-fmt suffix-arg is-append)
   ;; Do not split in the middle of an escape sequence: "\\" or "'\''"
   (if (filter "' \\" (lastword (subst "\\ \\" nil "' \\ ' '" nil b-first)))
       ;; get one more character
       (echo-split (.. b-first " " (word 1 b-rest))
                   (rest b-rest)
-                  suffix file is-append)
-      (or (echo-small b-first suffix file is-append)
-          (echo-bytes b-rest suffix file 1))))
+                  suffix-fmt suffix-arg is-append)
+      (or (echo-small b-first suffix-fmt suffix-arg is-append)
+          (echo-bytes b-rest suffix-fmt suffix-arg 1))))
 
 
 ;; BYTES = vector of single-byte strings (gotten from `get-echo-bytes`)
-;; SUFFIX = string appended to echo command, in which "{>}" will be replaced
-;;      with either ">" or ">>".
-;; FILE = string to be appended to SUFFIX.
+;; SUFFIX-FMT = format string to construct a suffix to be appended to each
+;;    command (for the purpose of redirection).  Within this format string,
+;;    when multiple commands are issued, ">%F" will be replaced with ">>%F"
+;;    in all but the first command.
+;; SUFFIX-ARG = argument passed to `io-sprintf` with SUFFIX-FMT
 ;;
-(define (echo-bytes bytes suffix file ?is-append)
+(define (echo-bytes bytes suffix-fmt suffix-arg ?is-append)
   (if (word MAX-ARG-REST bytes)
       (echo-split (wordlist 1 MAX-ARG-1 bytes)
                   (nth-rest MAX-ARG-REST bytes)
-                  suffix file is-append)
-      (echo-small bytes suffix file is-append)))
+                  suffix-fmt suffix-arg is-append)
+      (echo-small bytes suffix-fmt suffix-arg is-append)))
 
 
 ;; Write DATA to a file descriptor FD, 0 through 8.
@@ -171,9 +223,9 @@
 ;;
 ;; On success, return nil.  On failure, return an error description.
 ;;
-(define (write-file file-name data)
+(define (write-file filename data)
   &public
-  (echo-bytes (get-echo-bytes data) "2>&1 {>} " (quote-sh-file file-name)))
+  (echo-bytes (get-echo-bytes data) "2>&1 >%F" filename))
 
 
 ;; Move file FROM to TO.
@@ -182,13 +234,12 @@
 ;;
 (define (mv-file from to)
   &public
-  (shell (._. "mv -f" (quote-sh-file from) (quote-sh-file to) " 2>&1")))
+  (shellf "mv -f %F %F 2>&1" from to))
 
 
 (define (write-file-atomic file-name data)
   &public
-  (let ((o (shell-ok (.. "mktemp " (quote-sh-file
-                                    (.. file-name ".tmp.XXXX"))))))
+  (let ((o (shell-ok "mktemp %F" (.. file-name ".tmp.XXXX"))))
     (define `tmp-name (nth 2 o))
     (if (filter-out 0 (word 1 o))
         (nth 2 o)
@@ -222,7 +273,7 @@
 ;;
 (define (chmod-file filename mode)
   &public
-  (ioshell (._. "chmod" (quote-sh-arg mode) (quote-sh-file filename) "2>&1")))
+  (shellf "chmod %s %F 2>&1" mode filename))
 
 
 ;; Read contents of file FILENAME and return a vector of lines.  The number
@@ -233,9 +284,7 @@
 ;;
 (define (read-lines filename ?start ?end)
   &public
-  (shell-wrap
-   (._. "cat" (quote-sh-file filename) "2>/dev/null && echo")
-   start end))
+  (shell-vwrap "cat %F 2>/dev/null && echo" [filename] start end))
 
 
 ;; Read the contents of file FILENAME and return it as a string.
@@ -247,25 +296,21 @@
       (print "error: read-file: nil filename")))
 
 
-(define (mkdir-p-cmd dir)
-  &public
-  (.. "mkdir -p " (quote-sh-file dir)))
-
-
 ;; Create directory DIR and parent directories, if necessary.
 ;;
 (define (mkdir-p dir)
   &public
-  (ioshell (.. (mkdir-p-cmd dir) " 2>&1")))
+  (shellf "mkdir -p %F 2>&1" dir))
 
 
 ;; Copy file SRC to DST.  Return nil on success, description on error.
 ;;
 (define (cp-file src dst ?make-dst-dir)
   &public
-  (ioshell (.. (if make-dst-dir
-                   (.. (mkdir-p-cmd (dir dst)) " 2>&1 && "))
-               "cp " (quote-sh-file src) " " (quote-sh-file dst) " 2>&1")))
+  (shellf "%s cp %F %F 2>&1"
+          (if make-dst-dir
+              (io-sprintf "mkdir -p %F 2>&1 &&" (dir dst)))
+          src dst))
 
 
 ;; Copy file SRC to DST.  Return nil on success, description on error.
@@ -278,15 +323,13 @@
 ;;
 (define (cp-file-atomic src dst ?make-dst-dir)
   &public
-  (ioshell
-   (.. "( "
-       (if make-dst-dir
-           (.. (mkdir-p-cmd (dir dst)) " && "))
-       "a=$(mktemp " (quote-sh-file (.. dst ".tmp.XXXX")) ") && "
-       "( cp " (quote-sh-file src) " \"$a\" && "
-       "  mv -f \"$a\" " (quote-sh-file dst)
-       " ) || rm \"$a\""
-       " ) 2>&1")))
+  (shellf
+   "(%s a=$(mktemp %F) && (cp %F \"$a\" && mv -f \"$a\" %F) || rm \"$a\") 2>&1"
+   (if make-dst-dir
+       (io-sprintf "mkdir -p %F &&" (dir dst)))
+   (.. dst ".tmp.XXXX")
+   src
+   dst))
 
 
 ;; Return FILENAME if file FILENAME exists.  The `wildcard` built-in
@@ -295,14 +338,14 @@
 ;;
 (define (file-exists? filename)
   &public
-  (if (ioshell (.. "[[ -f " (quote-sh-file filename) " ]] && echo t"))
+  (if (shellf "[[ -f %F ]] && echo t" filename)
       filename))
 
 
 (define *hash-cmd*
   nil)
 
-(define (hash-cmd)
+(define (get-hash-cmd)
   (or *hash-cmd*
       (begin
         (define `cmd
@@ -320,25 +363,26 @@
 ;;
 (define (hash-files filenames)
   &public
-  (define `quoted-names
-    (concat-for f filenames " "
-                (quote-sh-file f)))
-
   ;; Limit the first word on each line (the hash) to 16 bytes
-  (define `cmd
-    (.. (hash-cmd) " " quoted-names " 2>/dev/null"
-        " | sed 's/\\(^................\\)[^ ]*/\\1/;"
-        "s/!/!1/g;s/ /!0/g;s/\t/!+/g'"))
+  (define `hash-out
+    (shellf (.. "%s -- %V 2>/dev/null | "
+                "sed 's/\\(^................\\)[^ ]*/\\1/;"
+                "s/!/!1/g;s/ /!0/g;s/\t/!+/g'")
+            (get-hash-cmd) filenames))
 
   ;; Output is one line per file containing HASH and FILENAME seperated
   ;; by one space (md5 -r) or two spaces (all others).
-  (define `extra (if (filter "s%" (hash-cmd)) "!0"))
-
-  (foreach dline (ioshell cmd)
-           (foreach hash (word 1 (subst "!0" " " dline))
-                    (define `dfile
-                      (patsubst (.. hash "!0" extra "%") "%" dline))
-                    {(promote dfile): hash})))
+  (foreach
+      delim (if (filter "s%" (get-hash-cmd))
+                "!0!0"
+                "!0")
+      (foreach
+          dline hash-out
+          (foreach
+              hash (word 1 (subst "!0" " " dline))
+              (define `dfile
+                (patsubst (.. hash delim "%") "%" dline))
+              {(promote dfile): hash}))))
 
 
 ;; Return the hash of one file (see `hash-files`).
@@ -348,39 +392,33 @@
   (dict-value (hash-files [filename])))
 
 
-;; Execute shell command CMD, hash what it writes to `stdout`, and return the
+;; Execute shell command, hash what it writes to `stdout`, and return the
 ;; hash.
 ;;
-(define (hash-output cmd)
+;; CMD-FMT = format string as per `io-vsprintf`
+;; ARGS = arguments references by CMD-FMT
+;;
+(define (hash-output cmd-fmt ...args)
   &public
   (define `hashpipe
-    (if (filter "md5" (basename (hash-cmd)))
+    (if (filter "md5" (basename (get-hash-cmd)))
         "md5 -q"
-        (.. (hash-cmd) " -")))
-  (ioshell (.. "( " cmd " ) | " hashpipe
+        (.. (get-hash-cmd) " -")))
+  (ioshell (.. "( " (io-vsprintf cmd-fmt args) " ) | " hashpipe
                " | sed 's/\\(^................\\).*/\\1/'")))
 
 
-(define (mktemp dir-name)
-  (ioshell
-   (.. "mktemp " (quote-sh-file (.. dir-name "blob.XXXX")))))
-
-
+;; Write DATA to a temporary file, and then rename it to the hash of DATA.
+;; Return the hash, or NIL on failure.
+;;
 (define (write-blob file data)
-  (define `dir-arg
-    (quote-sh-file (dir file)))
-
-  (define `file-arg
-    (quote-sh-file file))
-
   (define `hash
-    (if (echo-bytes (get-echo-bytes data) "2>&1 {>} " file-arg)
+    (if (echo-bytes (get-echo-bytes data) "2>&1 >%F" file)
         nil
-        (ioshell
-         (.. "( o=" file-arg
-             " && h=$(" (hash-cmd) " \"$o\")"
-             " && mv -f \"$o\" " dir-arg "\"${h:0:16}\""
-             " && echo \"${h:0:16}\" ) 2>/dev/null"))))
+        (shellf (.. "( o=%F && h=$(%s \"$o\") && "
+                    "mv -f \"$o\" %A\"${h:0:16}\" && "
+                    "echo \"${h:0:16}\" ) 2>/dev/null")
+                file (get-hash-cmd) (dir file))))
 
   (addprefix (dir file) hash))
 
@@ -390,7 +428,8 @@
 ;;
 (define (save-blob dir-name data)
   &public
-  (write-blob (mktemp dir-name) data))
+  (write-blob (shellf "mktemp %F" (.. dir-name "blob.XXXX"))
+              data))
 
 
 ;; clean-path-x: Helper for clean-path
@@ -476,7 +515,7 @@
     (or (value "SCAM_DIR") (value "SCAM_TMP") ".scam/"))
 
   (if tmpl
-      (let ((o (pipe (.. "mktemp -d " (quote-sh-file (.. tmp tmpl))))))
+      (let ((o (pipe nil "mktemp -d %F" (.. tmp tmpl))))
         (or (first (word 2 (subst "\n" " " o)))
             (error (.. "get-tmp-dir failed: " (nth 2 o)))))
       tmp))
