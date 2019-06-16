@@ -481,6 +481,45 @@
                       "\x0d" "\\x0d" str) "\"")))
 
 
+;; Split STR into multiple words after each "!%C" where C is a word
+;; in CODES, and convert each "!%C" to "!:C".
+;;
+(define (vsp-split codes str)
+  ;; Okay to pass NIL for C.
+  (define `(split c s)
+    (subst (.. "!%" (or c "%")) (.. "!:" c " ") s))
+
+  (split (word 1 codes)
+         (split (word 2 codes)
+                (if (word 3 codes)
+                    (vsp-split (nth-rest 3 codes) str)
+                    str))))
+
+
+;; Like `vsprintf`, but without any built-in notion of format
+;; codes.  Instead it accepts two additional arguments:
+;;
+;; CODES = list of supported format codes, e.g. "s q" for "%s" and "%q".\
+;; FMT-FN = a function that formats a value, given a format code.  It is
+;;    called as (FMT-FN CODE VALUE-VEC) where VALUE-VEC is a demoted value,
+;;    and returns a vector of strings (which will be concatenated).
+;;
+(define (vsprintfx fmt values codes fmt-fn)
+  &public
+  ;; Each field = "TEXT!:CODE", but last one may not have "!:CODE".
+  (define `fields
+    (subst "!%" "%" (vsp-split codes (subst "%" "!%" "!%!%" "%" [fmt]))))
+
+  (concat-vec
+   (foreach w (join fields (addprefix "!:%" values))
+            ;; W = "TEXT!:C!:%VALUE" or "TEXT!:C" or "TEXT!:%VALUE" or "TEXT"
+            ;; TEXT may be "".
+            (.. (word 1 (subst "!:" " !. " w))
+                (if (findstring "!:" (subst "!:%" nil w))
+                    (fmt-fn (word 2 (subst "!:" " " (.. "x" w)))
+                            (word 2 (subst "!:%" " " w))))))))
+
+
 ;; Expand FMT, replacing escape sequences with values from vector VALUES,
 ;; returning the resulting string.
 ;;
@@ -490,21 +529,12 @@
 ;;
 (define (vsprintf fmt values)
   &public
+  (define `(vsp-format code value-vec)
+    (if (filter "q" code)
+        [(format (promote value-vec))]
+        value-vec))
 
-  (define `fields
-    (subst "%" " !%" " !% !%" "%" (.. "%s" [fmt])))
-
-  (concat-vec
-   (foreach w (join (.. "!. " values) fields)
-            (cond
-             ((findstring "!%s" w)
-              (subst "!%s" "" w))
-             ((findstring "!%q" w)
-              (cons (format (first (subst "!%q" "!. " w)))
-                    (word 2 (subst "!%q" "!. " w))))
-             ((findstring "!%" w)
-              ;; "!%x" => bad format string
-              (subst "!%" "[unknown % escape]%" w))))))
+  (vsprintfx fmt values "s q" vsp-format))
 
 
 ;; Like `vsprintf`, but values are provided as separate arguments.

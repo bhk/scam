@@ -82,13 +82,33 @@
 (expect "" (word-index? -1))
 (expect "" (word-index? 0))
 
-(expect "[1 \"a b\"] --> 1 a!0b" (sprintf "%q --> %s" [1 "a b"] [1 "a b"]))
-(expect "nada" (sprintf "nada" "ignored"))
-(expect "!P!. a !\t !0 x" (sprintf "!P!.%s!0%sx" " a !\t " " " "ignored"))
-(expect "a%b%c" (sprintf "a%%b%s" "%c"))
-(expect "\"\"A" (sprintf "%qA" ""))
-(expect "abc" (sprintf "%s" "abc" "def"))
+;; vsprintfx
 
+(define (test-fmt c s)
+  (cond ((filter "a" c) (.. "<" s ">"))
+        ((filter "b" c) (.. "[" s "]"))))
+
+(expect "< ! >[]" (vsprintfx "%a%b" [" ! "] "a b" test-fmt))
+(expect "%%a" (vsprintfx "%%%a" ["!" " "] nil test-fmt))
+
+;; vsprintf / sprintf
+
+(expect "x" (vsprintf "%s" ["x" nil nil nil nil]))
+(expect "" (vsprintf "" ["x" nil nil nil nil]))
+
+(expect "! \t!" (sprintf "! \t!"))
+(expect "! \t!" (sprintf "%s" "! \t!"))
+(expect "! \t!" (sprintf "%s%s" "! " "\t!"))
+(expect "! \t!" (sprintf "!%s\t%s" " " "!"))
+(expect "" (sprintf "" "ignored"))
+(expect "x" (sprintf "x" "ignored"))
+(expect "x" (sprintf "x%s%s"))
+;; Unknown format code
+(expect "%?" (sprintf "%?"))
+;; %%
+(expect "%s-" (sprintf "%%s%s" "-"))
+;; %q
+(expect "[1 \"!\"]" (sprintf "%q" [1 "!"]))
 
 (expect "" (reverse ""))
 (expect [3 2 1] (reverse [1 2 3]))
