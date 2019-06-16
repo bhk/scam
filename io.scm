@@ -247,13 +247,46 @@
       (print "error: read-file: nil filename")))
 
 
+(define (mkdir-p-cmd dir)
+  &public
+  (.. "mkdir -p " (quote-sh-file dir)))
+
+
+;; Create directory DIR and parent directories, if necessary.
+;;
+(define (mkdir-p dir)
+  &public
+  (ioshell (.. (mkdir-p-cmd dir) " 2>&1")))
+
+
 ;; Copy file SRC to DST.  Return nil on success, description on error.
 ;;
 (define (cp-file src dst ?make-dst-dir)
   &public
   (ioshell (.. (if make-dst-dir
-                   (.. "mkdir -p " (quote-sh-file (dir dst)) " 2>&1 && "))
+                   (.. (mkdir-p-cmd (dir dst)) " 2>&1 && "))
                "cp " (quote-sh-file src) " " (quote-sh-file dst) " 2>&1")))
+
+
+;; Copy file SRC to DST.  Return nil on success, description on error.
+;;
+;; Operation is atomic on POSIX file systems -- that is, if DST is opened
+;; and read by another process, it will either see the previous contents of
+;; DST or an entire copy of SRC (never a partial copy).  A temporary file
+;; (in the same directory as DST, and with a name based on DST) will be used
+;; for this purpose.
+;;
+(define (cp-file-atomic src dst ?make-dst-dir)
+  &public
+  (ioshell
+   (.. "( "
+       (if make-dst-dir
+           (.. (mkdir-p-cmd (dir dst)) " && "))
+       "a=$(mktemp " (quote-sh-file (.. dst ".tmp.XXXX")) ") && "
+       "( cp " (quote-sh-file src) " \"$a\" && "
+       "  mv -f \"$a\" " (quote-sh-file dst)
+       " ) || rm \"$a\""
+       " ) 2>&1")))
 
 
 ;; Return FILENAME if file FILENAME exists.  The `wildcard` built-in
@@ -264,13 +297,6 @@
   &public
   (if (ioshell (.. "[[ -f " (quote-sh-file filename) " ]] && echo t"))
       filename))
-
-
-;; Create directory DIR and parent directories, if necessary.
-;;
-(define (mkdir-p dir)
-  &public
-  (ioshell (.. "mkdir -p " (quote-sh-file dir) " 2>&1")))
 
 
 (define *hash-cmd*

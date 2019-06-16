@@ -86,6 +86,12 @@
 (expect nil (cp-file test-file (.. test-file ".2")))
 (expect io-q (read-file (.. test-file ".2")))
 
+;; cp-file-atomic
+
+(expect 1 (see "No such" (cp-file-atomic "does-not-exist" "shall-not-exist")))
+(expect nil (file-exists? "shall-not-exist"))
+(expect nil (cp-file-atomic test-file (.. test-file ".2")))
+(expect io-q (read-file (.. test-file ".2")))
 
 ;; hash-file & hash-files
 
