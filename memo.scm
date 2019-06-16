@@ -386,7 +386,7 @@
   (if (not (eq? hash (dict-get dst *memo-hashes*)))
       (begin
         (set *memo-hashes* (dict-remove dst *memo-hashes*))
-        (cp-file blob dst 1))))
+        (cp-file-atomic blob dst 1))))
 
 
 ;; Write DATA to FILENAME, logging the IO transaction for playback.  The
