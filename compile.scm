@@ -84,7 +84,7 @@
 (define `(compile-cache-file)
   (declare ^uid &native)
   (define `name
-    (hash-output (.. "echo " ^uid " $(pwd)")))
+    (hash-output "echo %s $(pwd)" ^uid))
 
   (declare cache-file-name)
   (or cache-file-name
@@ -253,9 +253,9 @@
 ;;                 ------------     ------------    ------------
 ;;   NAME          io.scm           io              io.scm
 ;;   ID            .scam/io.scm     io              io
-;;   Load File     .scam/io.scm.o                   .scam/io.o
-;;   Load Bundle                    [mod-io]
-;;   Bundle as     [mod-io.scm]     [mod-io]        [mod-io]
+;;   Object File   .scam/io.scm.o                   .scam/io.o
+;;   From-Bundle                    [mod-io]
+;;   To-Bundle     [mod-io.scm]     [mod-io]        [mod-io]
 ;;
 
 
@@ -571,7 +571,8 @@
                    (concat-vec (conj *compiling* file) " -> ")))))
 
 
-;; Compile a SCAM source file and all its dependencies.
+;; Compile a SCAM source file and all its dependencies, writing
+;; the object file to `(modid-file (module-id FILE))`.
 ;;
 ;; On success, return `nil`.
 ;; On failure, display message and return 1.
@@ -640,10 +641,10 @@
                     (construct-bundle id keep-syms)))
 
       (define `uid
-        (hash-output (.. "cat "
-                         (foreach id mod-ids
-                                  (if (modid-is-file id)
-                                      (quote-sh-arg (modid-file id)))))))
+        (hash-output "cat -- %V"
+                     (foreach id mod-ids
+                              (if (modid-is-file id)
+                                  (modid-file id)))))
 
       (construct-file main-id bundles uid)))
 
@@ -676,16 +677,16 @@
   (define `scam-main
     (.. mod ":" (gen-native-name "main" nil)))
 
-  (define `cmd-line
-    (.. "SCAM_ARGS=" (quote-sh-arg argv) " "
-        MAKE " -Rr --no-print-directory -f" (quote-sh-arg runner) " "
-        "SCAM_MAIN=" (quote-sh-arg scam-main) " "
-        (if *is-boot*
-            (.. "SCAM_DIR=" (quote-sh-arg *obj-dir*) " "))
-        (.. "SCAM_TMP=" (quote-sh-arg *obj-dir*) " ")
-        "1>&9 ; echo \" $?\""))
+  (define `scam-dir
+    (if *is-boot*
+        *obj-dir*))
 
-  (drop-if (filter-out 0 (lastword (shell cmd-line)))))
+  (define `run
+    (shellf (.. "SCAM_ARGS=%A %s -Rr --no-print-directory -f%A SCAM_MAIN=%A "
+                "SCAM_TMP=%A SCAM_DIR=%A 1>&9 ; echo \" $?\"")
+            argv MAKE runner scam-main *obj-dir* scam-dir))
+
+  (drop-if (filter-out 0 (lastword run))))
 
 
 ;; Compile a module and test it.
