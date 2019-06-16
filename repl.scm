@@ -85,13 +85,13 @@
   ;; TEXT = leftover typed text (awaiting completion of an expression)
   ;; ENV = current environment
   ;; ERROR = error response from most recent evaluation
-  (REPL text prompts obj-dir is-quiet error &list env))
+  (REPL text prompts build-dir is-quiet error &list env))
 
 
 ;; Parse and evaluate text, displaying errors or result.
 ;;
-(define (eval-and-print text prompts obj-dir is-quiet env)
-  (let ((o (compile-text text "[stdin]" env obj-dir is-quiet))
+(define (eval-and-print text prompts build-dir is-quiet env)
+  (let ((o (compile-text text "[stdin]" env build-dir is-quiet))
         (env env)
         (text text))
     (define `errors (dict-get "errors" o))
@@ -103,13 +103,13 @@
      ((and prompts
            (filter "( [ {" (case (first errors)
                              ((PError n desc) (word 1 desc)))))
-      (REPL text prompts obj-dir is-quiet nil env))
+      (REPL text prompts build-dir is-quiet nil env))
 
      ;; error?
      (errors
       (for err errors
            (info (describe-error err text "[stdin]")))
-      (REPL "" prompts obj-dir is-quiet 1 env))
+      (REPL "" prompts build-dir is-quiet 1 env))
 
      ;; execute & display result
      (else
@@ -119,7 +119,7 @@
               (set *2 *1)
               (set *1 result)
               (print (format result)))))
-      (REPL "" prompts obj-dir is-quiet nil newenv)))))
+      (REPL "" prompts build-dir is-quiet nil newenv)))))
 
 
 ;; Collect another line of input and process it.
@@ -131,7 +131,7 @@
 ;;
 (define (read-eval-print state)
   (case state
-    ((REPL text prompts obj-dir is-quiet _ env)
+    ((REPL text prompts build-dir is-quiet _ env)
 
      (let ((line (getline (nth (if text 2 1) prompts)))
            (env env)
@@ -146,7 +146,7 @@
 
         ((saw ":")
          ;; Reset text
-         (REPL nil prompts obj-dir is-quiet nil env))
+         (REPL nil prompts build-dir is-quiet nil env))
 
         ((saw ":q")
          ;; Exit
@@ -166,7 +166,7 @@
 
         (else
          (eval-and-print (.. text line)
-                         prompts obj-dir is-quiet env)))))))
+                         prompts build-dir is-quiet env)))))))
 
 
 (define `initial-env
@@ -184,12 +184,12 @@
 ;; Enter REPL mode, and return to caller when the user exits with `:q` or
 ;; `Ctrl-D`.
 ;;
-;; OBJ-DIR = [object directory](#object-directory); `nil` for default.\
+;; BUILD-DIR = [build directory](#build-directory); `nil` for default.\
 ;; PROMPTS = [P1 P2]; P1 is shown when awaiting an expression; P2 is
 ;;   shown when awaiting completion of an expression.  If `nil`, default
 ;;   values will be used.
 ;;
-(define (repl ?obj-dir ?prompts)
+(define (repl ?build-dir ?prompts)
   &public
   (define `default-prompts
     ["> " "+ "])
@@ -199,19 +199,19 @@
   (do-not-trace "~repl ~eval-and-print ~while ~while-0 ~while-N")
 
   (while identity read-eval-print
-         (REPL nil (or prompts default-prompts) obj-dir nil nil initial-env))
+         (REPL nil (or prompts default-prompts) build-dir nil nil initial-env))
   (print))
 
 
 ;; Evaluate TEXT and print results and errors as REPL mode does.
 ;;
 ;; TEXT = SCAM source text containing zero or more expressions.\
-;; OBJ-DIR = [object directory](#object-directory); `nil` for default.\
+;; BUILD-DIR = [build directory](#build-directory); `nil` for default.\
 ;; IS-QUIET = When non-nil, suppresses compilation progress messaged.\
 ;;
 ;; Result = non-nil on error.
 ;;
-(define (repl-ep text ?obj-dir ?is-quiet)
+(define (repl-ep text ?build-dir ?is-quiet)
   &public
-  (case (eval-and-print text nil obj-dir is-quiet initial-env)
+  (case (eval-and-print text nil build-dir is-quiet initial-env)
     ((REPL _ _ _ _ error _) error)))

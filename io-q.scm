@@ -179,7 +179,7 @@
 
 ;; get-tmp-dir
 
-(expect (or (value "SCAM_DIR") (value "SCAM_TMP"))
+(expect (or (value "SCAM_TMP") ".scam/")
         (get-tmp-dir))
 
 (let ((tmp (get-tmp-dir "io-q.XXX")))

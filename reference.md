@@ -868,14 +868,14 @@ The SCAM Compiler supports four major modes of operation:
 ### Cached Results
 
 In order to support fast incremental rebuilds of modules, SCAM stores
-intermediate compilation results in a directory called the **object
-directory**.  The object directory is determined by one of the following
+intermediate compilation results in a directory called the **build
+directory**.  The build directory is determined by one of the following
 (with the earlier ones taking precedence):
 
-  1. The value given by the `--obj-dir` command line option.
+  1. The value given by the `--build-dir` command line option.
   2. If the `-o EXE` option is given, a directory named ".scam"
      within the directory containing EXE.
-  3. The environment variable `SCAM_OBJDIR`.
+  3. The environment variable `SCAM_BUILD_DIR`.
   4. A directory named `.scam` (relative to the current directory).
 
 SCAM uses hashes to determine the suitability of cached entries; not

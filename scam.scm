@@ -21,9 +21,9 @@
 
 Options:
 
-  --quiet         Do not display progress messages
-  --obj-dir DIR   Specify directory for intermediate files
-  --              Stop processing options
+  --quiet           Do not display progress messages
+  --build-dir DIR   Specify directory for intermediate files
+  --                Stop processing options
 ")
 
 ;; The following are options are subject to change:
@@ -43,7 +43,7 @@ Options:
 
 (define (main argv)
   (define `opt-names
-    "-o= -e= -v --version -h --help -i --quiet --obj-dir= --boot")
+    "-o= -e= -v --version -h --help -i --quiet --build-dir= --boot")
 
   (let ((omap (getopts argv opt-names)))
     (define `(opt name)
@@ -56,10 +56,11 @@ Options:
     ;; These globals govern compilation
     (set *is-boot* (opt "boot"))
 
-    (define obj-dir
-      (or (last (opt "obj-dir"))
+    (define build-dir
+      (or (last (opt "build-dir"))
           (addsuffix ".scam/" (dir (last (opt "o"))))
-          (value "SCAM_OBJDIR")))
+          (value "SCAM_BUILD_DIR")
+          (shell "echo ~/.scam/")))
 
     (or
 
@@ -73,7 +74,7 @@ Options:
 
      (vec-or
       (for expr (opt "e")
-           (if (repl-ep expr obj-dir is-quiet)
+           (if (repl-ep expr build-dir is-quiet)
                1)))
 
      (when (or (opt "h")
@@ -84,7 +85,7 @@ Options:
      (when (opt "o")
        (if (word 2 names)
            (perror "too many input files were given with `-o`")
-           (or (build-program (first names) (last (opt "o")) obj-dir is-quiet)
+           (or (build-program (first names) (last (opt "o")) build-dir is-quiet)
                0)))
 
      (when (or (opt "v")
@@ -93,11 +94,11 @@ Options:
        0)
 
      (when names
-       (or (run-program (first names) (rest names) obj-dir is-quiet)
+       (or (run-program (first names) (rest names) build-dir is-quiet)
            0))
 
      (when (or (opt "i")
                (not (or names (opt "e"))))
       (print "SCAM v" version " interactive mode. Type `?` for help.")
-      (repl obj-dir)
+      (repl build-dir)
       0))))

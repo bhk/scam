@@ -512,7 +512,7 @@
 (define (get-tmp-dir ?tmpl)
   &public
   (define `tmp
-    (or (value "SCAM_DIR") (value "SCAM_TMP") ".scam/"))
+    (or (value "SCAM_TMP") ".scam/"))
 
   (if tmpl
       (let ((o (pipe nil "mktemp -d %F" (.. tmp tmpl))))

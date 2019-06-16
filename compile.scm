@@ -27,12 +27,12 @@
 ;; convey errors as well as successful results, so the previous stages do
 ;; not need a separate error output value.
 ;;
-;; ## Object Directory
+;; ## Build Directory
 ;;
-;; During compilation, intermediate files are written to a directory called
-;; the "object directory".  Subsequent compilations with the same object
-;; directory can proceed faster by reusing these results.  This defaults to
-;; ".scam/".
+;; During compilation, intermediate files are created under a directory
+;; called the "build directory".  Subsequent compilations with the same
+;; object directory can proceed faster by reusing these results.  This
+;; defaults to ".scam/" if NIL is passed.
 ;;
 ;; No two compilations should occur at the same time (e.g. in different
 ;; instances of SCAM) using the same directory.
@@ -55,8 +55,11 @@
 ;; When non-nil, emit progress messages.
 (declare *is-quiet*)
 
-;; Default cache directory
+
+;; The directory containing the memo DB file and object files.
+;;
 (declare *obj-dir*)
+
 
 ;; A vector of files being compiled (to check for cycles)
 (define *compiling* nil)
@@ -79,27 +82,28 @@
   (drop-if message (fprintf 2 "scam: %s\n" message)))
 
 
-;; Return the name of the DB file for caching compilation results.
+;; Return a hash of the version of the running compiler and the working
+;; directory.
 ;;
-(define `(compile-cache-file)
+(define `(get-instance)
   (declare ^uid &native)
-  (define `name
-    (hash-output "echo %s $(pwd)" ^uid))
-
-  (declare cache-file-name)
-  (or cache-file-name
-      (set cache-file-name (.. *obj-dir* name ".db"))
-      cache-file-name))
+  (declare cache-instance)
+  (or cache-instance
+      (set cache-instance (hash-output "echo %s $(pwd)" ^uid))
+      cache-instance))
 
 
 ;; Evaluate EXPR within a memo session for compilation.
 ;;
-(define `(compile-memo-on obj-dir is-quiet expr)
-  (let-global ((*obj-dir* (if obj-dir
-                              (patsubst "%//" "%/" (.. obj-dir "/"))
-                              ".scam/"))
+(define `(compile-memo-on build-dir is-quiet expr)
+  (define `fix-build-dir
+    (if build-dir
+        (patsubst "%//" "%/" (.. build-dir "/"))
+        ".scam/"))
+
+  (let-global ((*obj-dir* (.. fix-build-dir (get-instance) "/"))
                (*is-quiet* is-quiet))
-    (memo-on (compile-cache-file) expr)))
+    (memo-on (.. *obj-dir* "db") expr)))
 
 
 ;; Return transitive closure of a one-to-many relationship.
@@ -364,7 +368,6 @@
   (.. "\ndefine " (modid-var id) "\n"
       (concat-vec body "\n") "\n"
       "endef\n"))
-
 
 
 ;; This preamble makes the resulting file both a valid shell script and a
@@ -709,18 +712,18 @@
 ;; SRC-FILE = name of the SCAM source file\
 ;; EXE-FILE = name of an executable file to create.\
 ;; ARGV = a vector to pass to the program's `main` function\
-;; OBJ-DIR = nil, or the [object directory](#object-directory)\
+;; BUILD-DIR = nil, or the [object directory](#object-directory)\
 ;; IS-QUIET = non-nil to suppress progress messages.
 ;;
 ;; On success, return `nil`.\
 ;; On failure, display message and return 1.
 ;;
-(define (build-program src-file exe-file ?obj-dir ?is-quiet)
+(define (build-program src-file exe-file ?build-dir ?is-quiet)
   &public
   (define `main-id (module-id src-file))
 
   (compile-memo-on
-   obj-dir is-quiet
+   build-dir is-quiet
    (if (not (memo-hash-file src-file))
        (begin
          (fprintf 2 "scam: file `%s` does not exist\n" src-file)
@@ -733,16 +736,16 @@
 ;;
 ;; SRC-FILE = name of the SCAM source file\
 ;; ARGV = a vector to pass to the program's `main` function\
-;; OBJ-DIR = nil, or the [object directory](#object-directory)\
+;; BUILD-DIR = nil, or the [object directory](#object-directory)\
 ;; IS-QUIET = non-nil to suppress progress messages.
 ;;
 ;; On success, return `nil`.\
 ;; On failure, display message and return 1.
 ;;
-(define (run-program src-file argv ?obj-dir ?is-quiet)
+(define (run-program src-file argv ?build-dir ?is-quiet)
   &public
   (compile-memo-on
-   obj-dir is-quiet
+   build-dir is-quiet
    (or (m-compile-and-maybe-test-module src-file nil)
        (run src-file argv nil))))
 
@@ -756,7 +759,7 @@
 ;; ENV-IN = the environment (symbol definitions) visible to TEXT
 ;;    at the outset.  If nil, SCAM's default environment will be used.
 ;;    Otherwise, it must be a previously returned ENV-OUT value.\
-;; OBJ-DIR = nil, or the [object directory](#object-directory).\
+;; BUILD-DIR = nil, or the [object directory](#object-directory).\
 ;; IS-QUIET = non-nil to suppress progress messages.
 ;;
 ;; Result = `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
@@ -775,10 +778,10 @@
 ;;     > out
 ;;     3
 ;;
-(define (compile-text text file ?env-in ?obj-dir ?is-quiet)
+(define (compile-text text file ?env-in ?build-dir ?is-quiet)
   &public
   (assert (not *is-boot*))
   (define `env (or env-in (compile-prelude nil)))
   (compile-memo-on
-   obj-dir is-quiet
+   build-dir is-quiet
    (parse-and-gen text env file nil)))
