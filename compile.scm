@@ -155,32 +155,34 @@
 
 (define (env-cmp s)
   (subst ";" "!A" "\\" "!B" "," "!C" "'" "!D" "[" "!E" "]" "!F" "|" "!G"
-         "@" "!H" "{" "!I" "}" "!J" "#" "!K" "\"" "!L" "&" "!M" "(" "!N"
-         "!0" ";" "!11" "\\" "\\1" "," "!10" "'" ";\\" "[" ";i[:" "]"
-         ":IL0" "|" ":IL4" "@" "!=!1:EDefn" "{" "{1;~%;i;" "}" "}1 " "#"
-         "}2 " "\"" "{1;:;i;" "&" "&2;!1.;!1:IL" "(" s))
+         "@" "!H" "{" "!I" "}" "!J" "!=!1:EDefn1!0i!0%!0" ";"
+         "!=!1:EDefn2!0i!0.!0" "\\" "!11" "," "!10" "'" "!0,:IL" "["
+         "!=!1:EDefn" "]" "!0" "|" "1:IL" "@" "|!@" "{" "[0'1'." "}" s))
+
 
 (define (env-exp s)
-  (subst "(" "&2;!1.;!1:IL" "&" "{1;:;i;" "\"" "}2 " "#" "}1 " "}" "{1;~%;i;"
-         "{" "!=!1:EDefn" "@" ":IL4" "|" ":IL0" "]" ";i[:" "[" ";\\" "'" "!10"
-         "," "\\1" "\\" "!11" ";" "!0" "!N" "(" "!M" "&" "!L" "\"" "!K" "#"
-         "!J" "}" "!I" "{" "!H" "@" "!G" "|" "!F" "]" "!E" "[" "!D" "'"
-         "!C" "," "!B" "\\" "!A" ";" s))
+  (subst "}" "[0'1'." "{" "|!@" "@" "1:IL" "|" "!0" "]" "!=!1:EDefn"
+         "[" "!0,:IL" "'" "!10" "," "!11" "\\" "!=!1:EDefn2!0i!0.!0"
+         ";" "!=!1:EDefn1!0i!0%!0" "!J" "}" "!I" "{" "!H" "@" "!G" "|" "!F"
+         "]" "!E" "[" "!D" "'" "!C" "," "!B" "\\" "!A" ";" s))
 
 
 ;; Tokenize the key within the binding (it usually occurs once).
 ;;
 (define `(tokenize-key v)
-  (foreach w v
-           (.. (word 1 (subst "!=" "!= " w))
-               (subst "%" "!p" (word 1 (subst "!=" " " w)) "%"
-                      (word 2 (subst "!=" "!= " w))))))
+  (foreach
+      w v
+      (define `N (word 1 (subst "!=" " " w)))
+      (define `V (word 2 (subst "!=" ". " w)))
+      (.. N "!=" (subst "%" "!p" (.. "`" N) "%" V))))
+
 
 (define `(detokenize-key v)
-  (foreach w v
-           (.. (word 1 (subst "!=" "!= " w))
-               (subst "%" (word 1 (subst "!=" " " w)) "!p" "%"
-                      (word 2 (subst "!=" "!= " w))))))
+  (foreach
+      w v
+      (define `N (word 1 (subst "!=" " " w)))
+      (define `V (word 2 (subst "!=" ". " w)))
+      (.. N "!=" (subst "%" (.. "`" N) "!p" "%" V))))
 
 
 ;; Prepare environment V for inclusion in a line of text in the MIN file.
@@ -211,8 +213,8 @@
 (define (env-parse lines all)
   (subst "!n" "\n"
          (env-expand
-          (foreach prefix (append "Exports" (if all "Private"))
-                   (promote (filtersub (.. ["# "] prefix [": %"])
+          (foreach prefix (._. "Exports" (if all "Private"))
+                   (promote (filtersub [(.. "# " prefix ": %")]
                                        "%" lines))))))
 
 

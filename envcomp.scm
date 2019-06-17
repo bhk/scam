@@ -16,7 +16,7 @@
 ;; Ideally, these should occur rarely or never in the environment.
 ;;
 (define `subchars
-  "; \\ , ' [ ] | @ { } # \" & ( ) _ / ` $ < > +")
+  "; \\ , ' [ ] | @ { } # \" & ( ) _ / $ < > + `")
 
 (expect subchars
         (uniq subchars))
@@ -146,32 +146,36 @@
 ;;--------------------------------
 
 ;;
-;; Load exports from bin/scam
+;; Load exports from .out/b/scam
 ;;
 
 (define scam-env
-  (let ((export-lines (shell-lines "grep '# Exports' bin/scam")))
-    (printf "exports: %s bytes" (string-len (concat-vec export-lines "\n")))
-    (printf "content: %s bytes" (string-len
-                                 (concat-vec (patsubst ["# Exports: %"] "%"
-                                                       export-lines) "\n")))
+  (let ((export-lines (shell-lines "grep '# Exports' .out/b/scam")))
+    (print ".out/b/scam exports:")
+    ;; (printf "exports: %s bytes" (string-len (concat-vec export-lines "\n")))
+    (printf "compressed: %s bytes"
+            (string-len
+             (concat-vec (patsubst ["# Exports: %"] "%"
+                                   export-lines) "\n")))
     (strip
      (foreach line export-lines
               (env-parse line nil)))))
 
-(printf "raw: %s entries, %s bytes" (words scam-env) (string-len scam-env))
-(set scam-env (tokenize-key scam-env))
-(printf "tokenized: %s bytes" (string-len scam-env))
+(define scam-tenv (tokenize-key scam-env))
+
+(printf "raw:        %s bytes [%s entries]" (string-len scam-env) (words scam-env))
+(printf "tokenized:  %s bytes" (string-len scam-tenv))
 
 ;; Uncomment for manual inspection:
-;; (write-file ".out/env" scam-env)
+(write-file ".out/tenv" scam-tenv)
 
 
 (define `candidate-strings
   [
+    "!11111"
+    "!1111"
+    "!111"
     "!0"
-    "!0p"
-    "!0~"
     "!1"
     "!10"
     "!101"        ;; argc?
@@ -183,31 +187,11 @@
     "!11111"
     "!11110"
     "!0!11"
-    "!0i!0!11:"
-    "!0i!0!1:IL"
     "!=!1:EDefn"
     "!=!1:EDefn0"
     "!=!1:EDefn1"
     "!=!1:EDefn2"
-    "!=!1:EDefn3"
-    "!=!1:EDefn1!0~"
-    "!=!1:EDefn1!0~%"
-    "!=!1:EDefn1!0~%!0i!0"
-    "!=!1:EDefn1!0~%!0i!01 "
-    "!=!1:EDefn1!0~%!0i!02 "
-    "!=!1:EDefn1!0:!0"
-    "!=!1:EDefn1!0:!0i"
-    "!=!1:EDefn1!0:!0i!0"
-    "!=!1:EDefn1!0:!0i!02"
-    "!=!1:EDefn1!0:!0i!02!0"
-    "!=!1:EDefn1!0:!0i!02!0!1"
-    "!=!1:EDefn1!0:!0i!02!0!1."
-    "!=!1:EDefn1!0:!0i!02!0!1.!0"
-    "!=!1:EDefn1!0:!0i!02!0!1.!0!1:IL"
-    "!=!1:EDefn1!0:!0i!02!0!1.!0!1:IL2!0"
-    "!=!1:EDefn1!0:!0i!02!0!1.!0!1:IL3!0"
-    "!=!1:EDefn1!0~%!0i!03 "
-    "!0:!0i!0"
+    "!=!1:EDefn5"
     "0!11"
     "10"
     "110"
@@ -215,67 +199,85 @@
     "1110"
     "1111"
     ":IL0"
+    ":IL1"
     ":IL2"
     ":IL3"
     ":IL4"
+    ":IL5"
     ":IL6"
-    ":P2"
+    ":IL7"
+    ":IL8"
+    "1:IL"
+    "!0!1:IL"
     "1 "
     "2 "
     "!01 "
     "!02 "
     "filter"
-    "concat"
     "word"
+    "i!0%!01"
+    "i!0%!0"
+    "2!0i!0.!0"
+    "2!0i!0.!01"
+    "2!0i!0.!02"
+    "!=!1:EDefn1!0i"
+    "!=!1:EDefn1!0i!0%!0"
+    "!=!1:EDefn2!0i"
+    "!=!1:EDefn2!0i!0.!0"
+    "!1:EDefn2!0i!0.!01!0!1:IL"
+    "!0!11:IL"
+    "!10.!0!11:IL"
+    "!0!11:IL0!101!10."
     ])
 
-;; (rank-after scam-env [] candidate-strings)
+;; (rank-after scam-tenv [] candidate-strings)
 
 (define `compress-strings
   [
-   "!0"            ; 183
-   ;; "!1"         ; 68
-   "!11"           ; 200
-   "!111"          ; 88
-   "!10"           ; 251
-   "!0!11"         ; 131
-   "!0i!0!11:"     ; 85
-   ":IL0"          ; 153
-   ;; ":IL2"       ;  55
-   ;; ":IL3"       ;  73
-   ":IL4"          ; 222
-   "!=!1:EDefn"
-   "!=!1:EDefn1!0~%!0i!0"        ; 525
-   "!=!1:EDefn1!0~%!0i!01 "      ; 130
-   "!=!1:EDefn1!0~%!0i!02 "      ;  82
-   "!=!1:EDefn1!0:!0i!0"         ; 126
-   "!=!1:EDefn1!0:!0i!02!0!1.!0!1:IL"     ; 229
+    "!=!1:EDefn1!0i!0%!0"  ;; 3004
+    "!=!1:EDefn2!0i!0.!0"  ;; 988
+    "!11"                  ;; 788
+    "!10"                  ;; 788
+    "!0!11:IL"             ;; 778
+    "!=!1:EDefn"           ;; 349
+    "!0"                   ;; 375
+    "1:IL"                 ;; 202
+    "!0!1:IL"              ;; 112
+    "!0!11:IL0!101!10."    ;; 168
+    ;; "1 "                   ;; 87
    ])
 
+
+(define (subtract v1 v2)
+  (define `(e s) (subst "~" "~1" "%" "~p" s))
+  (define `(d s) (subst "~p" "%" "~1" "~" s))
+  (d (filter-out (e v2) (e v1))))
 
 ;;
 ;; Estimate savings of compress-strings.
 ;; Output source for the resulting compress and expand functions.
 ;; Display benefits of additional candidate strings.
 ;;
-;; (print "in: " scam-env)
+;; (print "in: " scam-tenv)
 (print "saves reps str")
 (print "----- ---- ---------")
-(rank-after scam-env compress-strings candidate-strings)
+(rank-after scam-tenv compress-strings
+            (subtract candidate-strings compress-strings))
 
-;;(print "raw:\n" (reduce-string scam-env compress-strings subchars))
+;;(print "raw:\n" (reduce-string scam-tenv compress-strings subchars))
+
 
 ;;
 ;; Rank sub-chars, lest-frequent first.
 ;;
 
 (define best-chars
-  (sort-by (lambda (c) (format-fixed (count c scam-env) 6))
+  (sort-by (lambda (c) (format-fixed (count c scam-tenv) 6))
            subchars))
 
 ;; (printf "best-chars: (%s)  %q " (words best-chars) best-chars)
 ;; Display actual number of occurrences:
-;; (foreach c best-chars (printf "'%s' x %s" c (count c scam-env)))
+(foreach c best-chars (printf "'%s' x %s" c (count c scam-tenv)))
 
 
 
@@ -285,19 +287,19 @@
 
 (define (cmp s)
   (subst ";" "!A" "\\" "!B" "," "!C" "'" "!D" "[" "!E" "]" "!F" "|" "!G"
-         "@" "!H" "{" "!I" "}" "!J" "#" "!K" "\"" "!L" "&" "!M" "(" "!N"
-         "!0" ";" "!11" "\\" "\\1" "," "!10" "'" ";\\" "[" ";i[:" "]"
-         ":IL0" "|" ":IL4" "@" "!=!1:EDefn" "{" "{1;~%;i;" "}" "}1 " "#"
-         "}2 " "\"" "{1;:;i;" "&" "&2;!1.;!1:IL" "(" s))
+         "@" "!H" "{" "!I" "}" "!J" "!=!1:EDefn1!0i!0%!0" ";"
+         "!=!1:EDefn2!0i!0.!0" "\\" "!11" "," "!10" "'" "!0,:IL" "["
+         "!=!1:EDefn" "]" "!0" "|" "1:IL" "@" "|!@" "{" "[0'1'." "}" s))
 
 (define (exp s)
-  (subst "(" "&2;!1.;!1:IL" "&" "{1;:;i;" "\"" "}2 " "#" "}1 " "}" "{1;~%;i;"
-         "{" "!=!1:EDefn" "@" ":IL4" "|" ":IL0" "]" ";i[:" "[" ";\\" "'" "!10"
-         "," "\\1" "\\" "!11" ";" "!0" "!N" "(" "!M" "&" "!L" "\"" "!K" "#"
-         "!J" "}" "!I" "{" "!H" "@" "!G" "|" "!F" "]" "!E" "[" "!D" "'"
-         "!C" "," "!B" "\\" "!A" ";" s))
+  (subst "}" "[0'1'." "{" "|!@" "@" "1:IL" "|" "!0" "]" "!=!1:EDefn"
+         "[" "!0,:IL" "'" "!10" "," "!11" "\\" "!=!1:EDefn2!0i!0.!0"
+         ";" "!=!1:EDefn1!0i!0%!0" "!J" "}" "!I" "{" "!H" "@" "!G" "|" "!F"
+         "]" "!E" "[" "!D" "'" "!C" "," "!B" "\\" "!A" ";" s))
 
-(compare-size "size" (string-len scam-env) (string-len (cmp scam-env)))
+(compare-size "size"
+              (string-len scam-tenv)
+              (string-len (concat (cmp scam-tenv) cmp exp)))
 
-(expect (exp (cmp scam-env))
-        scam-env)
+(expect (exp (cmp scam-tenv))
+        scam-tenv)

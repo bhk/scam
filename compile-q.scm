@@ -29,7 +29,7 @@
 
 ;; env-compress
 
-(for s [",.;[]\\!1!0!11!10!021!10 !. !@#$%^&*()_+=|}{\\][/.,?><';\":`~,i x!=F!0x v!=V!0x"]
+(for s ["a!=,.;[]\\!1!0!11!10!021!10 b!=!. c!=!@#$%^&*()_+=|}{\\][/.,?><';\":`~,i x!=F!0x v!=V!0x"]
      (expect s (env-expand (env-compress s))))
 
 ;; tokenize-key, detokenize-key:
