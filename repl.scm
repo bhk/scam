@@ -48,7 +48,7 @@
     (.. (subst " " " or "
                "+" " or more"
                arity)
-        "arguments"))
+        " arguments"))
 
   (if (or all (not (filter "i%" (EDefn.scope defn))))
       (case defn
