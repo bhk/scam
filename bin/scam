@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MAIN := scam:`main
-^uid := af41a57f4d5b53ad
+^uid := 4ad8721201368b27
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -441,8 +441,8 @@ $(subst +2,+,$(subst +0, ,$(subst +1,!,$(subst +H,#,$(subst +B,\,$(subst +D,$`,$
 ,$(subst +.,..,$(subst +/,/,$1))))))))))))))))))
 endef
 define `get-tmp-dir
-$(if $1,$(call ^Y,$(call `pipe,,mktemp -d %F,$(or $(SCAM_TMP),.scam/)$1),,,,,,,,,$`(or $`(call ^n,1,$`(word 2,$`(subst 
-, ,$`1))),$`(error get-tmp-dir failed: $`(call ^n,2,$`1)))),$(or $(SCAM_TMP),.scam/))
+$(if $1,$(call ^Y,$(call `pipe,,mktemp -d %F,$(or $(SCAM_TMP),.scam/)$1),,,,,,,,,$`(or $`(if $`(filter 0,$`(call ^n,1,$`1)),$`(filter-out / //,$`(call ^n,1,$`(subst 
+,/ ,$`(word 2,$`1))))),$`(error get-tmp-dir failed: $`(call ^n,2,$`1)))),$(or $(SCAM_TMP),.scam/))
 endef
 
 endef
