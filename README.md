@@ -3,8 +3,10 @@
 SCAM (Scheme Compiler Atop Make) is a compiler for a string-based
 Lisp/Scheme dialect.  SCAM uses GNU Make 3.81 as its virtual machine.  Each
 SCAM executable file -- including the SCAM Compiler itself -- is a makefile
-and a `bash` script.  First invoked as a bash script, it invokes `make` to
+and a `bash` script.  First invoked as a bash script, SCAM invokes `make` to
 execute itself as a makefile.
+
+SCAM supports arbitrary-precision floating point arithmetic.
 
 For more information:
 

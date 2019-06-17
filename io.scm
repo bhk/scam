@@ -237,6 +237,12 @@
   (shellf "mv -f %F %F 2>&1" from to))
 
 
+;; Write DATA to file FILENAME.  The data is first written to a temporary
+;; file which is then renamed to FILENAME, so that another process opening
+;; the file will see either the old contents or (all of) the new contents.
+;;
+;; On success, return nil.  On failure, return an error description.
+;;
 (define (write-file-atomic file-name data)
   &public
   (let ((o (shell-ok "mktemp %F" (.. file-name ".tmp.XXXX"))))
@@ -516,6 +522,7 @@
 
   (if tmpl
       (let ((o (pipe nil "mktemp -d %F" (.. tmp tmpl))))
-        (or (first (word 2 (subst "\n" " " o)))
+        (or (if (filter 0 (first o))
+                (filter-out "/ //" (first (subst "\n" "/ " (word 2 o)))))
             (error (.. "get-tmp-dir failed: " (nth 2 o)))))
       tmp))

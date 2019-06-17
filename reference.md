@@ -414,9 +414,9 @@ access their members in a type-safe manner.
     8
 
 The first parameter is the value to be matched, and the remainder of the
-forms are `(PATTERN BODY)` pairs.  It tests these in order, and if a PATTERN
-matches it will evaluate and return the corresponding BODY.  If no patterns
-match, `nil` is returned.
+forms are `(PATTERN BODY)` pairs.  After the value expression is evaluated,
+it tests the patterns in order.  When a PATTERN matches it will evaluate and
+return the corresponding BODY.  If no patterns match, `nil` is returned.
 
 A pattern can be a (CONSTRUCTOR-NAME ARG...) where each ARG is a symbol.
 When the match is made, these symbols are bound to the corresponding members

@@ -6,8 +6,9 @@
   (dir (current-file)))
 
 (define TMPDIR
-  (get-tmp-dir))
+  (get-tmp-dir "io-q.XXX"))
 
+(expect [TMPDIR] (filter "%/" [TMPDIR]))
 
 ;; io-vsprintf
 
@@ -58,7 +59,7 @@
           (shell (.. "echo -n X >> " tmpfile))
           (read-file tmpfile)))
 
-(define `non-file (.. TMPDIR "io-q-dir"))
+(define `non-file TMPDIR)
 (shell (.. "mkdir -p " (quote-sh-arg non-file)))
 (expect 1 (see "directory" (write-file non-file "xyz")))
 ;; ensure it cleaned up the temp file
@@ -183,6 +184,9 @@
         (get-tmp-dir))
 
 (let ((tmp (get-tmp-dir "io-q.XXX")))
-  (assert (filter-out "/%" tmp))
+  (assert (filter-out "/" tmp))
   (expect 0 (first (pipe nil "ls %F" tmp)))
   (shell (.. "rm -rf " (quote-sh-file tmp))))
+
+;; On success, clean up...
+(shellf "rm -rf %A" TMPDIR)

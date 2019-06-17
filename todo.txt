@@ -59,13 +59,24 @@ Enhancements
        (c <- fn2 a b)
        (return c))
 
-
  * num: accept E-notation for integers in: range, ^
 
  * num: multi-arg + and *
 
  * &native=XXX would improve runtime.scm & enable builtins as declarations.
 
+ * (current-file LEVEL); and what about non-file sources?
+
+ * (EXPR ...) --> (funcall EXPR ...)
+
+ * defmacro: remove from language, or fix:
+    - form POS values dissociated from file
+       - allow for "qualified" pos values: qpos = pos:filename
+       - syntax quoting should yield records with qpos
+       - a polished exported "parse-text" function should return qpos
+       - c0 should honor filename in qpos instead of file/subject globals
+    - definition is not visible in REPL
+    - no hygienic way to reference values
 
 
 Optimizations for Generated Code
@@ -120,7 +131,7 @@ Optimizations for Generated Code
      (Discard NOUT)  --> ""  [all consts are NOUT]
      (Discard (IConcat A B C)) -->  (Discard A) (Discard B) (Discard C)
 
- * IF-NOT reduction:  (if (not x) a b) -->  (if x b a)
+ * IF-NOT reduction:  (if (not x) a b) -->  (if x b a)   [27 x 9 bytes = 243 bytes]
  * IF-YES reduction:  (if (if C 1) a b) -->  (if C a b)
 
      Rule:    (if (if C A B) X Y)   --> (if C (if A X Y) (if B X Y))    [if A and B are true or nil]
@@ -134,10 +145,20 @@ Optimizations for Generated Code
      This can be applied recursively to break apart complex commonality.
      Not good when A or B are constants and `f` is evaluatable.
 
- * Misc...
+ * wordlist inside nth/word/wordlist
+    (word C1 (wordlist C2 99999999 ...))
+    (nth C1 (wordlist C2 99999999 ...))
+    (wordlist C1 999999999 (wordlist C2 99999999 ...))
+    (if (wordlist N 99999999 ...) ...)
+   Counts:
+    (word 1 (nth-rest 3 ...))       42
+    (word 2 (nth-rest 2 ...))        6
+    (word 3 (nth-rest 3 ...))        1
+    (nth N (nth-rest 3 ...))        10
+    (nth-rest N (nth-rest 3 ...))   11  (mostly N=2)
 
-     (word N (wordlist A B VEC))      -->  nil  ...or...  (word N+A-1 VEC)
-     (wordlist A B (wordlist C D VEC) --> (wordlist A+C-1 (min B D-C+1) VEC)
+
+ * Misc...
 
      (demote WORD)          -->  (subst "!" "!1" WORD)  [when word is not nil]
      (demote PLAIN)         -->  PLAIN
