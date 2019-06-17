@@ -11,9 +11,9 @@
 
 ;; Variables not to be instrumented.
 (define *do-not-trace*
-  (value ".VARIABLES"))
+  (native-var ".VARIABLES"))
 
-(eval "define '
+(native-eval "define '
 
 
 endef
@@ -106,7 +106,7 @@ $(if ,, ) :=
         (if (word 9 argv)
             (.. ",$(wordlist 9,99999999,$2)"))
         ")"))
-  (call "if" "" "" call-expr))
+  (native-call "if" "" "" call-expr))
 
 
 ;;--------------------------------------------------------------
@@ -126,7 +126,7 @@ $(if ,, ) :=
 ;;
 (define (^tp name value)
   &native
-  (.. (info (.. name " " (^f value)))
+  (.. (print name " " (^f value))
       value))
 
 ;; ^tc : call function named by $1, and shift all other args left
@@ -168,9 +168,7 @@ $(if ,, ) :=
 ;;
 (define (^set name value ?retval)
   &native
-  (.. (eval (.. (esc-LHS name)
-                " :=$ "
-                (esc-RHS value)))
+  (.. (native-eval (.. (esc-LHS name) " :=$ " (esc-RHS value)))
       retval))
 
 ;; Assign a new value to a recursive variable, and return RETVAL.
@@ -183,7 +181,7 @@ $(if ,, ) :=
                          "\\\n" "\\$ \n"
                          (.. value "\n")))
 
-  (eval (.. "define " qname "\n" qbody "endef\n"))
+  (native-eval (.. "define " qname "\n" qbody "endef\n"))
   retval)
 
 
@@ -243,14 +241,11 @@ $(if ,, ) :=
   (nth-rest 3 vec))
 
 
-;; (bound? VAR-NAME) -> 1 if variable VAR-NAME is defined
+;; (native-bound? VAR-NAME) -> 1 if variable VAR-NAME is defined
 ;;
-;; Note that VAR-NAME must be a string that names the variable, not
-;; a quoted symbol: (bound? "map"), not (bound? 'map).
-;;
-(define `(bound? var-name)
+(define `(native-bound? var-name)
   &public
-  (if (filter-out "u%" (flavor var-name)) 1))
+  (if (filter-out "u%" (native-flavor var-name)) 1))
 
 
 ;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
@@ -289,9 +284,9 @@ $(if ,, ) :=
   (define `(mod-var id)
     (.. "[mod-" id "]"))
 
-  (if (bound? (mod-var id))
-      (eval (value (mod-var id)))
-      (eval (.. "include " (.. (value "SCAM_DIR") id ".o"))))
+  (if (native-bound? (mod-var id))
+      (native-eval (native-value (mod-var id)))
+      (native-eval (.. "include " (.. (native-value "SCAM_DIR") id ".o"))))
   ;; return value is useful when viewing trace of load sequence
   id)
 
@@ -326,7 +321,7 @@ $(if ,, ) :=
 
 
 (define (trace-info a ?b ?c ?d)
-  (info (.. "TRACE: " a b c d)))
+  (print "TRACE: " a b c d))
 
 
 ;; Initialize count variables to this representation of 0.
@@ -374,7 +369,7 @@ $(if ,, ) :=
      ;; count invocations
      ((filter "c" mode)
       (define `cv (count-var id))
-      (set-native cv (or (value cv) zero))
+      (set-native cv (or (native-value cv) zero))
       (.. "$(eval " cv ":=$(subst /1111111111,1/,$(" cv ")1)):D"))
 
      ;; prefix
@@ -494,7 +489,7 @@ $(if ,, ) :=
                   .VARIABLES))
 
     (foreach v (trace-match pat eligible-vars)
-             (if (filter "filerec%" (.. (origin v) (flavor v)))
+             (if (filter "filerec%" (.. (native-origin v) (native-flavor v)))
                  v)))
 
   ;; Apply instrumentation to a function
@@ -505,24 +500,23 @@ $(if ,, ) :=
       (subst "#" "$\"" name))
 
     ;; don't overwrite original if it has already been saved
-    (if (filter "u%" (origin (save-var id)))
-        (set-native-fn (save-var id) (value name)))
+    (if (filter "u%" (native-origin (save-var id)))
+        (set-native-fn (save-var id) (native-value name)))
 
     (define `body
-      (trace-body (or mode "t") ename id (value (save-var id))))
+      (trace-body (or mode "t") ename id (native-value (save-var id))))
     (if (filter "%:v" specs)
         (trace-info "[" mode "] " name))
     (set-native-fn name body))
 
-  ;; Choose automatic vars extremely unlikely to shadow `(value NAME)`
   (define `instrumented-names
     (foreach
-        _-spec (filter-out "%:v %:-" specs)
+        spec (filter-out "%:v %:-" specs)
         (foreach
-            _-name (match-funcs (spec-name _-spec))
-            (foreach id (trace-id _-name 1)
-                     (instrument (spec-mode _-spec) _-name id)
-                     _-name))))
+            name (match-funcs (spec-name spec))
+            (foreach id (trace-id name 1)
+                     (instrument (spec-mode spec) name id)
+                     name))))
 
   (subst "\"'" "'" "\"`" "`"
          (addprefix "\"" (filter "%" instrumented-names))))
@@ -538,7 +532,7 @@ $(if ,, ) :=
 (define (trace-dump names)
   (define `lines
     (foreach name names
-             (foreach k (value (count-var (trace-id name)))
+             (foreach k (native-value (count-var (trace-id name)))
                       (if (findstring 1 k)
                           (begin
                             (set-native (count-var (trace-id name)) zero)
@@ -560,7 +554,7 @@ $(if ,, ) :=
     (foreach name matched-names
              (foreach id (trace-id name)
                       ;; restore original definition
-                      (set-native-fn name (value (save-var id)))
+                      (set-native-fn name (native-value (save-var id)))
                       name)))
 
   (trace-dump untraced-names)
@@ -583,7 +577,7 @@ $(if ,, ) :=
 (define (start-trace main-mod)
   ;; Activate tracing if [_]SCAM_TRACE is set
   (define `env-prefix (if (filter "scam" main-mod) "_"))
-  (trace (value (.. env-prefix "SCAM_TRACE"))))
+  (trace (native-value (.. env-prefix "SCAM_TRACE"))))
 
 
 ;;----------------------------------------------------------------
@@ -644,15 +638,15 @@ $(if ,, ) :=
   ;; main's value as an anonymous function so tracing it will not cause
   ;; problems (redefining a function while it's being expanded).
   (define `rules
-    (let ((exit-arg (check-exit ((value main-func) args))))
+    (let ((exit-arg (check-exit ((native-value main-func) args))))
       ;; Read .DEFAULT_GOAL *after* running main.  Ensure [exit] will run
       ;; last.  There we run exit hooks and deliver main's exit code.
       (.. ".DEFAULT_GOAL :=\n"
           ".PHONY: [exit]\n"
-          "[exit]: " .DEFAULT_GOAL ";"
+          "[exit]: " (native-var ".DEFAULT_GOAL") ";"
           "@exit " exit-arg (lambda () (run-at-exits)))))
 
-  (eval rules))
+  (native-eval rules))
 
 
 ;; these will be on the stack
@@ -664,4 +658,4 @@ $(if ,, ) :=
 (declare SCAM_MAIN &native)
 (^start (word 1 (subst ":" " " SCAM_MAIN))
         (word 2 (subst ":" " " SCAM_MAIN))
-        (value "SCAM_ARGS"))
+        (native-value "SCAM_ARGS"))

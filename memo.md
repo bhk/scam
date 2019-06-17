@@ -16,7 +16,7 @@ can replace:
 
 ... with:
 
-    (memo-apply (global-name foo) [a b c])
+    (memo-apply (native-name foo) [a b c])
 
 We say that a function call is "memoized" when calls to it are made through
 a caching wrapper (e.g. memo-apply or memo-call).

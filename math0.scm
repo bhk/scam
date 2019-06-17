@@ -36,7 +36,7 @@
 
 
 (define `(u2uv u)
-  (.strip (spread u)))
+  (native-strip (spread u)))
 
 
 (define `U1 "01")
@@ -922,7 +922,7 @@
 ;; note: this gets memoized
 ;;
 (define (recip2 x)
-  (.strip (subst "x" 1 " " " 0" (recip-loop (tally2 x) T10))))
+  (native-strip (subst "x" 1 " " " 0" (recip-loop (tally2 x) T10))))
 
 
 (memoize (native-name recip2))
@@ -986,10 +986,10 @@
     (subst 0 nil (.. (subst 1 T10 xt) (word 1 x))))
 
   (._. (subst 1 nil xt)
-       (call (if (word n zeros)
-                 (native-name sdiv-done)
-                 (native-name sdiv-loop))
-             yt (subst yt 0 xstep) (rest x) n (.. zeros " 0"))))
+       (native-call (if (word n zeros)
+                        (native-name sdiv-done)
+                        (native-name sdiv-loop))
+                    yt (subst yt 0 xstep) (rest x) n (.. zeros " 0"))))
 
 
 (define `(tally3 x)
@@ -1001,7 +1001,7 @@
   (define `raw
     (sdiv-loop (tally3 y) (tally3 x) (nth-rest 4 x) n))
 
-  (uf-round n mode (.strip (subst 0 1 " " " 0" raw))))
+  (uf-round n mode (native-strip (subst 0 1 " " " 0" raw))))
 
 
 (declare (uf-div a b n mode))
@@ -1063,7 +1063,7 @@
 
    (else
     ;; call uf-div1, uf-div2, or uf-div3
-    (call (.. (native-name uf-div) (words b)) a b n mode))))
+    (native-call (.. (native-name uf-div) (words b)) a b n mode))))
 
 
 ;; Divide UA by UB, rounding down to the nearest integer.  If UB==0, nil is
@@ -1092,5 +1092,5 @@
               (if (filter DIV-REMAINDER mode)
                   ua
                   0)
-              (uf-div (.. "0" _a) (.strip _b) num-digits mode))))
+              (uf-div (.. "0" _a) (native-strip _b) num-digits mode))))
     (u-norm-uns (smash uresult)))))

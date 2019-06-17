@@ -59,7 +59,7 @@ Options:
     (define build-dir
       (or (last (opt "build-dir"))
           (addsuffix ".scam/" (dir (last (opt "o"))))
-          (value "SCAM_BUILD_DIR")
+          (native-var "SCAM_BUILD_DIR")
           (shell "echo ~/.scam/")))
 
     (or

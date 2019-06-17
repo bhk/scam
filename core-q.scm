@@ -12,12 +12,12 @@
     (error "promote/demote not working"))
 
 (set-native "GG" "$")
-(expect "simple" (flavor "GG"))
-(expect "$" (value "GG"))
+(expect "simple" (native-flavor "GG"))
+(expect "$" (native-value "GG"))
 
 (set-native-fn "FF" "$")
-(expect "recursive" (flavor "FF"))
-(expect "$" (value "FF"))
+(expect "recursive" (native-flavor "FF"))
+(expect "$" (native-value "FF"))
 
 (expect "" (eq? "" "a"))
 (expect "" (eq? "a" ""))

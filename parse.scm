@@ -262,7 +262,7 @@
       ;; Match `\xHH`
       (foreach hh match-hh
                (define `hex (subst "\n" "" hh))
-               (define `byte (bytes-from-bytecodes (hh-to-dec (.strip hh))))
+               (define `byte (bytes-from-bytecodes (hh-to-dec (native-strip hh))))
                (parse-string subj start (1+ pos)
                              (.. wstr (subst (.. "\\x" hex) byte w))))
 

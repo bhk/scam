@@ -196,20 +196,20 @@
 
 (define (binop name a b)
   (u2d-macro
-   (call (.. (native-name raw-) name)
-         (d2u-macro a)
-         (d2u-macro b))))
+   (native-call (.. (native-name raw-) name)
+                (d2u-macro a)
+                (d2u-macro b))))
 
 
 (define (prec-op name x y p ?arg4)
   (declare (fp-))
   (u2d-macro
    (fp2u
-    (call (.. (native-name fp-) name)
-          (u2fp (d2u-macro x))
-          (u2fp (d2u-macro y))
-          (prec-to-pod p)
-          arg4))))
+    (native-call (.. (native-name fp-) name)
+                 (u2fp (d2u-macro x))
+                 (u2fp (d2u-macro y))
+                 (prec-to-pod p)
+                 arg4))))
 
 
 ;;--------------------------------
@@ -490,7 +490,8 @@
 (define (raw-range a b)
   ;; Remove sign and extraneous leading zeros.
   (define `(u-prep u)
-    (or (.strip (subst "0" " 0" (filter "01%" (subst "-" nil "01" " 01" u))))
+    (or (native-strip
+         (subst "0" " 0" (filter "01%" (subst "-" nil "01" " 01" u))))
         0))
 
   (strip

@@ -37,14 +37,14 @@
 ;; ^set
 
 (set-native ".v" "$$")
-(expect (value ".v") "$$")
-(expect (call ".v") "$$")
+(expect (native-value ".v") "$$")
+(expect (native-call ".v") "$$")
 
 ;; ^fset
 
 (set-native-fn ".f" "$$")
-(expect (value ".f") "$$")
-(expect (call ".f") "$")
+(expect (native-value ".f") "$$")
+(expect (native-call ".f") "$")
 
 ;; ...
 
@@ -52,8 +52,6 @@
         [1 2 "" "3 4" "\n"] )
 (expect ( (lambda (...x) x) 1 2 3 4 5 6 7 8 9 10 11 "")
         [1 2 3 4 5 6 7 8 9 10 11])
-(expect (.foreach "N" 2 (call "^v" 1 2 3))
-        [2 3])
 
 ;; apply
 
@@ -123,8 +121,8 @@
 (expect "1" (not nil))
 (expect nil (not "x"))
 
-(expect nil (bound? "_xya13"))
-(expect "1" (bound? (native-name ^R)))
+(expect nil (native-bound? "_xya13"))
+(expect "1" (native-bound? (native-name ^R)))
 
 (expect "4 5" (nth-rest 4 "1 2 3 4 5"))
 
@@ -202,11 +200,11 @@
 
 
 (set fx (trace-body "c" "FX" "ID" initial-fx))
-(expect "///////" (value (count-var "ID")))
+(expect "///////" (native-value (count-var "ID")))
 (expect "123456789ab" (fx 1 2 3 4 5 6 7 8 9 "a" "b"))
-(expect "//////1/1" (value (count-var "ID")))
+(expect "//////1/1" (native-value (count-var "ID")))
 (fx 1 2 3 4 5 6 7 8 9 "a" "b")
-(expect "//////11/11" (value (count-var "ID")))
+(expect "//////11/11" (native-value (count-var "ID")))
 
 
 ;;-------- trace-body x
@@ -298,8 +296,8 @@
 (set fx initial-fx)
 (define `fx-name (native-name fx))
 (define `fx-id (trace-id fx-name))
-(define `fx-save (value (save-var fx-id)))
-(define `fx-count (subst ":" "" (trace-digits (value (count-var fx-id)))))
+(define `fx-save (native-value (save-var fx-id)))
+(define `fx-count (subst ":" "" (trace-digits (native-value (count-var fx-id)))))
 
 ;; do not trace non-functions
 (define data nil)

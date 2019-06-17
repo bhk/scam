@@ -9,7 +9,7 @@
 
 
 (define *warn-upvals*
-  (findstring "U" (value "SCAM_DEBUG")))
+  (findstring "U" (native-var "SCAM_DEBUG")))
 
 
 ;; Find the index of last flag in FORMS, starting at N.  Return PREV-N is no
@@ -237,10 +237,10 @@
 (define (c0-local name depth at-depth sym)
   (if (and *warn-upvals*
            (not (findstring at-depth depth)))
-      (info (describe-error
-             (gen-error sym "reference to upvalue `%s`" (symbol-name sym))
-             (pdec *compile-subject*)
-             *compile-file*)))
+      (print (describe-error
+              (gen-error sym "reference to upvalue `%s`" (symbol-name sym))
+              (pdec *compile-subject*)
+              *compile-file*)))
 
   (IArg name (str-add-sub at-depth "." depth)))
 
@@ -478,7 +478,7 @@
     ((EXMacro scope name)
      (if (eq? scope "x")
          (gen-error sym "cannot use xmacro in its own file")
-         (c0 (call name args) env)))
+         (c0 (native-call name args) env)))
 
     ((ERecord _ encodings tag)
      (c0-record env sym args encodings tag))
@@ -494,8 +494,8 @@
         (IFuncall (c0-vec (cons sym args) env)))
 
       ;; Macro/special form.
-      ((bound? (special-form-func symname))
-       (call (special-form-func symname) env sym args))
+      ((native-bound? (special-form-func symname))
+       (native-call (special-form-func symname) env sym args))
 
       ;; none of the above
       (else

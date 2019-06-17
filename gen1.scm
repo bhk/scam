@@ -158,7 +158,7 @@
 ;; c1-vec: compile multiple expressions
 (define (c1-vec args delim quotefn)
   (concat-for a args delim
-              (call quotefn a)))
+              (native-call quotefn a)))
 
 
 (define (c1-Error node)

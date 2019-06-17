@@ -346,43 +346,24 @@
                  (symbol-name sym) expected (words args))))
 
 
-(define builtins-1
-  (._. "abspath basename dir error eval firstword flavor"
-       "info lastword notdir origin realpath shell sort"
-       ".strip suffix value warning wildcard words"))
-
-(define builtins-2
-  "addprefix addsuffix filter filter-out findstring join word")
-
-(define builtins-3
-  ".foreach patsubst .subst wordlist")
-
-(define builtin-names
-  &public
-  (patsubst ".%" "%" (._. builtins-1
-                          builtins-2
-                          builtins-3
-                          "and or call if")))
-
 (define base-env
-  (append
-   (foreach b builtins-1
-            { =b: (EBuiltin "i" (subst "." nil b) 1) })
-   (foreach b builtins-2
-            { =b: (EBuiltin "i" b 2) })
-   (foreach b builtins-3
-            { =b: (EBuiltin "i" (subst "." nil b) 3)})
-   (foreach b "and or call"
-            { =b: (EBuiltin "i" b "0+") })
-   {if: (EBuiltin "i" "if" "2 3")}
+  (define `builtins
+    (._. "abspath basename dir error firstword lastword notdir realpath shell"
+         "sort suffix wildcard words native-eval native-flavor native-origin"
+         "native-strip native-value addprefix/2 addsuffix/2 filter/2"
+         "filter-out/2 findstring/2 join/2 word/2 patsubst/3 wordlist/3"
+         "and/0+ or/0+ native-call/1+ if/2/3"))
 
-   ;; Computed variable reference
-   {native-var: (EBuiltin "i" "=" 1)}
+  (._.
+   (foreach
+       w builtins
+       (define `name (word 1 (subst "/" " " w)))
+       (define `argc  (or (rest (subst "/" " " w)) 1))
+       (define `b-name (subst "native-" nil name))
 
-   ;; Make special variables & SCAM-defined variables
-   ;; See http://www.gnu.org/software/make/manual/make.html#Special-Variables
-   (foreach v ["MAKEFILE_LIST" ".DEFAULT_GOAL"]
-            { =v: (EVar "i" v) })))
+       {=name: (EBuiltin "i" b-name argc)})
+
+   {native-var: (EBuiltin "i" "=" 1)}))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.
@@ -398,13 +379,6 @@
     ((PSymbol n name) (dict-value (or (find-name name env)
                                       (find-name name base-env))))
     (else "-")))
-
-
-(define conflict-pats
-  (addprefix "%" (._. builtin-names
-                      "guile"
-                      (foreach c "@ < ? ^ + | *"
-                               (.. c "D " c "F " c)))))
 
 
 ;; Return the native name to use for SCAM variable NAME.

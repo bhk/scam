@@ -298,7 +298,7 @@
         (memo-hash-file (modid-file id))
         (read-lines (modid-file id) (and max 1) max))
       ;; load bundle
-      (wordlist 1 (or max 99999999) (split "\n" (value (modid-var id))))))
+      (wordlist 1 (or max 99999999) (split "\n" (native-value (modid-var id))))))
 
 
 ;; Scan a builtin module for `require` dependencies.
@@ -330,7 +330,7 @@
 ;;
 (define (locate-source base-dir name)
   (define `path-dirs
-    (addsuffix "/" (split ":" (value "SCAM_LIBPATH"))))
+    (addsuffix "/" (split ":" (native-var "SCAM_LIBPATH"))))
 
   (vec-or
    (for dir (cons base-dir path-dirs)
@@ -445,7 +445,7 @@
 (define `(get-builtin-module name)
   (if *is-boot*
       (ModError "standard modules not available with --boot"))
-      (if (bound? (modid-var name))
+      (if (native-bound? (modid-var name))
           (ModSuccess name (modid-import name nil))
           (ModError (sprintf "standard module `%s` not found" name))))
 
@@ -470,7 +470,7 @@
                    ;; do not require at run-time
                    (ModError "module has executable macros (boot=true)")
                    ;; require module and continue
-                   (call "^R" id)))))
+                   (native-call "^R" id)))))
         mod)))
 
 
@@ -608,7 +608,7 @@
         errors
         ;; Error case
         (for e errors
-             (info (describe-error e text file)))
+             (print (describe-error e text file)))
 
         ;; Success
         (bail-if (memo-write-file outfile content)))))))
@@ -672,9 +672,9 @@
   (define `runner
     (if *is-boot*
         (modid-file "runtime")
-        (firstword MAKEFILE_LIST)))
+        (firstword (native-var "MAKEFILE_LIST"))))
 
-  ;; (value "MAKE") does not seem to provide the actual value
+  ;; (native-value "MAKE") does not seem to provide the actual value
   (declare MAKE &native)
 
   (define `scam-main

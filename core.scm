@@ -94,9 +94,9 @@
 (define (vec-filter fname pat v)
   (if (findstring "%" pat)
       ;; escaping would be expensive
-      (subst "!P" "%" (call fname (subst "%" "!P" pat)
-                                  (subst "%" "!P" v)))
-      (call fname pat v)))
+      (subst "!P" "%"
+             (native-call fname (subst "%" "!P" pat) (subst "%" "!P" v)))
+      (native-call fname pat v)))
 
 
 ;; Return entries in vector A that also appear in vector B.
@@ -549,7 +549,7 @@
 ;;
 (define (printf fmt ...values)
   &public
-  (info (vsprintf fmt values)))
+  (print (vsprintf fmt values)))
 
 
 ;; Compare A to B, and if unequal display diagnostics and terminate
@@ -682,10 +682,10 @@
 
 (define (mcache varname func a b c more)
   (if more
-      (info "Warning: memoized function passed more than three arguments"))
-  (if (not (bound? varname))
+      (print "Warning: memoized function passed more than three arguments"))
+  (if (not (native-bound? varname))
       (set-native varname (func a b c)))
-  (value varname))
+  (native-var varname))
 
 
 (define (memoenc a ?b ?c)
@@ -697,9 +697,9 @@
 ;;
 (define (memoize funcname)
   &public
-  (if (not (bound? funcname))
-      (info (.. "Warning: [memoize-1] function '" funcname "' not defined."))
-      (let ((func (value funcname))
+  (if (not (native-bound? funcname))
+      (print (.. "Warning: [memoize-1] function '" funcname "' not defined."))
+      (let ((func (native-value funcname))
             (varbase (.. "*memo" (memoenc funcname)))
             (funcname funcname))
         (set-native-fn funcname

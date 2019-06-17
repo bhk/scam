@@ -42,7 +42,7 @@
 
 ;; write-file & read-file
 
-(define `thisfile (lastword MAKEFILE_LIST))
+(define `thisfile (lastword (native-var "MAKEFILE_LIST")))
 
 (define `test-string
   (.. (string-from-bytecodes
@@ -179,7 +179,7 @@
 
 ;; get-tmp-dir
 
-(expect (or (value "SCAM_TMP") ".scam/")
+(expect (or (native-var "SCAM_TMP") ".scam/")
         (get-tmp-dir))
 
 (let ((tmp (get-tmp-dir "io-q.XXX")))

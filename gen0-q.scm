@@ -436,10 +436,10 @@
 
 ;; define VAR
 (p1-block-cc
- "(define x 1) (info x)"
+ "(define x 1) (dir x)"
  (lambda (env sil)
    (expect env { x: (EVar "p" (xns "~x")) })
-   (expect sil (xns "(IBlock (^set ~x,1),(.info {~x}))"))))
+   (expect sil (xns "(IBlock (^set ~x,1),(.dir {~x}))"))))
 
 
 ;; define FUNC
@@ -492,12 +492,12 @@
 
 ;; define and use compound macro
 
-(expect (c0-ser "(define `(M a) (info a)) (M 2)")
-        "(.info 2)")
-(expect (c0-ser "(define `(M a) (info a)) M")
-        "`(.info {1})")
-(expect (c0-ser "(define `(M ?a) (info a)) (M)")
-        "(.info )")
+(expect (c0-ser "(define `(M a) (dir a)) (M 2)")
+        "(.dir 2)")
+(expect (c0-ser "(define `(M a) (dir a)) M")
+        "`(.dir {1})")
+(expect (c0-ser "(define `(M ?a) (dir a)) (M)")
+        "(.dir )")
 
 
 ;;--------------------------------

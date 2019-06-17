@@ -464,7 +464,7 @@ definition, and not within a function?
    Program execution = load modules + call `main`
 
    Compilation introduces the notions of compile time (load modules) and run
-   time (call main) ... but otherwise does not change behavior from an
+   time `(main)` ... but otherwise does not change behavior from an
    interpreted-only model.
 
    Intead of `(eval-when-compile ...)` for sub-expressions, `(eval-at-define
@@ -490,13 +490,13 @@ functions!
 
 2. How does compile-time execution relate to run-time?
 
-   We cannot expect external inputs to match exactly,so execution path may
+   We cannot expect external inputs to match exactly, so execution path may
    differ.  What if the compile-time path runs through one 'defmacro' but
    the run-time path runs through another?
 
-     (if (eq? (DEBUG 1))
-         (defmacro print (a) )
-       (defmacro print (a) (info a)))
+     (if (eq? DEBUG 1)
+         (defmacro show (a) )
+       (defmacro show (a) (print a)))
 
 3. In CL, "compiler macros" must preserve semantics and cannot extend syntax.
 

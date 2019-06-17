@@ -655,9 +655,35 @@
 ;;
 
 
+;; Call function variable whose native name is NAME with elements of vector
+;; ARGV as arguments.
+;;
+(declare (name-apply func-name argv) &internal)
+
+
+;; Return 1 if native variable VAR-NAME has been assigned a value (as a data
+;; or function variable), or `nil` if unassigned.
+;;
+(declare `(native-bound? var-name) &internal)
+
+
+;; Call a function, given its native name.
+;;
+(declare (native-call var-name ...args) &internal)
+
+
 ;; Evaluate STR as GNU Make source.
 ;;
-(declare (eval str) &internal)
+(declare (native-eval str) &internal)
+
+
+;; Describe the flavor of native variable VAR-NAME.  One of:
+;;
+;;  * `"simple"`
+;;  * `"recursive"`
+;;  * `"undefined"`
+;;
+(declare (native-flavor var-name) &internal)
 
 
 ;; Get the "native name" of a SCAM global variable, function, or a built-in
@@ -666,16 +692,22 @@
 (declare (native-name var-name) &internal)
 
 
+;; Describe the GNU make origin of native variable VAR-NAME.  Origin values
+;; include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
+;; See GNU Make docs for more.
+;;
+(declare (native-origin var-name) &internal)
+
+
+;; Return the value of native variable VAR-NAME.
+;;
+(declare (native-value var-name) &internal)
+
+
 ;; Evaluate a GNU Make variable.  Unlike `value`, native-var will trigger
 ;; expansion of recursive variables.
 ;;
 (declare (native-var var-name) &internal)
-
-
-;; Call function variable whose native name is NAME with elements of vector
-;; ARGV as arguments.
-;;
-(declare (name-apply func-name argv) &internal)
 
 
 ;; Assign VALUE to the native variable VAR-NAME as a data variable.  This
@@ -688,41 +720,14 @@
 ;; This will replace any data or function variable binding for FUNC-NAME.
 ;;
 ;; Function variables cannot store values with complete fidelity -- the
-;; value read back using `(value FUNC-NAME)` may not be exactly the same.
-;; However, it is guaranteed that when a SCAM function value is assigned to
-;; a function, the variable's *behavior* (when called as a function) will be
-;; as expected; furthermore, the value read back will be functionally
-;; equivalent to the original SCAM function.
+;; value read back using `(native-value FUNC-NAME)` may not be exactly the
+;; same.  However, it is guaranteed that when a SCAM function value is
+;; assigned to a function, the variable's *behavior* (when called as a
+;; function) will be as expected; furthermore, the value read back will be
+;; functionally equivalent to the original SCAM function.
 ;;
 ;; Function names cannot begin or end in spaces, and other limitations may
 ;; apply depending on the version of Make, but any valid SCAM symbol will
 ;; work.
 ;;
 (declare (set-native-fn func-name value ?retval) &internal)
-
-
-;; Return 1 if native variable VAR-NAME has been assigned a value (as a data
-;; or function variable), or `nil` if unassigned.
-;;
-(declare `(bound? var-name) &internal)
-
-
-;; Describe the flavor of native variable VAR-NAME.  One of:
-;;
-;;  * `"simple"`
-;;  * `"recursive"`
-;;  * `"undefined"`
-;;
-(declare (flavor var-name) &internal)
-
-
-;; Describe the GNU make origin of native variable VAR-NAME.  Origin values
-;; include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
-;; See GNU Make docs for more.
-;;
-(declare (origin var-name) &internal)
-
-
-;; Return the value of native variable VAR-NAME.
-;;
-(declare (value var-name) &internal)

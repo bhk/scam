@@ -119,7 +119,7 @@
 (define fetch-tbl {A:123})
 
 ;; Assert: Many IO function arguments are supported and correctly passed
-;; during record and playback modes. [TODO: i j]
+;; during record and playback modes.
 (define (fetch a b c d e f g h i j)
   (log "fetch")
   (expect 2345678910 (.. b c d e f g h i j))

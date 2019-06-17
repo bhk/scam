@@ -76,11 +76,11 @@
 
      (begin
        (set-native "var" str)
-       (expect "simple" (flavor "var"))
+       (expect "simple" (native-flavor "var"))
        (expect str var)
 
        (set-native-fn "fun" str)
-       (expect "recursive" (flavor "fun"))
+       (expect "recursive" (native-flavor "fun"))
        (expect str (unmunge fun))))
 
 
@@ -93,12 +93,12 @@
 
 (for name [ "a#b" "a+" "a?" "a=" "a?=" "a\\#" "override" "include" "'a" "\"a" "`a"]
      (set-native name name)
-     (expect (.. "simple:" name) (.. (flavor name) ":" name))
-     (expect name (value name))
+     (expect (.. "simple:" name) (.. (native-flavor name) ":" name))
+     (expect name (native-value name))
 
      (set-native-fn name name)
-     (expect (.. "recursive:" name) (.. (flavor name) ":" name))
-     (expect name (value name)))
+     (expect (.. "recursive:" name) (.. (native-flavor name) ":" name))
+     (expect name (native-value name)))
 
 ;; append-for
 

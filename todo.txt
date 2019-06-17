@@ -8,8 +8,8 @@ Enhancements
     - validate `define` against prior `declare`
 
  * Enhance call-site tracing to support lambdas and macros/builtins
-     (? lambda ...)  -->  (call "^tv" "any" (any ...))
-     or:  (call "^yt" "any" (lambda (args) (any args)) ...)
+     (? lambda ...)  -->  (native-call "^tv" "any" (any ...))
+     or:  (native-call "^yt" "any" (lambda (args) (any args)) ...)
 
  * Deconstruct vectors in `let` or `define`
     (let (([a b c] vec)) ...)       ;; always succeeds
@@ -63,6 +63,9 @@ Enhancements
  * num: accept E-notation for integers in: range, ^
 
  * num: multi-arg + and *
+
+ * &native=XXX would improve runtime.scm & enable builtins as declarations.
+
 
 
 Optimizations for Generated Code

@@ -65,15 +65,15 @@
   (define `value-var (.. fname "/v"))
   (define `count-var (.. fname "/c"))
   (define `(compute-value nw)
-    (rest (uf-round (words nw) DIV-NEAREST (call fname nw))))
+    (rest (uf-round (words nw) DIV-NEAREST (native-call fname nw))))
 
-  (or (round-uf-const (value value-var) count)
+  (or (round-uf-const (native-var value-var) count)
       (if (word 1 count)
           (begin
             (set-native count-var
                         (patsubst "%" 0 (._. "0 0 0 0 0"
-                                             (join count (value count-var)))))
-            (set-native value-var (compute-value (value count-var)))
+                                             (join count (native-var count-var)))))
+            (set-native value-var (compute-value (native-var count-var)))
             (get-uf-const fname count)))))
 
 
@@ -152,7 +152,7 @@
 
 (define (uf-atanh-2 xlz xnz x² count)
   (if xnz
-      (.strip (._. xlz (uf-atanh-3 xnz (uf-get-lz x²) (uf-trim-lz x²)
+      (native-strip (._. xlz (uf-atanh-3 xnz (uf-get-lz x²) (uf-trim-lz x²)
                                    (wsub count xlz))))
       0))
 
@@ -654,9 +654,9 @@
            (if (word 9 (spread pos))
                nil
                (nth-rest (u2d pos) (nth-rest 4 fx)))
-           (.strip (._. (if (findstring 1 pos)
-                            (u-zeros (abs pos)))
-                        (fp.uf fx)))))
+           (native-strip (._. (if (findstring 1 pos)
+                                  (u-zeros (abs pos)))
+                              (fp.uf fx)))))
    0))
 
 
@@ -798,8 +798,8 @@
         (x² (uf-mul x x))
         (count count))
     (if xnz
-        (.strip (._. xlz (uf-atan-loop xnz (uf-get-lz x²) (uf-trim-lz x²)
-                                       "-" U1 (wsub count xlz))))
+        (native-strip (._. xlz (uf-atan-loop xnz (uf-get-lz x²) (uf-trim-lz x²)
+                                             "-" U1 (wsub count xlz))))
         0)))
 
 
@@ -882,7 +882,7 @@
 
    ;; x ≤ ~π/4 : use series
    ((fp-lt? fx F0.8)
-    (call kname fx is-sin is-neg count arg1 arg2 arg3))
+    (native-call kname fx is-sin is-neg count arg1 arg2 arg3))
 
    ;; π/4 < x ≤ π*3/4:  sin/cos x = cos/sin (π/2 - x)
    ((fp-lt? fx F2.36)

@@ -108,7 +108,7 @@
      ;; error?
      (errors
       (for err errors
-           (info (describe-error err text "[stdin]")))
+           (print (describe-error err text "[stdin]")))
       (REPL "" prompts build-dir is-quiet 1 env))
 
      ;; execute & display result
@@ -137,7 +137,7 @@
            (env env)
            (state state))
        (define `(saw str)
-         (eq? (.strip line) str))
+         (eq? (native-strip line) str))
 
        (cond
         ((saw "?")
