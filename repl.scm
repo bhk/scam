@@ -173,8 +173,8 @@
   (begin
     (define `env-text
       (.. (foreach lib LIBS (.. "(require \"" lib "\")"))
-          "(declare *1)"
-          "(declare *2)"))
+          "(declare *1 &native)"
+          "(declare *2 &native)"))
     (let ((o (compile-text env-text "[stdin]" nil nil nil)))
       (define `fn (dict-get "code" o))
       (fn) ;; load modules referenced by the environment
