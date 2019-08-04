@@ -34,21 +34,23 @@
 (declare (addprefix prefix list) &public)
 
 
-;; Add SUFFIX to the end of each word in PATHS.
+;; Add SUFFIX to the end of each word in LIST.
 ;;
-(declare (addsuffix suffix paths) &public)
+(declare (addsuffix suffix list) &public)
 
 
 ;; Remove the file extension from each word in PATHS.
 ;;
+;; See also: `path-basename`
+;;
 (declare (basename paths) &public)
 
 
-;; Get the directory of each file in PATHS.
+;; Get the directory of each file path in word list PATHS.
 ;;
 ;;     (dir "a/b c")  -->  "a/ ./"
 ;;
-;; See also `notdir`.
+;; See also: `notdir`, `path-dir`.
 ;;
 (declare (dir paths) &public)
 
@@ -85,11 +87,11 @@
 (declare (lastword list) &public)
 
 
-;; Return the filename portion of each path in PATHS.
+;; Return the filename portion of each path in word list PATHS.
 ;;
 ;;     (notdir "a/b c")  -->  "b c"
 ;;
-;; See also `dir`.
+;; See also: `dir`, `path-notdir`.
 ;;
 (declare (notdir paths) &public)
 
@@ -127,7 +129,12 @@
 (declare (suffix paths) &public)
 
 
-;; Get files that match PATTERNS.  Patterns is a list of glob expressions.
+;; Get files that match PATTERNS.  Patterns are delimited by whitespace
+;; characters, except that a whitespace character preceded by a backslash
+;; character will be treated as literal.
+;;
+;; All matches are returned as a word list; whitespace characters within a
+;; matching file name are *not* escaped.  (Good luck with that.)
 ;;
 (declare (wildcard patterns) &public)
 
@@ -295,42 +302,41 @@
 
 
 ;; The `require` special form provides access to functionality defined in
-;; other modules.  It performs two actions:
+;; other modules.  When evaluated, it will load and execute the module
+;; (unless it has already been required elsewhere in the program.)  Symbols
+;; that have been declared as `&public` in the top-level of the required
+;; module are "imported" into the current environment, making those symbols
+;; visible to expressions that follow the `require` form, up to the end of
+;; the enclosing block.
 ;;
-;;  1. It ensures that the module has been executed.  If the module has
-;;     already been loaded, it does nothing.  Otherwise, it executes the
-;;     module.  (This occurs at run time.)
-;;
-;;  2. It imports symbols exported by the module.  Symbols declared
-;;     `&public` within the module are imported into the environment of the
-;;     caller of `require`.  (This occurs at compile time.)
-;;
-;; The `&private` flag is intended for use by unit test modules.  When present,
-;; private symbols will be imported in addition to `&public` ones, and the
-;; qualification step will not be required.  (See "qualification", below.)
+;; `(require MODULE &private)` is intended for use by unit test modules.
+;; This will import all symbols defined in the top-level of the required
+;; module (not just the `&public` ones).  Additionally, the qualification
+;; step will not be required.  (See "qualification", below.)
 ;;
 ;; When `MODULE` is one of the [standard library names](#libraries), the
 ;; standard library will be supplied by the compiler.  Otherwise, `MODULE`
-;; must end in `".scm"` and names SCAM source file.  If it is a relative
+;; must end in `.scm` and identify as SCAM source file.  If it is a relative
 ;; path, it is treated as relative to the directory containing the requiring
 ;; file.  If no such file exists, the directories listed in `SCAM_LIBPATH`
 ;; (colon-delimited) are tried, in order, until a matching file is found.
 ;;
 ;; When `MODULE` identifies a source file, that source file will be compiled
-;; to determine its exports before compilation can continue.  In turn,
-;; modules required by `MODULE` will also have to be compiled in order to
-;; build `MODULE`, and so on.  Compilation results are
+;; to determine its exports before compilation of the requiring module can
+;; continue.  In turn, modules required by `MODULE` will also have to be
+;; compiled in order to build `MODULE`, and so on.  Compilation results are
 ;; [cached](reference.md#cached-results) to avoid exponential build times.
 ;;
-;; **Qualification:** Each module can be accompanied by a qualification test: a
-;; module with the same name except for an added `-q` before the extension.
-;; For example, `foo-q.scm` is the qualification test for `foo.scm`.  When a
-;; module is required, its qualification test (if present) will be built and
-;; executed before compilation of the requiring module continues.  If the
-;; qualification test terminates with a non-zero exit code, it is considered a
-;; test failure and compilation stops.  (Note that qualification test files
-;; must use the `&private` flag when requiring the module they test in order to
-;; avoid a dependency loop.)
+;; **Qualification:** Each module source file may be accompanied by a
+;; qualification test: a source file whose name is determined by adding `-q`
+;; prior to the `.scm` extension.  For example, `foo-q.scm` is the
+;; qualification test for `foo.scm`.  When a module is required, its
+;; qualification test (if present) will be built and executed before
+;; compilation of the requiring module continues.  If the qualification test
+;; terminates with a non-zero exit code, it is considered a test failure and
+;; compilation stops.  (Note that qualification test files must use the
+;; `&private` flag when requiring the module they test in order to avoid a
+;; dependency loop.)
 ;;
 (declare (require module &private?) &public)
 

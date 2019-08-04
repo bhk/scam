@@ -876,7 +876,7 @@ directory**.  The build directory is determined by one of the following
   2. If the `-o EXE` option is given, a directory named ".scam"
      within the directory containing EXE.
   3. The environment variable `SCAM_BUILD_DIR`.
-  4. A directory named `.scam` (relative to the current directory).
+  4. $HOME/.scam
 
 SCAM uses hashes to determine the suitability of cached entries; not
 modification times.  As a result, when modifying a source file and
