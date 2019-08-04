@@ -38,7 +38,7 @@ Options:
   1)
 
 
-(define `version "2.0.1")
+(define `version "2.0.2")
 
 
 (define (main argv)
@@ -60,7 +60,7 @@ Options:
       (or (last (opt "build-dir"))
           (addsuffix ".scam/" (dir (last (opt "o"))))
           (native-var "SCAM_BUILD_DIR")
-          (shell "echo ~/.scam/")))
+          (.. (native-var "HOME") "/.scam/")))
 
     (or
 
