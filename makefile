@@ -125,12 +125,13 @@ $C/scam: *.scm $B.ok
 	$(_@) test -f $@
 
 # v1 tests:
-#  run: validates code generation
+#  run: validates code generation, object file loading, etc.
 #
-$A.ok: $A/scam test/run.scm
+$A.ok: $A/scam test/*.scm
 	@ echo '... test $A/scam'
-	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot
-	$(_@)    .out/ta/run
+	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot --build-dir '.out/ta/scam build dir/'
+	$(_@) .out/ta/run
+	$(_@) $(call guard,AOK1,[[ -d '.out/ta/scam build dir/' ]])
 	$(_@) touch $@
 
 
@@ -147,9 +148,10 @@ $B-o.ok: $B/scam test/*.scm
 	@ echo '... test scam -o EXE FILE'
 	$(_@) $B/scam -o .out/tb/using test/using.scm
 	$(_@) .out/tb/using
-	$(_@) $B/scam -o .out/tb/dash-o test/dash-o.scm
+	$(_@) $B/scam -o .out/tb/dash-o --build-dir '.out/tb/a b c/' test/dash-o.scm
+	$(_@) $(call guard,BOK1,[[ -d '.out/tb/a b c/' ]])
 	$(_@) .out/tb/dash-o 1 2 > .out/tb/dash-o.out
-	$(_@) $(call guard,BO2,grep 'result=11:2' .out/tb/dash-o.out)
+	$(_@) $(call guard,BOK2,grep 'result=11:2' .out/tb/dash-o.out)
 	$(_@) touch $@
 
 

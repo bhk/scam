@@ -7,6 +7,33 @@
 (declare SCAM_DEBUG &native)
 
 
+;; Return the directory portion of a path.  This is like the Make builtin
+;; `dir` except that this properly handles a path with whitespace and does
+;; not operate on a list of words.
+;;
+(define `(path-dir path)
+  &public
+  (promote (dir [path])))
+
+
+;; Return the file portion of a path.  This is like the Make builtin
+;; `notdir` except that this properly handles a path with whitespace and
+;; does not operate on a list of words.
+;;
+(define `(path-notdir path)
+  &public
+  (promote (notdir [path])))
+
+
+;; Remove the extension from NAME.  This is like the Make builtin `basename`
+;; except that this properly handles a name with whitespace and does not
+;; operate on a list of words.
+;;
+(define `(path-basename path)
+  &public
+  (promote (basename [path])))
+
+
 ;; Invoke `(shell CMD)`, logging results if `S` appears in SCAM_DEBUG.
 ;;
 (define (ioshell cmd)
@@ -315,7 +342,7 @@
   &public
   (shellf "%s cp %F %F 2>&1"
           (if make-dst-dir
-              (io-sprintf "mkdir -p %F 2>&1 &&" (dir dst)))
+              (io-sprintf "mkdir -p %F 2>&1 &&" (path-dir dst)))
           src dst))
 
 
@@ -332,7 +359,7 @@
   (shellf
    "(%s a=$(mktemp %F) && (cp %F \"$a\" && mv -f \"$a\" %F) || rm \"$a\") 2>&1"
    (if make-dst-dir
-       (io-sprintf "mkdir -p %F &&" (dir dst)))
+       (io-sprintf "mkdir -p %F &&" (path-dir dst)))
    (.. dst ".tmp.XXXX")
    src
    dst))
@@ -424,9 +451,9 @@
         (shellf (.. "( o=%F && h=$(%s \"$o\") && "
                     "mv -f \"$o\" %A\"${h:0:16}\" && "
                     "echo \"${h:0:16}\" ) 2>/dev/null")
-                file (get-hash-cmd) (dir file))))
+                file (get-hash-cmd) (path-dir file))))
 
-  (addprefix (dir file) hash))
+  (addprefix (path-dir file) hash))
 
 
 ;; Write DATA to a file whose name is a hash of DATA, in directory DIR-NAME.
@@ -489,21 +516,21 @@
 (define (escape-path path)
   &public
   ;; Encoding summarized:
-  ;;     +   ! # \ $ : ; = % ~ * ? |  "\t"  "\n"  ".."  "/"
-  ;;     2 0 1 H B D C S E P T A Q V   -     _     .     /
+  ;;     " "  !  +  #  \  $  :  ;  =  %  ~  *  ?  | \t \n ..  /...
+  ;;     +0  +1 +2 +H +B +D +C +S +E +P +T +A +Q +V +- +_ +. +@...
   (define `a
     (subst "+" "+2" " " "+0" "!" "+1" "#" "+H" "\\" "+B" "$" "+D"
            ":" "+C" ";" "+S" "=" "+E" "%" "+P" "~" "+T" "*" "+A"
            "?" "+Q" "|" "+V" "\t" "+-" "\n" "+_" ".." "+."
            path))
-  (patsubst "/%" "+/%" a))
+  (patsubst "/%" "+@%" a))
 
 
 ;; Undo `escape-path`.
 ;;
 (define (unescape-path loc)
   &public
-  (subst "+/" "/" "+." ".." "+_" "\n" "+-" "\t" "+V" "|" "+Q" "?"
+  (subst "+@" "/" "+." ".." "+_" "\n" "+-" "\t" "+V" "|" "+Q" "?"
          "+A" "*" "+T" "~" "+P" "%" "+E" "=" "+S" ";" "+C" ":"
          "+D" "$" "+B" "\\" "+H" "#" "+1" "!" "+0" " " "+2" "+" loc))
 

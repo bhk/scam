@@ -13,9 +13,9 @@
 
 ;; descendants
 
-(define `map {1:[2 3 4], 2:[5 4 3 6], 3: [4 7]})
+(define `map {1:[2 3 4], 2:[5 4 3 6], 3: [4 7 "a b"]})
 
-(expect [1 2 3 4 5 6 7]
+(expect [1 2 3 4 5 6 7 "a b"]
         (descendants (lambda (a) (dict-get a map)) [1]))
 
 ;;----------------------------------------------------------------
@@ -82,37 +82,64 @@
 
 ;; module-id
 
-(let-global ((*is-boot* 1))
-  (expect "core" (module-id "core.scm")))
+(expect "core" (modid-from-builtin "core"))
+
+(let-global ((*is-boot* 1)
+             (*obj-dir* ".a b/"))
+  (expect "core" (modid-from-source "core.scm")))
 
 (let-global ((*is-boot* nil)
-             (*obj-dir* ".obj/"))
-  (expect ".obj/a+0b.scm" (module-id "a b.scm"))
-  (expect ".obj/+./b.scm" (module-id "../b.scm")))
+             (*obj-dir* ".a b/"))
+  (expect ".a b/c+0d.scm" (modid-from-source "c d.scm"))
+  (expect ".a b/+./b.scm" (modid-from-source "../b.scm")))
 
 
 ;; modid-deps & modid-read-lines
+
 (set-native "[mod-cqtx]" "# Requires: a!0b var\n# xyz")
 (define test-dir (get-tmp-dir))
+(write-file (.. test-dir "nil.scm.o") "# Requires: \n")
 (write-file (.. test-dir "cqtx.o") "# Requires: a!0b boot-file\n# xyz\n")
 (write-file (.. test-dir "cqtx.scm.o") "# Requires: .tmp/a!0b .tmp/file\n# xyz\n")
-(write-file (.. test-dir "nil.scm.o") "# Requires: \n")
 
 
 (let-global ((*is-boot* nil)
              (*obj-dir* test-dir))
   (expect "runtime" (runtime-module-name nil))
-
-  (expect (modid-deps (module-id "cqtx.scm"))
-          [".tmp/a b" ".tmp/file"])
-  (expect (modid-deps-all (module-id "nil.scm"))
-          [(.. test-dir "nil.scm") "runtime"]))
+  (expect (modid-deps (modid-from-source "cqtx.scm"))
+          [".tmp/a b" ".tmp/file"]))
 
 
 (let-global ((*is-boot* 1)
              (*obj-dir* test-dir))
-  (expect ["a b" "boot-file"] (modid-deps (module-id "cqtx"))))
+  (expect ["a b" "boot-file"] (modid-deps (modid-from-builtin "cqtx"))))
 
+
+;; modid-deps-all
+
+(let-global ((*is-boot* nil)
+             (*obj-dir* test-dir))
+
+  (define `A "A 1.scm")
+  (define `idA (modid-from-source A))
+  (define `objA (modid-object idA))
+  (define `B "B 2.scm")
+  (define `idB (modid-from-source B))
+  (define `objB (modid-object idB))
+
+  (expect (.. test-dir "A+01.scm.o") objA)
+
+  (write-file objA "# Requires: M!01 M!02\n")
+  (write-file objB (.. "# Requires: M!01 " [idA] "\n"))
+
+  (expect (modid-deps-all (modid-from-source "nil.scm"))
+          [(.. test-dir "nil.scm") "runtime"])
+
+  (expect (modid-deps-all idA)
+          [idA "runtime" "M 1" "M 2"])
+
+  (expect (modid-deps-all idB)
+          [idB "runtime" "M 1" idA "M 2"]))
 
 
 ;; locate-source

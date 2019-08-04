@@ -84,9 +84,9 @@
 ;; Return dir containing DB, creating it if necessary.
 ;;
 (define (memo-dir)
-  (if (not (eq? *memo-dir* (dir *memo-db-file*)))
+  (if (not (eq? *memo-dir* (path-dir *memo-db-file*)))
       (begin
-        (set *memo-dir* (dir *memo-db-file*))
+        (set *memo-dir* (path-dir *memo-db-file*))
         (mkdir-p *memo-dir*)))
   *memo-dir*)
 
@@ -378,7 +378,7 @@
 ;; Note: DST comes first to simplify files-in-db.
 ;;
 (define (do-write-blob dst blob)
-  (define `hash (notdir blob))
+  (define `hash (path-notdir blob))
 
   ;; Remove any cached hash for this file.  Memoized code must not write a
   ;; file after reading/hashing it, but the cache may have been populated

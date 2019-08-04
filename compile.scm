@@ -112,7 +112,7 @@
 (define (descendants fn children ?out)
   (define `new-children
     (vec-subtract (fn (first children))
-                  (.. children " " out)))
+                  (._. children out)))
 
   (if children
       (descendants fn (append (rest children) new-children)
@@ -246,37 +246,61 @@
 ;; A module's NAME is the string passed to `require`.  If it ends in ".scm"
 ;; it identifies a source module; otherwise it refers to a builtin.
 ;;
-;; A module's ID is the string passed to `^R` at run-time.  The ID of a
-;; builtin module is the same as its NAME.  The ID of a source module is
-;; *obj-dir* concatenated with (escape-path SOURCE-FILENAME).  The ".scm"
-;; extension is included to avoid conflict between user modules and builtins
-;; when they are bundled with a user program.  [When *is-boot* is true, we
-;; are building the compiler, and compiled modules are assigned the ID
-;; (basename NAME) so that they can later serve as builtin modules.]
+;; A module's ID is the string passed to `^R` at run-time.
 ;;
-;;                 (normal)         (normal)        *is-boot*
-;;                 Source File      Builtin         Source File
-;;                 ------------     ------------    ------------
-;;   NAME          io.scm           io              io.scm
-;;   ID            .scam/io.scm     io              io
-;;   Object File   .scam/io.scm.o                   .scam/io.o
-;;   From-Bundle                    [mod-io]
-;;   To-Bundle     [mod-io.scm]     [mod-io]        [mod-io]
-;;
+;;                 Source File       Source File      Builtin
+;;                 (normal)          *is-boot*
+;;                 ------------      ------------     ------------
+;;   Name          X.scm             B.scm            B
+;;   Source        D/X.scm           B.scm            --
+;;   ID            .scam/D/X.scm     B                B
+;;   Object File   <ID>.o            .scam/<ID>.o
+;;   Bundle        [mod-<ID>]        [mod-<ID>]       [mod-<ID>]
 
 
-;; Return the file that holds (or will hold) the module's compiled code
-;; (valid only for modules compiled from source).
+;; Get ID for a builtin
 ;;
-;; Note: this must be kept consistent with the behavior of `^load`.
+(define `(modid-from-builtin name)
+  name)
+
+
+;; Get ID for a source module.  Ordinarily this is the location of the
+;; object file, excluding the ".o" extension.  However, when *is-boot* is
+;; true (we are building the compiler), the ID of a source modules is
+;; `(basename NAME)` so that they can later serve as builtin modules.
 ;;
-(define `(modid-file id)
+;; We include the complete path in the ID -- instead of always treating it
+;; as local to *obj-dir* -- because the ID will be baked into generated code
+;; (of the requiring module) that may be executed after it is returned from
+;; `compile-text` -- at which point *obj-dir* is indeterminate.  [In an
+;; *is-boot* scenario, `compile-text` is not supported.]
+;;
+(define (modid-from-source path)
+  (if *is-boot*
+      (basename (escape-path path))
+      (.. *obj-dir* (escape-path path))))
+
+
+;; Non-nil when ID names a module being compiled from source, not read from
+;; a bundle.
+;;
+(define `(modid-is-source? id)
+  (or (filter "%.scm" [id]) *is-boot*))
+
+
+;; Return the file that will hold the module's compiled code after it is
+;; compiled.
+;;
+(define `(modid-object id)
   (if *is-boot*
       (.. *obj-dir* id ".o")
       (.. id ".o")))
 
 
-;; Return the bundle variable that holds (or will hold) the modules's code.
+;; Return the bundle variable for a module.  In the case of builtin modules,
+;; this is the bundle from which the module's object code will be read.  In
+;; the case of all modules, this is the variable into which the object code
+;; will be bundled (when an executable is linked).
 ;;
 ;; Note: this must be kept consistent with the behavior of `^load`.
 ;;
@@ -284,21 +308,14 @@
   (.. "[mod-" id "]"))
 
 
-;; Non-nil when ID names a module being compiled from source, not read from
-;; a bundle.
-;;
-(define `(modid-is-file id)
-  (or (filter "%.scm" id) *is-boot*))
-
-
 ;; Return the first 4 lines of a compiled module as an array of lines.
 ;;
 (define (modid-read-lines id ?max)
-  (if (modid-is-file id)
+  (if (modid-is-source? id)
       ;; load file
       (begin
-        (memo-hash-file (modid-file id))
-        (read-lines (modid-file id) (and max 1) max))
+        (memo-hash-file (modid-object id))
+        (read-lines (modid-object id) (and max 1) max))
       ;; load bundle
       (wordlist 1 (or max 99999999) (split "\n" (native-value (modid-var id))))))
 
@@ -318,17 +335,8 @@
   (env-parse (modid-read-lines id 4) all))
 
 
-;; Construct the ID for a module, given either a module name or an
-;; already-resolved path to a source file.
-;;
-(define (module-id path-or-bundle)
-  (if (and (modid-is-file path-or-bundle) (not *is-boot*))
-      (.. *obj-dir* (escape-path path-or-bundle))
-      (basename path-or-bundle)))
-
-
-;; Get find a source file in the base directory or one of the LIBPATH
-;; directories.  Return resolved path, or nil if not found.
+;; Find a source file in the base directory or one of the LIBPATH
+;; directories.  Return the resolved path, or nil if not found.
 ;;
 (define (locate-source base-dir name)
   (define `path-dirs
@@ -336,7 +344,7 @@
 
   (vec-or
    (for dir (cons base-dir path-dirs)
-        (wildcard (resolve-path dir name)))))
+        (file-exists? (resolve-path dir name)))))
 
 
 ;; locate-source is safe to memoize because:
@@ -389,11 +397,10 @@
       "exec make -Rr --no-print-directory -f\"$0\" 9>&1\n"
       ;; Remaining lines = makefile content
       "SCAM_MAIN := "
-      (protect-rhs
-       (.. main-mod ":" (gen-native-name "main" nil))) "\n"
-       "^uid := " uid "\n"
-       bundles
-       "$(eval $(value " (modid-var "runtime") "))\n"))
+      (protect-rhs (.. [main-mod] " " (gen-native-name "main" nil))) "\n"
+      "^uid := " uid "\n"
+      bundles
+      "$(eval $(value " (modid-var "runtime") "))\n"))
 
 
 ;;----------------------------------------------------------------
@@ -405,7 +412,7 @@
   &public
   ;; ID = string to be passed to ^R
   ;; ENV = exported environment entries
-  (ModSuccess &word id &list env)
+  (ModSuccess id &list env)
   (ModError message))
 
 
@@ -437,9 +444,9 @@
           (ModError (sprintf "cannot find `%s`" name)))
       (if (m-compile-and-maybe-test-module path private)
           (ModError (sprintf "compilation of `%s` failed" path)))
-      (ModSuccess (module-id path)
+      (ModSuccess (modid-from-source path)
                   (memo-blob-call (native-name modid-import)
-                                  (module-id path) private))))
+                                  (modid-from-source path) private))))
 
 
 ;; See get-module.
@@ -461,7 +468,7 @@
 (define (get-module name base private)
   (define `mod
     (if (filter "%.scm" [name])
-        (get-source-module name private (m-locate-source (dir base) name))
+        (get-source-module name private (m-locate-source (path-dir base) name))
         (get-builtin-module name)))
 
   (let ((mod mod))
@@ -538,7 +545,7 @@
 ;; Compile SCAM source to executable code.
 ;;
 ;; Returns:
-;;    { code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }
+;;    { code: CODE, errors: ERRORS, env: ENV-OUT, require: MODS }
 ;;
 ;; TEXT = SCAM source
 ;; ENV = Initial environment. This is normally generated by compile-prelude.
@@ -577,7 +584,7 @@
 
 
 ;; Compile a SCAM source file and all its dependencies, writing
-;; the object file to `(modid-file (module-id FILE))`.
+;; the object file to `(modid-object (modid-from-source FILE))`.
 ;;
 ;; On success, return `nil`.
 ;; On failure, display message and return 1.
@@ -600,7 +607,7 @@
        (define `exe (dict-get "code" o))
        (define `env-out (dict-get "env" o))
        (define `reqs (dict-get "require" o))
-       (define `outfile (modid-file (module-id file)))
+       (define `outfile (modid-object (modid-from-source file)))
        (define `content
          (.. "# Requires: " reqs "\n"
              (env-export-lines env-out)
@@ -621,9 +628,14 @@
 ;;
 (define (modid-deps-all id)
   (define `runtime-id
+    ;; Use `foreach` as cheap `let`
     (foreach m (runtime-module-name nil)
-             (module-id m)))
-  (descendants modid-deps (uniq (append id runtime-id))))
+             (if m
+                 [ (if (filter "%.scm" m)
+                       (modid-from-source m)
+                       (modid-from-builtin m)) ])))
+
+  (descendants modid-deps (uniq (cons id runtime-id))))
 
 
 ;; Construct a bundled executable from a compiled module.
@@ -647,9 +659,10 @@
 
       (define `uid
         (hash-output "cat -- %V"
-                     (foreach id mod-ids
-                              (if (modid-is-file id)
-                                  (modid-file id)))))
+                     (filter-out [""]
+                                 (for id mod-ids
+                                      (if (modid-is-source? id)
+                                          (modid-object id))))))
 
       (construct-file main-id bundles uid)))
 
@@ -662,7 +675,7 @@
 ;; On failure, return 1.
 ;;
 (define (run src argv show-status)
-  (define `mod (module-id src))
+  (define `mod (modid-from-source src))
 
   (if show-status
       (build-message "run" src))
@@ -673,14 +686,14 @@
 
   (define `runner
     (if *is-boot*
-        (modid-file "runtime")
+        (modid-object "runtime")
         (firstword (native-var "MAKEFILE_LIST"))))
 
   ;; (native-value "MAKE") does not seem to provide the actual value
   (declare MAKE &native)
 
   (define `scam-main
-    (.. mod ":" (gen-native-name "main" nil)))
+    (.. [mod] " " (gen-native-name "main" nil)))
 
   (define `scam-dir
     (if *is-boot*
@@ -722,7 +735,7 @@
 ;;
 (define (build-program src-file exe-file ?build-dir ?is-quiet)
   &public
-  (define `main-id (module-id src-file))
+  (define `main-id (modid-from-source src-file))
 
   (compile-memo-on
    build-dir is-quiet

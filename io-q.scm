@@ -168,7 +168,7 @@
 
 (expect "foo" (escape-path "foo"))
 (expect "+Tfoo" (escape-path "~foo"))
-(expect "+/foo" (escape-path "/foo"))
+(expect "+@foo" (escape-path "/foo"))
 (expect "+./foo" (escape-path "../foo"))
 
 (define `(escape-rt str)

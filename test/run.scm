@@ -5,7 +5,10 @@
 ;; This module is compiled by .out/a/scam and it cannot use bundled modules,
 ;; so we use "../core" to identify the location of the source file.
 (require "../core.scm")
+(require "a b c.scm")
 
+
+(expect a_b_c 23)
 
 ;; current-file-line
 
@@ -14,9 +17,9 @@
 
 
 ;; WARNING: fragile tests... Just update line numbers if they have changed.
-(expect "run.scm:17"
+(expect "run.scm:20"
         (notdir (current-file-line)))
-(expect "run.scm:19"
+(expect "run.scm:22"
         (notdir (fl0)))
 
 

@@ -284,9 +284,14 @@ $(if ,, ) :=
   (define `(mod-var id)
     (.. "[mod-" id "]"))
 
+  (define `mod-file
+    ;; Encode for "include ..."
+    (subst " " "\\ " "\t" "\\\t"
+           (.. (native-value "SCAM_DIR") id ".o")))
+
   (if (native-bound? (mod-var id))
       (native-eval (native-value (mod-var id)))
-      (native-eval (.. "include " (.. (native-value "SCAM_DIR") id ".o"))))
+      (native-eval (.. "include " mod-file)))
   ;; return value is useful when viewing trace of load sequence
   id)
 
@@ -295,9 +300,9 @@ $(if ,, ) :=
 ;;
 (define (^R id)
   &native
-  (or (filter id *required*)
+  (or (filter [id] *required*)
       (begin
-        (set *required* (._. *required* id))
+        (set *required* (._. *required* [id]))
         (^load id)))
   nil)
 
@@ -452,7 +457,9 @@ $(if ,, ) :=
 ;;
 ;; SPEC = list of: NAME ( ":" MODE )?
 ;;
-;; NAME defaults to the user namespace unless it begins with "`" or "\"":
+;; NAME defaults to the user namespace.  Use "`NAME" to refer to NAME in the compiler
+;; namespace, or '"NAME' to refer to native "NAME":
+;;
 ;;     "foo"   -> "'foo"
 ;;     "'foo"  -> "'foo"
 ;;     "`foo"  -> "`foo"
@@ -576,8 +583,7 @@ $(if ,, ) :=
 
 (define (start-trace main-mod)
   ;; Activate tracing if [_]SCAM_TRACE is set
-  (define `env-prefix (if (filter "scam" main-mod) "_"))
-  (trace (native-value (.. env-prefix "SCAM_TRACE"))))
+  (trace (native-value "SCAM_TRACE")))
 
 
 ;;----------------------------------------------------------------
@@ -656,6 +662,6 @@ $(if ,, ) :=
 
 ;; Loads the "main" module and call the "main" function.
 (declare SCAM_MAIN &native)
-(^start (word 1 (subst ":" " " SCAM_MAIN))
-        (word 2 (subst ":" " " SCAM_MAIN))
+(^start (promote (word 1 SCAM_MAIN))
+        (word 2 SCAM_MAIN)
         (native-value "SCAM_ARGS"))
