@@ -5,8 +5,8 @@
 | [compile](#compile-scam-compilation) | [`build-program`](#build-program-src-file-exe-file-build-dir-is-quiet) [`compile-text`](#compile-text-text-file-env-in-build-dir-is-quiet) [`run-program`](#run-program-src-file-argv-build-dir-is-quiet) |
 | [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`repeat-words`](#repeat-words-v-n) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`vsprintfx`](#vsprintfx-fmt-values-codes-fmt-fn) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
-| [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-paths) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
-| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`cp-file-atomic`](#cp-file-atomic-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd-fmt-args) [`io-sprintf`](#io-sprintf-fmt-args) [`mkdir-p`](#mkdir-p-dir) [`mv-file`](#mv-file-from-to) [`pipe`](#pipe-stdin-fmt-args) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd-fmt-args) [`shellf`](#shellf-cmd-fmt-args) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) [`write-file-atomic`](#write-file-atomic-file-name-data) |
+| [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-list) [`append-for`](#append-for-var-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-var-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`declare`](#declare-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-var-vector-body) [`foreach`](#foreach-var-list-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-specs) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
+| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`cp-file-atomic`](#cp-file-atomic-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd-fmt-args) [`io-sprintf`](#io-sprintf-fmt-args) [`mkdir-p`](#mkdir-p-dir) [`mv-file`](#mv-file-from-to) [`path-basename`](#path-basename-path) [`path-dir`](#path-dir-path) [`path-notdir`](#path-notdir-path) [`pipe`](#pipe-stdin-fmt-args) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd-fmt-args) [`shellf`](#shellf-cmd-fmt-args) [`unescape-path`](#unescape-path-loc) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) [`write-file-atomic`](#write-file-atomic-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
 | [peg](#peg-peg-parser-generator) | [`gen-lex`](#gen-lex-tokens) [`lex`](#lex-text-tokens) [`peg-*`](#peg--pf) [`peg-+`](#peg--pf) [`peg-?`](#peg--pf) [`peg-and`](#peg-and-pfs) [`peg-at`](#peg-at-pf) [`peg-c`](#peg-c-name-pf) [`peg-empty`](#peg-empty-caps) [`peg-not`](#peg-not-pf) [`peg-or`](#peg-or-pfs) [`peg-p`](#peg-p-in-out-caps) [`un-lex`](#un-lex-subj) |
@@ -553,9 +553,9 @@ The file names do not need to refer to an existing file or directory.
 Add PREFIX to the start of each word in LIST.
 
 
-##### `(addsuffix SUFFIX PATHS)`
+##### `(addsuffix SUFFIX LIST)`
 
-Add SUFFIX to the end of each word in PATHS.
+Add SUFFIX to the end of each word in LIST.
 
 
 ##### `(append-for VAR VECTOR BODY)`
@@ -594,6 +594,8 @@ added again.
 ##### `(basename PATHS)`
 
 Remove the file extension from each word in PATHS.
+
+See also: `path-basename`
 
 
 ##### `(begin ...EXPRS)`
@@ -722,11 +724,11 @@ list.  It is used internally to construct vectors.
 
 ##### `(dir PATHS)`
 
-Get the directory of each file in PATHS.
+Get the directory of each file path in word list PATHS.
 
     (dir "a/b c")  -->  "a/ ./"
 
-See also `notdir`.
+See also: `notdir`, `path-dir`.
 
 
 ##### `(do-not-trace NAMES)`
@@ -821,11 +823,11 @@ Logically invert A.  If A is `nil`, return 1.  Otherwise, return `nil`.
 
 ##### `(notdir PATHS)`
 
-Return the filename portion of each path in PATHS.
+Return the filename portion of each path in word list PATHS.
 
     (notdir "a/b c")  -->  "b c"
 
-See also `dir`.
+See also: `dir`, `path-notdir`.
 
 
 ##### `(nth INDEX VEC)`
@@ -872,42 +874,41 @@ for details.
 ##### `(require MODULE &PRIVATE?)`
 
 The `require` special form provides access to functionality defined in
-other modules.  It performs two actions:
+other modules.  When evaluated, it will load and execute the module
+(unless it has already been required elsewhere in the program.)  Symbols
+that have been declared as `&public` in the top-level of the required
+module are "imported" into the current environment, making those symbols
+visible to expressions that follow the `require` form, up to the end of
+the enclosing block.
 
- 1. It ensures that the module has been executed.  If the module has
-    already been loaded, it does nothing.  Otherwise, it executes the
-    module.  (This occurs at run time.)
-
- 2. It imports symbols exported by the module.  Symbols declared
-    `&public` within the module are imported into the environment of the
-    caller of `require`.  (This occurs at compile time.)
-
-The `&private` flag is intended for use by unit test modules.  When present,
-private symbols will be imported in addition to `&public` ones, and the
-qualification step will not be required.  (See "qualification", below.)
+`(require MODULE &private)` is intended for use by unit test modules.
+This will import all symbols defined in the top-level of the required
+module (not just the `&public` ones).  Additionally, the qualification
+step will not be required.  (See "qualification", below.)
 
 When `MODULE` is one of the [standard library names](#libraries), the
 standard library will be supplied by the compiler.  Otherwise, `MODULE`
-must end in `".scm"` and names SCAM source file.  If it is a relative
+must end in `.scm` and identify as SCAM source file.  If it is a relative
 path, it is treated as relative to the directory containing the requiring
 file.  If no such file exists, the directories listed in `SCAM_LIBPATH`
 (colon-delimited) are tried, in order, until a matching file is found.
 
 When `MODULE` identifies a source file, that source file will be compiled
-to determine its exports before compilation can continue.  In turn,
-modules required by `MODULE` will also have to be compiled in order to
-build `MODULE`, and so on.  Compilation results are
+to determine its exports before compilation of the requiring module can
+continue.  In turn, modules required by `MODULE` will also have to be
+compiled in order to build `MODULE`, and so on.  Compilation results are
 [cached](reference.md#cached-results) to avoid exponential build times.
 
-**Qualification:** Each module can be accompanied by a qualification test: a
-module with the same name except for an added `-q` before the extension.
-For example, `foo-q.scm` is the qualification test for `foo.scm`.  When a
-module is required, its qualification test (if present) will be built and
-executed before compilation of the requiring module continues.  If the
-qualification test terminates with a non-zero exit code, it is considered a
-test failure and compilation stops.  (Note that qualification test files
-must use the `&private` flag when requiring the module they test in order to
-avoid a dependency loop.)
+**Qualification:** Each module source file may be accompanied by a
+qualification test: a source file whose name is determined by adding `-q`
+prior to the `.scm` extension.  For example, `foo-q.scm` is the
+qualification test for `foo.scm`.  When a module is required, its
+qualification test (if present) will be built and executed before
+compilation of the requiring module continues.  If the qualification test
+terminates with a non-zero exit code, it is considered a test failure and
+compilation stops.  (Note that qualification test files must use the
+`&private` flag when requiring the module they test in order to avoid a
+dependency loop.)
 
 
 ##### `(rest VEC)`
@@ -1029,7 +1030,12 @@ matched by patterns in NAMES.
 
 ##### `(wildcard PATTERNS)`
 
-Get files that match PATTERNS.  Patterns is a list of glob expressions.
+Get files that match PATTERNS.  Patterns are delimited by whitespace
+characters, except that a whitespace character preceded by a backslash
+character will be treated as literal.
+
+All matches are returned as a word list; whitespace characters within a
+matching file name are *not* escaped.  (Good luck with that.)
 
 
 ##### `(word N LIST)`
@@ -1165,6 +1171,27 @@ Create directory DIR and parent directories, if necessary.
 Move file FROM to TO.
 
 On success, return nil.  On failure, return an error description.
+
+
+##### `(path-basename PATH)`
+
+Remove the extension from NAME.  This is like the Make builtin `basename`
+except that this properly handles a name with whitespace and does not
+operate on a list of words.
+
+
+##### `(path-dir PATH)`
+
+Return the directory portion of a path.  This is like the Make builtin
+`dir` except that this properly handles a path with whitespace and does
+not operate on a list of words.
+
+
+##### `(path-notdir PATH)`
+
+Return the file portion of a path.  This is like the Make builtin
+`notdir` except that this properly handles a path with whitespace and
+does not operate on a list of words.
 
 
 ##### `(pipe STDIN FMT ...ARGS)`
