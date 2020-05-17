@@ -55,6 +55,18 @@ $(if ,, ) :=
   (declare ^d &native)
   (subst "%" "!8" ^d))
 
+;; Get KEY portion of a dictionary pair.
+;;
+(define (^dk pair)
+  &native
+  (up (subst "!8" "%" (word 1 (subst "!=" " " pair)))))
+
+;; Get VALUE portion of a dictionary pair.
+;;
+(define (^dv pair)
+  &native
+  (up (word 2 (subst "!=" " " pair))))
+
 ;; ^Y : invokes lambda expression
 ;;
 ;;  $(call ^Y,a,b,c,d,e,f,g,h,i,lambda) invokes LAMBDA.  A through H

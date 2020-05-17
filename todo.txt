@@ -3,6 +3,11 @@ TODO
 Enhancements
 ----
 
+ * Missing dependency:
+      A: defmacro M
+      B: require A & use M
+   Compilation of A depends on *object* of B, not just its exports.
+
  * Forbid shadowing of variables
     - allow `(let ((x x)) ...)` or `&override` exceptions
     - validate `define` against prior `declare`
@@ -77,6 +82,10 @@ Enhancements
        - c0 should honor filename in qpos instead of file/subject globals
     - definition is not visible in REPL
     - no hygienic way to reference values
+
+
+ * Non-backward-compatible:
+     - remove old foreach/for/concat-for/... syntax
 
 
 Optimizations for Generated Code

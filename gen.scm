@@ -224,12 +224,33 @@
                      (il-demote n)))))
 
 
-;; NODE is IL; A and B are actual strings.
-(define (il-subst a b node)
+;; NODE is IL; A and B are actual strings!
+;;
+(define (subst-in-il a b node)
   &public
   (case node
     ((IString value) (IString (subst a b value)))
     (else (IBuiltin "subst" [ (IString a) (IString b) node ]))))
+
+
+;; A, B, and C are all IL nodes.
+;;
+(define (il-subst a b c)
+  &public
+  (or (case a
+        ((IString sa)
+         (case b
+           ((IString sb)
+            (subst-in-il sa sb c)))))
+      (IBuiltin "subst" [a b c])))
+
+
+(define `(il-dict-key node)
+  (ICall "^dk" [node]))
+
+
+(define `(il-dict-value node)
+  (ICall "^dv" [node]))
 
 
 ;; Namespacing
@@ -344,6 +365,33 @@
                  (subst "%S" (if (eq? expected 1) "" "s")
                         "`%s` accepts %s argument%S, not %s")
                  (symbol-name sym) expected (words args))))
+
+
+;; Return binding(s) for a pattern: symbol or {=sym: sym}.
+;;
+;; PATTERN = expression being assigned: `SYM or `{=SYM: SYM}
+;; VALUE = IL record describing the value
+;;
+(define (pat-bindings pattern value depth)
+  &public
+  ;; NAME = string
+  (define `(bind name var-x)
+    { =name: (EIL "p" depth (var-x value)) })
+
+  (case pattern
+    ((PSymbol _ name)
+     (bind name identity))
+
+    ((PDict _ pairs)
+     (if (filter 1 (words pairs))
+         (case (dict-key pairs)
+           ((PSymbol _ key-sym)
+            (if (filter "=%" key-sym)
+                (let& ((key-var (patsubst "=%" "%" key-sym)))
+                  (case (dict-value pairs)
+                    ((PSymbol _ value-var)
+                     (._. (bind value-var il-dict-value)
+                          (bind key-var il-dict-key))))))))))))
 
 
 (define base-env

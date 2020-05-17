@@ -145,13 +145,43 @@
         "(.foreach \"0,1,{\"0})`(.foreach \"0,1,{\"0})")
 
 ;;--------------------------------
-;; (foreach VAR LIST BODY)
+;; (foreach (VAR LIST DELIM?) BODY)
+;;--------------------------------
+
+(expect (c0-ser "(foreach (z 1) z)" nil)
+        "(.foreach ;,1,{;})")
+
+(expect (c0-ser "(foreach (z 1 \" \") z)" nil)
+        "(.foreach ;,1,{;})")
+
+(expect (.. "(.subst ~x,,(.subst ~x~x ,(.subst ~,~~x,{G}),"
+            "(.foreach ;,1,(.subst ~,~~x,{;})~x~x)))")
+        (c0-ser "(foreach (z 1 g) z)" {g: (EVar "p" "G")}))
+
+(expect 1 (see (.. "!(PError 2 'missing PAT in "
+                   "(foreach (PAT LIST ?DELIM) BODY)"
+                   "; expected a symbol')")
+               (c0-ser "(foreach ())")))
+
+(expect 1 (see (.. "!(PError 2 'missing LIST in "
+                   "(foreach (PAT LIST ?DELIM) BODY)')")
+               (c0-ser "(foreach (a))")))
+
+(expect 1 (see "!(PError 2 'missing BODY in (foreach (PAT"
+               (c0-ser "(foreach (a 1))")))
+
+;; destructuring
+(expect (c0-ser "(foreach {=a:b} \"1 2 3\" (f a b))")
+        "(.foreach ;,1 2 3,(F (^dk {;}),(^dv {;})))")
+
+;;--------------------------------
+;; old: (foreach VAR LIST BODY)
 ;;--------------------------------
 
 (expect (c0-ser "(foreach v \"1 2 3\" v)" "-")
         "(.foreach ;,1 2 3,{;})")
-(expect (c0-ser "(foreach x \"1 2 3\" (foreach y 4 (.. x y)))")
-        "(.foreach ;,1 2 3,(.foreach ;;,4,{;}{;;}))")
+(expect (c0-ser "(foreach x \"1 2 3\" (foreach y 4 (f x y)))")
+        "(.foreach ;,1 2 3,(.foreach ;;,4,(F {;},{;;})))")
 (expect (c0-ser "(lambda (a) (define `m a) m)")
         "`{1}")
 (expect (c0-ser "(begin (define `m (foreach v \"1 2 3\" v)) m)")
@@ -161,48 +191,76 @@
 (expect (c0-ser "(begin (define `m (foreach v \"1 2 3\" v)) (lambda () m))")
         "`(.foreach ;,1 2 3,{;})")
 (expect (c0-ser "(foreach a b)")
-        "!(PError 2 'missing BODY in (foreach VAR LIST BODY)')")
+        "!(PError 2 'missing BODY in (foreach PAT LIST BODY)')")
 (expect (c0-ser "(foreach a)")
-        "!(PError 2 'missing LIST in (foreach VAR LIST BODY)')")
+        "!(PError 2 'missing LIST in (foreach PAT LIST BODY)')")
 (expect (c0-ser "(foreach)")
-        (.. "!(PError 2 'missing VAR in (foreach VAR LIST BODY)"
+        (.. "!(PError 2 'missing PAT in (foreach PAT LIST BODY)"
             "; expected a symbol')"))
 
 ;;--------------------------------
-;; (for VAR VEC BODY)
+;; (for (VAR VEC) BODY)
+;;--------------------------------
+
+(expect (c0-ser "(for (x \"1 2 3\") (and x))")
+        "(.foreach ;,1 2 3,(^d (.and (^u {;}))))")
+
+;;--------------------------------
+;; old: (for VAR VEC BODY)
 ;;--------------------------------
 
 (expect (c0-ser "(for x \"1 2 3\" (and x))")
         "(.foreach ;,1 2 3,(^d (.and (^u {;}))))")
 
 ;;--------------------------------
-;; (append-for VAR VEC BODY)
+;; (append-for (VAR VEC) BODY)
+;;--------------------------------
+
+(expect (c0-ser "(append-for (x \"1 2 3\") x)")
+        "(.filter %,(.foreach ;,1 2 3,(^u {;})))")
+
+;;--------------------------------
+;; old: (append-for VAR VEC BODY)
 ;;--------------------------------
 
 (expect (c0-ser "(append-for x \"1 2 3\" x)")
         "(.filter %,(.foreach ;,1 2 3,(^u {;})))")
 
 ;;--------------------------------
-;; (concat-for VAR VEC DELIM BODY)
+;; (concat-for (VAR VEC ?DELIM) BODY)
 ;;--------------------------------
 
-(expect "aBc"
-        (il-ser (il-subst "b" "B" (IString "abc"))))
-(expect "(.subst b,B,{V})"
-        (il-ser (il-subst "b" "B" (IVar "V"))))
+;; delim == " "
+(expect (c0-ser "(concat-for (x \"a b\" \" \") x)" { d: (EVar "p" "D") })
+        "(.foreach ;,a b,(^u {;}))")
+
+
+;; delim == IString   (that contains "~x")
+(expect (c0-ser "(concat-for (x \"a b\" \"~x\") x)" { d: (EVar "p" "D" ) })
+        (.. "(.subst ~x,,(.subst ~x~x ,~~xx,"
+            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))"))
+
+;; general case
+(expect (.. "(.subst ~x,,(.subst ~x~x ,(.subst ~,~~x,{D}),"
+            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))")
+        (c0-ser "(concat-for (x \"a b\" d) x)" { d: (EVar "p" "D") }))
+
+;;--------------------------------
+;; old: (concat-for VAR VEC DELIM BODY)
+;;--------------------------------
 
 ;; delim == " "
 (expect "(.foreach ;,a b,(^u {;}))"
         (c0-ser "(concat-for x \"a b\" \" \" x)" { d: (EVar "p" "D") }))
 
-;; delim == IString
-(expect (.. "(.subst ~1,~,(.subst ~ ,|,(.subst ~x,,"
-                "(.or (.foreach ;,a b,(.subst ~,~1,(^u {;}))~),~)x)))")
-        (c0-ser "(concat-for x \"a b\" \"|\" x)" { d: (EVar "p" "D" ) }))
+;; delim == IString   (that contains "~x")
+(expect (.. "(.subst ~x,,(.subst ~x~x ,~~xx,"
+            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))")
+        (c0-ser "(concat-for x \"a b\" \"~x\" x)" { d: (EVar "p" "D" ) }))
 
 ;; general case
-(expect (.. "(.subst ~1,~,(.subst ~ ,(.subst ~,~1,{D}),(.subst ~x,,"
-            "(.or (.foreach ;,a b,(.subst ~,~1,(^u {;}))~),~)x)))")
+(expect (.. "(.subst ~x,,(.subst ~x~x ,(.subst ~,~~x,{D}),"
+            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))")
         (c0-ser "(concat-for x \"a b\" d x)" { d: (EVar "p" "D") }))
 
 ;;--------------------------------
@@ -296,7 +354,7 @@
                     nil nil nil)
         (PError 0 "invalid CTOR in (data NAME (CTOR ARG...)...); expected a symbol"))
 
-;; ml.special-data
+;; M.data
 (expect (c0-ser "(data 1 (X))")
         "!(PError 4 'invalid NAME in (data NAME (CTOR ARG...)...); expected a symbol')")
 ;; ... cascaded error

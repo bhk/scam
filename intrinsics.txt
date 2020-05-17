@@ -248,22 +248,39 @@
 ;; of expressions) once for each word, and constructs a new word list from the
 ;; results of each evaluation.
 ;;
-;; Each word is bound to the name `VAR` while `BODY` is evaluated.
+;; `BODY` is evaluated in the scope of variables that are specified by the
+;; pattern PAT, which can be either a symbol or a `{=VAR: VAR}` expression.
+;; When PAT is a symbol, that symbol will be bound to each word when `BODY`
+;; is evaluated.
 ;;
-;;     > (foreach x "1 2 3" (1+ x))
+;;     > (foreach (x "1 2 3") (1+ x))
 ;;     "2 3 4"
 ;;
-(declare (foreach var list body) &public)
-
-
-;; `for` iterates over items in a vector, evaluating BODY for with VAR bound to
-;; an item, constructing a new vector with the results of BODY. Example:
+;; When PAT is in dictionary form, each word will be treated as a dictionary
+;; pair and the symbols will be bound to the key and value of the pair.
 ;;
-;;     > (for x [[1 2] [3 4]]
-;;     +     (reverse x))
+;;     > (foreach ({=k: v} {a:1, b:2, c:3}) (.. k v))
+;;     "a1 b2 c3"
+;;
+;; `DELIM` specifies the separator between list elements.  This defaults to
+;; a single space when `DELIM` is absent.  When it is present and evaluates
+;; to `nil`, all element results are concatenated.
+;;
+(declare (foreach (pat list ?delim) ...body) &public)
+
+
+;; `for` iterates over items in a vector, constructing a new vector.
+;;
+;; `BODY` is evaluated in the scope of the symbol(s) named in PAT.  See
+;; `foreach` for more on patterns.
+;;
+;; Example:
+;;
+;;     > (for (x [[1 2] [3 4]])
+;;     +    (reverse x))
 ;;     [[2 1] [4 3]]
 ;;
-(declare (for var vector body) &public)
+(declare (for (pat vector) ...body) &public)
 
 
 ;; `append-for` is similar to `for` but it appends together all of the (vector)
@@ -277,15 +294,17 @@
 ;;     +    (if (> x 3) [x]))
 ;;     "7 5"
 ;;
-(declare (append-for var vector body) &public)
+(declare (append-for (pat vector) ...body) &public)
 
 
 ;; `concat-for` is similar to `for` but it concatenates the values of BODY.
+;; If `DELIM` is not present in the source, then it defaults to a single
+;; space.
 ;;
-;;     > (concat-for x [1 2 3] ";" (wordlist 1 x "a b c"))
+;;     > (concat-for (x [1 2 3] ";") (wordlist 1 x "a b c"))
 ;;     "a;a b;a b c"
 ;;
-(declare (concat-for var vector delim body) &public)
+(declare (concat-for (pat vector ?delim) ...body) &public)
 
 
 ;; Terminate execution of the program with a non-zero status code, writing
@@ -345,10 +364,10 @@
 ;;
 ;; This special form takes several forms:
 ;;
-;;     (declare NAME FLAG... VALUE)            ; global data variable
-;;     (declare (NAME ARG...) FLAG... BODY)    ; global function variable
-;;     (declare `NAME EXPR)                    ; symbol macro
-;;     (declare `(NAME ARG...) FLAG... BODY)   ; compound macro
+;;     (define NAME FLAG... VALUE)            ; global data variable
+;;     (define (NAME ARG...) FLAG... BODY)    ; global function variable
+;;     (define `NAME EXPR)                    ; symbol macro
+;;     (define `(NAME ARG...) FLAG... BODY)   ; compound macro
 ;;
 ;; The `define` special form adds a name to the environment and associates
 ;; it with a definition.  The defined name will be visible to subsequent
@@ -356,9 +375,9 @@
 ;; previous definitions associated with the same name.
 ;;
 ;; The `&public` flag may be included in `FLAG...`.  This indicates that the
-;; symbol should be visible outside of the file in which it is declared.
+;; symbol should be visible outside of the file in which it is defined.
 ;;
-(declare (declare ...forms) &public)
+(declare (define ...forms) &public)
 
 
 ;; Declare a function, variable, or macro.
@@ -439,7 +458,7 @@
 ;;
 ;; The `set` expression returns `RETVAL` (or "" if `RETVAL` is not provided).
 ;;
-(declare (set name value retval) &public)
+(declare (set name value ?retval) &public)
 
 
 ;; A `lambda` expression evaluates to a function value.
@@ -454,7 +473,13 @@
 (declare (lambda (...params) body) &public)
 
 
-;; This special form concatenates all of its arguments.
+;; This special form is equivalent to `(if COND (begin ...BODY))`.
+;;
+(declare (when cond ...body) &public)
+
+
+;; This special form concatenates all of its arguments.  This is
+;; equivalent to `..`.
 ;;
 (declare (concat ...values) &public)
 

@@ -492,7 +492,7 @@
 ;;
 ;; Result = IL node that calls REQUIRE + includes a "require crumb"
 ;;
-(define (ml.special-require env sym args)
+(define (M.require env sym args)
   (define `module (first args))
   (define `flags (get-flags args))
   (define `body (skip-flags args))

@@ -8,12 +8,12 @@
 (require "gen0.scm")
 
 
-;; Functions named "ml.special-NAME" implement special forms.  They are
+;; Functions named "M.<NAME>" implement special forms.  They are
 ;; executed at compile-time when a list form starting with the corresponding
 ;; NAME is encountered.  These functions are passed a list of arguments
 ;; (each an AST) and an environment.  They return an IL tree.
 ;;
-;; (ml.special-SPECIALNAME env sym args)
+;; (M.NAME env sym args)
 ;;    ENV = environment
 ;;    SYM = the symbol naming the special form (e.g. `print)
 ;;    ARGS = forms passed to the special form
@@ -23,7 +23,7 @@
 ;; (when COND EXPR...)
 ;;--------------------------------
 
-(define (ml.special-when env sym args)
+(define (M.when env sym args)
   (or (check-arity "2+" args sym)
       (IBuiltin "if" [ (c0 (first args) env) (c0-block (rest args) env) ])))
 
@@ -32,7 +32,7 @@
 ;; (print args...)
 ;;--------------------------------
 
-(define (ml.special-print env sym args)
+(define (M.print env sym args)
   (IBuiltin "info" [ (IConcat (c0-vec args env)) ]))
 
 
@@ -40,7 +40,7 @@
 ;; (current-env)
 ;;--------------------------------
 
-(define (ml.special-current-env env sym args)
+(define (M.current-env env sym args)
   (IString env))
 
 
@@ -50,7 +50,7 @@
 
 ;; Evaluates to literal string containing source file name.
 ;;
-(define (ml.special-current-file env sym args)
+(define (M.current-file env sym args)
   (or (check-arity 0 args sym)
       (IWhere nil)))
 
@@ -61,7 +61,7 @@
 
 ;; "FILE:LINE:COL" at which the macro containing this line is invoked.
 ;;
-(define (ml.special-current-file-line env sym args)
+(define (M.current-file-line env sym args)
   (or (check-arity 0 args sym)
       (IWhere (form-index sym))))
 
@@ -72,15 +72,15 @@
 ;; (._. FORM...)
 ;;--------------------------------
 
-(define (ml.special-concat env sym args)
+(define (M.concat env sym args)
   (il-concat (c0-vec args env)))
 
 
-(define (ml.special-.. env sym args)
+(define (M... env sym args)
   (il-concat (c0-vec args env)))
 
 
-(define (ml.special-._. env sym args)
+(define (M.._. env sym args)
   (il-concat (c0-vec (intersperse (PString 0 " ") args) env)))
 
 
@@ -93,7 +93,7 @@
       (subst-x (rrest strs) (IBuiltin "subst" (conj (wordlist 1 2 strs) value)))
       value))
 
-(define (ml.special-subst env sym args)
+(define (M.subst env sym args)
   (if (filter "%2 %4 %6 %8 %0 1" (words args))
       (gen-error sym
                  "(subst {FROM TO}+ STR) accepts 2n+1 arguments, not %s"
@@ -121,7 +121,7 @@
      (err-expected "S" sym nil what where))))
 
 
-(define (ml.special-set env sym args)
+(define (M.set env sym args)
   (define `var-sym (first args))
   (define `value-form (nth 2 args))
   (define `retval (nth 3 args))
@@ -139,7 +139,7 @@
 ;; (? <fn> ...args...)
 ;;--------------------------------
 
-(define (ml.special-? env sym args)
+(define (M.? env sym args)
   (define `func (first args))
   (define `func-args (rest args))
   (define `(trace ctor name)
@@ -198,7 +198,7 @@
 
 ;; (let ((VAR VAL)...) BODY)
 ;;   ==>  ( (lambda (VAR ...) BODY ) (VAL ...) )
-(define (ml.special-let env sym args)
+(define (M.let env sym args)
   (define `form
     (let ((body (rest args))
           (pairs (read-pairs (first args) sym let-where)))
@@ -246,7 +246,7 @@
      (c0-set env sym inner others nil nil))))
 
 
-(define (ml.special-let-global env sym args)
+(define (M.let-global env sym args)
   (letg-expand env sym (rest args)
                (read-pairs (first args) sym letg-where)))
 
@@ -285,7 +285,7 @@
       env))
 
 
-(define (ml.special-let& env sym args)
+(define (M.let& env sym args)
   (case (read-pairs (first args) sym let&-where)
     ((PError pos str)
      (PError pos str))
@@ -294,7 +294,8 @@
 
 
 ;;--------------------------------
-;; (foreach VAR LIST BODY)
+;; (for PAT VEC BODY)
+;; (append-for PAT VEC BODY)
 ;;--------------------------------
 
 
@@ -308,113 +309,158 @@
   (append (depth-marker new-depth) env))
 
 
-;; c0-for
-;;   ARGS = VAR LIST BODY   in   `(for VAR LIST BODY)
-;;   WHERE = syntax synopsis of the containing form, including "VAR"
-;;           "BODY" (and optionally "DELIM")
-;;   VAR-XFORM = transformation to apply to the underlying dynamic variable
-;;               to yield the bound variable
-;;   BODY-XFORM = transformation to apply to BODY after it is evaluated
+(define (c0-for2 env bindings depth sym tmpl body body-x where)
+  (define `pattern (nth 1 tmpl))
+  (define `list (nth 2 tmpl))
+  (define `has-list (word 2 tmpl))
+  (define `body-or-list (if has-list "BODY" (filter "VEC LIST" where)))
+
+  (define `env-in
+    (._. bindings
+         (for-env depth env)))
+
+  (if bindings
+      (if body
+          (for-node depth (c0 list env) (body-x (c0-block body env-in)))
+          (err-expected "" nil sym body-or-list where))
+      (err-expected "S" pattern sym "PAT" where)))
+
+
+;; Compile to IFor.  Delimiter = " ".
 ;;
-(define (c0-for env sym var list body where var-xform body-xform)
+;; SYM = `for | `foreach | ...
+;; TMPL = [PAT LIST ?DELIM]
+;; BODY = [...EXPR]
+;; WORD-X = function to apply to IL of each word prior to bindings
+;; BODY-X = function to apply to IL of `foreach` result
+;;
+;; The result is summarized informally as:
+;;
+;;   (foreach *word* LIST (let ((PAT (WORD-X *word*))) (BODY-X BODY)))
+;;
+(define `(c0-for env sym tmpl body word-x body-x where)
+  (define `pattern (nth 1 tmpl))
+
   (foreach
       depth (.. (current-depth env) ";")
 
-      (case var
-        ((PSymbol _ name)
-         (define `var-defn
-           (EIL "p" depth (var-xform (for-arg depth))))
-         (define `body-node
-           (body-xform (c0-block body (append { =name: var-defn }
-                                              (for-env depth env)))))
-
-         (if body
-             ;; list, delim, and body ok
-             (for-node depth (c0 list env) body-node)
-             ;; body (and maybe list and delim) missing
-             (err-expected "" nil sym
-                           (if list "BODY" (filter "VEC LIST" where))
-                           where)))
-        (else
-         (err-expected "S" var sym "VAR" where)))))
+      (define `bindings
+        (pat-bindings pattern (word-x (for-arg depth)) depth))
+      (c0-for2 env bindings depth sym tmpl body body-x where)))
 
 
-(define (c0-for-3 env sym args where var-xform body-xform)
-  (c0-for env sym (first args) (nth 2 args) (nth-rest 3 args)
-          where var-xform body-xform))
+;; For old-style syntax
+(define `(c0-for-old env sym args word-x body-x where)
+  (c0-for env sym (wordlist 1 2 args) (nth-rest 3 args) word-x body-x where))
 
 
-;; (foreach VAR LIST BODY) : Unlike in the Make builtin "foreach", VAR is a
-;; symbol, not a quoted string.
-;;
-(define (ml.special-foreach env sym args)
-  (c0-for-3 env sym args "(foreach VAR LIST BODY)" identity identity))
+(define (M.for env sym args)
+  (case (first args)
+    ;; New syntax
+    ((PList _ tmpl)
+     (c0-for env sym tmpl (rest args) il-promote il-demote
+             "(for (PAT VEC) BODY)"))
+
+    ;; Old syntax
+    (_  (c0-for-old env sym args il-promote il-demote
+                    "(for PAT VEC BODY)"))))
 
 
-;;--------------------------------
-;; (for VAR VEC BODY)
-;;--------------------------------
-
-;; --> (foreach "&f" VEC (^d (let& ((VAR (^u &f))) BODY)))
-;;
-(define (ml.special-for env sym args)
-  (c0-for-3 env sym args "(for VAR VEC BODY)" il-promote il-demote))
-
-
-;;--------------------------------
-;; (append-for VAR VEC BODY)
-;;--------------------------------
-
-;; Append all body values (a.k.a. "concat-map").
-;;
-;; --> (filter "%" (foreach "&f" VEC (let& ((VAR (^u &f))) BODY)))
-;;
-(define (ml.special-append-for env sym args)
+(define (M.append-for env sym args)
   (define `for-value
-    (c0-for-3 env sym args "(append-for VAR VEC BODY)" il-promote identity))
+    (case (first args)
+      ;; New syntax
+      ((PList _ tmpl)
+       (c0-for env sym tmpl (rest args) il-promote identity
+               "(append-for (PAT VEC) BODY)"))
+
+      ;; Old syntax
+      (_ (c0-for-old env sym args il-promote identity
+                     "(append-for PAT VEC BODY)"))))
 
   (IBuiltin "filter" [ (IString "%") for-value ]))
 
 
 ;;--------------------------------
-;; (concat-for VAR VEC DELIM BODY)
+;; (foreach (PAT LIST ?DELIM) BODY)
+;; (concat-for (PAT LIST ?DELIM) BODY)
 ;;--------------------------------
 
-;; Similar to `(for ...)` but evaluates to the string concatenation of all
-;; BODY values.
-
-(define concat-for-where
-  "(concat-for VAR VEC DELIM BODY)")
-
-
-(define `(il-enc-item node)
-  (il-concat [(il-subst "~" "~1" node) (IString "~")]))
-
-
-(define `(il-finish delim all)
-  (define `all-x
-    (il-concat [(IBuiltin "or" [all (IString "~")]) (IString "x")]))
-  (il-subst "~1" "~"
-            (IBuiltin "subst" [(IString "~ ")
-                               (il-subst "~" "~1" delim)
-                               (il-subst "~x" nil all-x)])))
+;; Since IFor (Make's foreach) always inserts a space between the result of
+;; each iteration, we have to replace that space with the user-supplied
+;; delimiter after `foreach` completes.  The complex part is doing this
+;; without corrupting the rest of the result or the delimiter itself,
+;; and with minimal overhead.
+;;
+;; We do this by encoding the result of each iteration with (subst "~" "~~x"
+;; ...), and then use "~x~x" as a marker for the end of each element.  (It
+;; cannot appear within encoded text.)  After `foreach` completes, "~x~x "
+;; identifies gaps between elements (to be replaced with delim), and then
+;; all "~x" instances can be deleted, un-doing the encoding *and* removing
+;; the "~x~x" marker from the last word.
 
 
-(define (ml.special-concat-for env sym args)
-  (define `delim (nth 3 args))
+(define (c0-cfor2 env sym tmpl body word-x where delim-value)
+  (define `(xenc node)
+    (subst-in-il "~" "~~x" node))
 
-  (define `(for-result value-xform)
-    (c0-for env sym (first args) (nth 2 args) (nth-rest 4 args)
-            concat-for-where il-promote value-xform))
+  (define `(xenc-each node)
+    (IConcat [(xenc node) (IString "~x~x")]))
 
-  (or (case delim
-        ((PString n value)
-         (if (eq? value " ")
-             ;; Simple case: single space is what `foreach` adds
-             (for-result identity))))
+  (define `(xdec out delim)
+    (subst-in-il "~x" nil (il-subst (IString "~x~x ") (xenc delim) out)))
 
-      ;; General case
-      (il-finish (c0 delim env) (for-result il-enc-item))))
+  (define `(loop-result body-x)
+    ;; [PAT LIST DELIM ...BODY]  ->  [PAT LIST ...BODY]
+    (c0-for env sym tmpl body word-x body-x where))
+
+  (or (case (delim-value)
+        ((IString str)
+         (if (eq? str " ")
+             ;; Simple `foreach` is all we need
+             (loop-result identity))))
+
+      ;; General case: apply xenc to words and xdec to result
+      (xdec (loop-result xenc-each) delim-value)))
+
+
+;; Compile concat-for[each] expresions to to IFor.
+;;
+(define (c0-cfor env sym tmpl body word-x where)
+  (define `delim-value
+    (if (word 3 tmpl)
+        (c0 (nth 3 tmpl) env)
+        (IString " ")))
+  (c0-cfor2 env sym tmpl body word-x where delim-value))
+
+
+(define (M.concat-for env sym args)
+  (case (first args)
+    ;; New syntax
+    ((PList _ tmpl)
+     (c0-cfor env sym tmpl (rest args) il-promote
+              "(concat-for (PAT VEC ?DELIM) BODY)"))
+
+    ;; Old syntax
+    (_ (begin
+         (define `tmpl (wordlist 1 3 args))
+         (define `body (nth-rest 4 args))
+         (c0-cfor env sym tmpl body il-promote
+                  "(concat-for PAT VEC DELIM BODY)")))))
+
+
+;; (foreach PAT LIST BODY)
+;; (foreach (PAT LIST ?DELIM) BODY)
+
+(define (M.foreach env sym args)
+  (case (first args)
+    ;; New syntax
+    ((PList _ tmpl)
+     (c0-cfor env sym tmpl (rest args) identity
+              "(foreach (PAT LIST ?DELIM) BODY)"))
+
+    ;; Old syntax
+    (_ (c0-for-old env sym args identity identity "(foreach PAT LIST BODY)"))))
 
 
 ;;--------------------------------
@@ -463,7 +509,7 @@
      (err-expected "L" clause nil "(TEST BODY)" cond-where))))
 
 
-(define (ml.special-cond env sym args)
+(define (M.cond env sym args)
   (c0 (foldr cond-wrap nil args) env))
 
 
@@ -477,7 +523,7 @@
     ((EVar _ name) name)
     ((EBuiltin _ name _) name)))
 
-(define (ml.special-native-name env sym args)
+(define (M.native-name env sym args)
   (define `var (first args))
   (or (check-arity 1 args sym)
       (case var
@@ -491,13 +537,13 @@
 
 
 ;;--------------------------------
-;; (defmacro (NAME ARG...) BODY)
+;; (defmacro (NAME ARGS POS) BODY)
 ;;--------------------------------
 
 (define defmacro-where
-  "(defmacro (NAME ARG...) BODY)")
+  "(defmacro (NAME ARGS [POS]) BODY)")
 
-(define (ml.special-defmacro env sym args)
+(define (M.defmacro env sym args)
   (define `what (first args))
   (define `body (rest args))
   (case what
@@ -641,7 +687,7 @@
                      all-ctors)))))
 
 
-(define (ml.special-data env sym args)
+(define (M.data env sym args)
   (define `type (first args))
   (define `flags (get-flags args))
   (define `ctor-forms (skip-flags args))
@@ -888,7 +934,7 @@
     (case-fold (clauses-merge clauses)))))
 
 
-(define (ml.special-case env sym args)
+(define (M.case env sym args)
   (if args
       (c0-case (rest args) (current-depth env) (c0 (first args) env)
                nil sym env)

@@ -79,6 +79,15 @@
         (PError 0 "`word` accepts 3 arguments, not 2"))
 
 
+;; get-bindings  [de-structuring]
+
+(expect (pat-bindings `a (IString "1") ";")
+        { a: (EIL "p" ";" (IString 1)) })
+
+(expect (pat-bindings `{=a:b} (IString "1") ";")
+        { b: (EIL "p" ";" (ICall "^dv" [(IString 1)])),
+          a: (EIL "p" ";" (ICall "^dk" [(IString 1)])) })
+
 ;; base-env and resolve
 
 (expect (resolve (PSymbol 0 "d!0!") { "d!0!": (EVar "p" "D!0!")})

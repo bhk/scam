@@ -329,7 +329,7 @@
          (ICall "^k" args)
          (ICall name args)))
     (node
-     (il-subst "%" "!8" node))))
+     (subst-in-il "%" "!8" node))))
 
 
 (define (c0-D env n pairs)
@@ -429,17 +429,17 @@
 
 ;; Return a special form function native name given the symbol-name.
 ;;
-;; Special forms are implemented in functions that begin with "ml.special-".
+;; Special forms are implemented in functions that begin with "M.".
 ;;
-;; (ml.special-XXX ENV SYM ARGS) -> RESULT
+;; (M.XXX ENV SYM ARGS) -> RESULT
 ;;
 ;; SYM = a (PSymbol ...) record
 ;; ARGS = forms following SYM in `(SYM ...)` invocation of the special form
 ;; RESULT = a single IL node
 ;;
 (define `(special-form-func name)
-  (declare (ml.special-))
-  (.. (native-name ml.special-) name))
+  (declare (M.))
+  (.. (native-name M.) name))
 
 
 ;; Compile a vector of expressions independently, as in an argument list.
@@ -540,7 +540,7 @@
 
 
 ;; special form: (lambda ARGS BODY)
-(define (ml.special-lambda env sym args)
+(define (M.lambda env sym args)
   (define `arglist (first args))
   (define `body (rest args))
 
@@ -713,10 +713,10 @@
            (get-flags args) (skip-flags args)
            is-define nil))
 
-(define (ml.special-define env sym args)
+(define (M.define env sym args)
   (c0-def env sym args 1))
 
-(define (ml.special-declare env sym args)
+(define (M.declare env sym args)
   (c0-def env sym args nil))
 
 
@@ -739,7 +739,7 @@
 ;;--------------------------------
 
 
-(define (ml.special-begin env sym args)
+(define (M.begin env sym args)
   (c0-block args env))
 
 
