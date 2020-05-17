@@ -478,7 +478,7 @@
     ((EXMacro scope name)
      (if (eq? scope "x")
          (gen-error sym "cannot use xmacro in its own file")
-         (c0 (native-call name args) env)))
+         (c0 (native-call name args pos) env)))
 
     ((ERecord _ encodings tag)
      (c0-record env sym args encodings tag))
