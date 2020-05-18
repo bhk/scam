@@ -3,31 +3,34 @@ TODO
 Enhancements
 ----
 
- * Missing dependency:
-      A: defmacro M
-      B: require A & use M
-   Compilation of A depends on *object* of B, not just its exports.
+ * Unconditional destructuring in `let`, `lambda`, `define`
+    (let (([a b c] vec)) ...)         ==>  a = (first vec) ...
+    (let (({k1: a, k2: b} dict)) ...) ==>  d = (dict-get "k1" vec)
+    (let (({=a: b} dict-pair)) ...)   ==>  a = (dict-key pair)
 
- * Forbid shadowing of variables
-    - allow `(let ((x x)) ...)` or `&override` exceptions
-    - validate `define` against prior `declare`
+ * Conditional destructuring in `case`
+     (case X
+       ([a b c] ...)        : if (word 3 X)
+       ({k1: a, k2: b} ...) : if (dict-find "k1" X) and (dict-find "k2" X)
+
+ * Constants in conditional matches
+    (case EXPR
+      (CONST        EXPR)   ;; match constant value (nil, for example)
+      ((Ctor "K" y) EXPR)   ;; match constant member
+      (["A" a b]    EXPR)   ;; match constant element
+      ...)
 
  * Enhance call-site tracing to support lambdas and macros/builtins
      (? lambda ...)  -->  (native-call "^tv" "any" (any ...))
      or:  (native-call "^yt" "any" (lambda (args) (any args)) ...)
 
- * Deconstruct vectors in `let` or `define`
-    (let (([a b c] vec)) ...)       ;; always succeeds
+ * Forbid shadowing of variables
+    - allow `(let ((x x)) ...)` or `&override` exceptions
+    - validate `define` against prior `declare`
 
  * Record reflection.  What format-record needs:
     (data? value)
     (data-type value)    -> [ctor-name arity ctor dtor]
-
- * (case EXPR
-      (CONST        EXPR)   ;; match constant value (nil, for example)
-      ((Ctor "K" y) EXPR)   ;; match constant member
-      (["A" a b]    EXPR)   ;; match constant element
-      ...)
 
  * "spread" with "..." syntax.
 

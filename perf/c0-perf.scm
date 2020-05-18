@@ -28,8 +28,8 @@
 
 (define (main argv)
   (print "c0 benchmarks")
-  (let ((totals (foreach file argv
-                         (clock-c0 file))))
+  (let ((totals (foreach (file argv)
+                  (clock-c0 file))))
     (printf "total: %s  (%s)" (sum totals) (concat-vec totals " + ")))
 
   nil)

@@ -3,8 +3,8 @@
 
 ;; lex & unlex
 (expect 5 (words (lex ";; Test\n" [";" " " "\n" "(" ")"])))
-(for str [";; Test\n(ABC)"]
-     (expect str (un-lex (lex str [";" " " "\n" "(" ")"]))))
+(for (str [";; Test\n(ABC)"])
+  (expect str (un-lex (lex str [";" " " "\n" "(" ")"]))))
 
 ;; peg-empty
 (expect ((peg-empty "cap") "a b c" 1) (Yes 1 "cap"))

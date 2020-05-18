@@ -170,19 +170,17 @@
 ;; Tokenize the key within the binding (it usually occurs once).
 ;;
 (define `(tokenize-key v)
-  (foreach
-      w v
-      (define `N (word 1 (subst "!=" " " w)))
-      (define `V (word 2 (subst "!=" ". " w)))
-      (.. N "!=" (subst "%" "!p" (.. "`" N) "%" V))))
+  (foreach (w v)
+    (define `N (word 1 (subst "!=" " " w)))
+    (define `V (word 2 (subst "!=" ". " w)))
+    (.. N "!=" (subst "%" "!p" (.. "`" N) "%" V))))
 
 
 (define `(detokenize-key v)
-  (foreach
-      w v
-      (define `N (word 1 (subst "!=" " " w)))
-      (define `V (word 2 (subst "!=" ". " w)))
-      (.. N "!=" (subst "%" (.. "`" N) "!p" "%" V))))
+  (foreach (w v)
+    (define `N (word 1 (subst "!=" " " w)))
+    (define `V (word 2 (subst "!=" ". " w)))
+    (.. N "!=" (subst "%" (.. "`" N) "!p" "%" V))))
 
 
 ;; Prepare environment V for inclusion in a line of text in the MIN file.
@@ -213,9 +211,9 @@
 (define (env-parse lines all)
   (subst "!n" "\n"
          (env-expand
-          (foreach prefix (._. "Exports" (if all "Private"))
-                   (promote (filtersub [(.. "# " prefix ": %")]
-                                       "%" lines))))))
+          (foreach (prefix (._. "Exports" (if all "Private")))
+            (promote (filtersub [(.. "# " prefix ": %")]
+                                "%" lines))))))
 
 
 ;; Generate two comment lines that describe public and private bindings.
@@ -228,8 +226,8 @@
   ;; and replace the scope with "i".
   (define `(prefix-entries e)
     (filter "p:% x:%"
-            (foreach b (dict-compact e)
-                     (export-defn (dict-key b) (dict-value b)))))
+            (foreach ({=k: v} (dict-compact e))
+              (export-defn k v))))
 
   (let ((e (prefix-entries env)))
     (.. "# Exports: " (env-compress (filtersub "x:%" "%" e)) "\n"
@@ -343,8 +341,8 @@
     (addsuffix "/" (split ":" (native-var "SCAM_LIBPATH"))))
 
   (vec-or
-   (for dir (cons base-dir path-dirs)
-        (file-exists? (resolve-path dir name)))))
+   (for (dir (cons base-dir path-dirs))
+     (file-exists? (resolve-path dir name)))))
 
 
 ;; locate-source is safe to memoize because:
@@ -432,9 +430,9 @@
 ;; Return 1 if ENV contains an EXMacro record, nil otherwise.
 ;;
 (define `(has-xmacro? env)
-  (word 1 (foreach pair env
-                   (case (dict-value pair)
-                     ((EXMacro _ _) 1)))))
+  (word 1 (foreach ({=_: value} env)
+            (case value
+              ((EXMacro _ _) 1)))))
 
 
 ;; See get-module.
@@ -541,8 +539,8 @@
       ((ModError desc)
        (error desc))))
 
-  (foreach m (runtime-module-name source)
-           (get-module-env m)))
+  (foreach (m (runtime-module-name source))
+    (get-module-env m)))
 
 
 ;; Compile SCAM source to executable code.
@@ -561,7 +559,7 @@
 ;;
 (define (parse-and-gen text env file is-file)
   (if (not text)
-      { errors: [(PError 0 "File empty or does not exist")] }
+      {errors: [(PError 0 (.. "File is empty or does not exist"))]}
 
       (let-global ((*compile-subject*  (penc text))
                    (*compile-file*     file))
@@ -619,8 +617,8 @@
        (drop-if
         errors
         ;; Error case
-        (for e errors
-             (print (describe-error e text file)))
+        (for (e errors)
+          (print (describe-error e text file)))
 
         ;; Success
         (bail-if (memo-write-file outfile content)))))))
@@ -632,11 +630,11 @@
 (define (modid-deps-all id)
   (define `runtime-id
     ;; Use `foreach` as cheap `let`
-    (foreach m (runtime-module-name nil)
-             (if m
-                 [ (if (filter "%.scm" m)
-                       (modid-from-source m)
-                       (modid-from-builtin m)) ])))
+    (foreach (m (runtime-module-name nil))
+      (if m
+          [ (if (filter "%.scm" m)
+                (modid-from-source m)
+                (modid-from-builtin m)) ])))
 
   (descendants modid-deps (uniq (cons id runtime-id))))
 
@@ -657,15 +655,15 @@
         (filter "compile" mod-ids))
 
       (define `bundles
-        (concat-for id mod-ids ""
-                    (construct-bundle id keep-syms)))
+        (concat-for (id mod-ids "")
+          (construct-bundle id keep-syms)))
 
       (define `uid
         (hash-output "cat -- %V"
                      (filter-out [""]
-                                 (for id mod-ids
-                                      (if (modid-is-source? id)
-                                          (modid-object id))))))
+                                 (for (id mod-ids)
+                                   (if (modid-is-source? id)
+                                       (modid-object id))))))
 
       (construct-file main-id bundles uid)))
 

@@ -69,8 +69,8 @@
     (cond ((filter "A" code) (quote-sh-arg v))
           ((filter "F" code) (quote-sh-file v))
           ((filter "V" code) (subst " " [" "]
-                                    (foreach f (promote v)
-                                             (quote-sh-arg f))))
+                                    (foreach (f (promote v))
+                                      (quote-sh-arg f))))
           (else v)))
 
   (vsprintfx fmt args "s A F V" shell-fmt))
@@ -164,9 +164,9 @@
         "3>&2 2>&1 1>&3 " (label 3) " ) 2>&1"))
 
   (let ((lines (subst "!r" "\x0d" (ioshell label-cmd))))
-    (foreach fd [1 2 3]
-             (or (subst " " "\n" (filtersub (.. fd "%") "%" lines))
-                 "!."))))
+    (foreach (fd [1 2 3])
+      (or (subst " " "\n" (filtersub (.. fd "%") "%" lines))
+          "!."))))
 
 
 ;; Some (all?) Linuxes limit command line length to 2^18
@@ -405,17 +405,14 @@
 
   ;; Output is one line per file containing HASH and FILENAME seperated
   ;; by one space (md5 -r) or two spaces (all others).
-  (foreach
-      delim (if (filter "s%" (get-hash-cmd))
-                "!0!0"
-                "!0")
-      (foreach
-          dline hash-out
-          (foreach
-              hash (word 1 (subst "!0" " " dline))
-              (define `dfile
-                (patsubst (.. hash delim "%") "%" dline))
-              {(promote dfile): hash}))))
+  (foreach (delim (if (filter "s%" (get-hash-cmd))
+                      "!0!0"
+                      "!0"))
+    (foreach (dline hash-out)
+      (foreach (hash (word 1 (subst "!0" " " dline)))
+        (define `dfile
+          (patsubst (.. hash delim "%") "%" dline))
+        {(promote dfile): hash}))))
 
 
 ;; Return the hash of one file (see `hash-files`).

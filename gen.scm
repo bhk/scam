@@ -180,11 +180,11 @@
 
 
 (define (il-flatten nodes)
-  (append-for node nodes
-              (case node
-                ((IConcat children)
-                 (il-flatten children))
-                (else [node]))))
+  (append-for (node nodes)
+    (case node
+      ((IConcat children)
+       (il-flatten children))
+      (else [node]))))
 
 
 ;; Concatenate nodes in IL domain.
@@ -220,8 +220,8 @@
   &public
   (il-concat
    (intersperse (IString " ")
-                (for n nodes
-                     (il-demote n)))))
+                (for (n nodes)
+                  (il-demote n)))))
 
 
 ;; NODE is IL; A and B are actual strings!
@@ -340,8 +340,8 @@
   (gen-error (or form parent)
              (.. (if form "invalid" "missing") " " what " in " where
                  (if types (.. "; expected a "
-                               (concat-for ty types " or "
-                                           (form-description ty)))))
+                               (concat-for (ty types " or ")
+                                 (form-description ty)))))
              arg1 arg2))
 
 
@@ -403,13 +403,12 @@
          "and/0+ or/0+ native-call/1+ if/2/3"))
 
   (._.
-   (foreach
-       w builtins
-       (define `name (word 1 (subst "/" " " w)))
-       (define `argc  (or (rest (subst "/" " " w)) 1))
-       (define `b-name (subst "native-" nil name))
+   (foreach (w builtins)
+     (define `name (word 1 (subst "/" " " w)))
+     (define `argc  (or (rest (subst "/" " " w)) 1))
+     (define `b-name (subst "native-" nil name))
 
-       {=name: (EBuiltin "i" b-name argc)})
+     {=name: (EBuiltin "i" b-name argc)})
 
    {native-var: (EBuiltin "i" "=" 1)}))
 

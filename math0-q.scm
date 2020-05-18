@@ -22,8 +22,8 @@
 ;; Digit sizes to UV:  (UD 1 2) --> "01 011"
 ;;
 (define (UD ...values)
-  (for n values
-       (.. 0 (smash (repeat-words "1 1 1 1 1 1" n)))))
+  (for (n values)
+    (.. 0 (smash (repeat-words "1 1 1 1 1 1" n)))))
 
 
 ;;--------------------------------
@@ -32,9 +32,9 @@
 
 ;; u2d & d2u
 
-(foreach n "0 1 2 3 4 5 6 7 8 9"
-         (define `num (.. 0 n 01 n 12 n 23 n 34 n 45 n 56 n 67 n 78 n 9 n 9))
-         (expect num (u2d (d2u num))))
+(foreach (n "0 1 2 3 4 5 6 7 8 9")
+  (define `num (.. 0 n 01 n 12 n 23 n 34 n 45 n 56 n 67 n 78 n 9 n 9))
+  (expect num (u2d (d2u num))))
 
 (expect 761 (u2d (d2u 761)))
 
@@ -76,9 +76,9 @@
 
 ;; overflow should produce a mal-formed result
 (expect (.. 1 (U "00")) (u-carry (U "9A")))
-(for n [nil 9 99 999 9999 99999 999999]
-     (expect (U (.. "1" (subst 9 0 n) "0"))
-             (u-carry (U (.. "0" n "A")))))
+(for (n [nil 9 99 999 9999 99999 999999])
+  (expect (U (.. "1" (subst 9 0 n) "0"))
+          (u-carry (U (.. "0" n "A")))))
 (expect (U 10007) (u-carry (U "0998R")))
 (expect (U 1207) (u-carry (U "0AIR")))
 
@@ -147,12 +147,12 @@
 
 ;; cmp-reduce
 
-(for n "0 1 2 3 4 5 6 7 8 9"
-     (define `ones (smash (wordlist 1 n "1 1 1 1 1 1 1 1 1")))
-     (define `neg (subst 1 "~" ones))
-     (expect nil (cmp-reduce (.. ones 0 neg)))
-     (expect "~" (cmp-reduce (.. ones 0 neg "~")))
-     (expect "1" (cmp-reduce (.. 1 ones 0 neg))))
+(for (n "0 1 2 3 4 5 6 7 8 9")
+  (define `ones (smash (wordlist 1 n "1 1 1 1 1 1 1 1 1")))
+  (define `neg (subst 1 "~" ones))
+  (expect nil (cmp-reduce (.. ones 0 neg)))
+  (expect "~" (cmp-reduce (.. ones 0 neg "~")))
+  (expect "1" (cmp-reduce (.. 1 ones 0 neg))))
 
 ;; u-cmp & u-cmp-unsigned
 
@@ -317,11 +317,11 @@
 (define (uf-of-len len)
   (d2u (wordlist 1 len "1 2 3 4 5 6 7 8 9 1 2 3 4 5 6 7 8 9 1 2 4 5 6 7 8 9")))
 
-(foreach len-b "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19"
-         (foreach len-a [1 2 len-b (1+ (1+ len-b))]
-                  (uf-mul-check (uf-of-len len-a) (uf-of-len len-b))
-                  (uf-mul-check (uf-of-len len-a) (.. (uf-of-len len-b)
-                                                      " 0 0 0 0 0 0"))))
+(foreach (len-b "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19")
+  (foreach (len-a [1 2 len-b (1+ (1+ len-b))])
+    (uf-mul-check (uf-of-len len-a) (uf-of-len len-b))
+    (uf-mul-check (uf-of-len len-a) (.. (uf-of-len len-b)
+                                        " 0 0 0 0 0 0"))))
 
 ;;------------------------------------------------------------------------
 ;; Division

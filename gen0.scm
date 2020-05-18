@@ -27,9 +27,9 @@
 ;;
 (define (get-flags args)
   &public
-  (append-for form (wordlist 2 (scan-flags args 2 1) args)
-              (case form
-                ((PSymbol n name) name))))
+  (append-for (form (wordlist 2 (scan-flags args 2 1) args))
+    (case form
+      ((PSymbol n name) name))))
 
 
 ;; Return forms in FORMS following flags. Flags begin at the second element.
@@ -109,8 +109,8 @@
 
   ;; Translate a vector of nodes
   (define `(x* nodes)
-    (for n nodes
-         (recur n top ad)))
+    (for (n nodes)
+      (recur n top ad)))
 
   ;; IFor: track foreach nesting (at this lambda level)
   (define `(xfor name list body)
@@ -216,7 +216,7 @@
     ((PString n value) (IString value))
     ((PSymbol n value) (c0-S env form value (resolve form env)))
     ((PDict n pairs) (c0-D env n pairs))
-    ((PVec n forms) (il-vector (for f forms (c0 f env))))
+    ((PVec n forms) (il-vector (for (f forms) (c0 f env))))
     ((PQuote n subform) (IString subform))
     ((PQQuote n subform) (c0-qq env subform))
     (else (c0-error form))))
@@ -270,8 +270,8 @@
 
   (ILambda
    (if max-argc
-       (IBuiltin name (for n (wordlist 1 max-argc "1 2 3")
-                          (IArg n ".")))
+       (IBuiltin name (for (n (wordlist 1 max-argc "1 2 3"))
+                        (IArg n ".")))
        (ICall "^na" [ (IString name) (IVar "^av") ]))))
 
 
@@ -334,24 +334,21 @@
 
 (define (c0-D env n pairs)
   (define `il-pairs
-    (foreach
-     pair pairs
-     (define `key (dict-key pair))
-     (define `value (dict-value pair))
-     (define `key-node
-       (case key
-         ;; {symbol: ...} is treated as {"symbol": ...}
-         ;; Note: symbols cannot contain "%"
-         ((PSymbol n name)
-          (if (filter "=%" name)
-              (c0-dict-key (PSymbol n (patsubst "=%" "%" name)) env)
-              (IString (demote name))))
-         (else
-          (c0-dict-key key env))))
-     (define `value-node
-       (il-demote (c0 value env)))
+    (foreach ({=key: value} pairs)
+      (define `key-node
+        (case key
+          ;; {symbol: ...} is treated as {"symbol": ...}
+          ;; Note: symbols cannot contain "%"
+          ((PSymbol n name)
+           (if (filter "=%" name)
+               (c0-dict-key (PSymbol n (patsubst "=%" "%" name)) env)
+               (IString (demote name))))
+          (else
+           (c0-dict-key key env))))
+      (define `value-node
+        (il-demote (c0 value env)))
 
-     [(il-concat [ key-node (IString "!=") value-node ])]))
+      [(il-concat [ key-node (IString "!=") value-node ])]))
 
   (il-concat (intersperse (IString " ") il-pairs)))
 
@@ -369,17 +366,15 @@
    (IConcat
     (cons
      (IString tag)
-     (foreach n (indices encodings)
-              (begin
-                (define `enc (word n encodings))
-                (define `arg (nth n args))
-                (define `value (c0 arg env))
-                (define `field (if (filter "S" enc)
-                                   (il-demote value)
-                                   value))
+     (foreach (n (indices encodings))
+       (define `enc (word n encodings))
+       (define `arg (nth n args))
+       (define `value (c0 arg env))
+       (define `field (if (filter "S" enc)
+                          (il-demote value)
+                          value))
 
-                (append [(IString " ")] [field])))))))
-
+       (append [(IString " ")] [field]))))))
 
 ;;--------------------------------
 ;; c0-block
@@ -448,7 +443,7 @@
 ;;
 (define `(c0-vec forms env)
   &public
-  (for f forms (c0 f env)))
+  (for (f forms) (c0 f env)))
 
 
 ;; DEFN = (resolve (first subforms) env), which is either:
@@ -519,17 +514,17 @@
 ;;
 (define (arg-locals syms n depth)
   (if syms
-      (append (foreach name (symbol-name (first syms))
-                       (arg-defn name n depth))
+      (append (foreach (name (symbol-name (first syms)))
+                (arg-defn name n depth))
               (arg-locals (rest syms) (1+ n) depth))))
 
 
 (define (c0-lambda env args body)
   (define `(arg-env env syms)
-    (foreach ldepth (depth.l (.. "." (current-depth env)))
-             (append (depth-marker ldepth)
-                     (arg-locals syms 1 ldepth)
-                     env)))
+    (foreach (ldepth (depth.l (.. "." (current-depth env))))
+      (append (depth-marker ldepth)
+              (arg-locals syms 1 ldepth)
+              env)))
 
   (or (check-args args)
       (ILambda (c0-block body (arg-env env args)))))
@@ -546,10 +541,10 @@
 
   (case arglist
     ((PList pos lambda-args)
-     (or (vec-or (for a lambda-args
-                      (case a
-                        ((PSymbol n name) nil)
-                        (else (lambda-error "S" a sym "ARGNAME")))))
+     (or (vec-or (for (a lambda-args)
+                   (case a
+                     ((PSymbol n name) nil)
+                     (else (lambda-error "S" a sym "ARGNAME")))))
          (c0-lambda env lambda-args body)))
     (else (lambda-error "L" arglist sym "(ARGNAME...)"))))
 
@@ -574,7 +569,8 @@
 ;;
 (define (il-errors node)
   (define `(r* nodes)
-    (append-for node nodes (il-errors node)))
+    (append-for (node nodes)
+      (il-errors node)))
   (case node
     ((PError _ _) [node])
     ((IBuiltin _ args) (r* args))
@@ -634,7 +630,7 @@
 
 
 (define (c0-def-compound env n name args flags body is-define is-macro)
-  (define `arity (get-arity (for a args (symbol-name a))))
+  (define `arity (get-arity (for (a args) (symbol-name a))))
   (define `gname (gen-native-name name flags))
   (define `scope (if (filter "&public" flags) "x" "p"))
 
@@ -729,8 +725,8 @@
 ;;
 (define (c0-ctor env sym encs)
   (define `args
-    (for i (indices encs)
-         (PSymbol 0 (.. "a" i))))
+    (for (i (indices encs))
+      (PSymbol 0 (.. "a" i))))
   (c0-lambda env args [ (PList 0 (cons sym args)) ]))
 
 
@@ -773,8 +769,8 @@
   ;; IString nodes.
   (define `(replace from-str to-il)
     (il-concat (intersperse to-il
-                            (for a (split from-str template)
-                                 (IString a)))))
+                            (for (a (split from-str template))
+                              (IString a)))))
 
   (if (findstring QQS template)
       (replace QQS sub)
@@ -797,10 +793,10 @@
 
     ((PList n children)
      (define `il-children
-       (for c children
-            (case c
-              ((PSplice n expr) (c0 expr env))
-              (else (il-demote (c0-qq env c nest))))))
+       (for (c children)
+         (case c
+           ((PSplice n expr) (c0 expr env))
+           (else (il-demote (c0-qq env c nest))))))
 
      (c0-qq-form (PList n QQS)
                  (il-concat (intersperse (IString " ") il-children))))

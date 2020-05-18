@@ -48,17 +48,15 @@
 ;;
 (define (fp-norm x)
   (if (filter 0 (word 3 x))
-      (foreach
-          zeros (word 1 (subst "001" "0 01" (smash (fp.uf x))))
+      (foreach (zeros (word 1 (subst "001" "0 01" (smash (fp.uf x)))))
+        (define `zeros-tally
+          (subst 0 1 zeros))
 
-          (define `zeros-tally
-            (subst 0 1 zeros))
-
-          (define `norm-uf
-            (subst (.. 9 (spread zeros)) nil (._. "9" (fp.uf x))))
+        (define `norm-uf
+          (subst (.. 9 (spread zeros)) nil (._. "9" (fp.uf x))))
 
         (.. (u-sub (fp.xpo x) (u-add-ones "0" zeros-tally))
-                " " (fp.sign x) (or norm-uf " 0")))
+            " " (fp.sign x) (or norm-uf " 0")))
       x))
 
 
@@ -66,16 +64,14 @@
 
 
 (define (u2fp-exp u)
-  (foreach
-      s (lastword (subst "E" " E" u))
-      (foreach
-          en (subst "E" "" (subst "E+" "E" (subst "+-" "X" s)))
-          (if (non-digit? (patsubst "-%" "%" en))
-              nil
-              ;; If U ends with "E"+EN, then remove it cleanly.
-              ;; Otherwise, leave behind clearly invalid characters.
-              (u2fp (subst "E" "X" (u-rm-suffix s u))
-                    en)))))
+  (foreach (s (lastword (subst "E" " E" u)))
+    (foreach (en (subst "E" "" (subst "E+" "E" (subst "+-" "X" s))))
+      (if (non-digit? (patsubst "-%" "%" en))
+          nil
+          ;; If U ends with "E"+EN, then remove it cleanly.
+          ;; Otherwise, leave behind clearly invalid characters.
+          (u2fp (subst "E" "X" (u-rm-suffix s u))
+                en)))))
 
 
 ;; Validate U-encoded string and convert to normalized FP format.
@@ -106,13 +102,13 @@
    ;; Extract fractional part
    ((findstring "." u)
     ;; validate frac and leave any garbage in u
-    (foreach f (lastword (subst "." " " u))
-             (if (non-digit? f)
-                 nil
-                 (u2fp (subst "." "x" (u-rm-suffix (.. "." f) u))
-                       n-exp
-                       n-sign
-                       (spread f)))))
+    (foreach (f (lastword (subst "." " " u)))
+      (if (non-digit? f)
+          nil
+          (u2fp (subst "." "x" (u-rm-suffix (.. "." f) u))
+                n-exp
+                n-sign
+                (spread f)))))
    ;; else nil
    ))
 
@@ -136,25 +132,22 @@
     ;; for padding 0's on the left/right in the fixed point representation.
 
     (define `uv-result
-      (foreach
-          et (or (subst "10" "091" "10" "91" 0 nil exp)
-                 "-")
-
-          (if (findstring et "-11111 91911 91111111111")
-              ;; Fixed point  (-5 <= EXP <= 21)
-              (if (filter "-%" et)
-                  ;; -5...0 => EXP is number of zeros left of first digit
-                  (.. "0. " (subst 1 "0 " "-" nil et) frac)
-                  ;; 1..21 => EXP is number of digits left of decimal
-                  (subst "10" "1" "00" "0"
-                         (join frac (.. (subst 9 T9 1 " 0" et) "."))))
-              ;; "E" notation
-              (.. frac-msd ". " frac*10
-                      ;; Two spaces before "e" allow preceding redundant
-                      ;; zeros to be trimmed; "." after the exponent
-                      ;; preserves its trailing zeros.
-                      "  e" (subst "+-" "-" (.. "+" (u-1 exp))) "."))))
-
+      (foreach (et (or (subst "10" "091" "10" "91" 0 nil exp)
+                       "-"))
+        (if (findstring et "-11111 91911 91111111111")
+            ;; Fixed point  (-5 <= EXP <= 21)
+            (if (filter "-%" et)
+                ;; -5...0 => EXP is number of zeros left of first digit
+                (.. "0. " (subst 1 "0 " "-" nil et) frac)
+                ;; 1..21 => EXP is number of digits left of decimal
+                (subst "10" "1" "00" "0"
+                       (join frac (.. (subst 9 T9 1 " 0" et) "."))))
+            ;; "E" notation
+            (.. frac-msd ". " frac*10
+                ;; Two spaces before "e" allow preceding redundant
+                ;; zeros to be trimmed; "." after the exponent
+                ;; preserves its trailing zeros.
+                "  e" (subst "+-" "-" (.. "+" (u-1 exp))) "."))))
 
     (.. (findstring "-" sgn)
             ;; Remove trailing 0's after "." and trailing "." after digits
@@ -189,11 +182,11 @@
   (if prec
       (if (filter "+% -%" prec)
           ;; If PREC contains spaces, return nil.
-          (foreach w (d2u (findstring prec (word 1 prec)))
-                   (if (filter-out "+ -" (subst 0 nil 1 nil w))
-                       ;; Contains non-digit, non-sign characters
-                       nil
-                       (subst "-" nil "+" "-" w)))
+          (foreach (w (d2u (findstring prec (word 1 prec))))
+            (if (filter-out "+ -" (subst 0 nil 1 nil w))
+                ;; Contains non-digit, non-sign characters
+                nil
+                (subst "-" nil "+" "-" w)))
           (if (word-index? prec)
               (if (filter "0%" prec)
                   (prec-to-pod (patsubst "0%" "%" prec))
@@ -333,28 +326,25 @@
 
 (define (fp-mulp x y pod)
   (if (and pod x y)
-      (foreach
-          exp (u-add (fp.xpo x) (fp.xpo y))
-          (foreach
-              num-digits (if (pod-is-place? pod)
-                             (u2d (u-add exp pod))
-                             pod)
+      (foreach (exp (u-add (fp.xpo x) (fp.xpo y)))
+        (foreach (num-digits (if (pod-is-place? pod)
+                                 (u2d (u-add exp pod))
+                                 pod))
+          ;; get up to NUM_DIGITS+1 digits of A
+          (define `(in-digits a)
+            (.. (word 3 a)
+                (if (word 4 a)
+                    (.. " " (wordlist 1 num-digits (nth-rest 4 a))))))
 
-              ;; get up to NUM_DIGITS+1 digits of A
-              (define `(in-digits a)
-                (.. (word 3 a)
-                    (if (word 4 a)
-                        (.. " " (wordlist 1 num-digits (nth-rest 4 a))))))
-
-              (if (filter "-% 0" num-digits)
-                  ;; Rounding place is to the left of EXP => 0
-                  FP0
-                  ;; Non-zero num-digits
-                  (fp-mulp-x exp
-                             (sign-mul (fp.sign x) (fp.sign y))
-                             (uf-mul (in-digits x) (in-digits y))
-                             pod
-                             num-digits))))))
+          (if (filter "-% 0" num-digits)
+              ;; Rounding place is to the left of EXP => 0
+              FP0
+              ;; Non-zero num-digits
+              (fp-mulp-x exp
+                         (sign-mul (fp.sign x) (fp.sign y))
+                         (uf-mul (in-digits x) (in-digits y))
+                         pod
+                         num-digits))))))
 
 
 ;; Divide X by Y.
@@ -392,19 +382,18 @@
             DIV-TRUNCATE
             DIV-CEILING)))
 
-  (foreach
-      num-digits (if (pod-is-place? pod)
-                     (u2d (u-add q.exp pod))
-                     pod)
+  (foreach (num-digits (if (pod-is-place? pod)
+                           (u2d (u-add q.exp pod))
+                           pod))
 
-      (if (filter "-%" num-digits)
-          ;; Rounding place is to the left of Q.EXP => 0 unless mode=CEILING
-          (if (filter DIV-CEILING mode)
-              (make-fp (u-sub "01" pod) q.sgn "01")
-              FP0)
+    (if (filter "-%" num-digits)
+        ;; Rounding place is to the left of Q.EXP => 0 unless mode=CEILING
+        (if (filter DIV-CEILING mode)
+            (make-fp (u-sub "01" pod) q.sgn "01")
+            FP0)
 
-          ;; Non-negative num-digits
-          (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits mode)))))
+        ;; Non-negative num-digits
+        (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits mode)))))
 
 
 (define (fp-div x y pod round)
@@ -490,21 +479,20 @@
   (cond
    ((findstring 1 (word 3 x))
     ;; return NIL if POD is NIL
-    (foreach
-        num-digits (if (pod-is-place? pod)
-                       (u2d (u-add (fp.xpo x) pod))
-                       pod)
-        (if (filter "-%" num-digits)
-            ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
-            (if (filter DIV-CEILING udir)
-                (make-fp (u-sub "01" pod) (fp.sign x) "01")
+    (foreach (num-digits (if (pod-is-place? pod)
+                             (u2d (u-add (fp.xpo x) pod))
+                             pod))
+      (if (filter "-%" num-digits)
+          ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
+          (if (filter DIV-CEILING udir)
+              (make-fp (u-sub "01" pod) (fp.sign x) "01")
                 FP0)
 
-            (make-fp<<1 (fp.xpo x)
-                        (fp.sign x)
-                        (if (filter 0 num-digits)
-                            (rest (uf-round 1 udir (>>1 (fp.uf x))))
-                            (uf-round num-digits udir (fp.uf x)))))))
+          (make-fp<<1 (fp.xpo x)
+                      (fp.sign x)
+                      (if (filter 0 num-digits)
+                          (rest (uf-round 1 udir (>>1 (fp.uf x))))
+                          (uf-round num-digits udir (fp.uf x)))))))
 
    ((findstring 1 (fp.uf x))
     (fp-round (fp-norm x) pod dir))
@@ -601,16 +589,15 @@
 ;; N = U-encoded non-negative integer
 ;;
 (define (fp-pwr x n)
-  (foreach
-      n/2 (subst "11" 2 "10" "022222" n)
+  (foreach (n/2 (subst "11" 2 "10" "022222" n))
 
-      (if (findstring 2 n/2)      ;; n > 1?
-          (if (findstring 1 n/2)  ;; n is odd?
-              (fp-mul (fp-sq (fp-norm (fp-pwr x (subst 1 nil 2 1 n/2)))) x)
-              (fp-sq (fp-norm (fp-pwr x (subst 2 1 n/2)))))
-          (if (findstring 1 n)
-              x
-              FP1))))
+    (if (findstring 2 n/2)      ;; n > 1?
+        (if (findstring 1 n/2)  ;; n is odd?
+            (fp-mul (fp-sq (fp-norm (fp-pwr x (subst 1 nil 2 1 n/2)))) x)
+            (fp-sq (fp-norm (fp-pwr x (subst 2 1 n/2)))))
+        (if (findstring 1 n)
+            x
+            FP1))))
 
 
 ;;--------------------------------
@@ -651,9 +638,9 @@
 ;;
 (define (ltrimz u)
   (if (filter "00% 0n% 0-%" u)
-      (foreach lz (word 1 (subst "01" " " "0." " " "0n" "0 " "0-" "0 "
-                                 (patsubst "%0" "% 0" u)))
-               (subst (.. "<" lz) (subst 0 " " lz) (.. "<" u)))
+      (foreach (lz (word 1 (subst "01" " " "0." " " "0n" "0 " "0-" "0 "
+                                  (patsubst "%0" "% 0" u))))
+        (subst (.. "<" lz) (subst 0 " " lz) (.. "<" u)))
       u))
 
 
@@ -667,19 +654,18 @@
   (define `uf<<1 (nth-rest 4 x))
 
   (define `digits
-    (foreach
-        e (u2d (fp.xpo x))
+    (foreach (e (u2d (fp.xpo x)))
 
-        (define `frac
-          (if (n>0? e)
-              ;; Skip digits left of the decimal point
-              (nth-rest e uf<<1)
-              ;; Pad with -E zeros on left... but watch out for VERY big -E.
-              (if (u-lt? (abs (fp.xpo e)) pu)
-                  (._. (nzeros (abs e)) uf))))
+      (define `frac
+        (if (n>0? e)
+            ;; Skip digits left of the decimal point
+            (nth-rest e uf<<1)
+            ;; Pad with -E zeros on left... but watch out for VERY big -E.
+            (if (u-lt? (abs (fp.xpo e)) pu)
+                (._. (nzeros (abs e)) uf))))
 
-        (.. (if (n>0? e) (uf-fix uf e) 0)            ; left of decimal
-            (if pd (.. " . " (uf-fix frac pd))))))   ; right of decimal
+      (.. (if (n>0? e) (uf-fix uf e) 0)            ; left of decimal
+          (if pd (.. " . " (uf-fix frac pd))))))   ; right of decimal
 
   (define `text
     (if x

@@ -202,8 +202,8 @@
   (define `form
     (let ((body (rest args))
           (pairs (read-pairs (first args) sym let-where)))
-      (define `vars (for p pairs (nth 1 p)))
-      (define `values (for p pairs (nth 2 p)))
+      (define `vars (for (p pairs) (nth 1 p)))
+      (define `values (for (p pairs) (nth 2 p)))
       (or (case pairs ((PError _ _) pairs))
           (PList 0 (cons (PList 0 (append [(PSymbol 0 "lambda")]
                                           [(PList 0 vars)]
@@ -341,12 +341,10 @@
 (define `(c0-for env sym tmpl body word-x body-x where)
   (define `pattern (nth 1 tmpl))
 
-  (foreach
-      depth (.. (current-depth env) ";")
-
-      (define `bindings
-        (pat-bindings pattern (word-x (for-arg depth)) depth))
-      (c0-for2 env bindings depth sym tmpl body body-x where)))
+  (foreach (depth (.. (current-depth env) ";"))
+    (define `bindings
+      (pat-bindings pattern (word-x (for-arg depth)) depth))
+    (c0-for2 env bindings depth sym tmpl body body-x where)))
 
 
 ;; For old-style syntax
@@ -699,27 +697,26 @@
            (else
             (err-expected "S" type sym "NAME" data-where))))
         (scope (if (filter "&public" flags) "x" "p")))
-    (begin
-      ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
-      (define `tag-defs
-        (append-for ty types
-                    (case ty
-                      ((DataType tag name encodings argnames)
-                       { =tag: (append name encodings) }))))
+    ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
+    (define `tag-defs
+      (append-for (ty types)
+        (case ty
+          ((DataType tag name encodings argnames)
+           { =tag: (append name encodings) }))))
 
-      ;; Add record descriptions to the environment
-      (define `bindings
-        (append-for ty types
-                    (case ty
-                      ((DataType tag name encodings argnames)
-                       { =name: (ERecord scope encodings tag) }))))
+    ;; Add record descriptions to the environment
+    (define `bindings
+      (append-for (ty types)
+        (case ty
+          ((DataType tag name encodings argnames)
+           { =name: (ERecord scope encodings tag) }))))
 
-      ;; Add tag/pattern bindings to ^tags
-      (define `node
-        (ICall "^at" [(IString tag-defs)]))
+    ;; Add tag/pattern bindings to ^tags
+    (define `node
+      (ICall "^at" [(IString tag-defs)]))
 
-      (or (case types ((PError _ _) types))
-          (IEnv bindings node)))))
+    (or (case types ((PError _ _) types))
+        (IEnv bindings node))))
 
 
 ;;--------------------------------
@@ -750,10 +747,9 @@
 
 
 (define (member-bindings args encodings value-defn)
-  (foreach
-      n (indices encodings)
-      { (symbol-name (nth n args)):
-         (extract-member value-defn n (word n encodings))}))
+  (foreach (n (indices encodings))
+    { (symbol-name (nth n args)):
+      (extract-member value-defn n (word n encodings))}))
 
 
 ;; Compile a vector of (PATTERN BODY) cases
@@ -764,54 +760,53 @@
 ;;     (demote value); otherwise FILTER-VALUE is the actual value.
 ;;
 (define (c0-clauses cases filter-value value-defn is-word env)
-  (for
-   c cases    ; c = `(PATTERN BODY)
-   (case c
-     ((PList pos forms)
-      (begin
-        (define `pattern (first forms))
-        (define `body (rest forms))
+  (for (c cases)                        ; c = `(PATTERN BODY)
+    (case c
+      ((PList pos forms)
+       (begin
+         (define `pattern (first forms))
+         (define `body (rest forms))
 
-        (case pattern
-          ;; (SYM BODY)
-          ((PSymbol n var-name)
-           (c0-block body (append {=var-name: value-defn} env)))
+         (case pattern
+           ;; (SYM BODY)
+           ((PSymbol n var-name)
+            (c0-block body (append {=var-name: value-defn} env)))
 
-          ;; ((NAME ARGS...) BODY)
-          ((PList n syms)
-           (define `ctor-name (first syms))
-           (define `ctor-args (rest syms))
-           (or
-            (case (resolve ctor-name env)
-              ((ERecord _ encs tag)
-               (define `test-node
-                 (IBuiltin
-                  "filter"
-                  (if is-word
-                      [(IString [(.. tag " %")])
-                       (IConcat [filter-value (IString "!0")])]
-                      [(IString tag)
-                       (IBuiltin "word" [(IString 1) filter-value])])))
+           ;; ((NAME ARGS...) BODY)
+           ((PList n syms)
+            (define `ctor-name (first syms))
+            (define `ctor-args (rest syms))
+            (or
+             (case (resolve ctor-name env)
+               ((ERecord _ encs tag)
+                (define `test-node
+                  (IBuiltin
+                   "filter"
+                   (if is-word
+                       [(IString [(.. tag " %")])
+                        (IConcat [filter-value (IString "!0")])]
+                       [(IString tag)
+                        (IBuiltin "word" [(IString 1) filter-value])])))
 
-               (define `bindings
-                 (member-bindings ctor-args encs value-defn))
+                (define `bindings
+                  (member-bindings ctor-args encs value-defn))
 
-               (define `then-node
-                 (c0-block body (append bindings env)))
+                (define `then-node
+                  (c0-block body (append bindings env)))
 
-               (or (check-arity (words encs) ctor-args ctor-name)
-                   ;; Success
-                   (IBuiltin "if" [ test-node then-node ]))))
+                (or (check-arity (words encs) ctor-args ctor-name)
+                    ;; Success
+                    (IBuiltin "if" [ test-node then-node ]))))
 
-            (case ctor-name
-              ((PSymbol _ name)
-               (gen-error ctor-name "symbol `%s` is not a record constructor"
-                          name))
-              (else
-               (err-expected "S" ctor-name pattern "CTOR" case-where)))))
+             (case ctor-name
+               ((PSymbol _ name)
+                (gen-error ctor-name "symbol `%s` is not a record constructor"
+                           name))
+               (else
+                (err-expected "S" ctor-name pattern "CTOR" case-where)))))
 
-          (else (err-expected "L S" pattern c "PATTERN" case-where)))))
-     (else (err-expected "L" c nil "(PATTERN BODY)" case-where)))))
+           (else (err-expected "L S" pattern c "PATTERN" case-where)))))
+      (else (err-expected "L" c nil "(PATTERN BODY)" case-where)))))
 
 
 (define (case-append-arg node value)
@@ -896,12 +891,12 @@
 (define `(eval-only-once? node)
   (define `(call-once? name nodes)
     (or (filter-out "^u ^n wordlist" name)
-        (word 1 (foreach n nodes
-                         (case (promote n)
-                           ((IArg _ _) nil)
-                           ((IVar _) nil)
-                           ((IString _) nil)
-                           (else 1))))))
+        (word 1 (foreach (n nodes)
+                  (case (promote n)
+                    ((IArg _ _) nil)
+                    ((IVar _) nil)
+                    ((IString _) nil)
+                    (else 1))))))
   (case node
     ((IArg _ _) nil)
     ((IVar _) nil)

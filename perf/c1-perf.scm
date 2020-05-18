@@ -35,8 +35,8 @@
     (addprefix (dir (current-file)) "../mcore.scm"))
 
   (print "c1 benchmarks")
-  (let ((totals (foreach file (or argv default-sources)
-                         (clock-gen1 file))))
+  (let ((totals (foreach (file (or argv default-sources))
+                  (clock-gen1 file))))
     (printf "total: %s  (%s)" (sum totals) (concat-vec totals " + ")))
 
   nil)

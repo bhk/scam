@@ -102,8 +102,8 @@
 (define `(crumb-extract code)
   (let ((dc (subst "$.{" " $.{" "$.}" " " [code])))
     (append {code: (concat-vec (filter-out "$.{%" dc))}
-            (dict-collate (foreach w (filtersub "$.{%" "%" dc)
-                                   (crumb-decode (promote w)))))))
+            (dict-collate (foreach (w (filtersub "$.{%" "%" dc))
+                            (crumb-decode (promote w)))))))
 
 
 ;; Construct a node that expands NODE but returns nil.
@@ -157,8 +157,8 @@
 
 ;; c1-vec: compile multiple expressions
 (define (c1-vec args delim quotefn)
-  (concat-for a args delim
-              (native-call quotefn a)))
+  (concat-for (a args delim)
+    (native-call quotefn a)))
 
 
 (define (c1-Error node)
@@ -352,8 +352,8 @@
 ;; Compile a vector of expressions to file syntax.
 ;;
 (define `(c1-file* nodes)
-  (concat-for node nodes ""
-              (c1-file node)))
+  (concat-for (node nodes "")
+    (c1-file node)))
 
 
 ;; Compile a node to file syntax.

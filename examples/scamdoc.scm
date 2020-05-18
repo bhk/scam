@@ -216,21 +216,20 @@
 
   ;; Vector of function names linked to their descriptions.
   (define `(fmt-exports exports)
-    (concat-for
-        d exports " "
-        (.. "[" (md-funcname (first (dict-get "proto" d))) "]"
-            "(#"
-            (md-anchor (concat-vec (dict-get "proto" d)))
-            ")")))
+    (concat-for (d exports " ")
+      (.. "[" (md-funcname (first (dict-get "proto" d))) "]"
+          "(#"
+          (md-anchor (concat-vec (dict-get "proto" d)))
+          ")")))
 
   (define `(fmt-row name exports sections)
     (sprintf "| [%s](#%s) | %s |\n"
              name (mod-anchor sections) (fmt-exports exports)))
 
-  (concat-for m mod-defns nil
-              (case m
-                ((Mod name _ exports sections)
-                 (fmt-row name exports sections)))))
+  (concat-for (m mod-defns nil)
+    (case m
+      ((Mod name _ exports sections)
+       (fmt-row name exports sections)))))
 
 
 ;; Generate sections for each module including module comments and
@@ -244,18 +243,18 @@
   (define `(fmt-module name exports sections)
     ;; Module-level documentation
     (.. "\n\n"
-        (concat-for e sections nil
-                    (.. (dict-get "text" e) "\n"))
+        (concat-for (e sections nil)
+          (.. (dict-get "text" e) "\n"))
         "## Exports\n\n"
         ;; Exports and export documentation
-        (concat-for d exports "\n\n"
-                    (.. "##### `(" (fmt-proto (dict-get "proto" d)) ")`\n\n"
-                        (dict-get "doc" d)))))
+        (concat-for (d exports "\n\n")
+          (.. "##### `(" (fmt-proto (dict-get "proto" d)) ")`\n\n"
+              (dict-get "doc" d)))))
 
-   (concat-for m mod-defns nil
-               (case m
-                 ((Mod name _ exports sections)
-                  (fmt-module name exports sections)))))
+   (concat-for (m mod-defns nil)
+     (case m
+       ((Mod name _ exports sections)
+        (fmt-module name exports sections)))))
 
 
 ;; Construct a markdown document documenting one or more modules.
@@ -287,11 +286,11 @@
     (if (not sections)
         (perror "%s:1: ERROR: no module documentation" filename))
 
-    (for d exports
-         (if (not (dict-get "doc" d))
-             (perror "%s: ERROR: no documentation for (%s)"
-                     filename
-                     (concat-vec (dict-get "proto" d))))))))
+    (for (d exports)
+      (if (not (dict-get "doc" d))
+          (perror "%s: ERROR: no documentation for (%s)"
+                  filename
+                  (concat-vec (dict-get "proto" d))))))))
 
 
 (define template
@@ -309,20 +308,20 @@
 (define (generate infiles outfile)
 
   (define `mod-defns
-    (for file infiles
-         (let ((defns (extract-defns (read-file file))))
-           (Mod (basename (notdir file))
-                file
-                (sort (filter "export%" defns))
-                (filter "text%" defns)))))
+    (for (file infiles)
+      (let ((defns (extract-defns (read-file file))))
+        (Mod (basename (notdir file))
+             file
+             (sort (filter "export%" defns))
+             (filter "text%" defns)))))
 
   (let ((md (sort mod-defns)))
     (or
      ;; Report errors; exit if an error was detected.
      (vec-or
-      (for e md
-           (case e
-             ((Mod n f e s) (warn-undef n f e s)))))
+      (for (e md)
+        (case e
+          ((Mod n f e s) (warn-undef n f e s)))))
 
      (let ((err (write-file outfile (fmt-doc template md))))
        (if err

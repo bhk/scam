@@ -109,16 +109,15 @@
         (il-vector [(IString "a") (IString "b")]))
 
 ;; macro argument w/ lambda capture
-(foreach
-    to-depth ". .. ..."
-    (expect (translate (IArg 1 ".") ".." to-depth [(IArg 2 ".")] 9)
-            (IArg 2 "."))
-    (expect (translate (ILambda (IArg 1 "..")) ".." to-depth [(IArg 2 ".")] 9)
-            (ILambda (IArg 2 "..")))
-    ;; macro argument w/ interior arg
-    (expect (translate (ILambda (IArg 1 "..")) ".." to-depth
-                       [(ILambda (IArg 1 "."))] 9)
-            (ILambda (ILambda (IArg 1 ".")))))
+(foreach (to-depth ". .. ...")
+  (expect (translate (IArg 1 ".") ".." to-depth [(IArg 2 ".")] 9)
+          (IArg 2 "."))
+  (expect (translate (ILambda (IArg 1 "..")) ".." to-depth [(IArg 2 ".")] 9)
+          (ILambda (IArg 2 "..")))
+  ;; macro argument w/ interior arg
+  (expect (translate (ILambda (IArg 1 "..")) ".." to-depth
+                     [(ILambda (IArg 1 "."))] 9)
+          (ILambda (ILambda (IArg 1 ".")))))
 
 ;; symbol macro with auto vars & old-ad
 (expect (translate (IFor ";;" (IArg ";" ".") (IArg ";;" "."))
@@ -395,9 +394,9 @@
         "`{V}")
 (expect (c0-ser "(lambda (a b) a b)")
         "`(IBlock {1},{2})")
-(foreach SCAM_DEBUG "-" ;; avoid upvalue warning
-         (expect (c0-ser "(lambda (a) (lambda (b) a b))")
-                 "``(IBlock {.1},{1})"))
+(foreach (SCAM_DEBUG "-") ;; avoid upvalue warning
+  (expect (c0-ser "(lambda (a) (lambda (b) a b))")
+          "``(IBlock {.1},{1})"))
 
 
 ;; PList = (record ...)

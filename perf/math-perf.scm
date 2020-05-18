@@ -76,11 +76,11 @@
 (require "../math1.scm" &private)
 
 (define (time-fp name nums)
-  (define Us (foreach x nums (d2u x)))
-  (clk-show (.. "u2fp " name) (foreach u Us (u2fp u)))
-  (define FPs (for u Us (u2fp u)))
-  (clk-show (.. "fp2u " name) (for x FPs (fp2u x)))
-  (clk-show (.. "d2d " name) (for x nums (u2d (fp2u (u2fp (d2u x))))))
+  (define Us (foreach (x nums) (d2u x)))
+  (clk-show (.. "u2fp " name) (foreach (u Us) (u2fp u)))
+  (define FPs (for (u Us) (u2fp u)))
+  (clk-show (.. "fp2u " name) (for (x FPs) (fp2u x)))
+  (clk-show (.. "d2d " name) (for (x nums) (u2d (fp2u (u2fp (d2u x))))))
   nil)
 
 

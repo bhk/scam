@@ -55,8 +55,8 @@
 ;;
 (define (gen-lex tokens)
   &public
-  (gen-polysub (for t tokens [t])
-               (for t tokens (.. " " [t] " "))
+  (gen-polysub (for (t tokens) [t])
+               (for (t tokens) (.. " " [t] " "))
                (lambda (text) [text])))
 
 

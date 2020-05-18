@@ -72,11 +72,10 @@
 ;; Print descriptions of all environment entries.
 ;;
 (define (describe-env env all)
-  (foreach w (reverse (dict-compact env))
-           (let ((name (dict-key w))
-                 (desc (describe-binding (dict-key w) (dict-value w) all)))
-             (if desc
-                 (printf "  %s : %s" name desc)))))
+  (foreach ({=name: value} (reverse (dict-compact env)))
+    (let ((desc (describe-binding name value all)))
+      (if desc
+          (printf "  %s : %s" name desc)))))
 
 
 ;; REPL state
@@ -107,8 +106,8 @@
 
      ;; error?
      (errors
-      (for err errors
-           (print (describe-error err text "[stdin]")))
+      (for (err errors)
+        (print (describe-error err text "[stdin]")))
       (REPL "" prompts build-dir is-quiet 1 env))
 
      ;; execute & display result
@@ -172,7 +171,8 @@
 (define `initial-env
   (begin
     (define `env-text
-      (.. (foreach lib LIBS (.. "(require \"" lib "\")"))
+      (.. (foreach (lib LIBS)
+            (.. "(require \"" lib "\")"))
           "(declare *1 &native)"
           "(declare *2 &native)"))
     (let ((o (compile-text env-text "[stdin]" nil nil nil)))

@@ -82,9 +82,9 @@
 (expect (FP "+1") nil)
 (expect (FP -12.34e-3) "-01 - 01 011 0111 01111")
 ;; disallow extraneous spaces
-(for n [1 -1 "1.2" "1e3" "1.2e3" "1.2e+3" "1.2e-3" ]
-     (expect nil (FP (.. " " n)))
-     (expect nil (FP (.. n " "))))
+(for (n [1 -1 "1.2" "1e3" "1.2e3" "1.2e+3" "1.2e-3" ])
+  (expect nil (FP (.. " " n)))
+  (expect nil (FP (.. n " "))))
 
 ;; fp2d & fp2u
 

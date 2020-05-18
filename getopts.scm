@@ -36,8 +36,8 @@
 
    ;; stop processing
    ((filter "--" opt)
-    (append out (foreach w (rest argv)
-                         { *: (promote w) })))
+    (append out (foreach (w (rest argv))
+                  { *: (promote w) })))
 
    ;; option
    ((filter opts0 opt)

@@ -30,21 +30,21 @@
 ;;
 (define (utf8-encode codes)
   &public
-  (foreach c codes
-           (cond
-            ((< c 128) c)
-            ((< c 2048) (utf-seq c [128 192]))
-            ((< c 65536) (utf-seq c [128 128 224]))
-            ((< c 1114112) (utf-seq c [128 128 128 240]))
-            (else "?"))))
+  (foreach (c codes)
+    (cond
+     ((< c 128) c)
+     ((< c 2048) (utf-seq c [128 192]))
+     ((< c 65536) (utf-seq c [128 128 224]))
+     ((< c 1114112) (utf-seq c [128 128 128 240]))
+     (else "?"))))
 
 
 ;; byte-to-bin: A quick decimal-to-binary for numbers 1...255
 
 (define (plex2 strings)
-  (foreach a strings
-           (foreach b strings
-                    (.. a b))))
+  (foreach (a strings)
+    (foreach (b strings)
+      (.. a b))))
 
 (define byte-to-bin-a (rest (plex2 (plex2 "00 01 10 11"))))
 
@@ -86,15 +86,15 @@
 
   ;; Get ASCII values in decimal; high bytes in binary.
   (define `nums
-    (foreach dec bytes
-             (or (filter "1%" (.. (byte-to-bin dec) "b"))
-                 dec)))
+    (foreach (dec bytes)
+      (or (filter "1%" (.. (byte-to-bin dec) "b"))
+          dec)))
 
   ;; Combine continuing bytes with preceding high bytes.
   (define `grouped (subst "b 10" "" nums))
 
   ;; convert remaining binary to decimal
-  (foreach num grouped
-           (if (filter "%b" num)
-               (bin-to-dec (chop-1s (subst "b" "" num)))
-               num)))
+  (foreach (num grouped)
+    (if (filter "%b" num)
+        (bin-to-dec (chop-1s (subst "b" "" num)))
+        num)))

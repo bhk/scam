@@ -21,7 +21,7 @@
         ((PString  n v) (PString pos v))
         ((PSymbol  n v) (PSymbol pos v))
         ((PError   n v) (PError pos v))
-        ((PList    n subs) (PList pos (for f subs (recur f))))
+        ((PList    n subs) (PList pos (for (f subs) (recur f))))
         ((PQuote   n sub) (PQuote pos (recur sub)))
         ((PQQuote  n sub) (PQQuote pos (recur sub)))
         ((PUnquote n sub) (PUnquote pos (recur sub)))
@@ -41,7 +41,7 @@
 (define (il-ser node)
   &public
   (define `(call-ser pre args)
-    (.. "(" pre " " (concat-for a args "," (il-ser a)) ")"))
+    (.. "(" pre " " (concat-for (a args ",") (il-ser a)) ")"))
 
   (case node
     ((IString value) value)
@@ -52,7 +52,7 @@
     ((IArg ndx ups) (.. "{" (if ups (patsubst ".%" "%" ups) "!")
                         (patsubst "=%" "%" ndx) "}"))
     ((IFuncall nodes) (call-ser "^Y" nodes))
-    ((IConcat values) (concat-for v values "" (il-ser v)))
+    ((IConcat values) (concat-for (v values "") (il-ser v)))
     ((IBlock nodes) (if (word 2 nodes)
                        (call-ser "IBlock" nodes)
                        (il-ser (first nodes))))
@@ -87,8 +87,8 @@
 ;;
 (define (pN text)
   &public
-  (for f (parse-text text)
-       (form-set-indices 0 f)))
+  (for (f (parse-text text))
+    (form-set-indices 0 f)))
 
 ;; Parse *one* form from text.
 ;;

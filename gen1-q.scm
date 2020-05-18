@@ -82,10 +82,10 @@
 
 ;; many args
 (expect "$(call fn,1,2,3,4,5,6,7,8,9 a b!0)"
-        (c1 (ICall "fn" (for s "1 2 3 4 5 6 7 8 9 a b!0" (IString s)))))
+        (c1 (ICall "fn" (for (s "1 2 3 4 5 6 7 8 9 a b!0") (IString s)))))
 
 (expect "$(call fn,1,2,3,4,5,6,7,8,9 $] $(call ^d,$v))"
-        (c1 (ICall "fn" (conj (for s "1 2 3 4 5 6 7 8 9 )" (IString s))
+        (c1 (ICall "fn" (conj (for (s "1 2 3 4 5 6 7 8 9 )") (IString s))
                              (IVar "v")))))
 
 ;; i-8
@@ -126,7 +126,7 @@
 
 (expect "$(call ^Y,a,b,c,d,e,f,g,h,i j,$1)"
         (c1 (IFuncall (cons (IArg 1 ".")
-                           (for s "a b c d e f g h i j"
+                           (for (s "a b c d e f g h i j")
                                 (IString s))))))
 
 ;; Block: a sequence of expressions

@@ -65,17 +65,17 @@ Options:
     (or
 
      (when errors
-       (for e errors
-            (case e
-              ((MissingArg opt) (perror "`%s` is missing an argument" opt))
-              ((BadOption arg) (perror "`%s` is not a recognized option" arg))
-              (else (perror "[internal error]"))))
+       (for (e errors)
+         (case e
+           ((MissingArg opt) (perror "`%s` is missing an argument" opt))
+           ((BadOption arg) (perror "`%s` is not a recognized option" arg))
+           (else (perror "[internal error]"))))
        (perror "try `scam -h` for help"))
 
      (vec-or
-      (for expr (opt "e")
-           (if (repl-ep expr build-dir is-quiet)
-               1)))
+      (for (expr (opt "e"))
+        (if (repl-ep expr build-dir is-quiet)
+            1)))
 
      (when (or (opt "h")
                (opt "help"))

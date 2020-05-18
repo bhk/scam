@@ -255,6 +255,6 @@
               (if (filter "%\\" [line])
                   "$ ")))
 
-        (concat-for w (split "\n" str) "\n"
-                    (protect-line w)))
+        (concat-for (w (split "\n" str) "\n")
+          (protect-line w)))
       str))

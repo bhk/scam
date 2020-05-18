@@ -67,24 +67,23 @@
 (declare var &native)
 (declare (fun) &native)
 
-(for str [ " # $a "
-           "))})({"
-           "$a $$a $$$a $$$$a"
-           "\\ "
-           " \n "
-           "\n"
-           " \\"
-           "\\"
-           ]
+(for (str [ " # $a "
+            "))})({"
+            "$a $$a $$$a $$$$a"
+            "\\ "
+            " \n "
+            "\n"
+            " \\"
+            "\\"
+           ])
 
-     (begin
-       (set-native "var" str)
-       (expect "simple" (native-flavor "var"))
-       (expect str var)
+  (set-native "var" str)
+  (expect "simple" (native-flavor "var"))
+  (expect str var)
 
-       (set-native-fn "fun" str)
-       (expect "recursive" (native-flavor "fun"))
-       (expect str (unmunge fun))))
+  (set-native-fn "fun" str)
+  (expect "recursive" (native-flavor "fun"))
+  (expect str (unmunge fun)))
 
 
 ;; GNU Make 3.82 strips spaces from start and end of a variable name
@@ -94,23 +93,23 @@
 ;; the native names of SCAM symbols.  Of note, characters "#+=?\\" are a
 ;; concern for make.
 
-(for name [ "a#b" "a+" "a?" "a=" "a?=" "a\\#" "override" "include" "'a" "\"a" "`a"]
-     (set-native name name)
-     (expect (.. "simple:" name) (.. (native-flavor name) ":" name))
-     (expect name (native-value name))
+(for (name [ "a#b" "a+" "a?" "a=" "a?=" "a\\#" "override" "include" "'a" "\"a" "`a"])
+  (set-native name name)
+  (expect (.. "simple:" name) (.. (native-flavor name) ":" name))
+  (expect name (native-value name))
 
-     (set-native-fn name name)
-     (expect (.. "recursive:" name) (.. (native-flavor name) ":" name))
-     (expect name (native-value name)))
+  (set-native-fn name name)
+  (expect (.. "recursive:" name) (.. (native-flavor name) ":" name))
+  (expect name (native-value name)))
 
 ;; append-for
 
-(expect "3 1 2 3" (append-for n "3 4 1" (nth-rest n "1 2 3")))
+(expect "3 1 2 3" (append-for (n "3 4 1") (nth-rest n "1 2 3")))
 
 ;; concat-for
 
-(expect " |\t| " (concat-for a [" " "\t" " "] "|" a))
-(expect "(1) (2) (3)" (concat-for a "1 2 3" " " (.. "(" a ")")))
+(expect " |\t| " (concat-for (a [" " "\t" " "] "|") a))
+(expect "(1) (2) (3)" (concat-for (a "1 2 3" " ") (.. "(" a ")")))
 
 ;; Flies in the ointment (function values)
 
@@ -174,12 +173,12 @@
 ;;--------------------------------
 
 (begin
-  (define `(id x) (foreach v 1 x))
-  (expect [1 2 3] (foreach v [1 2 3] (id v))))
+  (define `(id x) (foreach (v 1) x))
+  (expect [1 2 3] (foreach (v [1 2 3]) (id v))))
 
 ;; automatic var captures
 
-(expect ((foreach N 3 (lambda () N)))
+(expect ((foreach (N 3) (lambda () N)))
         3)
 
 ;; rest arg captures

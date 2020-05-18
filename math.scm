@@ -405,7 +405,7 @@
       ;; vectors...
       (if (findstring "!0" (subst "!1" "!0" nums))
           (sum-vec (promote nums)))
-      (fp2d (fp-sum (for u (d2u nums) (u2fp u))))))
+      (fp2d (fp-sum (for (u (d2u nums)) (u2fp u))))))
 
 
 ;; Sum all numbers in ARGS.  Each argument may be a number, or a vector of
@@ -459,9 +459,9 @@
     (filter-out "%x" (.. x "x")))
 
   (define `(x10 lst)
-    (foreach n lst
-             (.. n "0 " n "1 " n "2 " n "3 " n "4 "
-                 n "5 "n "6 " n "7 " n "8 " n "9 ")))
+    (foreach (n lst)
+      (.. n "0 " n "1 " n "2 " n "3 " n "4 "
+          n "5 "n "6 " n "7 " n "8 " n "9 ")))
 
   (if (u-lt? max min)
       nil
@@ -521,18 +521,17 @@
 ;;
 (define (format-fixed x ?min-width ?decimals)
   &public
-  (foreach
-      p (if decimals (d2u decimals) "?")
+  (foreach (p (if decimals (d2u decimals) "?"))
 
-      (if (non-naturals? (if decimals p)
-                         (if min-width (d2u min-width)))
-          (if (and decimals (non-digit? p))
-              "[invalid_DECIMALS]"
-              "[invalid_MIN-WIDTH]")
-          (fp-fix (fp-round (d2fp x) (if decimals p 0) DIV-NEAREST)
-                  min-width
-                  decimals
-                  p))))
+    (if (non-naturals? (if decimals p)
+                       (if min-width (d2u min-width)))
+        (if (and decimals (non-digit? p))
+            "[invalid_DECIMALS]"
+            "[invalid_MIN-WIDTH]")
+        (fp-fix (fp-round (d2fp x) (if decimals p 0) DIV-NEAREST)
+                min-width
+                decimals
+                p))))
 
 
 ;;--------------------------------
@@ -609,10 +608,10 @@
 (define (num-sort v)
   &public
   (define `prefixed-v
-    (foreach elem v
-             (.. (num-lex (word 1 (subst "!" " " elem)))
-                 "!#"
-                 elem)))
+    (foreach (elem v)
+      (.. (num-lex (word 1 (subst "!" " " elem)))
+          "!#"
+          elem)))
   (filter-out "%!#" (subst "!#" "!# " (sort prefixed-v))))
 
 
@@ -669,17 +668,15 @@
 ;;
 (define (get-pi ?p)
   &public
-  (or (foreach
-          pod (prec-to-pod p)
+  (or (foreach (pod (prec-to-pod p))
+        (define `count
+          (if (pod-is-place? pod)
+              (u-zeros (u-add-ones pod 1))
+              (nzeros pod)))
 
-          (define `count
-            (if (pod-is-place? pod)
-                (u-zeros (u-add-ones pod 1))
-                (nzeros pod)))
-
-          (or (patsubst "31%" "3.1%"
-                        (u2d (smash (uf-trim-tz (const-pi count)))))
-              0))
+        (or (patsubst "31%" "3.1%"
+                      (u2d (smash (uf-trim-tz (const-pi count)))))
+            0))
 
       "NaN:P"))
 
@@ -694,10 +691,9 @@
 ;;
 (define (atan2 y x ?p)
   &public
-  (or (foreach
-          pod (prec-to-pod p)
-          (fp2d (fp-round (fp-atan2 (d2fp y) (d2fp x) pod)
-                          (or result-pod pod) DIV-NEAREST)))
+  (or (foreach (pod (prec-to-pod p))
+        (fp2d (fp-round (fp-atan2 (d2fp y) (d2fp x) pod)
+                        (or result-pod pod) DIV-NEAREST)))
       "NaN:P"))
 
 

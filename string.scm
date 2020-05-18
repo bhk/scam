@@ -218,8 +218,8 @@
 ;;
 (define (bytes-from-bytecodes codes)
   &public
-  (foreach n (patsubst 0 999 codes)
-           (or (word n all-bytes) [""])))
+  (foreach (n (patsubst 0 999 codes))
+    (or (word n all-bytes) [""])))
 
 
 ;; Construct a string from a vector of byte values.  This reverses

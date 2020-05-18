@@ -27,9 +27,9 @@
 
 ;; non-integers?
 
-(foreach n ["-" "--1" " -1" "- 1" "0-1" "1-0" "?"]
-         (assert (non-integers? n "01"))
-         (assert (non-integers? "01" n)))
+(foreach (n ["-" "--1" " -1" "- 1" "0-1" "1-0" "?"])
+  (assert (non-integers? n "01"))
+  (assert (non-integers? "01" n)))
 (assert (not (non-integers? "-0" "01")))
 
 ;; non-naturals?
@@ -261,15 +261,14 @@
 
 ;; `binop` functions
 
-(foreach
-    op [+ - * // mod]
-    (expect NaN (+ NaN 1))
-    (expect NaN (+ nil 1))
-    (expect NaN (+ 1 nil))
-    (expect NaN (+ "-" 1))
-    (expect NaN (+ "--" 1))
-    (expect NaN (+ "- 0" 1))
-    (expect NaN (+ "1 " 1)))
+(foreach (op [+ - * // mod])
+  (expect NaN (+ NaN 1))
+  (expect NaN (+ nil 1))
+  (expect NaN (+ 1 nil))
+  (expect NaN (+ "-" 1))
+  (expect NaN (+ "--" 1))
+  (expect NaN (+ "- 0" 1))
+  (expect NaN (+ "1 " 1)))
 
 
 (expect 5 (+ 3 2))
@@ -345,15 +344,15 @@
 
 (define decimals
   (append naturals
-          (foreach s ".1 .9999 .0000001 .0000555531"
-                   (addsuffix s naturals))))
+          (foreach (s ".1 .9999 .0000001 .0000555531")
+            (addsuffix s naturals))))
 
 (define num-args
   (append 0
           decimals
           (addprefix "-" decimals)
-          (foreach e "e1 e-3 e5 e20 e-100"
-                   (addsuffix e [2 5.000001 9.9999999]))))
+          (foreach (e "e1 e-3 e5 e20 e-100")
+            (addsuffix e [2 5.000001 9.9999999]))))
 
 
 (define (num-eq? x y)
@@ -364,26 +363,24 @@
 ;; Validate arithmetic identities
 ;;
 (define (stress-test x-args y-args)
-  (foreach x x-args
-           (expect 1 (<= (floor x) x))
-           (expect 1 (>= (ceil x) x)))
+  (foreach (x x-args)
+    (expect 1 (<= (floor x) x))
+    (expect 1 (>= (ceil x) x)))
 
-  (foreach
-      x x-args
-      (print "x = " x)
-      (foreach
-          y (filter-out "0 -0" y-args)
+  (foreach (x x-args)
+    (print "x = " x)
+    (foreach (y (filter-out "0 -0" y-args))
 
-          (define `(check-eq a b)
-            (if (not (num-eq? a b))
-                (begin
-                  (print "x = " x ", y = " y)
-                  (expect a b))))
+      (define `(check-eq a b)
+        (if (not (num-eq? a b))
+            (begin
+              (print "x = " x ", y = " y)
+              (expect a b))))
 
-          (check-eq x (+ (- x y) y))
-          (check-eq x (+ (* y (// x y)) (mod x y)))
-          (check-eq x (/ (* x y) y 16))
-          nil)))
+      (check-eq x (+ (- x y) y))
+      (check-eq x (+ (* y (// x y)) (mod x y)))
+      (check-eq x (/ (* x y) y 16))
+      nil)))
 
 
 (define (main argv)
@@ -541,9 +538,9 @@
 ;; Validate handling of different ranges of sinc & cos
 (define ~π 3.14159)
 (define (validate-sincos fn pattern)
-  (for n (range 1 (words pattern))
-     (define `θ (* ~π (/ (- n 1) 6)))
-     (expect (fn θ -2) (nth n pattern))))
+  (for (n (range 1 (words pattern)))
+    (define `θ (* ~π (/ (- n 1) 6)))
+    (expect (fn θ -2) (nth n pattern))))
 
 (validate-sincos
  sin [0 0.5 0.87 1 0.87 0.5 0 -0.5 -0.87 -1 -0.87 -0.5 0 0.5 0.87 1])

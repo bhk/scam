@@ -336,12 +336,12 @@
 ;; Get vector of all filenames hashed in IO ops in the DB
 ;;
 (define `files-in-db
-  (foreach pair *memo-db*
-           (case (dict-value pair)
-             ((IO tag op args)
-              (if (filter op (._. (native-name do-hash-file)
-                                  (native-name do-write-blob)))
-                  (word 1 args))))))
+  (foreach ({=_: value} *memo-db*)
+    (case value
+      ((IO tag op args)
+       (if (filter op (._. (native-name do-hash-file)
+                           (native-name do-write-blob)))
+           (word 1 args))))))
 
 
 (define (do-hash-file filename)

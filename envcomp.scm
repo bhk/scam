@@ -122,9 +122,9 @@
                 (compile-subs chars-used escape-codes)
                 (compile-subs subs subchars))))
     (printf "(define (cmp s) (subst %s s))"
-            (concat-for a args " " (format-string a)))
+            (concat-for (a args " ") (format-string a)))
     (printf "(define (exp s) (subst %s s))"
-            (concat-for a (reverse args) " " (format-string a)))))
+            (concat-for (a (reverse args) " ") (format-string a)))))
 
 
 ;; Compress TARGET with SUBS and then show relative value of each of
@@ -132,8 +132,8 @@
 ;;
 (define (rank-after target subs candidates)
   (let ((ex (reduce-string target subs subchars))
-        (cx (append-for c candidates
-                        {(reduce-string c subs subchars): c}))
+        (cx (append-for (c candidates)
+              {(reduce-string c subs subchars): c}))
         (size0 (string-len target)))
     (rank-freqs (dict-keys cx) ex cx)
     (compare-size "size" size0 (string-len ex))

@@ -110,11 +110,11 @@
 ;; (not "01") will result.
 ;;
 (define `(u-carry u)
-  (foreach w (subst "01111111111" "10" u)
-           ;; Now digits in W are <= 18.
-           (if (findstring "01111111111" w)
-               (u-carry-fn w U9 0)
-               w)))
+  (foreach (w (subst "01111111111" "10" u))
+    ;; Now digits in W are <= 18.
+    (if (findstring "01111111111" w)
+        (u-carry-fn w U9 0)
+        w)))
 
 
 ;; Return a well-formed UF value (with digit values 0...9) that has the same
@@ -208,16 +208,16 @@
   (define `(u-norm-x u)
     (patsubst "-0" 0 (smash (patsubst "0%" 0 (subst "01" "0 1" u)))))
 
-  (foreach u (smash (neg-rreduce x))
-           (if (findstring "~" u)
-               (u-norm-x
-                (borrow-macro
-                 (if (filter "~%" (subst 0 nil u))
-                     ;; negative
-                     (.. "- " (neg-swap u))
-                     ;; positive
-                     u)))
-               (u-norm-uns u))))
+  (foreach (u (smash (neg-rreduce x)))
+    (if (findstring "~" u)
+        (u-norm-x
+         (borrow-macro
+          (if (filter "~%" (subst 0 nil u))
+              ;; negative
+              (.. "- " (neg-swap u))
+              ;; positive
+              u)))
+        (u-norm-uns u))))
 
 
 ;; A and B must be non-negative, unsigned integers.
@@ -337,16 +337,16 @@
            "00" 0
            u))
 
-  (foreach u (smash (sub-reduce (join a (neg-digits b))))
-           (if (findstring "~" u)
-               (u2uv
-                (borrow-macro
-                 (if (filter "~%" (subst 0 nil u))
-                     ;; negative
-                     (.. prefix- (neg-swap u))
-                     ;; positive
-                     (.. prefix+ u))))
-               (.. prefix+ (u2uv u)))))
+  (foreach (u (smash (sub-reduce (join a (neg-digits b)))))
+    (if (findstring "~" u)
+        (u2uv
+         (borrow-macro
+          (if (filter "~%" (subst 0 nil u))
+              ;; negative
+              (.. prefix- (neg-swap u))
+              ;; positive
+              (.. prefix+ u))))
+        (.. prefix+ (u2uv u)))))
 
 
 ;; Propagate carry until all digits are proper (9 or less).
@@ -722,13 +722,12 @@
    ;; calculate next digit
    (else
     ;; 'foreach' is a fast 'let' when the value is exactly one word
-    (foreach
-        d (guess-digit a bhi)
-        ;; initial digit of 10*A-D*B is 0 if no overflow, 9 otherwise
-        (define `next-za
-          (uf-sub a (uf*digit b d)))
-        (div-loop next-za b bhi num-digits mode
-                  (.. digits (if digits " ") d))))))
+    (foreach (d (guess-digit a bhi))
+      ;; initial digit of 10*A-D*B is 0 if no overflow, 9 otherwise
+      (define `next-za
+        (uf-sub a (uf*digit b d)))
+      (div-loop next-za b bhi num-digits mode
+                (.. digits (if digits " ") d))))))
 
 
 ;; uf-div-long: handle arbitrarily long divisors
@@ -1084,13 +1083,12 @@
     (define `_a (spread ua))  ;; has initial extraneous space
     (define `_b (spread ub))  ;; has initial extraneous space
     (define `uresult
-      (foreach
-          ;; num-digits = max(0, (len A) - (len B) + 1)
-          num-digits (words (nth-rest (words _b) _a))
-          (if (filter 0 num-digits)
-              ;; B is longer than A
-              (if (filter DIV-REMAINDER mode)
-                  ua
-                  0)
-              (uf-div (.. "0" _a) (native-strip _b) num-digits mode))))
+      ;; num-digits = max(0, (len A) - (len B) + 1)
+      (foreach (num-digits (words (nth-rest (words _b) _a)))
+        (if (filter 0 num-digits)
+            ;; B is longer than A
+            (if (filter DIV-REMAINDER mode)
+                ua
+                0)
+            (uf-div (.. "0" _a) (native-strip _b) num-digits mode))))
     (u-norm-uns (smash uresult)))))

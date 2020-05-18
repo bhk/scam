@@ -113,8 +113,8 @@ $(if ,, ) :=
   (define `call-expr
     (.. "$(call " name
         (subst " ," ","
-               (foreach n (wordlist 1 (words argv) "1 2 3 4 5 6 7 8")
-                        (.. ",$(call ^n," n ",$2)")))
+               (foreach (n (wordlist 1 (words argv) "1 2 3 4 5 6 7 8"))
+                 (.. ",$(call ^n," n ",$2)")))
         (if (word 9 argv)
             (.. ",$(wordlist 9,99999999,$2)"))
         ")"))
@@ -355,8 +355,8 @@ $(if ,, ) :=
       (trace-digits (subst "/1111111111" "1/" k))
 
       ;; convert to ASCII
-      (let& ((digits (foreach d (.. "/" (subst "/" " /" k))
-                              (words (subst "1" " 1" "/" "" d)))))
+      (let& ((digits (foreach (d (.. "/" (subst "/" " /" k)))
+                       (words (subst "1" " 1" "/" "" d)))))
         ;; Convert leading 0's to :'s, but leave 0 if in 1's place.
         (subst " " "" ":0000" ":::::" ":00" ":::" ":0" "::" ":!" "0!" "!:" ""
                (.. "!:" digits "!:")))))
@@ -429,17 +429,16 @@ $(if ,, ) :=
 ;;
 (define (trace-match pat variables)
   ;; Default the namespace
-  (foreach
-      ns-pat (if (filter "'% `% \"%" pat)
-                 (patsubst "\"%" "%" pat)
-                 (.. "'" pat))
+  (foreach (ns-pat (if (filter "'% `% \"%" pat)
+                       (patsubst "\"%" "%" pat)
+                       (.. "'" pat)))
 
-      (define `avoid-pats
-        (foreach p "^% `% `trace% `esc-% `set-native-fn `filtersub"
-                 (if (filter-out p ns-pat)
-                     p)))
+    (define `avoid-pats
+      (foreach (p "^% `% `trace% `esc-% `set-native-fn `filtersub")
+        (if (filter-out p ns-pat)
+            p)))
 
-      (filter-out avoid-pats (filter ns-pat variables))))
+    (filter-out avoid-pats (filter ns-pat variables))))
 
 
 ;; List of NAME:ID pairs.
@@ -507,9 +506,9 @@ $(if ,, ) :=
                        (filtersub "%:-" "%" specs))
                   .VARIABLES))
 
-    (foreach v (trace-match pat eligible-vars)
-             (if (filter "filerec%" (.. (native-origin v) (native-flavor v)))
-                 v)))
+    (foreach (v (trace-match pat eligible-vars))
+      (if (filter "filerec%" (.. (native-origin v) (native-flavor v)))
+          v)))
 
   ;; Apply instrumentation to a function
   ;;
@@ -529,13 +528,11 @@ $(if ,, ) :=
     (set-native-fn name body))
 
   (define `instrumented-names
-    (foreach
-        spec (filter-out "%:v %:-" specs)
-        (foreach
-            name (match-funcs (spec-name spec))
-            (foreach id (trace-id name 1)
-                     (instrument (spec-mode spec) name id)
-                     name))))
+    (foreach (spec (filter-out "%:v %:-" specs))
+      (foreach (name (match-funcs (spec-name spec)))
+        (foreach (id (trace-id name 1))
+          (instrument (spec-mode spec) name id)
+          name))))
 
   (subst "\"'" "'" "\"`" "`"
          (addprefix "\"" (filter "%" instrumented-names))))
@@ -550,15 +547,15 @@ $(if ,, ) :=
 ;;
 (define (trace-dump names)
   (define `lines
-    (foreach name names
-             (foreach k (native-value (count-var (trace-id name)))
-                      (if (findstring 1 k)
-                          (begin
-                            (set-native (count-var (trace-id name)) zero)
-                            [(._. (subst ":" " " (trace-digits k)) name)])))))
+    (foreach (name names)
+      (foreach (k (native-value (count-var (trace-id name))))
+        (if (findstring 1 k)
+            (begin
+              (set-native (count-var (trace-id name)) zero)
+              [(._. (subst ":" " " (trace-digits k)) name)])))))
 
-  (for line (sort lines)
-           (trace-info line)))
+  (for (line (sort lines))
+    (trace-info line)))
 
 
 ;; Remove instrumentation from functions listed in NAMES, or functions
@@ -570,11 +567,11 @@ $(if ,, ) :=
     (filter names known-names))
 
   (define `untraced-names
-    (foreach name matched-names
-             (foreach id (trace-id name)
-                      ;; restore original definition
-                      (set-native-fn name (native-value (save-var id)))
-                      name)))
+    (foreach (name matched-names)
+      (foreach (id (trace-id name))
+        ;; restore original definition
+        (set-native-fn name (native-value (save-var id)))
+        name)))
 
   (trace-dump untraced-names)
   retval)
@@ -623,8 +620,8 @@ $(if ,, ) :=
 
 
 (define (run-at-exits)
-  (for fn *atexits*
-       (fn))
+  (for (fn *atexits*)
+    (fn))
   nil)
 
 

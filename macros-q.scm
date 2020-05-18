@@ -400,15 +400,15 @@
 
 (define `(check-merge pvs)
   (define `clauses
-    (for pv pvs
-         (if (word 2 pv)
-             (IBuiltin "if" [ (IBuiltin "filter" [(IString (first pv))
-                                                  (IArg 1 ".")])
-                              (IString (nth 2 pv)) ])
-             (IString pv))))
+    (for (pv pvs)
+      (if (word 2 pv)
+          (IBuiltin "if" [ (IBuiltin "filter" [(IString (first pv))
+                                               (IArg 1 ".")])
+                           (IString (nth 2 pv)) ])
+          (IString pv))))
 
-  (for il (clauses-merge clauses)
-       (il-ser il)))
+  (for (il (clauses-merge clauses))
+    (il-ser il)))
 
 
 (expect (check-merge [ "a X"])

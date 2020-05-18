@@ -72,17 +72,17 @@
 ;;
 (define (select-vec fn list)
   &public
-  (filter-out "!" (foreach dx list
-                           (if (fn (promote dx)) dx "!"))))
+  (filter-out "!" (foreach (dx list)
+                    (if (fn (promote dx)) dx "!"))))
 
 ;; Return a list of words in LIST for which `(FN <word>)` is non-nil.
 ;;
 (define (select-words fn list)
   &public
   ;; wrap in outer 'foreach' to eliminate redundant spaces
-  (foreach a
-           (foreach x list (if (fn x) x))
-           a))
+  (foreach (a (foreach (x list)
+                (if (fn x) x)))
+    a))
 
 ;; Return the first non-nil member of VEC.
 ;;
@@ -153,8 +153,8 @@
 
   (if list
       (if z
-          (foreach p [10 9 8 7 6 5 4 3 2 1] (rev-by-10s (group p) z/10))
-          (foreach p [10 9 8 7 6 5 4 3 2 1] (word p list)))))
+          (foreach (p [10 9 8 7 6 5 4 3 2 1]) (rev-by-10s (group p) z/10))
+          (foreach (p [10 9 8 7 6 5 4 3 2 1]) (word p list)))))
 
 
 ;; Detect length of list to the nearest order of magnitude.
@@ -319,8 +319,8 @@
 ;;
 (define (dict-set key value dict)
   &public
-  (foreach p (.. (subst "%" "!8" [key]) "!=")
-           (.. p [value] " " (filter-out (.. p "%") dict))))
+  (foreach (p (.. (subst "%" "!8" [key]) "!="))
+    (.. p [value] " " (filter-out (.. p "%") dict))))
 
 ;; Remove pairs in a dictionary that are preceded by pairs that share the
 ;; same KEY.
@@ -351,9 +351,9 @@
 ;;
 (define (dict-collate pairs)
   &public
-  (foreach p (word 1 (subst "!=" "!= " (word 1 pairs)))
-           (append (.. p [(filtersub (.. p "%") "%" pairs)])
-                   (dict-collate (filter-out (.. p "%") pairs)))))
+  (foreach (p (word 1 (subst "!=" "!= " (word 1 pairs))))
+    (append (.. p [(filtersub (.. p "%") "%" pairs)])
+            (dict-collate (filter-out (.. p "%") pairs)))))
 
 
 (declare (format value))
@@ -382,20 +382,15 @@
 ;;
 (define (format-dict h)
   (define `pairs
-    (foreach e h
-             (begin
-               (define `key (dict-key e))
-               (define `key-fmt (or (symbol? key)
-                                    (format key)))
-               (define `value (dict-value e))
-               [(.. key-fmt ": " (format value))])))
+    (foreach ({=key: value} h)
+      [(.. (or (symbol? key) (format key)) ": " (format value))]))
 
   (define `(dict-elem w ndx)
     (nth ndx (subst "!=" " " w)))
 
   (if (findstring "!=" h)
-      (if (eq? h (foreach w h
-                          {(dict-elem w 1): (dict-elem w 2)} ))
+      (if (eq? h (foreach (w h)
+                   {(dict-elem w 1): (dict-elem w 2)} ))
           (.. "{" (concat-vec pairs ", ") "}"))))
 
 
@@ -465,8 +460,8 @@
 (define (format str)
   &public
   (define `(format-vector str)
-    (if (eq? str (foreach w str (demote (promote w))))
-        (.. "[" (foreach w str (format (promote w))) "]")))
+    (if (eq? str (foreach (w str) (demote (promote w))))
+        (.. "[" (foreach (w str) (format (promote w))) "]")))
 
   (or (format-custom str *format-funcs*)
       (if (findstring "!" str)
@@ -511,13 +506,13 @@
     (subst "!%" "%" (vsp-split codes (subst "%" "!%" "!%!%" "%" [fmt]))))
 
   (concat-vec
-   (foreach w (join fields (addprefix "!:%" values))
-            ;; W = "TEXT!:C!:%VALUE" or "TEXT!:C" or "TEXT!:%VALUE" or "TEXT"
-            ;; TEXT may be "".
-            (.. (word 1 (subst "!:" " !. " w))
-                (if (findstring "!:" (subst "!:%" nil w))
-                    (fmt-fn (word 2 (subst "!:" " " (.. "x" w)))
-                            (word 2 (subst "!:%" " " w))))))))
+   (foreach (w (join fields (addprefix "!:%" values)))
+     ;; W = "TEXT!:C!:%VALUE" or "TEXT!:C" or "TEXT!:%VALUE" or "TEXT"
+     ;; TEXT may be "".
+     (.. (word 1 (subst "!:" " !. " w))
+         (if (findstring "!:" (subst "!:%" nil w))
+             (fmt-fn (word 2 (subst "!:" " " (.. "x" w)))
+                     (word 2 (subst "!:%" " " w))))))))
 
 
 ;; Expand FMT, replacing escape sequences with values from vector VALUES,
@@ -713,8 +708,8 @@
 (define (sort-by key-func values)
   &public
   (define `keyed
-    (foreach w values
-             (.. (demote (key-func (promote w))) "!!" w)))
+    (foreach (w values)
+      (.. (demote (key-func (promote w))) "!!" w)))
 
   (filter-out "%!!" (subst "!!" "!! " (sort keyed))))
 

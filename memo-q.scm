@@ -11,7 +11,8 @@
 
 (define (showdb)
   (print "memo-db:")
-  (foreach pair *memo-db* (printf "  %q" pair))
+  (foreach (pair *memo-db*)
+    (printf "  %q" pair))
   nil)
 
 

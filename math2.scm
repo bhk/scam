@@ -39,9 +39,7 @@
   ;; If C[N+1] ∈ {5,6,7,8,9}, return C[1..N] + 1
   ;; Otherwise, return C[1..N].
 
-  (foreach
-      r (smash (wsub c count))
-
+  (foreach (r (smash (wsub c count)))
       (define `not50*
         (subst ".011111" nil "0" nil (.. "." r)))
       (define `not49*
@@ -88,7 +86,8 @@
 ;; Multipy A x B using up to N digits of each, returning up to N digits.
 ;;
 (define `(uf-mulp a b n-expr)
-  (foreach n n-expr (uf-mulp-raw a b n)))
+  (foreach (n n-expr)
+    (uf-mulp-raw a b n)))
 
 
 ;; Add or subtract.
@@ -251,10 +250,10 @@
   (set m-powers-r
        (patsubst
         "00%" "0%"
-        (foreach u cached-m-powers
-                 (smash (uf-div um-top/10
-                                (wordlist 1 6 (spread u))
-                                4 DIV-NEAREST)))))
+        (foreach (u cached-m-powers)
+          (smash (uf-div um-top/10
+                         (wordlist 1 6 (spread u))
+                         4 DIV-NEAREST)))))
   m-powers-r)
 
 
@@ -272,13 +271,13 @@
       ;; done
       (words valuesgt)
       ;; pick midpoint
-      (foreach
-          ndx (words (subst "0 0" 0 (patsubst "%" 0 (._. values valuesgt))))
-          (if (uf-lt? ux (spread (word ndx values)))
-              ;; midpoint > ux
-              (psrch ux values (wordlist 1 ndx values))
-              ;; midpoint <= ux
-              (psrch ux (wordlist 2 ndx (.. "0 " values)) valuesgt)))))
+      (foreach (ndx (words (subst "0 0" 0 (patsubst "%" 0 (._. values
+                                                               valuesgt)))))
+        (if (uf-lt? ux (spread (word ndx values)))
+            ;; midpoint > ux
+            (psrch ux values (wordlist 1 ndx values))
+            ;; midpoint <= ux
+            (psrch ux (wordlist 2 ndx (.. "0 " values)) valuesgt)))))
 
 
 (define (uf-log-fr2 a p digit-zeros)
@@ -311,19 +310,17 @@
 ;; We then compute log(a) using uf-log-pos/neg.  log(M) is cached.
 ;;
 (define (uf-log-fr x digit-zeros)
-  (foreach
-      ;; DP = P where UX*Mᵖ is closest to 1.
-      dp (psrch x cached-m-powers-r nil)
+  ;; DP = P where UX*Mᵖ is closest to 1.
+  (foreach (dp (psrch x cached-m-powers-r nil))
+    (define `Mᵖ
+      (u2uv (word dp cached-m-powers)))
 
-      (define `Mᵖ
-        (u2uv (word dp cached-m-powers)))
+    (define `a
+      (if (filter 0 dp)
+          (>>1 x)
+          (uf-mulp Mᵖ x (words (._. "0 0" digit-zeros)))))
 
-      (define `a
-        (if (filter 0 dp)
-            (>>1 x)
-            (uf-mulp Mᵖ x (words (._. "0 0" digit-zeros)))))
-
-      (uf-log-fr2 a (u2uv (d2u dp)) digit-zeros)))
+    (uf-log-fr2 a (u2uv (d2u dp)) digit-zeros)))
 
 
 (define (log-10 count)
@@ -468,21 +465,19 @@
         (._. "0 " (nzeros pod))))
 
   (define `result
-    (foreach
-        x-size (log-size-x (fp.xpo fx) (fp.uf fx))
-        (foreach
-            b-size (log-size-x (fp.xpo fb) (fp.uf fb))
-            (let ((count-pre (div-count x-size b-size))
-                  (fx fx)
-                  (fb fb)
-                  (pod pod))
+    (foreach (x-size (log-size-x (fp.xpo fx) (fp.uf fx)))
+      (foreach (b-size (log-size-x (fp.xpo fb) (fp.uf fb)))
+        (let ((count-pre (div-count x-size b-size))
+              (fx fx)
+              (fb fb)
+              (pod pod))
 
-              (fp-div (fp-log2 (fp.xpo fx) (fp.uf fx)
-                               (adjust-digit-count count-pre x-size))
-                      (fp-log2 (fp.xpo fb) (fp.uf fb)
-                               (adjust-digit-count count-pre b-size))
-                      (or result-pod pod)
-                      1)))))
+          (fp-div (fp-log2 (fp.xpo fx) (fp.uf fx)
+                           (adjust-digit-count count-pre x-size))
+                  (fp-log2 (fp.xpo fb) (fp.uf fb)
+                           (adjust-digit-count count-pre b-size))
+                  (or result-pod pod)
+                  1)))))
 
   (and pod
        (fp>0? fx)
@@ -506,9 +501,7 @@
 
   ;; The remaining terms...
   (define `remainder
-    (foreach
-        n (words count)
-
+    (foreach (n (words count))
         (if (filter-out 0 n)
             ;; uf-add accepts extra spaces and/or nil
             (uf-exp-loop (uf-divu (uf-mulp-raw x t n) k+1 n)
@@ -539,23 +532,20 @@
 
   ;; assume LM < 0.1    ==>  EXPM <= 1.1
   ;; assume U/100 < LM  ==>  EXPM > ~1.024
-  (foreach
-      wp (uv-to-word (uf-div (>>1 u) (rest lm) 3 DIV-TRUNCATE))
+  (foreach (wp (uv-to-word (uf-div (>>1 u) (rest lm) 3 DIV-TRUNCATE)))
       (define `p (subst ":" " " wp))
 
       (if (findstring 1 wp)
-          (foreach
-              wm (word (u2d (subst ":" nil wp)) cached-m-powers)
+          (foreach (wm (word (u2d (subst ":" nil wp)) cached-m-powers))
+            (define `mᵖ/10
+              (wordlist 1 (words (>>1 count)) (spread wm)))
+            (define `a
+              (uf-sub u (nth-rest (words p) (uf-mul lm p))))
+            (define `a-count
+              (.. count (if (filter "0111%" wm) " 0")))
 
-              (define `mᵖ/10
-                (wordlist 1 (words (>>1 count)) (spread wm)))
-              (define `a
-                (uf-sub u (nth-rest (words p) (uf-mul lm p))))
-              (define `a-count
-                (.. count (if (filter "0111%" wm) " 0")))
-
-              (uf-mul (uf-exp-small (rest a) a-count)
-                      mᵖ/10))
+            (uf-mul (uf-exp-small (rest a) a-count)
+                    mᵖ/10))
 
           ;; U*10 < LM
           (>>1 (uf-exp-small (rest u) count)))))
@@ -643,20 +633,19 @@
 ;;
 (define (fp2uf fx e)
   (or
-   (foreach
-       pos (if (filter 0 e)
-                 (fp.xpo fx)
-                 (u-sub (fp.xpo fx) e))
+   (foreach (pos (if (filter 0 e)
+                     (fp.xpo fx)
+                     (u-sub (fp.xpo fx) e)))
 
-       (if (n>0? pos)
-           ;; Avoid using POS as word index if it's too large
-           ;; (word 1 LIST) == (word 4294967297 LIST) in some `make` builds
-           (if (word 9 (spread pos))
-               nil
-               (nth-rest (u2d pos) (nth-rest 4 fx)))
-           (native-strip (._. (if (findstring 1 pos)
-                                  (u-zeros (abs pos)))
-                              (fp.uf fx)))))
+     (if (n>0? pos)
+         ;; Avoid using POS as word index if it's too large
+         ;; (word 1 LIST) == (word 4294967297 LIST) in some `make` builds
+         (if (word 9 (spread pos))
+             nil
+             (nth-rest (u2d pos) (nth-rest 4 fx)))
+         (native-strip (._. (if (findstring 1 pos)
+                                (u-zeros (abs pos)))
+                            (fp.uf fx)))))
    0))
 
 
@@ -775,8 +764,8 @@
        fy
        pod
        (if x-and-y-non-zero?
-           (foreach ud u-digits
-                    (compute ud))
+           (foreach (ud u-digits)
+             (compute ud))
            (if (fp!=0? fx)
                FP1
                (if (fp!=0? fy)
@@ -831,9 +820,8 @@
 ;;
 (define (uf-sin-loop k x m count)
   (define `x*m/k/k+1
-    (foreach
-        n (words (._. "0" count))
-        (uf-divu (uf-divu (uf-mul x m) k n) (u-add-ones k 1) n)))
+    (foreach (n (words (._. "0" count)))
+      (uf-divu (uf-divu (uf-mul x m) k n) (u-add-ones k 1) n)))
 
   (if (findstring 1 (word 1 x))
       (uf-sub x (uf-sin-loop (u-add-ones k 11) x*m/k/k+1 m count))

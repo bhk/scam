@@ -99,7 +99,7 @@
   &public
   (case form
     ((PList n forms)
-     (.. "(" (concat-for f forms " " (format-form f)) ")"))
+     (.. "(" (concat-for (f forms) (format-form f)) ")"))
     ((PString n value) (format value))
     ((PSymbol n value) value)
     ((PQuote n frm) (.. "'" (format-form frm)))
@@ -136,11 +136,12 @@
 ;; nothing except `\` or `"` will have any special handling.
 ;;
 (define `(compact-comments str)
-  (subst " " "" "!s" " " "; ;" ";;"
-         (foreach c (subst " " "!s" "\"" " \"" "\\" " \\" "\n" " \n" ";" " ;" str)
-                  (if (filter ";%" c)
-                      (.. (subst "!s" "" c) "!s")
-                      c))))
+  (subst
+   " " "" "!s" " " "; ;" ";;"
+   (foreach (c (subst " " "!s" "\"" " \"" "\\" " \\" "\n" " \n" ";" " ;" str))
+     (if (filter ";%" c)
+         (.. (subst "!s" "" c) "!s")
+         c))))
 
 ;; When compressing, don't replace the initial "!0" character in a word
 ;; (which identifies its type to the parser).
@@ -185,15 +186,15 @@
 ;; Check three words at a time to improve speed.
 ;;
 (define (find-word str pos pat)
-  (foreach p (1+ (1+ pos))
-           (if (filter pat (or (wordlist pos p str) pat))
-               (if (filter pat (or (word pos str) pat))
-                   pos
-                   (foreach q (1+ pos)
-                            (if (filter pat (or (word q str) pat))
-                                q
-                                p)))
-               (find-word str (1+ p) pat))))
+  (foreach (p (1+ (1+ pos)))
+    (if (filter pat (or (wordlist pos p str) pat))
+        (if (filter pat (or (word pos str) pat))
+            pos
+            (foreach (q (1+ pos))
+              (if (filter pat (or (word q str) pat))
+                  q
+                  p)))
+        (find-word str (1+ p) pat))))
 
 
 ;; Construct a parse function result.
@@ -249,22 +250,22 @@
 (define (parse-string-bs subj start pos wstr w)
   ;; If w matches "\xHH" this will contain one word: `H\nH`
   (define `match-hh
-    (foreach d1 hex-digits
-             (if (filter (.. "\\x" d1 "%") w)
-                 (foreach d2 hex-digits
-                          (if (filter (.. "\\x" d1 d2 "%") w)
-                              (.. d1 "\n" d2))))))
+    (foreach (d1 hex-digits)
+      (if (filter (.. "\\x" d1 "%") w)
+          (foreach (d2 hex-digits)
+            (if (filter (.. "\\x" d1 d2 "%") w)
+                (.. d1 "\n" d2))))))
 
   (or (if (filter "\\n% \\t%" w)
           (parse-string subj start (1+ pos)
                         (.. wstr (subst "\\n" "\n" "\\t" ["\t"] w))))
 
       ;; Match `\xHH`
-      (foreach hh match-hh
-               (define `hex (subst "\n" "" hh))
-               (define `byte (bytes-from-bytecodes (hh-to-dec (native-strip hh))))
-               (parse-string subj start (1+ pos)
-                             (.. wstr (subst (.. "\\x" hex) byte w))))
+      (foreach (hh match-hh)
+        (define `hex (subst "\n" "" hh))
+        (define `byte (bytes-from-bytecodes (hh-to-dec (native-strip hh))))
+        (parse-string subj start (1+ pos)
+                      (.. wstr (subst (.. "\\x" hex) byte w))))
 
       (PQError subj pos "!B")))
 
@@ -273,16 +274,15 @@
 ;; WSTR = accumulated string content so far (word-encoded)
 ;;
 (define (parse-string subj start pos ?wstr)
-  (or (foreach
-          w (word pos subj)
-          (if (filter "\"" w)
-              ;; Note: wstr may contain embedded "!." sequences, so it is not
-              ;; properly vector-encoded (which `promote` expects).
-              (POut pos (PString start (promote (pdec-str (subst "!." "" wstr)))))
-              ;; Note the odd escaping required for `\%` with filter.
-              (if (filter "\\\\%" w)
-                  (parse-string-bs subj start pos wstr w)
-                  (parse-string subj start (1+ pos) (.. wstr w)))))
+  (or (foreach (w (word pos subj))
+        (if (filter "\"" w)
+            ;; Note: wstr may contain embedded "!." sequences, so it is not
+            ;; properly vector-encoded (which `promote` expects).
+            (POut pos (PString start (promote (pdec-str (subst "!." "" wstr)))))
+            ;; Note the odd escaping required for `\%` with filter.
+            (if (filter "\\\\%" w)
+                (parse-string-bs subj start pos wstr w)
+                (parse-string subj start (1+ pos) (.. wstr w)))))
 
       (POut pos (PError start "\""))))
 
@@ -440,19 +440,18 @@
 
 (define (parse-exp subj pos)
   (or
-   (foreach
-    w (word pos subj)
-    (cond ((filter "!0% !+% \n%" w)  (parse-exp subj (1+ pos)))
-          ((filter ") ] }" w)    (POut pos (PError pos w)))
-          ((filter "(" w)        (parse-list subj pos))
-          ((filter "\"" w)       (parse-string subj pos (1+ pos)))
-          ((filter ";%" w)       (parse-exp subj (1+ (find-word subj pos "\n%"))))
-          ((filter "[" w)        (parse-vector subj pos))
-          ((filter "{" w)        (parse-dict subj pos))
-          ((filter "' ` , ,@" w) (parse-x w subj pos))
-          ((numeric? w)          (POut pos (PString pos w)))
-          ((filter "$ : !p" w)   (POut pos (PError pos (pdec w))))
-          (else                  (POut pos (PSymbol pos (promote w))))))
+   (foreach (w (word pos subj))
+     (cond ((filter "!0% !+% \n%" w)  (parse-exp subj (1+ pos)))
+           ((filter ") ] }" w)    (POut pos (PError pos w)))
+           ((filter "(" w)        (parse-list subj pos))
+           ((filter "\"" w)       (parse-string subj pos (1+ pos)))
+           ((filter ";%" w)       (parse-exp subj (1+ (find-word subj pos "\n%"))))
+           ((filter "[" w)        (parse-vector subj pos))
+           ((filter "{" w)        (parse-dict subj pos))
+           ((filter "' ` , ,@" w) (parse-x w subj pos))
+           ((numeric? w)          (POut pos (PString pos w)))
+           ((filter "$ : !p" w)   (POut pos (PError pos (pdec w))))
+           (else                  (POut pos (PSymbol pos (promote w))))))
    (POut pos (PError pos "."))))
 
 
