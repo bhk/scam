@@ -479,7 +479,10 @@
                    ;; do not require at run-time
                    (ModError "module has executable macros (boot=true)")
                    ;; require module and continue
-                   (native-call "^R" id)))))
+                   ;; TODO: mark binary as a dependency!
+                   (begin
+                     (memo-hash-file (modid-object id))
+                     (native-call "^R" id))))))
         mod)))
 
 
