@@ -33,7 +33,7 @@ Options:
 
 
 (define (perror fmt ...values)
-  (fprintf 2 (.. "scam: " fmt "\n") values)
+  (vfprintf 2 (.. "scam: " fmt "\n") values)
   ;; this value can be returned from main to indicate error
   1)
 

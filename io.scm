@@ -280,13 +280,20 @@
             (mv-file tmp-name file-name)))))
 
 
+;; See `fprintf`
+;;
+(define (vfprintf fd format values)
+  &public
+  (write fd (vsprintf format values)))
+
+
 ;; Format text and write to a file descriptor, 0 through 8.  See `vsprintf`
 ;; for handling of FORMAT and VALUES.  Unlike `printf`, no trailing newline
 ;; is appended.
 ;;
 (define (fprintf fd format ...values)
   &public
-  (write fd (vsprintf format values)))
+  (vfprintf fd format values))
 
 
 ;; Read one line from `stdin`.
