@@ -8,12 +8,9 @@
 
 ;; Return 1 if A and B are equal, nil otherwise.
 ;;
-(define (eq? a b)
+(define `(eq? a b)
   &public
-  (define `aa (.. 1 a))
-  (define `bb (.. 1 b))
-  (if (findstring aa (findstring bb aa))
-      1))
+  (findstring (subst (.. b 0) 1 (.. a 0)) 1))
 
 ;; Return A.
 ;;
