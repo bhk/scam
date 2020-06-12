@@ -14,9 +14,10 @@
 
 ;; Single character values that can be used to replace longer strings.
 ;; Ideally, these should occur rarely or never in the environment.
+;; "," is more expensive to quote.
 ;;
 (define `subchars
-  "; \\ , ' [ ] | @ { } # \" & ( ) _ / $ < > + `")
+  "' [ ] | @ { } # \" & ( ) _ / , $ < > \\ ; + `")
 
 (expect subchars
         (uniq subchars))
@@ -43,17 +44,21 @@
   (reverse
    (sort-by
     (lambda (e) (num-lex (strip (first e))))
-    (for c subs
-         (let ((n (count c env)))
-           [ (format-fixed
-              (-
-               ;; bytes saved by replacement
-               (* n (- (string-len c) 1))
-               ;; cost
-               (* 2 (string-len c)))
-              5)
-             (format-fixed n 4)                      ; # occurrences
-             c ])))))                                ; substring
+    (for (c subs)
+      (let ((n (count c env)))
+        [ (format-fixed
+           ;; Overhead is "$(subst C,R,...)" & "$(subst R,!R,...)" (exp & cmp)
+           ;;  = 2 * (12 + CLEN + 14)
+           ;;  = 2*CLEN + 52
+           ;; bytes saved by replacement
+           ;;   = (CLEN - 1) * N - Overhead
+           ;;   = (CLEN-1)*(N - 2) - 56
+           (- (* (- n 2)
+                 (- (string-len c) 1))
+              56)
+           5)
+          (format-fixed n 4)                      ; # occurrences
+          c ])))))                                ; substring
 
 
 ;; Display occurrences and savings for each string in SUBS.  MAP maps the
@@ -93,10 +98,10 @@
        (reduce-string s from-strings to-strings)))
 
 
-(define (compare-size label original new)
-  (printf "%s : %s -> %s  %s%% reduction"
-          label original new
-          (/ (* (- original new) 100) original 4)))
+(define (compare-size label original new extra)
+  (printf "%s : %s -> %s + %s  %s%% reduction"
+          label original new extra
+          (/ (* (- original (+ new extra)) 100) original 4)))
 
 
 (define (compile-subs subs subchars)
@@ -131,12 +136,17 @@
 ;; CANDIDATES.
 ;;
 (define (rank-after target subs candidates)
+  (define `total-length (string-len (concat-vec subs)))
+  (define `cost
+    (+ (* 2 total-length) (* 52 (words subs))))
+
   (let ((ex (reduce-string target subs subchars))
         (cx (append-for (c candidates)
               {(reduce-string c subs subchars): c}))
-        (size0 (string-len target)))
+        (size0 (string-len target))
+        (cost cost))
     (rank-freqs (dict-keys cx) ex cx)
-    (compare-size "size" size0 (string-len ex))
+    (compare-size "size" size0 (string-len ex) cost)
     (compile-cmp subs subchars)
     ex))
 
@@ -149,9 +159,16 @@
 ;; Load exports from .out/b/scam
 ;;
 
+
+;; This binary must agree with the implementation we import from `compile.scm`,
+;; so .out/b/scam should be built.
+;;
+(define scam-bin ".out/b/scam")
+
+
 (define scam-env
-  (let ((export-lines (shell-lines "grep '# Exports' .out/b/scam")))
-    (print ".out/b/scam exports:")
+  (let ((export-lines (shell-lines "grep '# Exports' %F" scam-bin)))
+    (print scam-bin " exports:")
     ;; (printf "exports: %s bytes" (string-len (concat-vec export-lines "\n")))
     (printf "compressed: %s bytes"
             (string-len
@@ -208,7 +225,9 @@
     ":IL7"
     ":IL8"
     "1:IL"
+    "11:IL"
     "!0!1:IL"
+    "!0!1:IL7!0"
     "1 "
     "2 "
     "!01 "
@@ -217,34 +236,41 @@
     "word"
     "i!0%!01"
     "i!0%!0"
-    "2!0i!0.!0"
-    "2!0i!0.!01"
-    "2!0i!0.!02"
     "!=!1:EDefn1!0i"
     "!=!1:EDefn1!0i!0%!0"
     "!=!1:EDefn2!0i"
+    "!0!11:IL"
+    "!0!11:IL7!!0"
+
+    "2!0i!0.!0"
+    "2!0i!0.!01"
+    "2!0i!0.!02"
     "!=!1:EDefn2!0i!0.!0"
     "!1:EDefn2!0i!0.!01!0!1:IL"
-    "!0!11:IL"
     "!10.!0!11:IL"
     "!0!11:IL0!101!10."
+
+    "2!0i!0..!0"
+    "2!0i!0..!01"
+    "2!0i!0..!02"
+    "!=!1:EDefn2!0i!0..!0"
+    "!1:EDefn2!0i!0..!01!0!1:IL"
+    "!10..!0!11:IL"
+    "!0!11:IL0!101!10.."
     ])
 
 ;; (rank-after scam-tenv [] candidate-strings)
 
 (define `compress-strings
   [
-    "!=!1:EDefn1!0i!0%!0"  ;; 3004
-    "!=!1:EDefn2!0i!0.!0"  ;; 988
-    "!11"                  ;; 788
-    "!10"                  ;; 788
-    "!0!11:IL"             ;; 778
-    "!=!1:EDefn"           ;; 349
-    "!0"                   ;; 375
-    "1:IL"                 ;; 202
-    "!0!1:IL"              ;; 112
-    "!0!11:IL0!101!10."    ;; 168
-    ;; "1 "                   ;; 87
+   "!10"                   ;; 494
+   "!11"                   ;; 524
+   "1:IL"                  ;; 283
+   "!0!11:IL"              ;; 604
+   "!=!1:EDefn"            ;; 286
+   "!0!1:IL7!0"            ;; 160
+   "!=!1:EDefn1!0i!0%!0"   ;; 1465
+   "!=!1:EDefn2!0i!0..!0"  ;; 544
    ])
 
 
@@ -261,6 +287,7 @@
 ;; (print "in: " scam-tenv)
 (print "saves reps str")
 (print "----- ---- ---------")
+(print "Using `compress-strings`:")
 (rank-after scam-tenv compress-strings
             (subtract candidate-strings compress-strings))
 
@@ -280,26 +307,25 @@
 (foreach c best-chars (printf "'%s' x %s" c (count c scam-tenv)))
 
 
-
 ;;
 ;; Validate compress & expand functions generated by a recent run.
 ;;
-
 (define (cmp s)
-  (subst ";" "!A" "\\" "!B" "," "!C" "'" "!D" "[" "!E" "]" "!F" "|" "!G"
-         "@" "!H" "{" "!I" "}" "!J" "!=!1:EDefn1!0i!0%!0" ";"
-         "!=!1:EDefn2!0i!0.!0" "\\" "!11" "," "!10" "'" "!0,:IL" "["
-         "!=!1:EDefn" "]" "!0" "|" "1:IL" "@" "|!@" "{" "[0'1'." "}" s))
+  (subst "'" "!A" "[" "!B" "]" "!C" "|" "!D" "@" "!E" "{" "!F" "}" "!G"
+         "#" "!H" "!10" "'" "!11" "[" "1:IL" "]" "!0[:IL" "|" "!=!1:EDefn"
+         "@" "!0!]7!0" "{" "@1!0i!0%!0" "}" "@2!0i!0..!0" "#" s))
 
 (define (exp s)
-  (subst "}" "[0'1'." "{" "|!@" "@" "1:IL" "|" "!0" "]" "!=!1:EDefn"
-         "[" "!0,:IL" "'" "!10" "," "!11" "\\" "!=!1:EDefn2!0i!0.!0"
-         ";" "!=!1:EDefn1!0i!0%!0" "!J" "}" "!I" "{" "!H" "@" "!G" "|" "!F"
-         "]" "!E" "[" "!D" "'" "!C" "," "!B" "\\" "!A" ";" s))
+  (subst "#" "@2!0i!0..!0" "}" "@1!0i!0%!0" "{" "!0!]7!0" "@" "!=!1:EDefn"
+         "|" "!0[:IL" "]" "1:IL" "[" "!11" "'" "!10" "!H" "#" "!G" "}"
+         "!F" "{" "!E" "@" "!D" "|" "!C" "]" "!B" "[" "!A" "'" s))
 
+(print "Current cmp/emp savings:")
 (compare-size "size"
               (string-len scam-tenv)
-              (string-len (concat (cmp scam-tenv) cmp exp)))
+              (string-len (cmp scam-tenv))
+              (string-len (.. cmp exp)))
+(print cmp)
 
 (expect (exp (cmp scam-tenv))
         scam-tenv)
