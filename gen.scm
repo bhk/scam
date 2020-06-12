@@ -130,13 +130,13 @@
 
 (data EDefn
   &public
-  (EVar     &word scope name)                        ;; simple global var
-  (EFunc    &word scope name arity)                  ;; recursive global var
+  (EVar     &word scope &word name)                  ;; simple global var
+  (EFunc    &word scope &word name arity)            ;; recursive global var
   (EMacro   &word scope &word depth arity &list il)  ;; compound macro
   (EIL      &word scope &word depth &list il)        ;; symbol macro
-  (EXMacro  &word scope name)                        ;; executable macro
+  (EXMacro  &word scope &word name)                  ;; executable macro
   (ERecord  &word scope encs tag)                    ;; data record type
-  (EBuiltin &word scope name arity)                  ;; builtin function
+  (EBuiltin &word scope &word name arity)            ;; builtin function
   (EMarker  &word data))                             ;; marker
 
 
