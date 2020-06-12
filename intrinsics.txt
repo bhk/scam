@@ -443,6 +443,8 @@
 
 ;; This form modifies the value of some number of global variables *during
 ;; the execution of BODY*. Afterwards, the original values are restored.
+;; Note that, unlike other `let` values, the variables must already be
+;; in scope.
 ;;
 ;; This expression evaluates to the value of the last expression in BODY.
 ;;
@@ -661,7 +663,7 @@
 ;; The return value is a list of the names of the instrumented functions,
 ;; which can be passed to `untrace` later.
 ;;
-(declare (trace specs) &public)
+(declare (trace spec) &public)
 
 
 ;; Remove instrumentation from functions listed in NAMES, or functions

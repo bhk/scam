@@ -7,18 +7,19 @@ Enhancements
     (let (([a b c] vec)) ...)         ==>  a = (first vec) ...
     (let (({k1: a, k2: b} dict)) ...) ==>  d = (dict-get "k1" vec)
     (let (({=a: b} dict-pair)) ...)   ==>  a = (dict-key pair)
+    let-global?
+    let&
 
- * Conditional destructuring in `case`
+ * Pattern matching enhancements...
      (case X
-       ([a b c] ...)        : if (word 3 X)
-       ({k1: a, k2: b} ...) : if (dict-find "k1" X) and (dict-find "k2" X)
+       ([a b c] ...)       ;; when (word 3 X)
+       ({k1:a, k2:b} ...)  ;; when (dict-find "k1" X) and (dict-find "k2" X)
+       (K            ...)  ;; when X == K (constant)
+       ((Ctor K y) ...)    ;; match constant member
+       ([K a b]    ...)    ;; match constant element
+       ...)
 
- * Constants in conditional matches
-    (case EXPR
-      (CONST        EXPR)   ;; match constant value (nil, for example)
-      ((Ctor "K" y) EXPR)   ;; match constant member
-      (["A" a b]    EXPR)   ;; match constant element
-      ...)
+ * "spread" with "..." syntax.
 
  * Enhance call-site tracing to support lambdas and macros/builtins
      (? lambda ...)  -->  (native-call "^tv" "any" (any ...))
@@ -31,8 +32,6 @@ Enhancements
  * Record reflection.  What format-record needs:
     (data? value)
     (data-type value)    -> [ctor-name arity ctor dtor]
-
- * "spread" with "..." syntax.
 
  * XMacros don't have a good way to generate error messages or gensym.
 
