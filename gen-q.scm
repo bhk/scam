@@ -36,7 +36,7 @@
 (expect "." (depth.l ".;"))
 (expect ";" (depth.a ".;"))
 
-(expect nil (current-depth nil))
+(expect "." (current-depth nil))
 (expect ".;" (current-depth (depth-marker ".;")))
 
 ;; gen-native-name

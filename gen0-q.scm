@@ -59,14 +59,6 @@
 (expect nil (not (check-args [(PSymbol 0 "...a") (PSymbol 0 "b")])))
 (expect nil (not (check-args [(PSymbol 0 "...a") (PSymbol 0 "...b")])))
 
-;; c0-local
-
-(expect (IArg 3 ".") (c0-local 3 "."  "." nil))
-(expect (IArg 3 "..") (c0-local 3 "."  ".." nil))
-(expect (IArg 3 "..") (c0-local 3 ".." "..." nil))
-(expect (IArg 3 "...") (c0-local 3 "."  "..." nil))
-
-
 ;; translate
 
 (expect (translate (IString "x") "." "." [] 9)
@@ -183,10 +175,10 @@
 ;;--------------------------------
 
 (define (cqq text)
-  (c0-ser text { sym: (EIL "p" "" (IString "SYM")),
+  (c0-ser text { sym: (EIL "p" "." (IString "SYM")),
                  var: (EVar "p" "VAR"),
                  ;; args = [`a `b]
-                 args: (EIL "p" "" (IString [(PSymbol 1 "a")
+                 args: (EIL "p" "." (IString [(PSymbol 1 "a")
                                              (PSymbol 2 "b")])) }))
 
 (expect (c0 (p1 "`x") nil) (IString (p1 " x")))
@@ -241,15 +233,15 @@
         (PError 9 "undefined variable: `x`"))
 
 ;; local variable
-(expect (c0 (PSymbol 9 "a") (append {a: (ELocal 1 ".")}
+(expect (c0 (PSymbol 9 "a") (append {a: (EDefn.arg 1 ".")}
                                     (depth-marker ".")))
         (IArg 1 "."))
 
-(expect (c0 (PSymbol 9 "a") (append {a: (ELocal 1 ".")}
+(expect (c0 (PSymbol 9 "a") (append {a: (EDefn.arg 1 ".")}
                                     (depth-marker "..")))
         (IArg 1 ".."))
 
-(expect (c0 (PSymbol 9 "a") (append {a: (ELocal ";" nil)}
+(expect (c0 (PSymbol 9 "a") (append {a: (EDefn.arg ";" ";")}
                                     (depth-marker ";")))
         (IArg ";" "."))
 
@@ -362,7 +354,7 @@
 ;; PList = (arg ...)
 
 (expect (c0-ser "(var 7)" (append (depth-marker ".")
-                                  { var: (ELocal 1 ".") }))
+                                  { var: (EDefn.arg 1 ".") }))
         "(^Y {1},7)")
 
 
@@ -384,9 +376,9 @@
 
 (expect (arg-locals [(PSymbol 1 "a") (PSymbol 3 "?b") (PSymbol 5 "...c")]
                     1 "...")
-        (append {a: (ELocal 1 "...")}
-                {b: (ELocal 2 "...")}
-                {c: (ELocal "3+" "...")}))
+        (append {a: (EDefn.arg 1 "...")}
+                {b: (EDefn.arg 2 "...")}
+                {c: (EDefn.arg "3+" "...")}))
 
 ;; (lambda ...)
 
@@ -450,21 +442,21 @@
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (words a))")
-        {M: (EMacro "p" "." 1 (IBuiltin "words" [(IArg 1 ".")]))})
+        {M: (EMacro "p" ".." 1 (IBuiltin "words" [(IArg 1 ".")]))})
 
 (expect (text-to-env "(define `(M a) &public (words a))")
-        {M: (EMacro "x" "." 1 (IBuiltin "words" [(IArg 1 ".")]))})
+        {M: (EMacro "x" ".." 1 (IBuiltin "words" [(IArg 1 ".")]))})
 
 
 ;; define symbol macro
 (expect (text-to-env "(define `I 7)"
                      {x: (EVar "p" "x")})
-        { I: (EIL "p" "" (IString 7)),
+        { I: (EIL "p" "." (IString 7)),
           x: (EVar "p" "x") })
 
 (expect (text-to-env "(define `I &public 7)"
                      {x: (EVar "p" "x")})
-        { I: (EIL "x" "" (IString 7)),
+        { I: (EIL "x" "." (IString 7)),
           x: (EVar "p" "x") })
 
 ;; (define ...) errors

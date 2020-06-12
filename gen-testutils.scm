@@ -69,7 +69,7 @@
   &public
   (append
    (depth-marker ".")
-   { a: (ELocal 1 "."),
+   { a: (EDefn.arg 1 "."),
      v: (EVar "p" "V"),
      f: (EFunc "p" "F" 2),
      ;; names that an extra promote/demote will corrupt...

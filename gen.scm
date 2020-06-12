@@ -106,20 +106,19 @@
 ;;     "x" => public (exported)
 ;;
 ;; NAME = the actual (global) name of the function/variable or builtin
-;;     function.  In the case of ELocal, NAME is as defined for IVar.
+;;     function.
 ;;
 ;; ARITY = how many arguments are required by the function, in the form of a
 ;;    list of valid argument counts, or `N+` for "N or more".
 ;;
 ;; DEPTH = (.. LDEPTH ADEPTH).  For EMacro and EIL, this describes
-;;     the context of the associated IL node.
+;;     the context in which the associated IL node is valid.  (Any
+;;     `ups` values within the IL node are relative to this DEPTH.)
 ;;
 ;; LDEPTH = the number of lambdas enclosing the IL node, encoded as one "."
-;;     for each lambda.  For ELocal records, LDEPTH refers to the top-most
-;;     context in which the variables are visible.  LDEPTH=`nil` refers to
-;;     auto variables bound outside any lambda, LDEPTH="." refers to
-;;     arguments of a top-level lambda or auto variables bound in a
-;;     top-level lambda, and so on.
+;;     for each lambda.  LDEPTH=`nil` refers to auto variables bound outside
+;;     any lambda, LDEPTH="." refers to arguments of a top-level lambda or
+;;     auto variables bound in a top-level lambda, and so on.
 ;;
 ;; ADEPTH = the number of enclosing `foreach` constructs in the current
 ;;     (lowest) enclosing lambda: one ";" for each `foreach`.
@@ -131,15 +130,14 @@
 
 (data EDefn
   &public
-  (EVar     &word scope name)                  ;; simple global variable
-  (EFunc    &word scope name arity)            ;; recursive global variable
-  (EMacro   &word scope depth arity &list il)  ;; compound macro
-  (EIL      &word scope depth &list il)        ;; symbol macro
-  (EXMacro  &word scope name)                  ;; executable macro
-  (ERecord  &word scope encs tag)              ;; data record type
-  (EBuiltin &word scope name arity)            ;; builtin function
-  (ELocal   &word name &word ldepth)           ;; function argument
-  (EMarker  &word data))                       ;; marker
+  (EVar     &word scope name)                        ;; simple global var
+  (EFunc    &word scope name arity)                  ;; recursive global var
+  (EMacro   &word scope &word depth arity &list il)  ;; compound macro
+  (EIL      &word scope &word depth &list il)        ;; symbol macro
+  (EXMacro  &word scope name)                        ;; executable macro
+  (ERecord  &word scope encs tag)                    ;; data record type
+  (EBuiltin &word scope name arity)                  ;; builtin function
+  (EMarker  &word data))                             ;; marker
 
 
 (define `(EDefn.scope defn)
@@ -150,6 +148,11 @@
 (define `(EDefn.set-scope rec scope)
   &public
   (._. (word 1 rec) scope (nth-rest 3 rec)))
+
+
+(define `(EDefn.arg name depth)
+  &public
+  (EIL "p" depth (IArg name ".")))
 
 
 ;; Not a legal symbol name; this key is used to distinguish EMarker records
@@ -288,7 +291,8 @@
 (define (current-depth env)
   &public
   (case (dict-get DepthMarkerKey env)
-    ((EMarker depth) depth)))
+    ((EMarker depth) depth)
+    (_ ".")))
 
 
 ;; Return ADEPTH given DEPTH

@@ -8,10 +8,6 @@
 (require "gen.scm")
 
 
-(define *warn-upvals*
-  (findstring "U" (native-var "SCAM_DEBUG")))
-
-
 ;; Find the index of last flag in FORMS, starting at N.  Return PREV-N is no
 ;; flags are found.
 ;;
@@ -176,7 +172,7 @@
 
   ;; if no-args and old-depth=new-depth and no-IWheres: return node
   (if (or args
-          (subst (.. ">" old-depth "<") nil (.. ">" new-depth "<"))
+          (not (eq? old-depth new-depth))
           (findstring IWhere-sig node))
       ;; translate
       (xlat node "." new-ad old-ad new-ad args shift pos)
@@ -220,29 +216,6 @@
     ((PQuote n subform) (IString subform))
     ((PQQuote n subform) (c0-qq env subform))
     (else (c0-error form))))
-
-
-;;--------------------------------
-;; Symbol: local variable
-;;--------------------------------
-
-
-;; Return IL for a local variable reference.
-;;
-;; NAME = argument index or auto nesting level
-;; DEPTH = ELocal depth ("." = top-most lambda)
-;; AT-DEPTH = current (lambda nesting) depth
-;; SYM = symbol form for the local variable reference
-;;
-(define (c0-local name depth at-depth sym)
-  (if (and *warn-upvals*
-           (not (findstring at-depth depth)))
-      (print (describe-error
-              (gen-error sym "reference to upvalue `%s`" (symbol-name sym))
-              (pdec *compile-subject*)
-              *compile-file*)))
-
-  (IArg name (str-add-sub at-depth "." depth)))
 
 
 ;;--------------------------------
@@ -292,8 +265,8 @@
 ;;
 (define (c0-S env sym name defn)
   (case defn
-    ((ELocal argn depth)
-     (c0-local argn depth (depth.l (current-depth env)) sym))
+    ((EIL _ depth il)
+     (translate il depth (current-depth env) nil (form-index sym)))
 
     ((EVar _ gname)
      (IVar gname))
@@ -303,9 +276,6 @@
 
     ((EFunc _ gname _)
      (IBuiltin "value" [(IString gname)]))
-
-    ((EIL _ depth il)
-     (translate il depth (current-depth env) nil (form-index sym)))
 
     ((ERecord _ encs tag)
      (c0-ctor env sym encs))
@@ -505,9 +475,9 @@
 (define `(arg-defn name n depth)
   (if (filter "...%" name)
       ;; "...FOO" or "..."
-      { (or (patsubst "...%" "%" name) name): (ELocal (.. n "+") depth) }
+      { (or (patsubst "...%" "%" name) name): (EDefn.arg (.. n "+") depth) }
       ;; "?FOO" or "FOO"
-      { (patsubst "?%" "%" name): (ELocal n depth) }))
+      { (patsubst "?%" "%" name): (EDefn.arg n depth) }))
 
 
 ;; Construct bindings for macro/function parameters
