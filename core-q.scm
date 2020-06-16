@@ -50,8 +50,19 @@
 
 (expect "a % a" (vec-intersect "a b % d a" "c % a"))
 
+(expect (permute "0 1" nil "b") "b0 b1")
+(expect (permute "0 1" 0 "b") "b00 b01 b10 b11")
+(expect (permute "0 1" 00 "b") "b000 b001 b010 b011 b100 b101 b110 b111")
+
+(expect "2 3 4" (urange 2 4))
+(expect "9 10 11" (urange 9 11))
+(expect "99 100 101 102" (urange 99 102))
+
 (expect "" (indices ""))
 (expect [1 2 3] (indices "a b c"))
+(foreach (n [9 10 102])
+  (let ((r (urange 1 n)))
+    (expect r (indices r))))
 
 (expect "2" (numeric? "2"))
 (expect "-1" (numeric? "-1"))

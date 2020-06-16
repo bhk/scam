@@ -112,21 +112,63 @@
   (vec-filter "filter-out" b a))
 
 
-(define (indices-b max len lst)
-  (if (filter max len)
-      len
-      (.. len " " (indices-b max (words lst) (.. ". " lst)))))
+;; Return a list of all possible concatenations words from LST.
+;;
+;; ZZ = a string of 0's that determine how long wach concatenation is.
+;;      "" => 1 word, "0" => 2 word, "00" => 3 words, ...
+;; PREFIX = a string to be prepended to each resulting concatenation.
+;;
+;; The list is ordered by the indexes into LST.  Words that appear earlier
+;; in the concatenations are more significant.
+;;
+(define (permute lst zz ?prefix)
+  &public
+  (if (findstring 00 zz)
+      (foreach (n lst)
+        (permute lst (subst "0x" "" (.. zz "x")) (.. prefix n)))
+      (if zz
+          (foreach (n lst)
+            (addprefix (.. prefix n) lst))
+          (addprefix prefix lst))))
 
-(define (indices-a max)
-  (if (filter-out 0 max)
-      (indices-b max 1 ". .")))
+
+(define `digits "0 1 2 3 4 5 6 7 8 9")
+(define `nzdigits "1 2 3 4 5 6 7 8 9")
+
+
+(define (urange-x max lst zz)
+  (if (word max lst)
+      lst
+      (urange-x max
+                (._. lst (foreach (n nzdigits)
+                           (permute digits zz n)))
+                (.. zz 0))))
+
+
+;; Return a list of integers in the range MIN..MAX (inclusive).
+;;
+;; MIN is a positive integer.
+;; MAXi is a non-negative integer.
+;;
+;; MIN and MAX must be in "plain" decimal format (no scientific notation or
+;; decimals).
+;;
+;; Memory requirements and execution time are proportional to MAX, not
+;; (MAX - MIN).
+;;
+(define (urange min max)
+  &public
+  (wordlist min max (urange-x max nzdigits nil)))
+
 
 ;; Return a vector of the indices (1, 2, ...) of words in word list (or vector)
 ;; LST.
 ;;
-(define `(indices lst)
+(define (indices lst)
   &public
-  (indices-a (words lst)))
+  (if (word 10 lst)
+      (urange 1 (words lst))
+      (wordlist 1 (words lst) nzdigits)))
 
 
 ;; Reverse a list in groups sized by powers of ten.  Simpler implementations
@@ -142,7 +184,7 @@
   (define `z/10
     (patsubst "0%" "%" z))
   (define `(1- n)
-    (word n "0 1 2 3 4 5 6 7 8 9"))
+    (word n digits))
   (define `(group prefix)
     (wordlist (.. (1- prefix) z+1)
               (.. prefix z)

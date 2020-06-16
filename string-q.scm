@@ -1,5 +1,4 @@
 (require "core.scm")
-(require "math.scm")
 (require "string.scm" &private)
 
 
@@ -58,7 +57,7 @@
 (expect [97] (string-to-bytecodes "a"))
 (expect [32 65 66 67 33 49 32 33 48] (string-to-bytecodes " ABC!1 !0"))
 (expect [255] (string-to-bytecodes "\xff"))
-(expect (range 1 255) (string-to-bytecodes (concat-vec all-bytes)))
+(expect (urange 1 255) (string-to-bytecodes (concat-vec all-bytes)))
 
 ;; bytes-from-bytecodes
 
@@ -68,7 +67,7 @@
 
 (expect "A \xFF" (string-from-bytecodes [65 32 255]))
 (expect (concat-vec all-bytes)
-        (string-from-bytecodes (range 1 255)))
+        (string-from-bytecodes (urange 1 255)))
 
 ;; string-repeat
 
