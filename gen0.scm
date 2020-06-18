@@ -63,22 +63,6 @@
       (words args)))
 
 
-;; Generate an error if a non-optional parameter follows an optional one.
-;;
-(define (check-args args ?seen-optional)
-  (define `a
-    (first args))
-  (if args
-      (if (filter "...% ?%" (symbol-name a))
-          (or (if (and (rest args)
-                       (filter "...%" (symbol-name a)))
-                  (gen-error a "'...' argument not in last position"))
-              (check-args (rest args) 1))
-          (if seen-optional
-              (gen-error a "non-optional parameter after optional one")
-              (check-args (rest args) nil)))))
-
-
 ;; Translate function argument references, automatic variable definitions
 ;; and references, and replace macro arguments.
 ;;
@@ -472,52 +456,122 @@
 ;;--------------------------------
 
 
-(define `(arg-defn name n depth)
-  (if (filter "...%" name)
-      ;; "...FOO" or "..."
-      { (or (patsubst "...%" "%" name) name): (EDefn.arg (.. n "+") depth) }
-      ;; "?FOO" or "FOO"
-      { (patsubst "?%" "%" name): (EDefn.arg n depth) }))
-
-
-;; Construct bindings for macro/function parameters
+;; Remove the last form in FORMS if it is a "...NAME" rest parameter.
 ;;
-(define (arg-locals syms n depth)
-  (if syms
-      (append (foreach (name (symbol-name (first syms)))
-                (arg-defn name n depth))
-              (arg-locals (rest syms) (1+ n) depth))))
+(define (trim-rest-sym forms)
+  (define `ends-in-rest
+    (case (last forms)
+      ((PSymbol _ name)
+       (filter "...%" name))))
+
+  (if ends-in-rest
+      (butlast forms)
+      forms))
 
 
-(define (c0-lambda env args body)
-  (define `(arg-env env syms)
+;; Remove all trailing "?NAME" optional parameters from FORMS.
+;;
+(define (trim-opt-syms forms)
+  (define `ends-in-opt
+    (case (last forms)
+      ((PSymbol _ name)
+       (filter "?%" name))))
+
+  (if ends-in-opt
+      (trim-opt-syms (butlast forms))
+      forms))
+
+
+(define (check-patterns forms in-vec)
+  (append-for (form forms)
+    ;; form should be a valid pattern (non-optional, non-rest)
+    (case form
+      ((PSymbol _ name)
+       (if (filter "...%" name)
+           [(gen-error form "'...NAME' before other parameters")]
+           (if (filter "?%" name)
+               [ (if in-vec
+                     (gen-error form "'?NAME' not valid in vector destructuring")
+                     (gen-error form "'?NAME' before non-optional parameter")) ])))
+
+      ((PVec _ vforms)
+       (check-patterns (trim-rest-sym vforms) 1))
+
+      (_ [(PError (form-index form) "invalid parameter name or pattern")]))))
+
+
+;; Validate lambda parameters.
+;;
+;;   Parameters = Pattern*  OptSymbol*  RestSymbol?
+;;   Pattern    = Symbol | VecPattern
+;;   VecPattern = [ Pattern*  RestSymbol? ]
+;;
+;; Return nil if valid; (PError ...) otherwise.
+;;
+(define (check-params forms)
+  (first (check-patterns (trim-opt-syms (trim-rest-sym forms)) nil)))
+
+
+(define `(il-nth n node)
+  (ICall "^n" [(IString n) node]))
+
+(define `(il-nth-rest n node)
+  (IBuiltin "wordlist" [(IString n) (IString 99999999) node]))
+
+
+
+;; Return the EDefn record(s) for a parameter pattern.
+;;
+;; FORM = parameter
+;; IL = the value to be assigned to FORM (if FORM is not "...NAME")
+;; IL-REST = the value to be assigned to FORM when FORM is "...NAME"
+;;
+(define (bind-param depth form il rest-il)
+  &public
+  (case form
+    ((PSymbol _ name)
+     (if (filter "...%" name)
+         { (or (patsubst "...%" "%" name) name): (EIL "p" depth rest-il) }
+         { (patsubst "?%" "%" name): (EIL "p" depth il) }))
+
+    ((PVec _ forms)
+     (append-for (n (indices forms))
+       (bind-param depth (nth n forms) (il-nth n il) (il-nth-rest n il))))
+
+    ;; should not happen (check-params should have noticed this)
+    (_ "ERROR:param")))
+
+
+(define `(lambda-bindings depth forms)
+  (append-for (arg-index (indices forms))
+    (bind-param depth
+                (nth arg-index forms)
+                (IArg arg-index ".")
+                (IArg (.. arg-index "+") "."))))
+
+
+(define (c0-lambda env params body)
+  &public
+  (define `body-env
     (foreach (ldepth (depth.l (.. "." (current-depth env))))
       (append (depth-marker ldepth)
-              (arg-locals syms 1 ldepth)
+              (lambda-bindings ldepth params)
               env)))
 
-  (or (check-args args)
-      (ILambda (c0-block body (arg-env env args)))))
-
-
-(define (lambda-error type form parent desc)
-  (err-expected type form parent desc "(lambda (ARGNAME...) BODY)"))
+  (or (check-params params)
+      (ILambda (c0-block body body-env))))
 
 
 ;; special form: (lambda ARGS BODY)
 (define (M.lambda env sym args)
-  (define `arglist (first args))
+  (define `arg-form (first args))
   (define `body (rest args))
 
-  (case arglist
-    ((PList pos lambda-args)
-     (or (vec-or (for (a lambda-args)
-                   (case a
-                     ((PSymbol n name) nil)
-                     (else (lambda-error "S" a sym "ARGNAME")))))
-         (c0-lambda env lambda-args body)))
-    (else (lambda-error "L" arglist sym "(ARGNAME...)"))))
-
+  (case arg-form
+    ((PList pos params)
+     (c0-lambda env params body))
+    (else (err-expected "L" arg-form sym
+                        "(ARGNAME...)" "(lambda (ARGNAME...) BODY)"))))
 
 ;;--------------------------------
 ;; (declare ...)

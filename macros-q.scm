@@ -25,11 +25,11 @@
 (expect [ [ (PSymbol 3 "x") (PString 5 1) ]
           [ (PSymbol 9 "y") (PString 11 2) ] ]
         (test-read-pairs "((x 1) (y 2))"))
-(expect (PError 3 "invalid VAR in WHERE; expected a symbol")
+(expect (PError 3 "bad PATTERN in (let ((PATTERN VALUE)...) BODY)")
         (test-read-pairs "((1 1) (y 2))"))
 (expect (PError 2 "missing VALUE in WHERE")
         (test-read-pairs "((x) (y 2))"))
-(expect (PError 2 "invalid (VAR VALUE) in WHERE; expected a list")
+(expect (PError 2 "invalid (PATTERN VALUE) in WHERE; expected a list")
         (test-read-pairs "(sym (x 1))"))
 
 ;;--------------------------------
@@ -92,23 +92,24 @@
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
-;; (let ((VAR VAL)...) BODY)
+;; (let ((PATTERN VAL)...) BODY)
 ;;--------------------------------
 
 (expect (c0-ser "(let ((a 1) (b \"q\")) (f a b))")
         (c0-ser "((lambda (a b) (f a b)) 1 \"q\")"))
 (expect (c0-ser "(let a a)")
         (..
-         "!(PError 4 'invalid ((VAR VALUE)...) in (let ((VAR VALUE)...) BODY)"
+         "!(PError 4 'invalid ((PATTERN VALUE)...) in (let ((PATTERN VALUE)...) BODY)"
          "; expected a list')"))
 (expect (c0-ser "(let (a) a)")
-        (.. "!(PError 5 'invalid (VAR VALUE) in (let ((VAR VALUE)...) BODY)"
+        (.. "!(PError 5 'invalid (PATTERN VALUE) in (let ((PATTERN VALUE)...) BODY)"
             "; expected a list')"))
 (expect (c0-ser "(let ((\"a\")) a)")
-        (.. "!(PError 6 'invalid VAR in (let ((VAR VALUE)...) BODY)"
-            "; expected a symbol')"))
+        "!(PError 6 'bad PATTERN in (let ((PATTERN VALUE)...) BODY)')")
 (expect (c0-ser "(let ((a)) a)")
-        "!(PError 5 'missing VALUE in (let ((VAR VALUE)...) BODY)')")
+        "!(PError 5 'missing VALUE in (let ((PATTERN VALUE)...) BODY)')")
+(expect (c0-ser "(let ((?a 1)) a)")
+        "!(PError 6 'bad PATTERN in (let ((PATTERN VALUE)...) BODY)')")
 
 ;;--------------------------------
 ;; (let-global ((VAR VALUE)...) BODY)
@@ -120,16 +121,16 @@
         "(^set V,(^set V,1,{V}),(^fset F,(^fset F,2,(.value F)),9))")
 
 ;;--------------------------------
-;; (let& ((VAR VAL)...) BODY)
+;; (let& ((PATTERN VAL)...) BODY)
 ;;--------------------------------
 
 (expect (let&-env [ [ (PSymbol 0 "x") (PSymbol 0 "X") ]
-                    [ (PSymbol 0 "y") (PSymbol 0 "x") ] ]
+                    [ (PVec 0 [(PSymbol 0 "y")]) (PSymbol 0 "x") ] ]
                   (append
                    { X: (EVar "p" "xname") }
                    (depth-marker ".")))
         (append
-         { y: (EIL "p" "." (IVar "xname")) }
+         { y: (EIL "p" "." (ICall "^n" [(IString 1) (IVar "xname")])) }
          { x: (EIL "p" "." (IVar "xname")) }
          { X: (EVar "p" "xname") }
          (depth-marker ".")))

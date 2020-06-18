@@ -51,14 +51,6 @@
 (expect "1+" (get-arity "a ?c ...d"))
 (expect "1 2 3" (get-arity "a ?c ?d"))
 
-;; check-args
-
-(expect nil (check-args [(PSymbol 0 "a") (PSymbol 0 "b")]))
-(expect nil (check-args [(PSymbol 0 "?a") (PSymbol 0 "?b")]))
-(expect nil (not (check-args [(PSymbol 0 "?a") (PSymbol 0 "b")])))
-(expect nil (not (check-args [(PSymbol 0 "...a") (PSymbol 0 "b")])))
-(expect nil (not (check-args [(PSymbol 0 "...a") (PSymbol 0 "...b")])))
-
 ;; translate
 
 (expect (translate (IString "x") "." "." [] 9)
@@ -284,7 +276,7 @@
 
 
 ;;--------------------------------
-;; c0 PList
+;; c0-L : PList
 ;;--------------------------------
 
 ;; PList = (functionvar ...)
@@ -309,7 +301,7 @@
 (expect (c0-ser "(f 1)" (append {f: (EMacro "p" "." 1 (IArg 1 "."))}))
         "1")
 
-;; (lambda (x y) (define `(f a) (.. a y)) *(f 7)* )    [capture]
+;; (lambda (x y) (define `(f a) (.. a y)) *(f 7)* )    [captures]
 (expect (c0-ser "(f 7)" (append {f: (EMacro "p" ".." 1
                                             (IConcat [(IArg 1 ".")
                                                       (IArg 2 "..")]))}
@@ -322,11 +314,11 @@
 
 
 ;; macro defined in ".;;" and expanded at ".;;" with an arg (IArg ";;" ".")
-
-;; (lambda (_)
-;;   (foreach a XXX
-;;      (define `(cm x) a)
-;;      (cm 1)))
+;;   (lambda (_)
+;;     (foreach a XXX
+;;        (define `(cm x) a)
+;;        (cm 1)))
+;;
 (expect (c0-ser "(cm 1)" (append { cm: (EMacro "p" ".." 1 (IArg ";" "..")) }
                                  (depth-marker ".;")))
         "{;}")
@@ -371,14 +363,46 @@
 
 
 ;; PList: (lambda NAMES BODY)  --> special-lamda
+;; M.lambda, c0-lambda
 
-;; arg-locals
 
-(expect (arg-locals [(PSymbol 1 "a") (PSymbol 3 "?b") (PSymbol 5 "...c")]
-                    1 "...")
-        (append {a: (EDefn.arg 1 "...")}
-                {b: (EDefn.arg 2 "...")}
-                {c: (EDefn.arg "3+" "...")}))
+(define _a (PSymbol 1 "a"))
+(define _x (PSymbol 2 "x"))
+(define _y (PSymbol 3 "y"))
+(define _?y (PSymbol 14 "?y"))
+(define _...z (PSymbol 25 "...z"))
+(define _STR (PString 99 "STR"))
+
+;; trim-rest-sym, trim-opt-syms
+
+(expect nil (trim-rest-sym [ _...z ]))
+(expect [_x] (trim-rest-sym [ _x ]))
+(expect [_...z] (trim-rest-sym [ _...z _...z ]))
+(expect [_x] (trim-opt-syms [ _x ]))
+(expect [_x] (trim-opt-syms [ _x _?y _?y ]))
+
+;; check-params
+
+(expect (check-params [_x _?y _?y _...z])
+        nil)
+(expect (check-params [ _STR ])
+        (PError 99 "invalid parameter name or pattern"))
+(expect (check-params [_?y _x])
+        (gen-error _?y "'?NAME' before non-optional parameter"))
+(expect (check-params [_a _...z _?y])
+        (gen-error _...z "'...NAME' before other parameters"))
+
+;; lambda-bindings
+
+(expect (lambda-bindings ".." [ _x _?y ])
+        { x: (EIL "p" ".." (IArg 1 ".")),
+          y: (EIL "p" ".." (IArg 2 ".")) })
+
+(expect (lambda-bindings ".." [ _a (PVec 77 [_x (PVec 88 [_y]) _...z]) ])
+        { a: (EIL "p" ".." (IArg 1 ".")),
+          x: (EIL "p" ".." (il-nth 1 (IArg 2 "."))),
+          y: (EIL "p" ".." (il-nth 1 (il-nth 2 (IArg 2 ".")))),
+          z: (EIL "p" ".." (il-nth-rest 3 (IArg 2 "."))) })
 
 ;; (lambda ...)
 
@@ -386,10 +410,14 @@
         "`{V}")
 (expect (c0-ser "(lambda (a b) a b)")
         "`(IBlock {1},{2})")
-(foreach (SCAM_DEBUG "-") ;; avoid upvalue warning
-  (expect (c0-ser "(lambda (a) (lambda (b) a b))")
-          "``(IBlock {.1},{1})"))
-
+(expect (c0-ser "(lambda ([a ...b]) a b)")
+        "`(IBlock (^n 1,{1}),(.wordlist 2,99999999,{1}))")
+(expect (c0-ser "(lambda (a) (lambda (b) a b))")
+        "``(IBlock {.1},{1})")
+(expect (c0-ser "(lambda (a ...b ?c) a)")
+        "!(PError 7 ''...NAME' before other parameters')")
+(expect (c0-ser "(lambda ([?a]) a)")
+        "!(PError 6 ''?NAME' not valid in vector destructuring')")
 
 ;; PList = (record ...)
 
@@ -467,9 +495,9 @@
         "!(PError 5 'invalid FORM in (define `FORM ...); expected a list or symbol')")(expect (c0-ser "(define `(m ?a) a)")
         "")
 (expect (c0-ser "(define (f ...x ?z) x)")
-        "!(PError 7 ''...' argument not in last position')")
+        "!(PError 7 ''...NAME' before other parameters')")
 (expect (c0-ser "(define (f ?a x) x)")
-        "!(PError 9 'non-optional parameter after optional one')")
+        "!(PError 7 ''?NAME' before non-optional parameter')")
 ;; report errors when compiled, not when used
 (expect (c0-ser "(define `M UNDEF)")
         "!(PError 7 'undefined variable: `UNDEF`')")

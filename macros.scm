@@ -157,7 +157,7 @@
 
 
 ;;--------------------------------
-;; (let ((VAR VAL)...) BODY)
+;; (let ((PATTERN VAL)...) BODY)
 ;;--------------------------------
 
 (define (read-pairs-r forms where out)
@@ -169,15 +169,23 @@
          (define `var (first pair))
          (define `value (nth 2 pair))
          (define `extra (nth 3 pair))
-         (case var
-           ((PSymbol n name)
-            (if value
-                (if (not extra)
-                    (read-pairs-r (rest forms) where (conj out pair))
-                    (gen-error extra "extra form after value in %s" where))
-                (err-expected "" value form "VALUE" where)))
-           (else (err-expected "S" var form "VAR" where))))
-        (else (err-expected "L" form nil "(VAR VALUE)" where)))))
+         (define `bad-pattern
+           (case var
+             ((PSymbol _ name) (filter "...% ?%" name))
+             ((PVec _ _) nil)
+             (_ 1)))
+
+         (cond
+          (extra
+           (gen-error extra "extra form after value in %s" where))
+          (bad-pattern
+           (gen-error var "bad PATTERN in (let ((PATTERN VALUE)...) BODY)"))
+          ((not value)
+           (err-expected "" value form "VALUE" where))
+          (else
+           (read-pairs-r (rest forms) where (conj out pair)))))
+        (else (err-expected "L" form nil "(PATTERN VALUE)" where)))))
+
 
 ;; Parse and validate a form describing (SYM VALUE) pairs as in `(let ...)
 ;; expressions.  Return a vector of [SYM VALUE] pairs, or a PError on
@@ -190,26 +198,27 @@
     ((PList n forms)
      (read-pairs-r forms where nil))
     (else
-     (err-expected "L" list sym "((VAR VALUE)...)" where))))
+     (err-expected "L" list sym "((PATTERN VALUE)...)" where))))
 
 
 (define let-where
-  "(let ((VAR VALUE)...) BODY)")
+  "(let ((PATTERN VALUE)...) BODY)")
 
-;; (let ((VAR VAL)...) BODY)
-;;   ==>  ( (lambda (VAR ...) BODY ) (VAL ...) )
+
+;; (let ((PATTERN VAL)...) BODY)
+;;   ==>  ( (lambda (PATTERN ...) BODY ) (VAL ...) )
+;;
 (define (M.let env sym args)
-  (define `form
-    (let ((body (rest args))
-          (pairs (read-pairs (first args) sym let-where)))
-      (define `vars (for (p pairs) (nth 1 p)))
-      (define `values (for (p pairs) (nth 2 p)))
-      (or (case pairs ((PError _ _) pairs))
-          (PList 0 (cons (PList 0 (append [(PSymbol 0 "lambda")]
-                                          [(PList 0 vars)]
-                                          body))
-                         values)))))
-  (c0 form env))
+  (let ((body (rest args))
+        (env env)
+        (pairs (read-pairs (first args) sym let-where)))
+    (define `vars
+      (for (p pairs) (nth 1 p)))
+    (define `values
+      (c0-vec (for (p pairs) (nth 2 p)) env))
+    (case pairs
+      ((PError _ _) pairs)
+      (_ (IFuncall (cons (c0-lambda env vars body) values))))))
 
 
 ;;--------------------------------
@@ -252,7 +261,7 @@
 
 
 ;;--------------------------------
-;; (let& ((VAR VAL)...) BODY)
+;; (let& ((PATTERN VAL)...) BODY)
 ;;--------------------------------
 
 ;; Similar to 'symbol-macrolet' in Common Lisp, `let&` associates variables
@@ -267,18 +276,22 @@
 ;; the environment.
 
 (define let&-where
-  "(let& ((VAR VALUE)...) BODY)")
+  "(let& ((PATTERN VALUE)...) BODY)")
 
 
 ;; ENV = environment for compiling macro values
 ;; DEPTH = nesting depth of ENV
 ;;
 (define (let&-env pairs env)
-  (define `p (first pairs))
+  (define `pair
+    (first pairs))
+
   (define `p-binding
-    (case (first p)
-      ((PSymbol _ name)
-       { =name: (EIL "p" (current-depth env) (c0 (nth 2 p) env)) })))
+    (bind-param (current-depth env)
+                (nth 1 pair)
+                (c0 (nth 2 pair) env)
+                ;; impossible
+                (PError 0 "let&")))
 
   (if pairs
       (let&-env (rest pairs) (append p-binding env))
