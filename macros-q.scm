@@ -119,6 +119,8 @@
         "(^set V,(^set V,1,{V}),(.value F))")
 (expect (c0-ser "(let-global ((v 1) (f 2)) 9)")
         "(^set V,(^set V,1,{V}),(^fset F,(^fset F,2,(.value F)),9))")
+(expect (c0-ser "(let-global (([v] 1) (f 2)) 9)")
+        "(^set V,(^set V,(^n 1,1),{V}),(^fset F,(^fset F,2,(.value F)),9))")
 
 ;;--------------------------------
 ;; (let& ((PATTERN VAL)...) BODY)

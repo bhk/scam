@@ -222,42 +222,72 @@
 
 
 ;;--------------------------------
-;; (let-global ((VAR VALUE)...) BODY)
+;; (let-global ((PATTERN VALUE)...) BODY)
+;;    -->  (^set 'NAME (^set 'NAME VALUE NAME) (let-global (OTHERS...) BODY))
 ;;--------------------------------
 
 (define letg-where
-  "(let-global ((VAR VALUE)...) BODY)")
+  "(let-global ((PATTERN VALUE)...) BODY)")
 
-;; (let-global ((VAR VALUE) OTHERS...) BODY)
-;;    -->  (^set 'VAR (^set 'VAR VALUE VAR) (let-global (OTHERS...) BODY))
+;; TODO: move to gen.scm
+(define `(il-nth n node)
+  (ICall "^n" [(IString n) node]))
+
+(define `(il-nth-rest n node)
+  (IBuiltin "wordlist" [(IString n) (IString 99999999) node]))
+
+
+;; Return dictionary of {symbol: il} pairs
 ;;
-;;   BINDING = (PList n [ SYM VALUE ])
-;;   OTHERS = [BINDING...]
+(define (unpack-param depth form il rest-il)
+  &public
+  (case form
+    ((PSymbol pos name)
+     (if (filter "...%" name)
+         { (PSymbol pos (patsubst "...%" "%" name)): rest-il}
+         { (PSymbol pos (patsubst "?%" "%" name)): il}))
+
+    ((PVec _ forms)
+     (append-for (n (indices forms))
+       (unpack-param depth (nth n forms) (il-nth n il) (il-nth-rest n il))))
+
+    ;; should not happen (check-params should have noticed this)
+    (_ "ERROR:param")))
+
+
+;; SYMBOL-VALUES = output of unpack-param
 ;;
-(define (letg-expand env sym body pairs)
-  (or
-   ;; read-pairs may have returned an error...
-   (case pairs
-     ((PError _ _) pairs))
-
-   (if (not pairs)
-      ;; no more bindings
-      (c0-block body env))
-
-   (begin
-     (define `p (first pairs))
-     (define `sym (first p))
-     (define `value (nth 2 p))
-     (define `others (letg-expand env sym body (rest pairs)))
-     ;; don't need WHAT and WHERE; the other call to c0-set will get those
-     (define `inner (c0-set env sym (c0 value env) (c0 sym env) nil nil))
-
-     (c0-set env sym inner others nil nil))))
+(define (letg* env body-value symbol-values)
+  (if symbol-values
+      (foreach ({=sym: node} (firstword symbol-values))
+        (define `others
+          (letg* env body-value (rest symbol-values)))
+        (define `inner
+          (c0-set env sym node (c0 sym env) nil nil))
+        (c0-set env sym inner others nil nil))
+      ;; done
+      body-value))
 
 
 (define (M.let-global env sym args)
-  (letg-expand env sym (rest args)
-               (read-pairs (first args) sym letg-where)))
+  ;; validate pairs
+  (define `pairs
+    (read-pairs (first args) sym letg-where))
+
+  ;; Construct environment bindings  "SYMNAME: (EIL "p" depth NODE)"
+  (define `symbol-values
+    (append-for (pair pairs)
+      (unpack-param (current-depth env)
+                    (nth 1 pair)
+                    (c0 (nth 2 pair) env)
+                    ;; impossible
+                    (PError 0 "let&"))))
+
+  (define `body-value
+    (c0-block (rest args) env))
+
+  ;; Construct nested set/fset expressions
+  (letg* env body-value symbol-values))
 
 
 ;;--------------------------------
