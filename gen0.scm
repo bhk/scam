@@ -526,17 +526,17 @@
 ;; IL = the value to be assigned to FORM (if FORM is not "...NAME")
 ;; IL-REST = the value to be assigned to FORM when FORM is "...NAME"
 ;;
-(define (bind-param depth form il rest-il)
+(define (bind-param depth scope form il rest-il)
   &public
   (case form
     ((PSymbol _ name)
      (if (filter "...%" name)
-         { (or (patsubst "...%" "%" name) name): (EIL "p" depth rest-il) }
-         { (patsubst "?%" "%" name): (EIL "p" depth il) }))
+         { (or (patsubst "...%" "%" name) name): (EIL scope depth rest-il) }
+         { (patsubst "?%" "%" name): (EIL scope depth il) }))
 
     ((PVec _ forms)
      (append-for (n (indices forms))
-       (bind-param depth (nth n forms) (il-nth n il) (il-nth-rest n il))))
+       (bind-param depth scope (nth n forms) (il-nth n il) (il-nth-rest n il))))
 
     ;; should not happen (check-params should have noticed this)
     (_ "ERROR:param")))
@@ -545,6 +545,7 @@
 (define `(lambda-bindings depth forms)
   (append-for (arg-index (indices forms))
     (bind-param depth
+                "p"
                 (nth arg-index forms)
                 (IArg arg-index ".")
                 (IArg (.. arg-index "+") "."))))
@@ -624,26 +625,64 @@
 ;; (define  NAME FLAGS... BODY)
 ;;--------------------------------
 
-(define (c0-def-symbol env pos name flags body is-define is-macro)
-  (or (c0-check-body pos (first body) is-define)
+
+;; WRAP-NODES = function to apply to vector of `set` nodes to yield code
+;;
+(define (c0-def-vars-2 scope depth flags is-define bindings wrap-nodes)
+  ;; Bind name(s) to global variable(s)
+  (define `var-bindings
+    (foreach ({=name: value} bindings)
+      {=name: (EVar scope (gen-native-name name flags))}))
+
+  ;; Assignment (for single-symbol case)
+  (define `set-nodes
+    (foreach ({=name: value} bindings)
+      [(ICall "^set" [ (IString (gen-native-name name flags))
+                       (case value
+                         ((EIL _ _ node) node)
+                         (_ "ERROR:cdv")) ])]))
+
+  (IEnv var-bindings
+        (if is-define
+            (wrap-nodes set-nodes))))
+
+
+(define (c0-def-vars scope depth flags is-define is-macro value what bindings)
+  (cond
+   (is-macro
+    (IEnv bindings nil))
+
+   ;; More than two symbols => Evaluate body *once*, pass it to a lambda,
+   ;; call ^set multiple times in the lambda.
+   ((word 2 bindings)
+    (c0-def-vars-2 scope depth flags is-define
+                   (bind-param (.. "." depth) scope what (IArg 1 ".") nil)
+                   (lambda (set-nodes)
+                     (IFuncall [ (ILambda (IBlock set-nodes)) value ]))))
+
+   ;; Only one variable being bound => emit a single call to ^set
+   (else
+    (c0-def-vars-2 scope depth flags is-define bindings first))))
+
+
+
+(define (c0-def-pattern env what flags body is-define is-macro)
+  (or (c0-check-body (form-index what) (first body) is-define)
+
+      (check-patterns [what] nil)
 
       (let ((value (c0-block body env))
             (scope (if (filter "&public" flags) "x" "p"))
-            (gname (gen-native-name name flags))
             (depth (current-depth env))
+            (flags flags)
             (is-define is-define)
             (is-macro is-macro))
 
-        (define `env-out
-          { =name: (if is-macro
-                       (EIL scope depth value)
-                       (EVar scope gname)) })
-
         (or (il-error-node value)
-            (IEnv env-out
-                  (and is-define
-                       (not is-macro)
-                       (ICall "^set" [ (IString gname) value ])))))))
+
+            (c0-def-vars scope depth flags is-define is-macro value what
+                         ;; "...NAME" is not a possibility
+                         (bind-param depth scope what value nil))))))
 
 
 ;;--------------------------------
@@ -706,9 +745,6 @@
 
    ;; get NAME, ARGS
    (case what
-     ((PSymbol n name)
-      (c0-def-symbol env n name flags body is-define is-macro))
-
      ((PList list-n forms)
       (case (first forms)
         ((PSymbol sym-n name)
@@ -721,9 +757,14 @@
                        def-or-decl macro-tick))))
 
      (else
-      ;; "missing/invalid FORM in ..."
-      (err-expected "L S" what pos "FORM" "(%s %sFORM ...)"
-                    def-or-decl macro-tick)))))
+      (if (case what
+            ((PSymbol _ _) 1)
+            ((PVec _ _) 1))
+          (c0-def-pattern env what flags body is-define is-macro)
+
+          ;; "missing/invalid FORM in ..."
+          (err-expected "L P" what pos "FORM" "(%s %sFORM ...)"
+                        def-or-decl macro-tick))))))
 
 
 ;; Break args into WHAT, FLAGS, and BODY.  Handle INBLOCK.

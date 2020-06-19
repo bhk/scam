@@ -446,7 +446,7 @@
 
 ;; declare errors
 (expect (c0-ser "(declare)")
-        "!(PError 2 'missing FORM in (declare FORM ...); expected a list or symbol')")
+        "!(PError 2 'missing FORM in (declare FORM ...); expected a list or pattern')")
 (expect (c0-ser "(declare foo 7)")
         "!(PError 6 'too many arguments to (declare ...)')")
 (expect (c0-ser "(declare (1 a))")
@@ -460,6 +460,11 @@
    (expect env { x: (EVar "p" (xns "~x")) })
    (expect sil (xns "(IBlock (^set ~x,1),(.dir {~x}))"))))
 
+(p1-block-cc
+ "(define [a b] 3)"
+ (lambda (env sil)
+   (expect env { a: (EVar "p" (xns "~a")), b: (EVar "p" (xns "~b")) })
+   (expect sil (xns "(^Y `(IBlock (^set 'a,(^n 1,{1})),(^set 'b,(^n 2,{1}))),3)"))))
 
 ;; define FUNC
 (expect (c0-ser "(define (f a ?b) (join a b))")
@@ -490,9 +495,9 @@
 ;; (define ...) errors
 
 (expect (c0-ser "(define)")
-        "!(PError 2 'missing FORM in (define FORM ...); expected a list or symbol')")
+        "!(PError 2 'missing FORM in (define FORM ...); expected a list or pattern')")
 (expect (c0-ser "(define `1)")
-        "!(PError 5 'invalid FORM in (define `FORM ...); expected a list or symbol')")(expect (c0-ser "(define `(m ?a) a)")
+        "!(PError 5 'invalid FORM in (define `FORM ...); expected a list or pattern')")(expect (c0-ser "(define `(m ?a) a)")
         "")
 (expect (c0-ser "(define (f ...x ?z) x)")
         "!(PError 7 ''...NAME' before other parameters')")

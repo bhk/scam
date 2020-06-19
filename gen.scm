@@ -335,6 +335,7 @@
    ((eq? code "%") "form")
    ((eq? code "L") "list")
    ((eq? code "S") "symbol")
+   ((eq? code "P") "pattern")
    ((eq? code "Q") "literal string")
    (else (form-typename code))))
 

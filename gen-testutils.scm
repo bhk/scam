@@ -105,7 +105,7 @@
 ;;
 (define (p1-block-cc text k)
   &public
-  (c0-block-cc nil (pN text)
+  (c0-block-cc nil (parse-text text)
                (lambda (env nodes)
                  (k env (il-ser (IBlock nodes))))))
 

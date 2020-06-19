@@ -318,6 +318,7 @@
 
   (define `p-binding
     (bind-param (current-depth env)
+                "p"
                 (nth 1 pair)
                 (c0 (nth 2 pair) env)
                 ;; impossible
