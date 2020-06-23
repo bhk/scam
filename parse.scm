@@ -77,7 +77,8 @@
     ((PQQuote  n form) n)
     ((PUnquote n form) n)
     ((PSplice  n form) n)
-    ((PError   n desc) n)))
+    ((PError   n desc) n)
+    ((PVec     n desc) n)))
 
 (define (form-typename form)
   &public
