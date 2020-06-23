@@ -22,16 +22,41 @@
                      env))))
 
 
+;; Return 1 on match; otherwise print message and return nil.
+;;
+(define (match-perror rec sym-where pattern)
+  (define `pos-in
+    (if (word 2 sym-where)
+        (form-index sym-where)
+        sym-where))
+
+  (or (case rec
+        ((PError pos desc)
+         (and (eq? pos pos-in)
+              (findstring pattern desc)
+              1)))
+      (printf "Expected: %q\n     Got:  %q" (PError pos-in pattern) rec)))
+
+
 ;;--------------------------------
 ;; tests
 ;;--------------------------------
 
 
+(define _a (PSymbol 1 "a"))
+(define _b (PSymbol 2 "b"))
+(define _x (PSymbol 5 "x"))
+(define _y (PSymbol 6 "y"))
+(define _?y (PSymbol 16 "?y"))
+(define _...z (PSymbol 27 "...z"))
+(define _1 (PString 91 1))
+(define _2 (PString 92 2))
+
+
 ;; get-flags, skip-flags
 
 (define `flag-args
-  [ (PString 0 "F") (PSymbol 2 "&private") (PSymbol 3 "&native")
-    (PSymbol 2 "bar") ])
+  [ (PString 0 "F") (PSymbol 2 "&private") (PSymbol 3 "&native") _a])
 
 (expect 0 (scan-flags flag-args 1 0))
 (expect 3 (scan-flags flag-args 2 1))
@@ -40,8 +65,8 @@
 (expect 4 (scan-flags flag-args 5 4))
 
 (expect ["&private" "&native"]  (get-flags flag-args))
-(expect ["&native"]             (get-flags (rest flag-args)))
-(expect [(PSymbol 2 "bar") ]    (skip-flags flag-args))
+(expect ["&native"] (get-flags (rest flag-args)))
+(expect [_a] (skip-flags flag-args))
 
 ;; get-arity
 
@@ -150,6 +175,7 @@
 (expect (c0 (PError 9 " a!0b ") nil)
         (PError 9 " a!0b "))
 
+
 ;;--------------------------------
 ;; c0 PDict: dictionaries
 ;;--------------------------------
@@ -170,14 +196,13 @@
   (c0-ser text { sym: (EIL "p" "." (IString "SYM")),
                  var: (EVar "p" "VAR"),
                  ;; args = [`a `b]
-                 args: (EIL "p" "." (IString [(PSymbol 1 "a")
-                                             (PSymbol 2 "b")])) }))
+                 args: (EIL "p" "." (IString [_a _b])) }))
 
 (expect (c0 (p1 "`x") nil) (IString (p1 " x")))
 (expect (cqq "`,sym") "SYM")
 (expect (cqq "`,var") "{VAR}")
 (expect (cqq "`(a 1 ,var)")
-        (.. (PList 2 [ (PSymbol 3 "a") (PString 5 1) ]) " (^d {VAR})"))
+        (.. (PList 2 [(PSymbol 3 "a") (PString 5 1)]) " (^d {VAR})"))
 
 ;; nested quote/unquote
 (begin
@@ -203,9 +228,9 @@
 ;; splicing
 
 (expect (cqq "`(1 ,@args 2)")
-        (PList 2 [(PString 3 1) (PSymbol 1 "a") (PSymbol 2 "b") (PString 8 2)]))
+        (PList 2 [(PString 3 1) _a _b (PString 8 2)]))
 (expect (cqq "`(1 ,@var 2)")
-        (PList 2 [ (PString 3 1) "{VAR}" (PString 8 2) ]))
+        (PList 2 [(PString 3 1) "{VAR}" (PString 8 2)]))
 
 
 ;;--------------------------------
@@ -213,28 +238,28 @@
 ;;--------------------------------
 
 ;; global data variable
-(expect (c0 (PSymbol 9 "d") {d: (EVar "p" "~d")})
-        (IVar "~d") )
+(expect (c0 _a {a: (EVar "p" "~a")})
+        (IVar "~a") )
 
 ;; global function variable
-(expect (c0 (PSymbol 9 "f") {f: (EFunc "p" "~f" 1)})
-        (IBuiltin "value" [(IString "~f")]))
+(expect (c0 _a {a: (EFunc "p" "~a" 1)})
+        (IBuiltin "value" [(IString "~a")]))
 
 ;; undefined
-(expect (c0 (PSymbol 9 "x") nil)
-        (PError 9 "undefined variable: `x`"))
+(expect (c0 _b nil)
+        (PError 2 "undefined variable: `b`"))
 
 ;; local variable
-(expect (c0 (PSymbol 9 "a") (append {a: (EDefn.arg 1 ".")}
-                                    (depth-marker ".")))
+(expect (c0 _a (append {a: (EDefn.arg 1 ".")}
+                       (depth-marker ".")))
         (IArg 1 "."))
 
-(expect (c0 (PSymbol 9 "a") (append {a: (EDefn.arg 1 ".")}
-                                    (depth-marker "..")))
+(expect (c0 _a (append {a: (EDefn.arg 1 ".")}
+                       (depth-marker "..")))
         (IArg 1 ".."))
 
-(expect (c0 (PSymbol 9 "a") (append {a: (EDefn.arg ";" ";")}
-                                    (depth-marker ";")))
+(expect (c0 _a (append {a: (EDefn.arg ";" ";")}
+                       (depth-marker ";")))
         (IArg ";" "."))
 
 
@@ -251,8 +276,8 @@
             (IArg 2 "..")                 ;; capture
             (ILambda (IArg 3 "."))]))     ;; internal arg
 
-(expect (c0 (PSymbol 9 "m") (append {m: (EMacro "p" ".." 1 cm)}
-                                    (depth-marker ".")))
+(expect (c0 _a (append {a: (EMacro "p" ".." 1 cm)}
+                       (depth-marker ".")))
         (ILambda
          (IConcat [(IArg 1 ".")
                    (IArg 2 "..")
@@ -260,7 +285,7 @@
 
 
 ;; builtin
-(expect (c0 (PSymbol 9 "a") {a: (EBuiltin "p" "words" 1)})
+(expect (c0 _a {a: (EBuiltin "p" "words" 1)})
         (ILambda (IBuiltin "words" [ (IArg 1 ".") ])))
 
 ;; vararg builtins
@@ -365,44 +390,19 @@
 ;; PList: (lambda NAMES BODY)  --> special-lamda
 ;; M.lambda, c0-lambda
 
+(define `(test-bpe forms sym-where desc)
+  (expect 1 (match-perror (dict-get EnvErrorKey (bind-params "." forms))
+                          sym-where
+                          desc)))
 
-(define _a (PSymbol 1 "a"))
-(define _x (PSymbol 2 "x"))
-(define _y (PSymbol 3 "y"))
-(define _?y (PSymbol 14 "?y"))
-(define _...z (PSymbol 25 "...z"))
-(define _STR (PString 99 "STR"))
+(test-bpe [ _1 ] _1 "invalid assignment target")
+(test-bpe [ _a _?y _x ] _?y "'?NAME' can appear")
+(test-bpe [ _a _...z _...z ] _...z "'...NAME' can appear")
 
-;; trim-rest-sym, trim-opt-syms
+(expect (bind-params "." [ _a _...z ])
+        {a: (EDefn.arg 1 "."),
+         z: (EDefn.arg "2+" ".")})
 
-(expect nil (trim-rest-sym [ _...z ]))
-(expect [_x] (trim-rest-sym [ _x ]))
-(expect [_...z] (trim-rest-sym [ _...z _...z ]))
-(expect [_x] (trim-opt-syms [ _x ]))
-(expect [_x] (trim-opt-syms [ _x _?y _?y ]))
-
-;; check-params
-
-(expect (check-params [_x _?y _?y _...z])
-        nil)
-(expect (check-params [ _STR ])
-        (PError 99 "invalid parameter name or pattern"))
-(expect (check-params [_?y _x])
-        (gen-error _?y "'?NAME' before non-optional parameter"))
-(expect (check-params [_a _...z _?y])
-        (gen-error _...z "'...NAME' before other parameters"))
-
-;; lambda-bindings
-
-(expect (lambda-bindings ".." [ _x _?y ])
-        { x: (EIL "p" ".." (IArg 1 ".")),
-          y: (EIL "p" ".." (IArg 2 ".")) })
-
-(expect (lambda-bindings ".." [ _a (PVec 77 [_x (PVec 88 [_y]) _...z]) ])
-        { a: (EIL "p" ".." (IArg 1 ".")),
-          x: (EIL "p" ".." (il-nth 1 (IArg 2 "."))),
-          y: (EIL "p" ".." (il-nth 1 (il-nth 2 (IArg 2 ".")))),
-          z: (EIL "p" ".." (il-nth-rest 3 (IArg 2 "."))) })
 
 ;; (lambda ...)
 
@@ -414,16 +414,22 @@
         "`(IBlock (^n 1,{1}),(.wordlist 2,99999999,{1}))")
 (expect (c0-ser "(lambda (a) (lambda (b) a b))")
         "``(IBlock {.1},{1})")
-(expect (c0-ser "(lambda (a ...b ?c) a)")
-        "!(PError 7 ''...NAME' before other parameters')")
-(expect (c0-ser "(lambda ([?a]) a)")
-        "!(PError 6 ''?NAME' not valid in vector destructuring')")
+
+(expect 1 (see "!(PError 5 'invalid assignment target;"
+               (c0-ser "(lambda (\"a\") a)")))
+(expect 1 (see "!(PError 7 ''...NAME' can appear only as "
+               (c0-ser "(lambda (a ...b ?c) a)")))
+(expect 1 (see "!(PError 7 ''...NAME' can appear only as "
+               (c0-ser "(lambda (a ...b ?c) a)")))
+(expect 1 (see "!(PError 6 ''?NAME' can appear only in "
+               (c0-ser "(lambda ([?a]) a)")))
+
 
 ;; PList = (record ...)
 
 (expect (il-ser (c0-record nil
                            (PSymbol 0 "CA")
-                           [ (PString 1 "1") (PString 1 "2") ]
+                           [ _1 _2 ]
                            "S L"
                            "!:D0"))
         "!:D0 1 2")
@@ -446,7 +452,7 @@
 
 ;; declare errors
 (expect (c0-ser "(declare)")
-        "!(PError 2 'missing FORM in (declare FORM ...); expected a list or pattern')")
+        "!(PError 2 'missing FORM in (declare FORM ...); expected a list or target')")
 (expect (c0-ser "(declare foo 7)")
         "!(PError 6 'too many arguments to (declare ...)')")
 (expect (c0-ser "(declare (1 a))")
@@ -465,6 +471,9 @@
  (lambda (env sil)
    (expect env { a: (EVar "p" (xns "~a")), b: (EVar "p" (xns "~b")) })
    (expect sil (xns "(^Y `(IBlock (^set 'a,(^n 1,{1})),(^set 'b,(^n 2,{1}))),3)"))))
+
+(expect (c0-ser "(define {a: x} 3)")
+        (xns "(^set ~x,(^dv (.filter a!=%,3)))"))
 
 ;; define FUNC
 (expect (c0-ser "(define (f a ?b) (join a b))")
@@ -495,14 +504,15 @@
 ;; (define ...) errors
 
 (expect (c0-ser "(define)")
-        "!(PError 2 'missing FORM in (define FORM ...); expected a list or pattern')")
+        "!(PError 2 'missing FORM in (define FORM ...); expected a list or target')")
 (expect (c0-ser "(define `1)")
-        "!(PError 5 'invalid FORM in (define `FORM ...); expected a list or pattern')")(expect (c0-ser "(define `(m ?a) a)")
+        "!(PError 5 'no BODY supplied to (define TARGET BODY)')")
+(expect (c0-ser "(define `(m ?a) a)")
         "")
 (expect (c0-ser "(define (f ...x ?z) x)")
-        "!(PError 7 ''...NAME' before other parameters')")
+        "!(PError 7 ''...NAME' can appear only as the last parameter or vector target element')")
 (expect (c0-ser "(define (f ?a x) x)")
-        "!(PError 7 ''?NAME' before non-optional parameter')")
+        "!(PError 7 ''?NAME' can appear only in parameter lists after all non-optional parameters')")
 ;; report errors when compiled, not when used
 (expect (c0-ser "(define `M UNDEF)")
         "!(PError 7 'undefined variable: `UNDEF`')")
@@ -513,6 +523,14 @@
 
 (expect (c0-ser "(define `X 3) X")
         "3")
+
+(p1-block-cc
+ "(define `[a b] 9)"
+ (lambda (env sil)
+   (expect env { a: (EIL "p" "." (ICall "^n" [(IString 1) (IString 9)])),
+                 b: (EIL "p" "." (ICall "^n" [(IString 2) (IString 9)])) })
+   (expect sil "")))
+
 
 ;; define and use compound macro
 

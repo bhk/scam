@@ -157,141 +157,164 @@
 
 
 ;;--------------------------------
-;; (let ((PATTERN VAL)...) BODY)
+;; (let ((TARGET VALUE)...) BODY)
 ;;--------------------------------
 
-(define (read-pairs-r forms where out)
-  (define `form (first forms))
-  (if (not forms)
-      out
-      (case form
-        ((PList n pair)
-         (define `var (first pair))
-         (define `value (nth 2 pair))
-         (define `extra (nth 3 pair))
-         (define `bad-pattern
-           (case var
-             ((PSymbol _ name) (filter "...% ?%" name))
-             ((PVec _ _) nil)
-             (_ 1)))
-
-         (cond
-          (extra
-           (gen-error extra "extra form after value in %s" where))
-          (bad-pattern
-           (gen-error var "bad PATTERN in (let ((PATTERN VALUE)...) BODY)"))
-          ((not value)
-           (err-expected "" value form "VALUE" where))
-          (else
-           (read-pairs-r (rest forms) where (conj out pair)))))
-        (else (err-expected "L" form nil "(PATTERN VALUE)" where)))))
+(define `let-where
+  "(let ((TARGET VALUE)...) BODY)")
 
 
-;; Parse and validate a form describing (SYM VALUE) pairs as in `(let ...)
-;; expressions.  Return a vector of [SYM VALUE] pairs, or a PError on
-;; failure.
+(define `let-EXTRA    1)
+(define `let-NOVALUE  2)
+(define `let-NOTARGET 3)
+(define `let-BADPAIR  4)
+(define `let-NOLIST   5)
+(define `let-BADLIST  6)
+(define `let-EMPTY    7)
+(define `let-NOOPT    8)
+
+
+(define (let-err form type where)
+  (define `descs [
+     "extra form after VALUE"       ;; EXTRA
+     "missing VALUE"                ;; NOVALUE
+     "missing TARGET"               ;; NOTARGET
+     "expected (TARGET VALUE)"      ;; BADPAIR
+     "missing ((TARGET VALUE)...)"  ;; NOLIST
+     "expected ((TARGET VALUE)...)" ;; BADLIST
+     "empty ((TARGET VALUE)...)"    ;; EMPTY
+     "'?NAME' and '...NAME' cannot be used as TARGET" ;; NOOPT
+     ])
+  (gen-error form (.. (nth type descs) " in %s") where))
+
+
+;; Parse/validate ((TARGET VALUE)...) pairs as in let-like expressions.
+;; Return a vector, each entry being [TARGET VALUE] or (PError n desc).
 ;;
-;;  LIST = `( (NAME VALUE)... )
-;;
-(define (read-pairs list sym where)
-  (case list
+(define (parse-pairs pairs-form sym where)
+  (case pairs-form
     ((PList n forms)
-     (read-pairs-r forms where nil))
-    (else
-     (err-expected "L" list sym "((PATTERN VALUE)...)" where))))
+     (or (for (form forms)
+           (case form
+             ((PList n pair)
+              (define `target (nth 1 pair))
+              (define `value (nth 2 pair))
+              (define `target-is-opt
+                (case target
+                  ((PSymbol _ name)
+                   (filter "?% ...%" name))))
+              (cond
+               ((not pair) (let-err form let-NOTARGET where))
+               ((not (word 2 pair)) (let-err form let-NOVALUE where))
+               ((word 3 pair) (let-err (nth 3 pair) let-EXTRA where))
+               ;; c0-lambda will allow '?NAME', so filter it out here
+               (target-is-opt (let-err target let-NOOPT where))
+               (else [target value])))
+             (_ (let-err form let-BADPAIR where))))
+         [(let-err pairs-form let-EMPTY where)]))
+    (other
+     [(let-err (or other sym)
+               (if other let-BADLIST let-NOLIST)
+               where)])))
 
 
-(define let-where
-  "(let ((PATTERN VALUE)...) BODY)")
+(define (c0-let env body pmap)
+  (define `params
+    (for (p pmap) (nth 1 p)))
+  (define `values
+    (c0-vec (for (p pmap) (nth 2 p)) env))
+
+  (or (first-perror pmap)
+      (IFuncall (cons (c0-lambda env params body) values))))
 
 
-;; (let ((PATTERN VAL)...) BODY)
-;;   ==>  ( (lambda (PATTERN ...) BODY ) (VAL ...) )
-;;
 (define (M.let env sym args)
-  (let ((body (rest args))
-        (env env)
-        (pairs (read-pairs (first args) sym let-where)))
-    (define `vars
-      (for (p pairs) (nth 1 p)))
-    (define `values
-      (c0-vec (for (p pairs) (nth 2 p)) env))
-    (case pairs
-      ((PError _ _) pairs)
-      (_ (IFuncall (cons (c0-lambda env vars body) values))))))
+  (c0-let env (rest args) (parse-pairs (first args) sym let-where)))
 
 
 ;;--------------------------------
-;; (let-global ((PATTERN VALUE)...) BODY)
-;;    -->  (^set 'NAME (^set 'NAME VALUE NAME) (let-global (OTHERS...) BODY))
+;; (let-global ((TARGET VALUE)...) BODY)
 ;;--------------------------------
 
 (define letg-where
-  "(let-global ((PATTERN VALUE)...) BODY)")
-
-;; TODO: move to gen.scm
-(define `(il-nth n node)
-  (ICall "^n" [(IString n) node]))
-
-(define `(il-nth-rest n node)
-  (IBuiltin "wordlist" [(IString n) (IString 99999999) node]))
+  "(let-global ((TARGET VALUE)...) BODY)")
 
 
-;; Return dictionary of {symbol: il} pairs
+;; Generate IL for:
 ;;
-(define (unpack-param depth form il rest-il)
-  &public
-  (case form
-    ((PSymbol pos name)
-     (if (filter "...%" name)
-         { (PSymbol pos (patsubst "...%" "%" name)): rest-il}
-         { (PSymbol pos (patsubst "?%" "%" name)): il}))
-
-    ((PVec _ forms)
-     (append-for (n (indices forms))
-       (unpack-param depth (nth n forms) (il-nth n il) (il-nth-rest n il))))
-
-    ;; should not happen (check-params should have noticed this)
-    (_ "ERROR:param")))
-
-
-;; SYMBOL-VALUES = output of unpack-param
+;;     (set "VAR" (set "VAR" NEW VALUE) BODY)
+;;     7    1     5    2     3   4      6      <-- eval order
 ;;
-(define (letg* env body-value symbol-values)
-  (if symbol-values
-      (foreach ({=sym: node} (firstword symbol-values))
-        (define `others
-          (letg* env body-value (rest symbol-values)))
-        (define `inner
-          (c0-set env sym node (c0 sym env) nil nil))
-        (c0-set env sym inner others nil nil))
-      ;; done
-      body-value))
+;; During BODY (step 6) VAR has value VALUE.  At step 7 VAR is reset to
+;; the value it had in step 4 (its previous value).
+;;
+(define (letting env var-sym value body)
+  ;; what & where (last two args) cannot be relevant
+  (define `set-new
+    (c0-set env var-sym value (c0 var-sym env) nil nil))
+  (c0-set env var-sym set-new body nil nil))
+
+
+(declare (lg* tvmap nxmap value pos env body))
+
+
+(define (lg*2 tvmap nxmap value pos env body)
+  (or
+   (first-perror nxmap)
+
+   (if (word 2 nxmap)
+       ;; use lambda
+       (begin
+         (define `inner-env
+           (append (depth-marker (.. "." (current-depth env)))
+                   env))
+         (define `inner
+           (lg* tvmap nxmap (IArg 1 ".") pos inner-env body))
+         (IFuncall [(ILambda inner) value]))
+       ;; single
+       (lg* tvmap nxmap value pos env body))))
+
+
+;; TVMAP = map of remaining [target value] pairs
+;; Pertaining to the "current" target/value:
+;;   NXMAP = map of [name xtor] pairs
+;;   VALUE = IL node
+;;   POS = form-index of target
+;;
+(define (lg* tvmap nxmap value pos env body)
+  (cond
+   (nxmap
+    (define `nx (first nxmap))
+    (case nx
+      ((Bind name xtor)
+       (letting env (PSymbol pos name) (xtor value)
+                (lg* tvmap (rest nxmap) value pos env body)))
+      (_ nx)))
+
+   (tvmap
+    (define `tv (first tvmap))
+    (define `target (nth 1 tv))
+    (define `value-form (nth 2 tv))
+    (or (first-perror tvmap)
+        (lg*2 (rest tvmap)
+              (parse-target target)
+              (c0 value-form env)
+              (form-index target)
+              env
+              body)))
+
+    (else
+      (c0-block body env))))
 
 
 (define (M.let-global env sym args)
-  ;; validate pairs
-  (define `pairs
-    (read-pairs (first args) sym letg-where))
-
-  ;; Construct environment bindings  "SYMNAME: (EIL "p" depth NODE)"
-  (define `symbol-values
-    (append-for (pair pairs)
-      (unpack-param (current-depth env)
-                    (nth 1 pair)
-                    (c0 (nth 2 pair) env)
-                    ;; impossible
-                    (PError 0 "let&"))))
-
-  (define `body-value
-    (c0-block (rest args) env))
-
-  ;; Construct nested set/fset expressions
-  (letg* env body-value symbol-values))
+  (define `tvmap
+    (parse-pairs (first args) sym letg-where))
+  (lg* tvmap nil nil nil env (rest args)))
 
 
 ;;--------------------------------
-;; (let& ((PATTERN VAL)...) BODY)
+;; (let& ((TARGET VAL)...) BODY)
 ;;--------------------------------
 
 ;; Similar to 'symbol-macrolet' in Common Lisp, `let&` associates variables
@@ -306,40 +329,38 @@
 ;; the environment.
 
 (define let&-where
-  "(let& ((PATTERN VALUE)...) BODY)")
+  "(let& ((TARGET VALUE)...) BODY)")
 
 
-;; ENV = environment for compiling macro values
-;; DEPTH = nesting depth of ENV
-;;
-(define (let&-env pairs env)
-  (define `pair
-    (first pairs))
+(define (let&-bindings pmap depth env ?bindings)
+  (if pmap
+      (case (first pmap)
+        ((PError _ _)
+         {=EnvErrorKey: (first pmap)})
 
-  (define `p-binding
-    (bind-param (current-depth env)
-                "p"
-                (nth 1 pair)
-                (c0 (nth 2 pair) env)
-                ;; impossible
-                (PError 0 "let&")))
-
-  (if pairs
-      (let&-env (rest pairs) (append p-binding env))
-      env))
+        (tv
+         (define `target (nth 1 tv))
+         (define `value-form (nth 2 tv))
+         (define `value-il (c0 value-form (._. bindings env)))
+         (define `tb (bind-target target "p" depth value-il))
+         (let&-bindings (rest pmap) depth env (append tb bindings))))
+      bindings))
 
 
 (define (M.let& env sym args)
-  (case (read-pairs (first args) sym let&-where)
-    ((PError pos str)
-     (PError pos str))
-    (pairs
-     (c0-block (rest args) (let&-env pairs env)))))
+  (let ((bindings (let&-bindings (parse-pairs (first args) sym let&-where)
+                                 (current-depth env)
+                                 env))
+        (body (rest args))
+        (env env))
+
+    (or (dict-get EnvErrorKey bindings)
+        (c0-block body (append bindings env)))))
 
 
 ;;--------------------------------
-;; (for PAT VEC BODY)
-;; (append-for PAT VEC BODY)
+;; (for TARGET VEC BODY)
+;; (append-for TARGET VEC BODY)
 ;;--------------------------------
 
 
@@ -354,7 +375,7 @@
 
 
 (define (c0-for2 env bindings depth sym tmpl body body-x where)
-  (define `pattern (nth 1 tmpl))
+  (define `target (nth 1 tmpl))
   (define `list (nth 2 tmpl))
   (define `has-list (word 2 tmpl))
   (define `body-or-list (if has-list "BODY" (filter "VEC LIST" where)))
@@ -367,28 +388,30 @@
       (if body
           (for-node depth (c0 list env) (body-x (c0-block body env-in)))
           (err-expected "" nil sym body-or-list where))
-      (err-expected "S" pattern sym "PAT" where)))
+      (err-expected "S" target sym "TARGET" where)))
 
 
 ;; Compile to IFor.  Delimiter = " ".
 ;;
 ;; SYM = `for | `foreach | ...
-;; TMPL = [PAT LIST ?DELIM]
+;; TMPL = [TARGET LIST ?DELIM]
 ;; BODY = [...EXPR]
 ;; WORD-X = function to apply to IL of each word prior to bindings
 ;; BODY-X = function to apply to IL of `foreach` result
 ;;
 ;; The result is summarized informally as:
 ;;
-;;   (foreach *word* LIST (let ((PAT (WORD-X *word*))) (BODY-X BODY)))
+;;   (foreach *word* LIST (let ((TARGET (WORD-X *word*))) (BODY-X BODY)))
 ;;
 (define `(c0-for env sym tmpl body word-x body-x where)
-  (define `pattern (nth 1 tmpl))
+  (define `target (nth 1 tmpl))
 
-  (foreach (depth (.. (current-depth env) ";"))
-    (define `bindings
-      (pat-bindings pattern (word-x (for-arg depth)) depth))
-    (c0-for2 env bindings depth sym tmpl body body-x where)))
+  (if tmpl
+      (foreach (depth (.. (current-depth env) ";"))
+        (define `bindings
+          (bind-target target "p" depth (word-x (for-arg depth))))
+        (c0-for2 env bindings depth sym tmpl body body-x where))
+      (err-expected "S" nil sym "TARGET" where)))
 
 
 ;; For old-style syntax
@@ -401,11 +424,11 @@
     ;; New syntax
     ((PList _ tmpl)
      (c0-for env sym tmpl (rest args) il-promote il-demote
-             "(for (PAT VEC) BODY)"))
+             "(for (TARGET VEC) BODY)"))
 
     ;; Old syntax
     (_  (c0-for-old env sym args il-promote il-demote
-                    "(for PAT VEC BODY)"))))
+                    "(for TARGET VEC BODY)"))))
 
 
 (define (M.append-for env sym args)
@@ -414,18 +437,18 @@
       ;; New syntax
       ((PList _ tmpl)
        (c0-for env sym tmpl (rest args) il-promote identity
-               "(append-for (PAT VEC) BODY)"))
+               "(append-for (TARGET VEC) BODY)"))
 
       ;; Old syntax
       (_ (c0-for-old env sym args il-promote identity
-                     "(append-for PAT VEC BODY)"))))
+                     "(append-for TARGET VEC BODY)"))))
 
   (IBuiltin "filter" [ (IString "%") for-value ]))
 
 
 ;;--------------------------------
-;; (foreach (PAT LIST ?DELIM) BODY)
-;; (concat-for (PAT LIST ?DELIM) BODY)
+;; (foreach (TARGET LIST ?DELIM) BODY)
+;; (concat-for (TARGET LIST ?DELIM) BODY)
 ;;--------------------------------
 
 ;; Since IFor (Make's foreach) always inserts a space between the result of
@@ -453,7 +476,7 @@
     (subst-in-il "~x" nil (il-subst (IString "~x~x ") (xenc delim) out)))
 
   (define `(loop-result body-x)
-    ;; [PAT LIST DELIM ...BODY]  ->  [PAT LIST ...BODY]
+    ;; [TARGET LIST DELIM ...BODY]  ->  [TARGET LIST ...BODY]
     (c0-for env sym tmpl body word-x body-x where))
 
   (or (case (delim-value)
@@ -481,28 +504,28 @@
     ;; New syntax
     ((PList _ tmpl)
      (c0-cfor env sym tmpl (rest args) il-promote
-              "(concat-for (PAT VEC ?DELIM) BODY)"))
+              "(concat-for (TARGET VEC ?DELIM) BODY)"))
 
     ;; Old syntax
     (_ (begin
          (define `tmpl (wordlist 1 3 args))
          (define `body (nth-rest 4 args))
          (c0-cfor env sym tmpl body il-promote
-                  "(concat-for PAT VEC DELIM BODY)")))))
+                  "(concat-for TARGET VEC DELIM BODY)")))))
 
 
-;; (foreach PAT LIST BODY)
-;; (foreach (PAT LIST ?DELIM) BODY)
+;; (foreach TARGET LIST BODY)
+;; (foreach (TARGET LIST ?DELIM) BODY)
 
 (define (M.foreach env sym args)
   (case (first args)
     ;; New syntax
     ((PList _ tmpl)
      (c0-cfor env sym tmpl (rest args) identity
-              "(foreach (PAT LIST ?DELIM) BODY)"))
+              "(foreach (TARGET LIST ?DELIM) BODY)"))
 
     ;; Old syntax
-    (_ (c0-for-old env sym args identity identity "(foreach PAT LIST BODY)"))))
+    (_ (c0-for-old env sym args identity identity "(foreach TARGET LIST BODY)"))))
 
 
 ;;--------------------------------

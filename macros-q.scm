@@ -17,20 +17,6 @@
 ;; tests
 ;;--------------------------------------------------------------
 
-;; read-pairs
-
-(define `(test-read-pairs text-pairs)
-  (read-pairs (p1 text-pairs) macro-sym "WHERE"))
-
-(expect [ [ (PSymbol 3 "x") (PString 5 1) ]
-          [ (PSymbol 9 "y") (PString 11 2) ] ]
-        (test-read-pairs "((x 1) (y 2))"))
-(expect (PError 3 "bad PATTERN in (let ((PATTERN VALUE)...) BODY)")
-        (test-read-pairs "((1 1) (y 2))"))
-(expect (PError 2 "missing VALUE in WHERE")
-        (test-read-pairs "((x) (y 2))"))
-(expect (PError 2 "invalid (PATTERN VALUE) in WHERE; expected a list")
-        (test-read-pairs "(sym (x 1))"))
 
 ;;--------------------------------
 ;; (print args...)
@@ -92,24 +78,25 @@
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
-;; (let ((PATTERN VAL)...) BODY)
+;; (let ((TARGET VAL)...) BODY)
 ;;--------------------------------
 
 (expect (c0-ser "(let ((a 1) (b \"q\")) (f a b))")
         (c0-ser "((lambda (a b) (f a b)) 1 \"q\")"))
+(expect (c0-ser "(let (([a b] 9)) (.. a b))")
+        "(^Y `(^n 1,{1})(^n 2,{1}),9)")
 (expect (c0-ser "(let a a)")
-        (..
-         "!(PError 4 'invalid ((PATTERN VALUE)...) in (let ((PATTERN VALUE)...) BODY)"
-         "; expected a list')"))
+        "!(PError 4 'expected ((TARGET VALUE)...) in (let ((TARGET VALUE)...) BODY)')")
 (expect (c0-ser "(let (a) a)")
-        (.. "!(PError 5 'invalid (PATTERN VALUE) in (let ((PATTERN VALUE)...) BODY)"
-            "; expected a list')"))
-(expect (c0-ser "(let ((\"a\")) a)")
-        "!(PError 6 'bad PATTERN in (let ((PATTERN VALUE)...) BODY)')")
+        "!(PError 5 'expected (TARGET VALUE) in (let ((TARGET VALUE)...) BODY)')")
 (expect (c0-ser "(let ((a)) a)")
-        "!(PError 5 'missing VALUE in (let ((PATTERN VALUE)...) BODY)')")
-(expect (c0-ser "(let ((?a 1)) a)")
-        "!(PError 6 'bad PATTERN in (let ((PATTERN VALUE)...) BODY)')")
+        "!(PError 5 'missing VALUE in (let ((TARGET VALUE)...) BODY)')")
+(expect 1 (see "!(PError 6 'invalid assignment target"
+               (c0-ser "(let ((\"a\" 1)) a)")))
+(expect 1 (see "!(PError 6 ''?NAME' and '...NAME' cannot be used"
+               (c0-ser "(let ((?a 1)) a)")))
+(expect 1 (see "!(PError 6 ''?NAME' and '...NAME' cannot be used"
+               (c0-ser "(let ((...a 1)) a)")))
 
 ;;--------------------------------
 ;; (let-global ((VAR VALUE)...) BODY)
@@ -122,24 +109,23 @@
 (expect (c0-ser "(let-global (([v] 1) (f 2)) 9)")
         "(^set V,(^set V,(^n 1,1),{V}),(^fset F,(^fset F,2,(.value F)),9))")
 
-;;--------------------------------
-;; (let& ((PATTERN VAL)...) BODY)
-;;--------------------------------
+(expect (c0-ser "(let-global (([x y] 5) (f 2)) a)"
+                {x: (EVar "p" "X"),
+                 y: (EVar "p" "Y"),
+                 f: (EFunc "p" "F" 1),
+                 a: (EDefn.arg 1 ".")})
+        (.. "(^Y `(^set X,(^set X,(^n 1,{1}),{X}),"
+            "(^set Y,(^set Y,(^n 2,{1}),{Y}),"
+            "(^fset F,(^fset F,2,(.value F)),{.1}))),5)"))
 
-(expect (let&-env [ [ (PSymbol 0 "x") (PSymbol 0 "X") ]
-                    [ (PVec 0 [(PSymbol 0 "y")]) (PSymbol 0 "x") ] ]
-                  (append
-                   { X: (EVar "p" "xname") }
-                   (depth-marker ".")))
-        (append
-         { y: (EIL "p" "." (ICall "^n" [(IString 1) (IVar "xname")])) }
-         { x: (EIL "p" "." (IVar "xname")) }
-         { X: (EVar "p" "xname") }
-         (depth-marker ".")))
+;;--------------------------------
+;; (let& ((TARGET VAL)...) BODY)
+;;--------------------------------
 
 (expect "1" (c0-ser "(let& ((a 1)) a)"))
 (expect "2" (c0-ser "(let& ((a 1) (b 2)) b)"))
 (expect "3" (c0-ser "(let& ((a 1) (b 2) (a 3)) a)"))
+(expect "(^n 2,x y z)" (c0-ser "(let& (([a b] \"x y z\")) b)"))
 
 ;; capture in sym macro value
 (c0-ser "(foreach n 1 (let& ((m n)) (.. m (lambda () m))))"
@@ -161,21 +147,22 @@
             "(.foreach ;,1,(.subst ~,~~x,{;})~x~x)))")
         (c0-ser "(foreach (z 1 g) z)" {g: (EVar "p" "G")}))
 
-(expect 1 (see (.. "!(PError 2 'missing PAT in "
-                   "(foreach (PAT LIST ?DELIM) BODY)"
-                   "; expected a symbol')")
+(expect 1 (see "!(PError 2 'missing TARGET in (foreach (TARGET LIST ?DELIM) BODY)"
                (c0-ser "(foreach ())")))
 
-(expect 1 (see (.. "!(PError 2 'missing LIST in "
-                   "(foreach (PAT LIST ?DELIM) BODY)')")
+(expect 1 (see "!(PError 2 'missing LIST in (foreach (TARGET LIST ?DELIM) BODY)')"
                (c0-ser "(foreach (a))")))
 
-(expect 1 (see "!(PError 2 'missing BODY in (foreach (PAT"
+(expect 1 (see "!(PError 2 'missing BODY in (foreach (TARGET"
                (c0-ser "(foreach (a 1))")))
 
 ;; destructuring
 (expect (c0-ser "(foreach {=a:b} \"1 2 3\" (f a b))")
         "(.foreach ;,1 2 3,(F (^dk {;}),(^dv {;})))")
+(expect (c0-ser "(foreach {key:a} \"1 2 3\" (f a \"\"))")
+        "(.foreach ;,1 2 3,(F (^dv (.filter key!=%,{;})),))")
+(expect (c0-ser "(foreach [a b] \"1 2 3\" (f a b))")
+        "(.foreach ;,1 2 3,(F (^n 1,{;}),(^n 2,{;})))")
 
 ;;--------------------------------
 ;; old: (foreach VAR LIST BODY)
@@ -194,11 +181,11 @@
 (expect (c0-ser "(begin (define `m (foreach v \"1 2 3\" v)) (lambda () m))")
         "`(.foreach ;,1 2 3,{;})")
 (expect (c0-ser "(foreach a b)")
-        "!(PError 2 'missing BODY in (foreach PAT LIST BODY)')")
+        "!(PError 2 'missing BODY in (foreach TARGET LIST BODY)')")
 (expect (c0-ser "(foreach a)")
-        "!(PError 2 'missing LIST in (foreach PAT LIST BODY)')")
+        "!(PError 2 'missing LIST in (foreach TARGET LIST BODY)')")
 (expect (c0-ser "(foreach)")
-        (.. "!(PError 2 'missing PAT in (foreach PAT LIST BODY)"
+        (.. "!(PError 2 'missing TARGET in (foreach TARGET LIST BODY)"
             "; expected a symbol')"))
 
 ;;--------------------------------

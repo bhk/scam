@@ -167,6 +167,11 @@
   { =DepthMarkerKey: (EMarker depth) })
 
 
+(define `EnvErrorKey
+  &public
+  ";")
+
+
 ;; Merge consecutive (IString ...) nodes into one node.  Retain all other
 ;; nodes.
 ;;
@@ -256,6 +261,26 @@
   (ICall "^dv" [node]))
 
 
+;; When KEY is a constant string, we can emit this more efficient code
+;;
+(define `(il-dict-get key dict-node)
+  (define `pat
+    (IString (.. (subst "%" "!8" [key]) "!=%")))
+  (ICall "^dv" [(IBuiltin "filter" [pat dict-node])]))
+
+
+(define `(il-word n node)
+  (IBuiltin "word" [(IString n) node]))
+
+
+(define `(il-nth n node)
+   (ICall "^n" [(IString n) node]))
+
+
+(define (il-nth-rest n node)
+  (IBuiltin "wordlist" [(IString n) (IString 99999999) node]))
+
+
 ;; Namespacing
 ;; -----------
 ;;
@@ -335,7 +360,7 @@
    ((eq? code "%") "form")
    ((eq? code "L") "list")
    ((eq? code "S") "symbol")
-   ((eq? code "P") "pattern")
+   ((eq? code "P") "target")
    ((eq? code "Q") "literal string")
    (else (form-typename code))))
 
@@ -372,31 +397,226 @@
                  (symbol-name sym) expected (words args))))
 
 
-;; Return binding(s) for a pattern: symbol or {=sym: sym}.
+;; Binding Targets
+;; -------------------------------------
 ;;
-;; PATTERN = expression being assigned: `SYM or `{=SYM: SYM}
-;; VALUE = IL record describing the value
+;; Targets generally may appear whereever a symbol would appear in an
+;; assignment or a parameter list.  Each target contains one or more
+;; symbols.  Function parameter additionally may end with optional symbols
+;; and then a single "rest" symbol.
 ;;
-(define (pat-bindings pattern value depth)
-  &public
-  ;; NAME = string
-  (define `(bind name var-x)
-    { =name: (EIL "p" depth (var-x value)) })
+;;   Params       = Target*  OptSymbol*  RestSymbol?
+;;   Patterm      = Symbol | VecTarget | PairTarget | FieldTarget
+;;   VecTarget    = `[` Target*  RestSymbol? `]`
+;;   PairTarget   = `{` `=` Target `:` Target [, `...` `:` Target] `}`
+;;   FieldTarget  = `{` (Symbol `:` Target) ,... `}`
+;;   OptSymbol    = `?` .. Name
+;;   RestSymbol   = `...` .. Name
+;;
+;; Note that ParamList is used in `lambda` and function-style `define`,
+;; while only Target is used in `let/let&/let-global` and var-style `define`.
 
-  (case pattern
+
+;; We can optimize (filter PAT (symbol-name SYM)) down to (filter PAT FORM)
+;; when PAT will not match the record tag or form index, given knowledge of
+;; PSymbol structure internals.  Use of this macro indicates that intent.
+;;
+(define `(sym-filter pat symbol)
+  (filter pat symbol))
+
+
+(data NX
+  &public
+
+  ;; A binding of a variable name to some portion of a value.
+  ;;
+  ;; NAME = the variable name bound
+  ;; XTOR = an *extractor* function.  An extractor accepts an IL node for the
+  ;;     value being bound to the entire target, and returns an IL node for the
+  ;;     value being bound to the symbol.
+  ;;
+  (Bind name xtor))
+
+(declare (pp form xtor))
+
+
+;; Parse a binding *target*, which is a form that describes how zero or more
+;; symbols are to be bound to a value.
+;;
+;; Input: FORM
+;; Returns: [ RESULT... ], where:
+;;     RESULT = (Bind NAME XTOR) | (PError ...)
+;;
+(define (parse-target tgt)
+  &public
+  ;; special-case common path: valid symbol
+  (or (case tgt
+        ((PSymbol _ name)
+         (if (sym-filter "?% ...%" tgt)
+             nil
+             [(Bind name identity)])))
+      (pp tgt identity)))
+
+
+(define perror-pattern
+  (.. [(word 1 (PError nil nil))] "!0%"))
+
+
+;; Return the first error from a `parse-target` result, if there were any.
+;;
+(define (first-perror result)
+  &public
+  (first (filter perror-pattern result)))
+
+
+(define `pt-NOOPT 1)
+(define `pt-BADREST 2)
+(define `pt-BADDICT 3)
+(define `pt-BADKEY 4)
+(define `pt-BADTARGET 5)
+
+
+;; MODE = nil (parameter), 1 (vector), 2 (dict value)
+;;
+(define (pt-err form code)
+  (define `index
+    (subst 1 (if (filter "...%" (symbol-name form)) 2 1) code))
+
+  (define `descs [
+     "'?NAME' can appear only in parameter lists after all non-optional parameters"
+     "'...NAME' can appear only as the last parameter or vector target element"
+     "invalid assignment target; {=NAME: TARGET, ...} unpacks pairs, {KEY: TARGET, ...} extracts fields"
+     "in dictionary field targets, keys must be symbols or string literals"
+     "invalid assignment target; expected symbol, vector, or dictionary"])
+
+  [(gen-error form (nth index descs))])
+
+
+(define `(dict-first-key pairs)
+  ;; dict-key actually returns the key of the first pair
+  (dict-key pairs))
+
+
+;; {=sym: pat}
+;; {`...`: pat}
+;;
+;; XTOR = extractor of the dictionary.
+;;
+(define (pt-pair key value n is-last xtor)
+  (define `(pair-xtor il)
+    ;; ^dk and ^dv work on the first pair in a dictionary
+    (if (filter n 1)
+        (xtor il)
+        (il-word n (xtor il))))
+
+  ;; An extractor of the key.
+  (define `key-xtor
+    (lambda (il) (il-dict-key (pair-xtor il))))
+
+  ;; An extractor of the value.
+  (define `value-xtor
+    (lambda (il) (il-dict-value (pair-xtor il))))
+
+  (define `rest-xtor
+    (lambda (il) (il-nth-rest n (xtor il))))
+
+  (or (case key
+        ((PSymbol _ name)
+         (cond
+          ((sym-filter "=%" key)
+           (cons (Bind (patsubst "=%" "%" name) key-xtor)
+                 (pp value value-xtor)))
+
+          ((and (sym-filter "..." key) is-last)
+           (pp value rest-xtor)))))
+
+      (pt-err key pt-BADDICT)))
+
+
+(define `(pt-pairs pairs xtor)
+  (append-for (n (indices pairs))
+    (define `p (word n pairs))
+    (define `is-last (filter n (words pairs)))
+
+    (pt-pair (dict-key p) (dict-value p) n is-last xtor)))
+
+
+;; { const: pat ,* }
+;;
+(define `(pt-fields pairs xtor)
+  (foreach (pair pairs)
+    (define `key-vec
+      (case (dict-key pair)
+        ((PSymbol _ name) [name])
+        ((PString _ str) [str])))
+
+    (or (append-for (key key-vec)
+          (pp (dict-value pair)
+              (lambda (il) (il-dict-get key (xtor il)))))
+        ;; non-const key
+        (pt-err (dict-key pair) pt-BADKEY))))
+
+
+;; { ... }
+;;
+(define (pt-dict pairs xtor)
+  (or (case (dict-first-key pairs)
+        ((PSymbol _ key-sym)
+         (if (filter "... =%" key-sym)
+             (pt-pairs pairs xtor))))
+      (pt-fields pairs xtor)))
+
+
+(define (pt-vec elems num-elems xtor)
+  ;; Allow empty vectors as targets?  Eh, might as well.
+  (append-for (n (indices elems))
+    (define `elem
+      (nth n elems))
+
+    (or
+     ;; handle potential final "rest" element
+     (if (filter n num-elems)
+         (case elem
+           ((PSymbol _ name)
+            (if (filter "...%" name)
+                [(Bind (or (patsubst "...%" "%" name) name)
+                       (lambda (il) (il-nth-rest (words elems) (xtor il))))]))))
+
+     ;; ordinary element
+     (pp elem (lambda (il) (il-nth n (xtor il)))))))
+
+
+(define (pp form xtor)
+  (case form
     ((PSymbol _ name)
-     (bind name identity))
+     (if (sym-filter "...% ?%" form)
+         (pt-err form pt-NOOPT)
+         [(Bind name xtor)]))
+
+    ((PVec _ vforms)
+     (pt-vec vforms (words vforms) xtor))
 
     ((PDict _ pairs)
-     (if (filter 1 (words pairs))
-         (case (dict-key pairs)
-           ((PSymbol _ key-sym)
-            (if (filter "=%" key-sym)
-                (let& ((key-var (patsubst "=%" "%" key-sym)))
-                  (case (dict-value pairs)
-                    ((PSymbol _ value-var)
-                     (._. (bind value-var il-dict-value)
-                          (bind key-var il-dict-key))))))))))))
+     (pt-dict pairs xtor))
+
+    (_ (pt-err form pt-BADTARGET))))
+
+
+(define (bind-nxmap nxmap scope depth il)
+  &public
+  (append-for (nx nxmap)
+    (case nx
+      ((Bind name xtor) { =name: (EIL scope depth (xtor il)) })
+      (other {=EnvErrorKey: other}))))
+
+
+(define (bind-target target scope depth il)
+  &public
+  (bind-nxmap (parse-target target) scope depth il))
+
+
+;; Base Environment
+;; ----------------
 
 
 (define base-env

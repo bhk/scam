@@ -456,111 +456,49 @@
 ;;--------------------------------
 
 
-;; Remove the last form in FORMS if it is a "...NAME" rest parameter.
+;; Construct environment bindings for a function parameter list.  The first
+;; parameter is bound to (IArg 1 "."), the second to (IArg 2 "."), and so
+;; on.  Parameters may be symbols or more complex targets.
 ;;
-(define (trim-rest-sym forms)
-  (define `ends-in-rest
+;; Syntax errors encountered during parsing parameters are returned as
+;; bindings with a variable name of EnvErrorKey.
+;;
+(define (bind-params depth forms ?not-at-end)
+  ;; Handle `...NAME` at the final position, preceded by zero or more `?NAME`.
+  (define `variadic-case
     (case (last forms)
-      ((PSymbol _ name)
-       (filter "...%" name))))
+      ((PSymbol _ sym-name)
+       (foreach (name (filter (if not-at-end "?%" "...% ?%") sym-name))
 
-  (if ends-in-rest
-      (butlast forms)
-      forms))
+         (define `var-name
+           (or (patsubst (if (filter "?%" name) "?%" "...%") "%" name)
+               name))
 
+         (define `var-index
+           (.. (words forms) (if (filter "...%" name) "+")))
 
-;; Remove all trailing "?NAME" optional parameters from FORMS.
-;;
-(define (trim-opt-syms forms)
-  (define `ends-in-opt
-    (case (last forms)
-      ((PSymbol _ name)
-       (filter "?%" name))))
+         (append (bind-params depth (butlast forms) 1)
+                 { =var-name: (EIL "p" depth (IArg var-index ".")) })))))
 
-  (if ends-in-opt
-      (trim-opt-syms (butlast forms))
-      forms))
-
-
-(define (check-patterns forms in-vec)
-  (append-for (form forms)
-    ;; form should be a valid pattern (non-optional, non-rest)
-    (case form
-      ((PSymbol _ name)
-       (if (filter "...%" name)
-           [(gen-error form "'...NAME' before other parameters")]
-           (if (filter "?%" name)
-               [ (if in-vec
-                     (gen-error form "'?NAME' not valid in vector destructuring")
-                     (gen-error form "'?NAME' before non-optional parameter")) ])))
-
-      ((PVec _ vforms)
-       (check-patterns (trim-rest-sym vforms) 1))
-
-      (_ [(PError (form-index form) "invalid parameter name or pattern")]))))
-
-
-;; Validate lambda parameters.
-;;
-;;   Parameters = Pattern*  OptSymbol*  RestSymbol?
-;;   Pattern    = Symbol | VecPattern
-;;   VecPattern = [ Pattern*  RestSymbol? ]
-;;
-;; Return nil if valid; (PError ...) otherwise.
-;;
-(define (check-params forms)
-  (first (check-patterns (trim-opt-syms (trim-rest-sym forms)) nil)))
-
-
-(define `(il-nth n node)
-  (ICall "^n" [(IString n) node]))
-
-(define `(il-nth-rest n node)
-  (IBuiltin "wordlist" [(IString n) (IString 99999999) node]))
-
-
-
-;; Return the EDefn record(s) for a parameter pattern.
-;;
-;; FORM = parameter
-;; IL = the value to be assigned to FORM (if FORM is not "...NAME")
-;; IL-REST = the value to be assigned to FORM when FORM is "...NAME"
-;;
-(define (bind-param depth scope form il rest-il)
-  &public
-  (case form
-    ((PSymbol _ name)
-     (if (filter "...%" name)
-         { (or (patsubst "...%" "%" name) name): (EIL scope depth rest-il) }
-         { (patsubst "?%" "%" name): (EIL scope depth il) }))
-
-    ((PVec _ forms)
-     (append-for (n (indices forms))
-       (bind-param depth scope (nth n forms) (il-nth n il) (il-nth-rest n il))))
-
-    ;; should not happen (check-params should have noticed this)
-    (_ "ERROR:param")))
-
-
-(define `(lambda-bindings depth forms)
-  (append-for (arg-index (indices forms))
-    (bind-param depth
-                "p"
-                (nth arg-index forms)
-                (IArg arg-index ".")
-                (IArg (.. arg-index "+") "."))))
+  (if forms
+      (or variadic-case
+          ;; Process all non-optional arguments
+          (foreach (n (indices forms))
+            (bind-target (nth n forms) "p" depth (IArg n "."))))))
 
 
 (define (c0-lambda env params body)
   &public
-  (define `body-env
-    (foreach (ldepth (depth.l (.. "." (current-depth env))))
-      (append (depth-marker ldepth)
-              (lambda-bindings ldepth params)
-              env)))
+  (foreach (depth (depth.l (.. "." (current-depth env))))
+    (let ((bindings (bind-params depth params))
+          (env env)
+          (body body))
 
-  (or (check-params params)
-      (ILambda (c0-block body body-env))))
+      (define `body-env
+        (append (depth-marker depth) bindings env))
+
+      (or (dict-get EnvErrorKey bindings)
+          (ILambda (c0-block body body-env))))))
 
 
 ;; special form: (lambda ARGS BODY)
@@ -574,6 +512,7 @@
     (else (err-expected "L" arg-form sym
                         "(ARGNAME...)" "(lambda (ARGNAME...) BODY)"))))
 
+
 ;;--------------------------------
 ;; (declare ...)
 ;; (define ...)
@@ -584,7 +523,7 @@
   ;; validate BODY
   (if is-define
       (if (not first-form)
-          (gen-error where "no BODY supplied to (define FORM BODY)"))
+          (gen-error where "no BODY supplied to (define TARGET BODY)"))
       (if first-form
           (gen-error first-form "too many arguments to (declare ...)"))))
 
@@ -620,75 +559,65 @@
 
 
 ;;--------------------------------
-;; (define `NAME FLAGS... BODY)
-;; (declare NAME FLAGS...)
-;; (define  NAME FLAGS... BODY)
+;; (define `TARGET FLAGS... BODY)
+;; (declare TARGET FLAGS...)
+;; (define  TARGET FLAGS... BODY)
 ;;--------------------------------
 
 
-;; WRAP-NODES = function to apply to vector of `set` nodes to yield code
+;; Generate code to assign a global variable
 ;;
-(define (c0-def-vars-2 scope depth flags is-define bindings wrap-nodes)
-  ;; Bind name(s) to global variable(s)
-  (define `var-bindings
-    (foreach ({=name: value} bindings)
-      {=name: (EVar scope (gen-native-name name flags))}))
+(define (assign-nx nx flags il)
+  (case nx
+    ((Bind name xtor)
+     (ICall "^set" [ (IString (gen-native-name name flags)) (xtor il) ]))))
 
-  ;; Assignment (for single-symbol case)
+
+(define (c0-def-target-2 env nxmap flags value is-define is-macro scope)
+  ;; Bindings for global variables (names mentioned in target)
+  (define `bindings
+    (append-for (nx nxmap)
+      (case nx
+        ((Bind name xtor)
+         {=name: (EVar scope (gen-native-name name flags))}))))
+
   (define `set-nodes
-    (foreach ({=name: value} bindings)
-      [(ICall "^set" [ (IString (gen-native-name name flags))
-                       (case value
-                         ((EIL _ _ node) node)
-                         (_ "ERROR:cdv")) ])]))
+    (for (nx nxmap)
+      (assign-nx nx flags (IArg 1 "."))))
 
-  (IEnv var-bindings
-        (if is-define
-            (wrap-nodes set-nodes))))
+  (define `assignment-code
+    (if (word 2 nxmap)
+        ;; Mutiple vars => (let ((v VALUE)) (^set NAME1 (XTOR1 v)) ...)
+        (IFuncall [ (ILambda (IBlock set-nodes)) value ])
+        ;; Single var => (^set NAME (XTOR v))))
+        (assign-nx (first nxmap) flags value)))
 
+  (or (first-perror nxmap)
 
-(define (c0-def-vars scope depth flags is-define is-macro value what bindings)
-  (cond
-   (is-macro
-    (IEnv bindings nil))
+      (il-error-node value)
 
-   ;; More than two symbols => Evaluate body *once*, pass it to a lambda,
-   ;; call ^set multiple times in the lambda.
-   ((word 2 bindings)
-    (c0-def-vars-2 scope depth flags is-define
-                   (bind-param (.. "." depth) scope what (IArg 1 ".") nil)
-                   (lambda (set-nodes)
-                     (IFuncall [ (ILambda (IBlock set-nodes)) value ]))))
-
-   ;; Only one variable being bound => emit a single call to ^set
-   (else
-    (c0-def-vars-2 scope depth flags is-define bindings first))))
+      (if is-macro
+          (IEnv (bind-nxmap nxmap scope (current-depth env) value) nil)
+          (IEnv bindings
+                (if is-define
+                    assignment-code)))))
 
 
-
-(define (c0-def-pattern env what flags body is-define is-macro)
-  (or (c0-check-body (form-index what) (first body) is-define)
-
-      (check-patterns [what] nil)
-
-      (let ((value (c0-block body env))
-            (scope (if (filter "&public" flags) "x" "p"))
-            (depth (current-depth env))
-            (flags flags)
-            (is-define is-define)
-            (is-macro is-macro))
-
-        (or (il-error-node value)
-
-            (c0-def-vars scope depth flags is-define is-macro value what
-                         ;; "...NAME" is not a possibility
-                         (bind-param depth scope what value nil))))))
+(define (c0-def-target env target flags body is-define is-macro)
+  (or (c0-check-body (form-index target) (first body) is-define)
+      (c0-def-target-2 env
+                       (parse-target target)
+                       flags
+                       (c0-block body env)
+                       is-define
+                       is-macro
+                       (if (filter "&public" flags) "x" "p"))))
 
 
 ;;--------------------------------
-;; (define `(NAME ARGS...) FLAGS BODY)
-;; (declare (NAME ARGS...) FLAGS)
-;; (define  (NAME ARGS...) FLAGS BODY)
+;; (define `(NAME PARAMS...) FLAGS BODY)
+;; (declare (NAME PARAMS...) FLAGS)
+;; (define  (NAME PARAMS...) FLAGS BODY)
 ;;--------------------------------
 
 
@@ -743,7 +672,7 @@
          ((PQQuote n subform)
           (c0-def2 env n subform flags body is-define 1))))
 
-   ;; get NAME, ARGS
+   ;; get NAME, PARAMS
    (case what
      ((PList list-n forms)
       (case (first forms)
@@ -757,17 +686,15 @@
                        def-or-decl macro-tick))))
 
      (else
-      (if (case what
-            ((PSymbol _ _) 1)
-            ((PVec _ _) 1))
-          (c0-def-pattern env what flags body is-define is-macro)
+      (if what
+          (c0-def-target env what flags body is-define is-macro)
 
           ;; "missing/invalid FORM in ..."
           (err-expected "L P" what pos "FORM" "(%s %sFORM ...)"
                         def-or-decl macro-tick))))))
 
 
-;; Break args into WHAT, FLAGS, and BODY.  Handle INBLOCK.
+;; Return IL for a `define` or `declare` form.
 ;;
 (define `(c0-def env sym args is-define)
   (c0-def2 env (form-index sym) (first args)
