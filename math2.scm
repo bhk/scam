@@ -581,7 +581,7 @@
 ;;   Eₐ[expr] = maximum potential absolute error in expression `expr`
 ;;   Eᵣ[expr] = maximum potential relative error in expression `expr`
 ;;
-;; `(exp x)` apmlifies the relative error by x:
+;; `(exp x)` amplifies the relative error by x:
 ;;     exp(x*(1+err)) = exp(x) * exp(x*err)
 ;;                    ≈ exp(x) * (1 + x*err)   [for small err]
 ;; Alternatively:
@@ -595,7 +595,7 @@
 ;;    L10 = (log-10 KL)        Eₐ[L10] = 5>>KL
 ;;    i = x // L10
 ;;    a = x - i*L10            Eₐ[a] = abs(i) * Eₐ[L10]
-;;    m = (exp-med a Km)         Eᵣ[m] = 1>>Km + Eₐ[a]*a/eᵃ
+;;    m = (exp-med a Km)       Eᵣ[m] = 1>>Km + Eₐ[a]*a/eᵃ
 ;;    out = m * 10ⁱ            Eᵣ[out] = Eᵣ[m]
 ;;
 ;; When PREC is given as a place, we convert it to a number of digits:
