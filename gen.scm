@@ -270,14 +270,17 @@
 
 
 (define `(il-word n node)
+  &public
   (IBuiltin "word" [(IString n) node]))
 
 
 (define `(il-nth n node)
-   (ICall "^n" [(IString n) node]))
+  &public
+  (ICall "^n" [(IString n) node]))
 
 
 (define (il-nth-rest n node)
+  &public
   (IBuiltin "wordlist" [(IString n) (IString 99999999) node]))
 
 
@@ -406,9 +409,9 @@
 ;; and then a single "rest" symbol.
 ;;
 ;;   Params       = Target*  OptSymbol*  RestSymbol?
-;;   Patterm      = Symbol | VecTarget | PairTarget | FieldTarget
+;;   Target       = Symbol | VecTarget | PairTarget | FieldTarget
 ;;   VecTarget    = `[` Target*  RestSymbol? `]`
-;;   PairTarget   = `{` `=` Target `:` Target [, `...` `:` Target] `}`
+;;   PairTarget   = `{` `=` Symbol `:` Target [, `...` `:` Target] `}`
 ;;   FieldTarget  = `{` (Symbol `:` Target) ,... `}`
 ;;   OptSymbol    = `?` .. Name
 ;;   RestSymbol   = `...` .. Name
@@ -437,7 +440,7 @@
   ;;
   (Bind name xtor))
 
-(declare (pp form xtor))
+(declare (pt form xtor))
 
 
 ;; Parse a binding *target*, which is a form that describes how zero or more
@@ -447,15 +450,18 @@
 ;; Returns: [ RESULT... ], where:
 ;;     RESULT = (Bind NAME XTOR) | (PError ...)
 ;;
-(define (parse-target tgt)
+(define (parse-target tgt ?default-value-xtor)
   &public
+  (define `value-xtor
+    (or default-value-xtor identity))
+
   ;; special-case common path: valid symbol
   (or (case tgt
         ((PSymbol _ name)
          (if (sym-filter "?% ...%" tgt)
              nil
-             [(Bind name identity)])))
-      (pp tgt identity)))
+             [(Bind name value-xtor)])))
+      (pt tgt value-xtor)))
 
 
 (define perror-pattern
@@ -525,10 +531,10 @@
          (cond
           ((sym-filter "=%" key)
            (cons (Bind (patsubst "=%" "%" name) key-xtor)
-                 (pp value value-xtor)))
+                 (pt value value-xtor)))
 
           ((and (sym-filter "..." key) is-last)
-           (pp value rest-xtor)))))
+           (pt value rest-xtor)))))
 
       (pt-err key pt-BADDICT)))
 
@@ -551,7 +557,7 @@
         ((PString _ str) [str])))
 
     (or (append-for (key key-vec)
-          (pp (dict-value pair)
+          (pt (dict-value pair)
               (lambda (il) (il-dict-get key (xtor il)))))
         ;; non-const key
         (pt-err (dict-key pair) pt-BADKEY))))
@@ -583,10 +589,10 @@
                        (lambda (il) (il-nth-rest (words elems) (xtor il))))]))))
 
      ;; ordinary element
-     (pp elem (lambda (il) (il-nth n (xtor il)))))))
+     (pt elem (lambda (il) (il-nth n (xtor il)))))))
 
 
-(define (pp form xtor)
+(define (pt form xtor)
   (case form
     ((PSymbol _ name)
      (if (sym-filter "...% ?%" form)

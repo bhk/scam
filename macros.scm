@@ -794,161 +794,140 @@
 (define case-where
   "(case VALUE (PATTERN BODY)...)")
 
+(data Case
+  (Clause tag nxmap &list body))
 
-;; Extract a member from a record (in the value of an EIL binding)
+
+;;   (Any target body) | (Match ctor-sym ctor-args body)
+;;   (Any target body) | (Match tag encs ctor-args body-form)  <- env
 ;;
-;; DEFN = an EIL binding for a record.
-;; NDX = index (1-based) of the member.
-;; ENCODING = "S", "W", or "L"
-;; Result = an EIL binding for the member.
+;;    tag  nxmap     body
+;;    tag  bindings  body    <-- (bind clauses env is-word)
+;;    tag  code
+;; <merge>
+;;    tag  code
+;; <fold>
+;;    code
 ;;
-(define `(extract-member defn ndx encoding)
-  (define `il-ndx (IString (1+ ndx)))
-  (case defn
-    ((EIL scope depth node)
-     (EIL scope depth
-          (cond
-           ((eq? "S" encoding) (ICall "^n" [il-ndx node]))
-           ((eq? "W" encoding) (IBuiltin "word" [il-ndx node]))
-           (else (IBuiltin "wordlist" [il-ndx (IString 99999999) node])))))))
+;; (c0-block body (append {=var-name: value-defn} env)))
+
+(define (clause-or-error tag nxmap body)
+  (or (first-perror nxmap)
+      (Clause tag nxmap body)))
 
 
-(define (member-bindings args encodings value-defn)
-  (foreach (n (indices encodings))
-    { (symbol-name (nth n args)):
-      (extract-member value-defn n (word n encodings))}))
+(define (enc-xtor encoding index)
+  (cond
+   ((filter "S" encoding) (lambda (il) (il-nth index il)))
+   ((filter "W" encoding) (lambda (il) (il-word index il)))
+   (else (lambda (il) (il-nth-rest index il)))))
 
 
-;; Compile a vector of (PATTERN BODY) cases
+;; Construct NXMap for record fields
 ;;
-;; FILTER-VALUE = IL record to use for the value in filter expressions
-;; VALUE-DEFN = an environment entry that evaluates to the value
-;; IS-WORD = true when FILTER-VALUE is an automatic variable containing
-;;     (demote value); otherwise FILTER-VALUE is the actual value.
+(define (record-nxmap targets encs)
+  (append-for (n (indices targets))
+    (define `target (nth n targets))
+    (define `enc (nth n encs))
+    (parse-target target (enc-xtor enc (1+ n)))))
+
+
+;; [...FORMS] -> (Clause tag nxmap body) | (PError ...)
 ;;
-(define (c0-clauses cases filter-value value-defn is-word env)
-  (for (c cases)                        ; c = `(PATTERN BODY)
+(define (case-parse cases env)
+  (for (c cases)
+    ;; Expect c = `(PATTERN BODY)
     (case c
       ((PList pos forms)
-       (begin
-         (define `pattern (first forms))
-         (define `body (rest forms))
+       (define `pattern (first forms))
+       (define `body (rest forms))
 
-         (case pattern
-           ;; (SYM BODY)
-           ((PSymbol n var-name)
-            (c0-block body (append {=var-name: value-defn} env)))
+       (if (word 2 forms)
+           (case pattern
+             ;; pattern = (CTOR ARGS...)
+             ((PList n syms)
+              (define `ctor-name (first syms))
+              (define `ctor-args (rest syms))
+              ;; look up ctor definition
+              (case (resolve ctor-name env)
+                ((ERecord _ encs tag)
+                 (or (check-arity (words encs) ctor-args ctor-name)
+                     (clause-or-error tag (record-nxmap ctor-args encs) body)))
+                (_ (gen-error ctor-name "expected a record constructor name"))))
 
-           ;; ((NAME ARGS...) BODY)
-           ((PList n syms)
-            (define `ctor-name (first syms))
-            (define `ctor-args (rest syms))
-            (or
-             (case (resolve ctor-name env)
-               ((ERecord _ encs tag)
-                (define `test-node
-                  (IBuiltin
-                   "filter"
-                   (if is-word
-                       [(IString [(.. tag " %")])
-                        (IConcat [filter-value (IString "!0")])]
-                       [(IString tag)
-                        (IBuiltin "word" [(IString 1) filter-value])])))
+             ;; pattern = TARGET
+             (target
+              (clause-or-error "" (parse-target target) body)))
+           ;; no BODY (maybe no PATTERM)
+           (err-expected nil nil c (if forms "BODY" "PATTERN") case-where)))
 
-                (define `bindings
-                  (member-bindings ctor-args encs value-defn))
-
-                (define `then-node
-                  (c0-block body (append bindings env)))
-
-                (or (check-arity (words encs) ctor-args ctor-name)
-                    ;; Success
-                    (IBuiltin "if" [ test-node then-node ]))))
-
-             (case ctor-name
-               ((PSymbol _ name)
-                (gen-error ctor-name "symbol `%s` is not a record constructor"
-                           name))
-               (else
-                (err-expected "S" ctor-name pattern "CTOR" case-where)))))
-
-           (else (err-expected "L S" pattern c "PATTERN" case-where)))))
-      (else (err-expected "L" c nil "(PATTERN BODY)" case-where)))))
+      (_ ;; bad clause
+       (err-expected "L" c nil "(PATTERN BODY)" case-where)))))
 
 
-(define (case-append-arg node value)
-  (case node
-    ((IBuiltin name args) (IBuiltin name (conj args value)))
-    ;; could be an error, or block containing errors
-    (else node)))
-
-
-;; Collapse sequence of IF expressions...
-;;   [(IF C A) (IF C2 A2) ...] --> (IF C A (IF C2 A2 ...))
+;; VALUE = IL for the value being matched
 ;;
-(define (case-fold args)
-  (if (word 2 args)
-      (foldr case-append-arg (last args) (butlast args))
-      (first args)))
+(define (case-cb clauses value env depth)
+  (for (c clauses)
+    (case c
+      ((Clause tag nxmap body)
+       (define `bindings (bind-nxmap nxmap "p" depth value))
+       (define `code (c0-block body (append bindings env)))
+       [tag code])
+
+      (err
+       ["" err]))))
 
 
-;; If NODE matches `(if (filter "P" V) T)` then return [P V T], else nil.
+;; [C] -> [ [pat code]... ]
+(define `(case-bodies clauses value env)
+  (case-cb clauses value env (current-depth env)))
+
+
+;; Combine sequential cases that have identical body IL
 ;;
-(define (clause-pvt node)
-  (case node
-    ((IBuiltin if? if-args)
-     (and (filter "if" if?)
-          (not (word 3 if-args))
-          (case (first if-args)
-            ((IBuiltin filter? f-args)
-             (if (filter "filter" filter?)
-                 (case (first f-args)
-                   ((IString p)
-                    [p (nth 2 f-args) (nth 2 if-args)])))))))))
+(define (case-merge clauses)
+  ;;(define `[[tag1 il1] [tag2 il2]] clauses)
+  (define `c1 (first clauses))
+  (define `c2 (nth 2 clauses))
+  (define `tag1 (first c1))
+  (define `il1 (nth 2 c1))
+  (define `tag2 (first c2))
+  (define `il2 (nth 2 c2))
 
+  ;; If t2 == nil, return nil.  Otherwise, join with a space delimiter.
+  (define `(merge-tags t1 t2)
+    (addprefix (.. t1 " ") t2))
 
-;; CLAUSE1 = first clause
-;; PVT1 = (clause-pvt CLAUSE)
-;; CLAUSE2 = second clause
-;; PVT2 = (clause-pvt CLAUSE2)
-;; IN = rest of clauses
-;;
-(define (clauses-merge-loop clause1 pvt1 clause2 pvt2 in)
-  (define `(recur clause pvt)
-    (clauses-merge-loop clause pvt
-                        (first in) (clause-pvt (first in))
-                        (rest in)))
-
-  (cond
-   ;; merge
-   ((and pvt1 (eq? (rest pvt1) (rest pvt2)))
-    (define `p (._. (first pvt1) (first pvt2)))
-    (define `v (nth 2 pvt1))
-    (define `t (nth 3 pvt1))
-    (recur (IBuiltin "if" [ (IBuiltin "filter" [(IString p) v]) t])
-           (cons p (rest pvt1))))
-
-   ;; shift
-   (clause2
-    (append [clause1] (recur clause2 pvt2)))
-
-   ;; done
-   (else
-    [clause1])))
-
-
-;; Merge adjacent clauses where the following applies:
-;;      clause = (if (filter "A" V) T)
-;; next clause = (if (filter "B" V) T)
-;;     result -> (if (filter "A B" V) T)
-;;
-(define (clauses-merge clauses)
   (if (word 2 clauses)
-      (clauses-merge-loop (first clauses) (clause-pvt (first clauses))
-                          (nth 2 clauses) (clause-pvt (nth 2 clauses))
-                          (nth-rest 3 clauses))
+      (if (eq? il1 il2)
+          (case-merge (cons [(merge-tags tag1 tag2) il1] (nth-rest 3 clauses)))
+          (append (word 1 clauses) (case-merge (rest clauses))))
       clauses))
 
+
+;; Construct code to test each tag, and fold clauses together:
+;;
+;;   [["T1" BODY1] ["T2" BODY2] ...]
+;;     -->  (if Match[T1] BODY1 (if Match[T1] BODY2 ...))
+;;
+;; Match[TAG] => a filter expression.  (make-filter-args TAG) returns the
+;; args as a vector of IL nodes.
+;;
+(define (case-fold clauses make-filter-args)
+  (define `[tag body] (first clauses))
+
+  ;; If we have a nil tag (which matches match everything) *and* subsequent
+  ;; clauses, we include the code for the subsequent clauses anyway, so that
+  ;; any errors in that code will be reported.
+  (if (or tag (word 2 clauses))
+      (IBuiltin "if" [ (if tag
+                           (IBuiltin "filter" (make-filter-args tag))
+                           (IString 1))
+                       body
+                       (case-fold (rest clauses) make-filter-args) ])
+      (or body
+          (IString ""))))
 
 
 ;; True if NODE should be evaluated only once when used as the value of a
@@ -973,32 +952,36 @@
     (else 1)))
 
 
-(define (c0-case cases depth value value-defn sym env)
+;; (TEST-CTOR tag) => expression that tests value for TAG
+;;
+(define (c0-case env cases depth value ?filter-args-ovr)
   (cond
-   ((case value ((PError _ _) 1))
-    value)
-
-   ((eval-only-once? value)
+   ((and (not filter-args-ovr)
+         (eval-only-once? value))
     ;; Prevent multiple evaluation of a complex expression: wrap in
     ;; "(foreach X (to-word EXPR) ...)"
     (define `f-depth (.. depth ";"))
-    (define `f-filter-value (for-arg f-depth))
-    (define `f-value-defn (EIL "p" f-depth (il-promote (for-arg f-depth))))
-    (define `f-body
-      (c0-case cases f-depth f-filter-value f-value-defn sym
-               (for-env f-depth env)))
+    (define `f-arg (for-arg f-depth))
+    (define `f-value (il-promote f-arg))
+    (define `f-env (for-env f-depth env))
+    (define `(f-filter-args tags)
+      [ (IString (.. (subst "!0" "!0% " [tags]) "!0%"))
+        (IConcat [f-arg (IString "!0")]) ])
 
-    (for-node f-depth (il-demote value) f-body))
+
+    (for-node f-depth (il-demote value)
+              (c0-case f-env cases f-depth f-value f-filter-args)))
 
    (else
-    (define `defn (or value-defn (EIL "p" depth value)))
-    (define `clauses (c0-clauses cases value defn (if value-defn 1) env))
-    (case-fold (clauses-merge clauses)))))
+    (define `clauses (case-parse cases env))
+    (define `pairs (case-cb clauses value env depth))
+    (define `merged (case-merge pairs))
+    (define `(filter-args tags)
+      [(IString tags) (IBuiltin "word" [(IString 1) value])])
+    (case-fold merged (or filter-args-ovr filter-args)))))
 
 
 (define (M.case env sym args)
   (if args
-      (c0-case (rest args) (current-depth env) (c0 (first args) env)
-               nil sym env)
-      ;; no value-form
+      (c0-case env (rest args) (current-depth env) (c0 (first args) env))
       (err-expected nil nil sym "VALUE" case-where)))

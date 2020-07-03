@@ -371,49 +371,114 @@
 ;; (case VALUE (PATTERN BODY)... )
 ;;--------------------------------
 
-(define tc-node (IArg 1 ".."))
-(define tc-defn (EIL "p" ".." (IArg 1 "..")))
 
-(expect (extract-member tc-defn 1 "S")
-        (EIL "p" ".." (ICall "^n" [(IString "2") tc-node])))
+(define _a (PSymbol 1 "a"))
+(define _x (PSymbol 5 "x"))
+(define _y (PSymbol 6 "y"))
+(define _?y (PSymbol 16 "?y"))
+(define Ctor1-tag "!:C1")
+(define Ctor1-encs "W L")
+(define Ctor1-record  (ERecord "p" Ctor1-encs Ctor1-tag))
+(define _Ctor1        (PSymbol 101 "Ctor1"))
+(define _Ctor1_x_y    (PList 102 [_Ctor1 _x _y]))
+(define _<x>          (PVec 103 [_x]))
+(define _Ctor1_<x>_y  (PList 102 [_Ctor1 _<x> _y]))
 
-(expect (member-bindings [(PSymbol 0 "a!") (PSymbol 0 "b") (PSymbol 0 "c")]
-                         ["S" "W" "L"]
-                         tc-defn)
-        { a!: (EIL "p" ".." (ICall "^n" [(IString "2") tc-node])),
-          b: (EIL "p" ".." (IBuiltin "word" [(IString "3") tc-node])),
-          c: (EIL "p" ".." (IBuiltin "wordlist" [(IString "4")
-                                                 (IString 99999999)
-                                                 tc-node]))})
-
-;; clauses-merge
-
-(define `(check-merge pvs)
-  (define `clauses
-    (for (pv pvs)
-      (if (word 2 pv)
-          (IBuiltin "if" [ (IBuiltin "filter" [(IString (first pv))
-                                               (IArg 1 ".")])
-                           (IString (nth 2 pv)) ])
-          (IString pv))))
-
-  (for (il (clauses-merge clauses))
-    (il-ser il)))
+(define case-env { Ctor1: Ctor1-record })
 
 
-(expect (check-merge [ "a X"])
-        ["(.if (.filter a,{1}),X)"])
+;; NXMAP -> list of {name: il} / [PError]
+;;
+(define `(nxmap-apply nxmap)
+  (append-for (rec nxmap)
+    (case rec
+      ((Bind name xtor)
+       { =name: (xtor identity) })
+      (o [o]))))
 
-(expect (check-merge [ "a X" "b X"])
-        ["(.if (.filter a b,{1}),X)"])
 
-(expect (check-merge [ "a X" "b X" "c X"])
-        ["(.if (.filter a b c,{1}),X)"])
+;; Apply `nxmap-apply` to each NXMAP field in [ (Clause tag nxmap body)... ]
+;;
+(define `(Clauses-apply clauses)
+  (for (c clauses)
+    (case c
+      ((Clause tag nxmap body)
+       (Clause tag (nxmap-apply nxmap) body))
+      (_ _))))
 
-(expect (check-merge [ "a X" "b Y" 1])
-        ["(.if (.filter a,{1}),X)"
-         "(.if (.filter b,{1}),Y)"
-         "1"])
+
+(expect (case-parse [(PList 7 [])] case-env)
+        [(PError 7 "missing PATTERN in (case VALUE (PATTERN BODY)...)")])
+
+(expect (case-parse [(PList 7 [_Ctor1_x_y])] case-env)
+        [(PError 7 "missing BODY in (case VALUE (PATTERN BODY)...)")])
+
+(expect (case-parse [(PList 7 [(PList 9 [_a _x _y]) _x])] case-env)
+        [(PError 1 "expected a record constructor name")])
+
+(expect (case-parse [_a] case-env)
+        [(PError 1 "invalid (PATTERN BODY) in (case VALUE (PATTERN BODY)...); expected a list")])
+
+(expect (case-parse [(PList 9 [_?y _y])] case-env)
+        [(PError 16 "'?NAME' can appear only in parameter lists after all non-optional parameters")])
+
+
+;; simple ctor pattern
+(expect (Clauses-apply (case-parse [(PList 0 [_Ctor1_x_y _x])]
+                                    case-env))
+        [(Clause Ctor1-tag
+                 {x: (il-word 2 identity), y: (il-nth-rest 3 identity)}
+                 [_x])])
+
+;; target in pattern
+(expect (Clauses-apply (case-parse [(PList 0 [_Ctor1_<x>_y _x])]
+                                    case-env))
+        [(Clause Ctor1-tag
+                 {x: (il-nth 1 (il-word 2 identity)),
+                  y: (il-nth-rest 3 identity)}
+                 [_x])])
+
+;; pattern is a symbol
+(expect (Clauses-apply (case-parse [(PList 0 [_x _x])] case-env))
+        [(Clause "" {x: identity} [_x])])
+
+;; pattern is a vector target
+(expect (Clauses-apply (case-parse [(PList 0 [_<x> _x])] case-env))
+        [(Clause "" {x: (il-nth 1 identity)} [_x])])
+
+;; [C] -> [C2]
+(expect (case-bodies [(Clause "" [(Bind "x" (lambda (il) (il-nth 1 il)))] [_x])]
+                     (IVar "V")
+                     [])
+        [ ["" (il-nth 1 (IVar "V"))] ])
+
+
+
+(expect (case-merge [ ["a" (IVar "V")]
+                      ["b" (IVar "V")]
+                      ["c" (IVar "X")]
+                      ["" (IVar "X")] ])
+        [ ["a b" (IVar "V")]
+          ["" (IVar "X")] ])
+
+
+(expect (case-fold [ ["a b" (IVar "V")]
+                     ["c" (IVar "X")] ]
+                   (lambda (tag) [(IString (addsuffix "%" tag)) (IVar "R")]))
+        (IBuiltin "if" [ (IBuiltin "filter" [ (IString "a% b%") (IVar "R")])
+                         (IVar "V")
+                         (IBuiltin "if" [ (IBuiltin "filter" [ (IString "c%")
+                                                               (IVar "R")])
+                                          (IVar "X")
+                                          (IString "")])]))
+
+(expect (case-fold [ ["a b" (IVar "V")]
+                     ["" (IVar "X")] ]
+                   (lambda (tag) [ (IString (addsuffix "%" tag)) (IVar "R")]))
+        (IBuiltin "if" [ (IBuiltin "filter" [ (IString "a% b%") (IVar "R") ])
+                         (IVar "V")
+                         (IVar "X") ]))
+
 
 ;; eval-only-once?
 
@@ -440,19 +505,15 @@
 
 ;; single case
 (expect (c0-ser "(case v ((C s w v) v))" tc-env)
-        "(.if (.filter !:T0,(.word 1,{V})),(.wordlist 4,99999999,{V}))")
+        "(.if (.filter !:T0,(.word 1,{V})),(.wordlist 4,99999999,{V}),)")
 
 ;; multiple cases
 (expect (c0-ser "(case v ((C s w l) l) (a a))" tc-env)
         "(.if (.filter !:T0,(.word 1,{V})),(.wordlist 4,99999999,{V}),{V})")
 
-;; non-ctor in pattern
-(expect (c0-ser "(case v ((Foo a) 1))")
-        "!(PError 8 'symbol `Foo` is not a record constructor')")
-
 ;; bad value expr
-(expect (c0-ser "(case bogus)")
-        "!(PError 4 'undefined variable: `bogus`')")
+(expect 1 (see "!(PError 4 'undefined variable: `bogus`')"
+               (c0-ser "(case bogus)")))
 
 ;; wrong number of arguments
 (expect (c0-ser "(case v ((C s l) l))" tc-env)
@@ -460,22 +521,27 @@
 
 ;; captures in value
 (expect (c0-ser "(lambda (v) (case v ((C a b c) a)))" tc-env)
-        "`(.if (.filter !:T0,(.word 1,{1})),(^n 2,{1}))")
+        "`(.if (.filter !:T0,(.word 1,{1})),(^n 2,{1}),)")
 (expect (c0-ser "(lambda (v) (case v ((C a b c) (lambda () a))))" tc-env)
-        "`(.if (.filter !:T0,(.word 1,{1})),`(^n 2,{.1}))")
+        "`(.if (.filter !:T0,(.word 1,{1})),`(^n 2,{.1}),)")
 (expect (c0-ser "(foreach v 1 (case v ((C a b c) (lambda () a))))" tc-env)
-        "(.foreach ;,1,(.if (.filter !:T0,(.word 1,{;})),`(^n 2,{.;})))")
+        "(.foreach ;,1,(.if (.filter !:T0,(.word 1,{;})),`(^n 2,{.;}),))")
 
 ;; complex value => use `foreach`
 (expect (c0-ser "(case (F) ((C a b c) (lambda () a)))" tc-env)
         (.. "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
-            "`(^n 2,(^u {.;}))))"))
+            "`(^n 2,(^u {.;})),))"))
 
 ;; nested complex value => generate unique auto var
 (expect (c0-ser "(case (F) ((C a b c) (case (F) (else 1))))" tc-env)
         (.. "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0%,{;}!0),"
-            "(.foreach ;;,(^d (F )),1)))"))
+            "(.foreach ;;,(^d (F )),1),))"))
 
 ;; collapse clauses with equivalent bodies
 (expect (c0-ser "(case v ((C a b c) b) ((D a b) b) (a a))" tc-env)
         "(.if (.filter !:T0 !:T1,(.word 1,{V})),(.word 3,{V}),{V})")
+
+;; complex value & collapsed clauses
+(expect (c0-ser "(case (F) ((C a b c) b) ((D a b) b))" tc-env)
+        (.. "(.foreach ;,(^d (F )),(.if (.filter !1:T0!0% !1:T1!0%,{;}!0),"
+            "(.word 3,(^u {;})),))"))
