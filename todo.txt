@@ -3,22 +3,6 @@ TODO
 Enhancements
 ----
 
- * Unconditional destructuring in `let`, `lambda`, `define`
-    (let (([a b c] vec)) ...)         ==>  a = (first vec) ...
-    (let (({k1: a, k2: b} dict)) ...) ==>  d = (dict-get "k1" vec)
-    (let (({=a: b} dict-pair)) ...)   ==>  a = (dict-key pair)
-    let-global?
-    let&
-
- * Pattern matching enhancements...
-     (case X
-       ([a b c] ...)       ;; when (word 3 X)
-       ({k1:a, k2:b} ...)  ;; when (dict-find "k1" X) and (dict-find "k2" X)
-       (K            ...)  ;; when X == K (constant)
-       ((Ctor K y) ...)    ;; match constant member
-       ([K a b]    ...)    ;; match constant element
-       ...)
-
  * "spread" with "..." syntax.
 
  * Enhance call-site tracing to support lambdas and macros/builtins
@@ -86,8 +70,10 @@ Enhancements
     - no hygienic way to reference values
 
 
- * Non-backward-compatible:
-     - remove old foreach/for/concat-for/... syntax
+ * SCAM 3.0 (compatibility break)
+    - remove old foreach/for/concat-for/... syntax
+    - Put Make builtins in a separate namespace ("suffix" yields the Make
+      definition instead of "Variable not defined")
 
 
 Optimizations for Generated Code

@@ -248,31 +248,25 @@
 ;; of expressions) once for each word, and constructs a new word list from the
 ;; results of each evaluation.
 ;;
-;; `BODY` is evaluated in the scope of variables that are specified by the
-;; pattern PAT, which can be either a symbol or a `{=VAR: VAR}` expression.
-;; When PAT is a symbol, that symbol will be bound to each word when `BODY`
-;; is evaluated.
+;; `BODY` is evaluated in the scope of variables named in TARGET, which can
+;; be either a symbol or a [destructuring
+;; target](reference.md#destructuring).
 ;;
 ;;     > (foreach (x "1 2 3") (1+ x))
 ;;     "2 3 4"
-;;
-;; When PAT is in dictionary form, each word will be treated as a dictionary
-;; pair and the symbols will be bound to the key and value of the pair.
-;;
-;;     > (foreach ({=k: v} {a:1, b:2, c:3}) (.. k v))
-;;     "a1 b2 c3"
 ;;
 ;; `DELIM` specifies the separator between list elements.  This defaults to
 ;; a single space when `DELIM` is absent.  When it is present and evaluates
 ;; to `nil`, all element results are concatenated.
 ;;
-(declare (foreach (pat list ?delim) ...body) &public)
+(declare (foreach (target list ?delim) ...body) &public)
 
 
 ;; `for` iterates over items in a vector, constructing a new vector.
 ;;
-;; `BODY` is evaluated in the scope of the symbol(s) named in PAT.  See
-;; `foreach` for more on patterns.
+;; `BODY` is evaluated in the scope of the variables named in TARGET, which
+;; can be either a symbol or a [destructuring target
+;; ](reference.md#destructuring).
 ;;
 ;; Example:
 ;;
@@ -280,7 +274,7 @@
 ;;     +    (reverse x))
 ;;     [[2 1] [4 3]]
 ;;
-(declare (for (pat vector) ...body) &public)
+(declare (for (target vector) ...body) &public)
 
 
 ;; `append-for` is similar to `for` but it appends together all of the (vector)
@@ -294,7 +288,7 @@
 ;;     +    (if (> x 3) [x]))
 ;;     "7 5"
 ;;
-(declare (append-for (pat vector) ...body) &public)
+(declare (append-for (target vector) ...body) &public)
 
 
 ;; `concat-for` is similar to `for` but it concatenates the values of BODY.
@@ -304,7 +298,7 @@
 ;;     > (concat-for (x [1 2 3] ";") (wordlist 1 x "a b c"))
 ;;     "a;a b;a b c"
 ;;
-(declare (concat-for (pat vector ?delim) ...body) &public)
+(declare (concat-for (target vector ?delim) ...body) &public)
 
 
 ;; Terminate execution of the program with a non-zero status code, writing
@@ -364,15 +358,17 @@
 ;;
 ;; This special form takes several forms:
 ;;
-;;     (define NAME FLAG... VALUE)            ; global data variable
-;;     (define (NAME ARG...) FLAG... BODY)    ; global function variable
-;;     (define `NAME EXPR)                    ; symbol macro
-;;     (define `(NAME ARG...) FLAG... BODY)   ; compound macro
+;;     (define NAME FLAG... VALUE)              ; global data variable
+;;     (define (NAME PARAM...) FLAG... BODY)    ; global function variable
+;;     (define `NAME EXPR)                      ; symbol macro
+;;     (define `(NAME PARAM...) FLAG... BODY)   ; compound macro
 ;;
 ;; The `define` special form adds a name to the environment and associates
 ;; it with a definition.  The defined name will be visible to subsequent
 ;; expressions in the same block, and the definition supersedes any
 ;; previous definitions associated with the same name.
+;;
+;; See `lambda` for descriptions of the `PARAM` syntax.
 ;;
 ;; The `&public` flag may be included in `FLAG...`.  This indicates that the
 ;; symbol should be visible outside of the file in which it is defined.
@@ -385,7 +381,7 @@
 ;; This special form takes two forms:
 ;;
 ;;     (declare NAME FLAG...)             ; global data variable
-;;     (declare (NAME ARG...) FLAG...)    ; global function variable
+;;     (declare (NAME PARAM...) FLAG...)    ; global function variable
 ;;
 ;; The `declare` special form declares a global variable without assigning
 ;; a value.  This is usually used to access non-SCAM functions, or when
@@ -402,10 +398,12 @@
 
 
 ;; This special form assigns names to values.  BINDINGS is a sequence of
-;; `(NAME VALUE)` pairs.  First, the VALUE expressions are evaluated.
-;; order.  Then BODY (a sequence of expressions) is evaluated in an
-;; environment in which each NAME is bound to its corresponding value.  The
-;; The value of the last expression in BODY is returned.
+;; `(TARGET VALUE)` pairs.  Each TARGET can be either a symbol or a
+;; [destructuring target](reference.md#destructuring).
+;;
+;; BODY (a sequence of expressions) is evaluated in an environment in which
+;; every name in each TARGET is bound to its corresponding value.  The
+;; value of the last expression in BODY is returned.
 ;;
 ;; `let` is implemented in terms of `lambda`, and is equivalent to:
 ;;
@@ -443,8 +441,13 @@
 
 ;; This form modifies the value of some number of global variables *during
 ;; the execution of BODY*. Afterwards, the original values are restored.
-;; Note that, unlike other `let` values, the variables must already be
-;; in scope.
+;; Note that, unlike `let` or `let&`, the variables must already be in
+;; scope.
+;;
+;; BINDINGS is a sequence of `(TARGET VALUE)` pairs.  Each TARGET can be
+;; either a symbol or a [destructuring target](reference.md#destructuring).
+;; Each name mentioned in TARGET must identify a previously declared global
+;; variable.
 ;;
 ;; This expression evaluates to the value of the last expression in BODY.
 ;;
@@ -465,7 +468,19 @@
 
 ;; A `lambda` expression evaluates to a function value.
 ;;
-;; `...PARAMS` is zero or more symbols that name the formal arguments.
+;; `...PARAMS` is zero or more *targets* that name the formal arguments,
+;; followed by zero or more *optional* parameters and then perhaps one
+;; *rest* parameter.
+;;
+;; A target is a symbol (not beginning with `...` or `?`) or a
+;; [destructuring target](reference.md#destructuring).
+;;
+;; An optional parameter is a symbol that begins with `?`.  Optional
+;; parameters may be omitted by callers.
+;;
+;; A rest parameter is a symbol that begins with `...`.  Rest parameters
+;; capture, as a vector, all subsequent arguments passed to the function.
+;; Callers may omit any of the arguments captured by a rest parameter.
 ;;
 ;; `BODY` is a block of one or more expressions (see [`begin`](#begin) )
 ;; that will be executed when the function is called. The initial environment
