@@ -47,6 +47,16 @@
 (define (tok pat)
   (peg-and (peg-p pat) matchSpace))
 
+(declare matchParam)
+
+(define (lazyMatchParam subj start)
+  (matchParam subj start))
+
+(define matchParam
+  (peg-or (peg-p "%" "( )")
+          (peg-and (peg-p "(")
+                   (peg-* lazyMatchParam)
+                   (peg-p "%"))))
 
 (define matchDecl
   (peg-and matchSpace
@@ -55,7 +65,7 @@
                    (tok "declare"))
            (peg-? (peg-p "`" nil {is-macro: 1}))
            (tok "(")
-           (peg-c "proto" (peg-* (peg-p "%" ")")))
+           (peg-c "proto" (peg-* matchParam))
            (tok ")")
            (tok "&public")))
 
@@ -65,6 +75,9 @@
 
 (expect (matchDecl (lexify "(define `(foo) &public nil)") 1)
         (append 11 {is-macro: 1, proto: ["foo"]}))
+
+(expect (matchDecl (lexify "(declare (for (v lst) body) &public)") 1)
+        (append 17 {proto: ["for" " " "(" "v" " " "lst" ")" " " "body"]}))
 
 
 (define (dump name value)

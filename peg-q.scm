@@ -49,3 +49,5 @@
 
 ;; peg-c
 (expect ((peg-c "name" px) "x y" 1)  (Yes 2 (append "X" {name: "x"})))
+(expect ((peg-c "name" (peg-* (peg-p "x"))) "x x" 1)
+        (Yes 3 {name: "x x"}))

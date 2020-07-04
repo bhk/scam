@@ -55,9 +55,10 @@
 ;;
 (define (gen-lex tokens)
   &public
-  (gen-polysub (for (t tokens) [t])
-               (for (t tokens) (.. " " [t] " "))
-               (lambda (text) [text])))
+  (let ((sub (gen-polysub (for (t tokens) [t])
+                         (for (t tokens) (.. " " [t] " "))
+                         (lambda (text) [text]))))
+    (lambda (text) (strip (sub text)))))
 
 
 ;; Recover original text from a string of symbols.
@@ -254,4 +255,5 @@
       (define `pm (word 1 m))
       (define `cm (rest m))
       (if m
-          (Yes pm (append cm {=name: (butlast (wordlist pos pm subj))}))))))
+          (Yes pm (append cm {=name: (wordlist (1+ pos) pm
+                                               (._. "." subj))}))))))
