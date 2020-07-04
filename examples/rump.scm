@@ -57,5 +57,5 @@
        (/ a (* 2 b) digits)))
 
 
-(define (main argv)
-  (print (f 77617 33096 (or (first argv) 200))))
+(define (main [digits ...other-args])
+  (print (f 77617 33096 (or digits 200))))

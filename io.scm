@@ -272,10 +272,9 @@
 ;;
 (define (write-file-atomic file-name data)
   &public
-  (let ((o (shell-ok "mktemp %F" (.. file-name ".tmp.XXXX"))))
-    (define `tmp-name (nth 2 o))
-    (if (filter-out 0 (word 1 o))
-        (nth 2 o)
+  (let (([code tmp-name] (shell-ok "mktemp %F" (.. file-name ".tmp.XXXX"))))
+    (if (filter-out 0 code)
+        tmp-name
         (or (write-file tmp-name data)
             (mv-file tmp-name file-name)))))
 
@@ -552,8 +551,8 @@
     (or (native-var "SCAM_TMP") ".scam/"))
 
   (if tmpl
-      (let ((o (pipe nil "mktemp -d %F" (.. tmp tmpl))))
-        (or (if (filter 0 (first o))
-                (filter-out "/ //" (first (subst "\n" "/ " (word 2 o)))))
-            (error (.. "get-tmp-dir failed: " (nth 2 o)))))
+      (let (([code name] (pipe nil "mktemp -d %F" (.. tmp tmpl))))
+        (or (if (filter 0 code)
+                (filter-out "/ //" (first (subst "\n" "/ " [name]))))
+            (error (.. "get-tmp-dir failed: " name))))
       tmp))

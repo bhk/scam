@@ -49,7 +49,7 @@ Options:
     (define `(opt name)
       (dict-get name omap))
 
-    (define `names (opt "*"))
+    (define `[file-name ...other-names] (opt "*"))
     (define `errors (opt "!"))
     (define `is-quiet (opt "quiet"))
 
@@ -83,9 +83,9 @@ Options:
        0)
 
      (when (opt "o")
-       (if (word 2 names)
+       (if other-names
            (perror "too many input files were given with `-o`")
-           (or (build-program (first names) (last (opt "o")) build-dir is-quiet)
+           (or (build-program file-name (last (opt "o")) build-dir is-quiet)
                0)))
 
      (when (or (opt "v")
@@ -93,12 +93,12 @@ Options:
        (print "SCAM version " version)
        0)
 
-     (when names
-       (or (run-program (first names) (rest names) build-dir is-quiet)
+     (when file-name
+       (or (run-program file-name other-names build-dir is-quiet)
            0))
 
      (when (or (opt "i")
-               (not (or names (opt "e"))))
+               (not (or file-name (opt "e"))))
       (print "SCAM v" version " interactive mode. Type `?` for help.")
       (repl build-dir)
       0))))

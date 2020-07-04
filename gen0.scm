@@ -191,8 +191,7 @@
 (define (c0 form env)
   &public
   (case form
-    ((PList n subforms) (c0-L env n (first subforms) (rest subforms)
-                              (resolve (first subforms) env)))
+    ((PList n [sel ...args]) (c0-L env n sel args (resolve sel env)))
     ((PString n value) (IString value))
     ((PSymbol n value) (c0-S env form value (resolve form env)))
     ((PDict n pairs) (c0-D env n pairs))
@@ -502,14 +501,11 @@
 
 
 ;; special form: (lambda ARGS BODY)
-(define (M.lambda env sym args)
-  (define `arg-form (first args))
-  (define `body (rest args))
-
-  (case arg-form
+(define (M.lambda env sym [args-form ...body])
+  (case args-form
     ((PList pos params)
      (c0-lambda env params body))
-    (else (err-expected "L" arg-form sym
+    (else (err-expected "L" args-form sym
                         "(ARGNAME...)" "(lambda (ARGNAME...) BODY)"))))
 
 
@@ -674,10 +670,10 @@
 
    ;; get NAME, PARAMS
    (case what
-     ((PList list-n forms)
-      (case (first forms)
+     ((PList list-n [name-form ...params])
+      (case name-form
         ((PSymbol sym-n name)
-         (c0-def-compound env list-n name (rest forms) flags body
+         (c0-def-compound env list-n name params flags body
                           is-define is-macro))
 
         (name-form

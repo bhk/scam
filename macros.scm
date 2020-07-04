@@ -122,9 +122,7 @@
 
 
 (define (M.set env sym args)
-  (define `var-sym (first args))
-  (define `value-form (nth 2 args))
-  (define `retval (nth 3 args))
+  (define `[var-sym value-form retval] args)
 
   (or (check-arity "2 3" args sym)
       (c0-set env
@@ -139,9 +137,7 @@
 ;; (? <fn> ...args...)
 ;;--------------------------------
 
-(define (M.? env sym args)
-  (define `func (first args))
-  (define `func-args (rest args))
+(define (M.? env sym [func ...func-args])
   (define `(trace ctor name)
     (ctor "^t" (cons (IString name) (c0-vec func-args env))))
 
@@ -197,16 +193,17 @@
      (or (for (form forms)
            (case form
              ((PList n pair)
-              (define `target (nth 1 pair))
-              (define `value (nth 2 pair))
+              (define `[target value extra] pair)
               (define `target-is-opt
                 (case target
                   ((PSymbol _ name)
                    (filter "?% ...%" name))))
               (cond
-               ((not pair) (let-err form let-NOTARGET where))
-               ((not (word 2 pair)) (let-err form let-NOVALUE where))
-               ((word 3 pair) (let-err (nth 3 pair) let-EXTRA where))
+               ;; too many/few forms in PList?
+               ((filter-out 2 (words pair))
+                (if extra
+                    (let-err extra let-EXTRA where)
+                    (let-err form (if pair let-NOVALUE let-NOTARGET) where)))
                ;; c0-lambda will allow '?NAME', so filter it out here
                (target-is-opt (let-err target let-NOOPT where))
                (else [target value])))
@@ -220,16 +217,16 @@
 
 (define (c0-let env body pmap)
   (define `params
-    (for (p pmap) (nth 1 p)))
+    (for ([p v] pmap) p))
   (define `values
-    (c0-vec (for (p pmap) (nth 2 p)) env))
+    (c0-vec (for ([p v] pmap) v) env))
 
   (or (first-perror pmap)
       (IFuncall (cons (c0-lambda env params body) values))))
 
 
-(define (M.let env sym args)
-  (c0-let env (rest args) (parse-pairs (first args) sym let-where)))
+(define (M.let env sym [pairs ...body])
+  (c0-let env body (parse-pairs pairs sym let-where)))
 
 
 ;;--------------------------------
@@ -255,10 +252,10 @@
   (c0-set env var-sym set-new body nil nil))
 
 
-(declare (lg* tvmap nxmap value pos env body))
+(declare (lg* env body tvmap nxmap value pos))
 
 
-(define (lg*2 tvmap nxmap value pos env body)
+(define (lg*2 env body tvmap nxmap value pos)
   (or
    (first-perror nxmap)
 
@@ -269,10 +266,10 @@
            (append (depth-marker (.. "." (current-depth env)))
                    env))
          (define `inner
-           (lg* tvmap nxmap (IArg 1 ".") pos inner-env body))
+           (lg* inner-env body tvmap nxmap (IArg 1 ".") pos))
          (IFuncall [(ILambda inner) value]))
        ;; single
-       (lg* tvmap nxmap value pos env body))))
+       (lg* env body tvmap nxmap value pos))))
 
 
 ;; TVMAP = map of remaining [target value] pairs
@@ -281,36 +278,30 @@
 ;;   VALUE = IL node
 ;;   POS = form-index of target
 ;;
-(define (lg* tvmap nxmap value pos env body)
+(define (lg* env body tvmap nxmap value pos)
   (cond
    (nxmap
-    (define `nx (first nxmap))
+    (define `[nx ...other-nxs] nxmap)
     (case nx
       ((Bind name xtor)
        (letting env (PSymbol pos name) (xtor value)
-                (lg* tvmap (rest nxmap) value pos env body)))
+                (lg* env body tvmap other-nxs value pos)))
       (_ nx)))
 
    (tvmap
-    (define `tv (first tvmap))
-    (define `target (nth 1 tv))
-    (define `value-form (nth 2 tv))
+    (define `[[target value-form] ...more-tvs] tvmap)
     (or (first-perror tvmap)
-        (lg*2 (rest tvmap)
+        (lg*2 env body more-tvs
               (parse-target target)
               (c0 value-form env)
-              (form-index target)
-              env
-              body)))
+              (form-index target))))
 
-    (else
-      (c0-block body env))))
+   (else
+    (c0-block body env))))
 
 
-(define (M.let-global env sym args)
-  (define `tvmap
-    (parse-pairs (first args) sym letg-where))
-  (lg* tvmap nil nil nil env (rest args)))
+(define (M.let-global env sym [pairs ...body])
+  (lg* env body (parse-pairs pairs sym letg-where) nil nil nil))
 
 
 ;;--------------------------------
@@ -332,26 +323,24 @@
   "(let& ((TARGET VALUE)...) BODY)")
 
 
-(define (let&-bindings pmap depth env ?bindings)
-  (if pmap
-      (case (first pmap)
+(define (let&-bindings [tv ...more-tvs] depth env ?bindings)
+  (if tv
+      (case tv
         ((PError _ _)
-         {=EnvErrorKey: (first pmap)})
+         {=EnvErrorKey: tv})
 
-        (tv
-         (define `target (nth 1 tv))
-         (define `value-form (nth 2 tv))
+        ([target value-form]
          (define `value-il (c0 value-form (._. bindings env)))
          (define `tb (bind-target target "p" depth value-il))
-         (let&-bindings (rest pmap) depth env (append tb bindings))))
+         (let&-bindings more-tvs depth env (append tb bindings))))
       bindings))
 
 
-(define (M.let& env sym args)
-  (let ((bindings (let&-bindings (parse-pairs (first args) sym let&-where)
+(define (M.let& env sym [pairs ...body])
+  (let ((bindings (let&-bindings (parse-pairs pairs sym let&-where)
                                  (current-depth env)
                                  env))
-        (body (rest args))
+        (body body)
         (env env))
 
     (or (dict-get EnvErrorKey bindings)
@@ -375,8 +364,7 @@
 
 
 (define (c0-for2 env bindings depth sym tmpl body body-x where)
-  (define `target (nth 1 tmpl))
-  (define `list (nth 2 tmpl))
+  (define `[target list] tmpl)
   (define `has-list (word 2 tmpl))
   (define `body-or-list (if has-list "BODY" (filter "VEC LIST" where)))
 
@@ -404,7 +392,7 @@
 ;;   (foreach *word* LIST (let ((TARGET (WORD-X *word*))) (BODY-X BODY)))
 ;;
 (define `(c0-for env sym tmpl body word-x body-x where)
-  (define `target (nth 1 tmpl))
+  (define `[target] tmpl)
 
   (if tmpl
       (foreach (depth (.. (current-depth env) ";"))
@@ -553,9 +541,7 @@
 ;;   ELSE-FORM = value of remaining clauses
 (define (cond-wrap clause else-form)
   (case clause
-    ((PList _ forms)
-     (define `test (first forms))
-     (define `body (rest forms))
+    ((PList _ [test ...body])
      (define `is-else (case test ((PSymbol _ name) (eq? name "else"))))
      (if body
          (if is-else
@@ -609,13 +595,9 @@
   "(defmacro (NAME ARGS [POS]) BODY)")
 
 (define (M.defmacro env sym args)
-  (define `what (first args))
-  (define `body (rest args))
+  (define `[what ...body] args)
   (case what
-    ((PList _ decl-forms)
-     (define `m-name (first decl-forms))
-     (define `m-args (rest decl-forms))
-
+    ((PList _ [m-name ...m-args])
      (case m-name
        ((PSymbol _ name)
         ;; compile as a function
@@ -713,20 +695,19 @@
 
 ;; Return a `Data` record for a constructor.
 ;;
-;;  FORM = `(CtorName ARG...)
+;;  FORM = `(CtorName ARGS...)  or `(CtorName "TAG" ARGS...)
 ;;
 (define (read-type form tag parent)
   (case form
     ((PList _ args)
-     (define `sym (first args))        ;; symbol naming the ctor
-     (define `tag-form (nth 2 args))   ;; optional explicit tag
+     (define `[sym tag-form ...tag-args] args)
 
      (case sym
        ((PSymbol _ name)
         (case tag-form
           ;; explicit tag provided:
           ((PString _ value)
-           (read-type-r (rrest args) form value name [] nil))
+           (read-type-r tag-args form value name [] nil))
           (else
            (read-type-r (rest args) form tag name [] nil))))
        (else (err-expected "S" sym parent "CTOR" data-where))))
@@ -839,15 +820,12 @@
     ;; Expect c = `(PATTERN BODY)
     (case c
       ((PList pos forms)
-       (define `pattern (first forms))
-       (define `body (rest forms))
+       (define `[pattern ...body] forms)
 
        (if (word 2 forms)
            (case pattern
              ;; pattern = (CTOR ARGS...)
-             ((PList n syms)
-              (define `ctor-name (first syms))
-              (define `ctor-args (rest syms))
+             ((PList n [ctor-name ...ctor-args])
               ;; look up ctor definition
               (case (resolve ctor-name env)
                 ((ERecord _ encs tag)
@@ -887,13 +865,7 @@
 ;; Combine sequential cases that have identical body IL
 ;;
 (define (case-merge clauses)
-  ;;(define `[[tag1 il1] [tag2 il2]] clauses)
-  (define `c1 (first clauses))
-  (define `c2 (nth 2 clauses))
-  (define `tag1 (first c1))
-  (define `il1 (nth 2 c1))
-  (define `tag2 (first c2))
-  (define `il2 (nth 2 c2))
+  (define `[[tag1 il1] [tag2 il2] ...more] clauses)
 
   ;; If t2 == nil, return nil.  Otherwise, join with a space delimiter.
   (define `(merge-tags t1 t2)
@@ -901,7 +873,7 @@
 
   (if (word 2 clauses)
       (if (eq? il1 il2)
-          (case-merge (cons [(merge-tags tag1 tag2) il1] (nth-rest 3 clauses)))
+          (case-merge (cons [(merge-tags tag1 tag2) il1] more))
           (append (word 1 clauses) (case-merge (rest clauses))))
       clauses))
 
@@ -915,17 +887,17 @@
 ;; args as a vector of IL nodes.
 ;;
 (define (case-fold clauses make-filter-args)
-  (define `[tag body] (first clauses))
+  (define `[[tag body] ...more] clauses)
 
   ;; If we have a nil tag (which matches match everything) *and* subsequent
   ;; clauses, we include the code for the subsequent clauses anyway, so that
   ;; any errors in that code will be reported.
-  (if (or tag (word 2 clauses))
+  (if (or tag more)
       (IBuiltin "if" [ (if tag
                            (IBuiltin "filter" (make-filter-args tag))
                            (IString 1))
                        body
-                       (case-fold (rest clauses) make-filter-args) ])
+                       (case-fold more make-filter-args) ])
       (or body
           (IString ""))))
 
@@ -982,6 +954,7 @@
 
 
 (define (M.case env sym args)
+  (define `[record ...clauses] args)
   (if args
-      (c0-case env (rest args) (current-depth env) (c0 (first args) env))
+      (c0-case env clauses (current-depth env) (c0 record env))
       (err-expected nil nil sym "VALUE" case-where)))

@@ -488,7 +488,7 @@
 ;; Result = IL node that calls REQUIRE + includes a "require crumb"
 ;;
 (define (M.require env sym args)
-  (define `module (first args))
+  (define `[module] args)
   (define `flags (get-flags args))
   (define `body (skip-flags args))
   (define `mod-name (string-value module))
@@ -560,10 +560,8 @@
 
       (let-global ((*compile-subject*  (penc text))
                    (*compile-file*     file))
-        (let ((o (gen0 (parse-subject *compile-subject*) env))
+        (let (([env-out ...nodes] (gen0 (parse-subject *compile-subject*) env))
               (is-file is-file))
-          (define `env-out (first o))
-          (define `nodes (rest o))
           (._. (gen1 nodes is-file) {env: env-out})))))
 
 
@@ -599,12 +597,9 @@
 
      (build-message "compile" file)
 
-     (let ((o (parse-and-gen text imports file 1))
+     (let (({errors: errors, code: exe, env: env-out, require: reqs}
+            (parse-and-gen text imports file 1))
            (file file))
-       (define `errors (dict-get "errors" o))
-       (define `exe (dict-get "code" o))
-       (define `env-out (dict-get "env" o))
-       (define `reqs (dict-get "require" o))
        (define `outfile (modid-object (modid-from-source file)))
        (define `content
          (.. "# Requires: " reqs "\n"

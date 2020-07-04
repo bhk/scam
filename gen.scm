@@ -210,8 +210,7 @@
   &public
   (or (case node
         ((IString value) (IString (word 2 node)))
-        ((ICall name args) (if (eq? name "^u")
-                              (first args))))
+        ((ICall name [arg]) (if (eq? name "^u") arg)))
       (ICall "^d" [node])))
 
 
@@ -541,26 +540,24 @@
 
 (define `(pt-pairs pairs xtor)
   (append-for (n (indices pairs))
-    (define `p (word n pairs))
+    (define `{=key: value} (word n pairs))
     (define `is-last (filter n (words pairs)))
-
-    (pt-pair (dict-key p) (dict-value p) n is-last xtor)))
+    (pt-pair key value n is-last xtor)))
 
 
 ;; { const: pat ,* }
 ;;
 (define `(pt-fields pairs xtor)
-  (foreach (pair pairs)
-    (define `key-vec
-      (case (dict-key pair)
+  (foreach ({=key-form: value-form} pairs)
+    (define `key-names
+      (case key-form
         ((PSymbol _ name) [name])
         ((PString _ str) [str])))
 
-    (or (append-for (key key-vec)
-          (pt (dict-value pair)
-              (lambda (il) (il-dict-get key (xtor il)))))
+    (or (append-for (key key-names)
+          (pt value-form (lambda (il) (il-dict-get key (xtor il)))))
         ;; non-const key
-        (pt-err (dict-key pair) pt-BADKEY))))
+        (pt-err key-form pt-BADKEY))))
 
 
 ;; { ... }

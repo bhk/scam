@@ -209,17 +209,16 @@
 ;;
 (define (fmt-index mod-defns)
   ;; The anchor that will be assigned to the module documentation
-  (define `(mod-anchor sections)
-    (define `h1
-      (first (split "\n" (dict-get "text" (first sections)))))
-    (md-anchor (nth-rest 1 (subst "#" nil h1))))
+  ;; is the header of the first section.
+  (define `(mod-anchor [{text: text} ..others])
+    (md-anchor (strip (subst "#" nil (first (split "\n" text))))))
 
   ;; Vector of function names linked to their descriptions.
   (define `(fmt-exports exports)
-    (concat-for (d exports " ")
-      (.. "[" (md-funcname (first (dict-get "proto" d))) "]"
+    (concat-for ({proto: proto} exports " ")
+      (.. "[" (md-funcname (first proto)) "]"
           "(#"
-          (md-anchor (concat-vec (dict-get "proto" d)))
+          (md-anchor (concat-vec proto))
           ")")))
 
   (define `(fmt-row name exports sections)
@@ -236,20 +235,18 @@
 ;; documentation for each export.
 ;;
 (define (fmt-modules mod-defns)
-  (define `(fmt-proto proto)
-    (.. (first proto)
-        (concat-vec (string-upper (rest proto)))))
+  (define `(fmt-proto [name ...params])
+    (.. name (string-upper (concat-vec params))))
 
   (define `(fmt-module name exports sections)
     ;; Module-level documentation
     (.. "\n\n"
-        (concat-for (e sections nil)
-          (.. (dict-get "text" e) "\n"))
+        (concat-for ({text: text} sections nil)
+          (.. text "\n"))
         "## Exports\n\n"
         ;; Exports and export documentation
-        (concat-for (d exports "\n\n")
-          (.. "##### `(" (fmt-proto (dict-get "proto" d)) ")`\n\n"
-              (dict-get "doc" d)))))
+        (concat-for ({proto: proto, doc: doc} exports "\n\n")
+          (.. "##### `(" (fmt-proto proto) ")`\n\n" doc))))
 
    (concat-for (m mod-defns nil)
      (case m
@@ -286,11 +283,11 @@
     (if (not sections)
         (perror "%s:1: ERROR: no module documentation" filename))
 
-    (for (d exports)
-      (if (not (dict-get "doc" d))
+    (for ({doc: doc, proto: proto} exports)
+      (if (not doc)
           (perror "%s: ERROR: no documentation for (%s)"
                   filename
-                  (concat-vec (dict-get "proto" d))))))))
+                  (concat-vec proto)))))))
 
 
 (define template
@@ -330,16 +327,13 @@
 
 (define (main argv)
 
-  (let ((omap (getopts argv "-o=")))
-    (define `(opt name)
-      (dict-get name omap))
-
+  (let (({o: out-file, *: in-files} (getopts argv "-o=")))
     (cond
-     ((not (opt "o"))
+     ((not out-file)
       (perror "scamdoc: no output file provided"))
 
-     ((not (opt "*"))
+     ((not in-files)
       (perror "scamdoc: no input files provided"))
 
      (else
-      (generate (opt "*") (last (opt "o")))))))
+      (generate in-files (last out-file))))))

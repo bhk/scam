@@ -152,28 +152,28 @@
                   (crumb-extract (c1 (IBuiltin "wildcard"
                                                [(PError 0 "message")])))))
 
-;; c1-file-set and c1-file-fset
+;; c1-file-set
 
 (expect "x := $  $` \n"
-        (c1-file-set "x" " $` "))
+        (c1-file-set "x" " $` " 1))
 
 (expect "x := \\#$'\\\n"
-        (c1-file-set "x" "#\n\\"))
+        (c1-file-set "x" "#\n\\" 1))
 
 (expect "x$\" := \\#\n"
-        (c1-file-set "x#" "#"))
+        (c1-file-set "x#" "#" 1))
 
 (expect "f = $\n"
-        (c1-file-fset "f" "$`"))  ;; "$`" expands to "$" == $(value f)
+        (c1-file-set "f" "$`" nil))  ;; "$`" expands to "$" == $(value f)
 
 (expect "$(call ^fset,f,$(foo))\n"
-        (c1-file-fset "f" "$(foo)"))
+        (c1-file-set "f" "$(foo)" nil))
 
 (expect "define f\n $1\n$2 \nendef\n"
-        (c1-file-fset "f" " $`1\n$`2 "))
+        (c1-file-set "f" " $`1\n$`2 " nil))
 
 (expect "define f\n$   define\n$ endef\nendef\n"
-        (c1-file-fset "f" "  define\nendef"))
+        (c1-file-set "f" "  define\nendef" nil))
 
 ;; c1-file
 

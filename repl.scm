@@ -93,9 +93,7 @@
   (let ((o (compile-text text "[stdin]" env build-dir is-quiet))
         (env env)
         (text text))
-    (define `errors (dict-get "errors" o))
-    (define `exe    (dict-get "code" o))
-    (define `newenv (dict-get "env" o))
+    (define `{errors: errors, code: exe, env: newenv} o)
 
     (cond
      ;; partial/unterminated expr --> append more text
@@ -175,10 +173,9 @@
             (.. "(require \"" lib "\")"))
           "(declare *1 &native)"
           "(declare *2 &native)"))
-    (let ((o (compile-text env-text "[stdin]" nil nil nil)))
-      (define `fn (dict-get "code" o))
-      (fn) ;; load modules referenced by the environment
-      (dict-get "env" o))))
+    (let (({code: f, env: e} (compile-text env-text "[stdin]" nil nil nil)))
+      (f) ;; load modules referenced by the environment
+      e)))
 
 
 ;; Enter REPL mode, and return to caller when the user exits with `:q` or

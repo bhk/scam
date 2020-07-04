@@ -29,9 +29,9 @@
 
 
 (define (calc-phi digits)
-  (let ((pair (get-fibs 433494437 701408733 (.. "1e" (/ digits 2)))))
-    (/ (nth 2 pair) (first pair) digits)))
+  (let (([a b] (get-fibs 433494437 701408733 (.. "1e" (/ digits 2)))))
+    (/ b a digits)))
 
 
-(define (main argv)
-  (print (calc-phi (or (first argv) 80))))
+(define (main [digits ...other-args])
+  (print (calc-phi (or digits 80))))

@@ -320,15 +320,15 @@
 
 ;; Return the key portion of PAIR.
 ;;
-(define (dict-key pair)
+(define `(dict-key {=key: _})
   &public
-  (promote (subst "!8" "%" (word 1 (subst "!=" " " pair)))))
+  key)
 
 ;; Return the value portion of PAIR.
 ;;
-(define `(dict-value pair)
+(define `(dict-value {=_: value})
   &public
-  (nth 2 (subst "!=" " " pair)))
+  value)
 
 (define `(dict-matches key dict)
   (filter (.. (subst "%" "!8" [key]) "!=%") dict))
@@ -428,8 +428,8 @@
     (nth ndx (subst "!=" " " w)))
 
   (if (findstring "!=" h)
-      (if (eq? h (foreach (w h)
-                   {(dict-elem w 1): (dict-elem w 2)} ))
+      (if (eq? h (foreach ({=k: v} h)
+                   {=k: v}))
           (.. "{" (concat-vec pairs ", ") "}"))))
 
 
@@ -488,9 +488,10 @@
   (set *format-funcs* (cons func *format-funcs*)))
 
 (define (format-custom str funcs)
+  (define `[fn ...others] funcs)
   (if funcs
-      (or ((first funcs) str)
-          (format-custom str (rest funcs)))))
+      (or (fn str)
+          (format-custom str others))))
 
 
 ;; Return a SCAM literal that evaluates to VALUE, using the "friendliest"

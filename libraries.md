@@ -3,9 +3,9 @@
 | Module | Exports |
 | :-- | :-- |
 | [compile](#compile-scam-compilation) | [`build-program`](#build-program-src-file-exe-file-build-dir-is-quiet) [`compile-text`](#compile-text-text-file-env-in-build-dir-is-quiet) [`run-program`](#run-program-src-file-argv-build-dir-is-quiet) |
-| [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-pair) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-pair) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`permute`](#permute-lst-zz-prefix) [`printf`](#printf-fmt-values) [`repeat-words`](#repeat-words-v-n) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`urange`](#urange-min-max) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`vsprintfx`](#vsprintfx-fmt-values-codes-fmt-fn) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
+| [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-key-_) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-_-value) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`permute`](#permute-lst-zz-prefix) [`printf`](#printf-fmt-values) [`repeat-words`](#repeat-words-v-n) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`urange`](#urange-min-max) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`vsprintfx`](#vsprintfx-fmt-values-codes-fmt-fn) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
-| [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-list) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`define`](#define-forms) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lastword`](#lastword-list) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-spec) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`when`](#when-cond-body) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
+| [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-list) [`append-for`](#append-for-target-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-target-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`define`](#define-forms) [`defmacro`](#defmacro-name-argname-body) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-target-vector-body) [`foreach`](#foreach-target-list-delim-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lambda`](#lambda-params-body) [`lastword`](#lastword-list) [`let`](#let-bindings-body) [`let&`](#let-bindings-body) [`let-global`](#let-global-bindings-body) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-spec) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`when`](#when-cond-body) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
 | [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`cp-file-atomic`](#cp-file-atomic-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd-fmt-args) [`io-sprintf`](#io-sprintf-fmt-args) [`mkdir-p`](#mkdir-p-dir) [`mv-file`](#mv-file-from-to) [`path-basename`](#path-basename-path) [`path-dir`](#path-dir-path) [`path-notdir`](#path-notdir-path) [`pipe`](#pipe-stdin-fmt-args) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd-fmt-args) [`shellf`](#shellf-cmd-fmt-args) [`unescape-path`](#unescape-path-loc) [`vfprintf`](#vfprintf-fd-format-values) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) [`write-file-atomic`](#write-file-atomic-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
@@ -199,7 +199,7 @@ Return the value bound to KEY.  If more than one pair matches KEY, only
 the first is returned.  If no pair is found, DEFAULT is returned.
 
 
-##### `(dict-key PAIR)`
+##### `(dict-key {=KEY: _})`
 
 Return the key portion of PAIR.
 
@@ -219,7 +219,7 @@ Remove all pairs whose key portion is KEY from DICT.
 Bind KEY to VALUE in dictionary DICT, removing other entries for KEY.
 
 
-##### `(dict-value PAIR)`
+##### `(dict-value {=_: VALUE})`
 
 Return the value portion of PAIR.
 
@@ -584,6 +584,20 @@ Add PREFIX to the start of each word in LIST.
 Add SUFFIX to the end of each word in LIST.
 
 
+##### `(append-for (TARGET VECTOR) ...BODY)`
+
+`append-for` is similar to `for` but it appends together all of the (vector)
+values of BODY.  This is functionally similar to what is called `concat-map`
+in some other languages.
+
+    > (append-for x [[1 2] [3 4]]
+    +     x)
+    "1 2 3 4"
+    > (append-for x [7 1 5 3]
+    +    (if (> x 3) [x]))
+    "7 5"
+
+
 ##### `(apply LAMBDA VEC)`
 
 Call LAMBDA, passing as arguments the members of the vector VEC.
@@ -637,6 +651,16 @@ details.
 
 This special form concatenates all of its arguments.  This is
 equivalent to `..`.
+
+
+##### `(concat-for (TARGET VECTOR ?DELIM) ...BODY)`
+
+`concat-for` is similar to `for` but it concatenates the values of BODY.
+If `DELIM` is not present in the source, then it defaults to a single
+space.
+
+    > (concat-for (x [1 2 3] ";") (wordlist 1 x "a b c"))
+    "a;a b;a b c"
 
 
 ##### `(cond ...CLAUSES)`
@@ -723,6 +747,13 @@ The `&public` flag may be included in `FLAG...`.  This indicates that the
 symbol should be visible outside of the file in which it is defined.
 
 
+##### `(defmacro (NAME ARGNAME) BODY)`
+
+Declare an *executable macro*.  An executable macro is a function that
+transforms syntax.  It takes one argument, a form, and returns a
+different form.
+
+
 ##### `(demote VALUE)`
 
 `demote` encodes any value as a word so that it may be embedded in a word
@@ -783,6 +814,39 @@ Get the first element of VEC.
 Get the first word in LIST.
 
 
+##### `(for (TARGET VECTOR) ...BODY)`
+
+`for` iterates over items in a vector, constructing a new vector.
+
+`BODY` is evaluated in the scope of the variables named in TARGET, which
+can be either a symbol or a [destructuring target
+](reference.md#destructuring).
+
+Example:
+
+    > (for (x [[1 2] [3 4]])
+    +    (reverse x))
+    [[2 1] [4 3]]
+
+
+##### `(foreach (TARGET LIST ?DELIM) ...BODY)`
+
+The `foreach` special form iterates over a list, evaluates BODY (a sequence
+of expressions) once for each word, and constructs a new word list from the
+results of each evaluation.
+
+`BODY` is evaluated in the scope of variables named in TARGET, which can
+be either a symbol or a [destructuring
+target](reference.md#destructuring).
+
+    > (foreach (x "1 2 3") (1+ x))
+    "2 3 4"
+
+`DELIM` specifies the separator between list elements.  This defaults to
+a single space when `DELIM` is absent.  When it is present and evaluates
+to `nil`, all element results are concatenated.
+
+
 ##### `(if COND THEN-EXPR [ELSE-EXPR])`
 
 This special form conditionally executes either THEN-EXPR or ELSE-EXPR.
@@ -796,9 +860,90 @@ it is evaluated and used, and if not `nil` is used.
 Concatenate the respective words in LIST-A and LIST-B.
 
 
+##### `(lambda (...PARAMS) BODY)`
+
+A `lambda` expression evaluates to a function value.
+
+`...PARAMS` is zero or more *targets* that name the formal arguments,
+followed by zero or more *optional* parameters and then perhaps one
+*rest* parameter.
+
+A target is a symbol (not beginning with `...` or `?`) or a
+[destructuring target](reference.md#destructuring).
+
+An optional parameter is a symbol that begins with `?`.  Optional
+parameters may be omitted by callers.
+
+A rest parameter is a symbol that begins with `...`.  Rest parameters
+capture, as a vector, all subsequent arguments passed to the function.
+Callers may omit any of the arguments captured by a rest parameter.
+
+`BODY` is a block of one or more expressions (see [`begin`](#begin) )
+that will be executed when the function is called. The initial environment
+of `BODY` contains bindings for the arguments names to the values passed
+to the function.
+
+
 ##### `(lastword LIST)`
 
 Get the last word in LIST.
+
+
+##### `(let (...BINDINGS) ...BODY)`
+
+This special form assigns names to values.  BINDINGS is a sequence of
+`(TARGET VALUE)` pairs.  Each TARGET can be either a symbol or a
+[destructuring target](reference.md#destructuring).
+
+BODY (a sequence of expressions) is evaluated in an environment in which
+every name in each TARGET is bound to its corresponding value.  The
+value of the last expression in BODY is returned.
+
+`let` is implemented in terms of `lambda`, and is equivalent to:
+
+    ((lambda (NAME1 NAME2 ...) BODY) (VALUE1 VALUE2 ...))
+
+
+##### `(let& (...BINDINGS) ...BODY)`
+
+Declare symbol macros.
+
+`let&` is a "lazy" let.  It binds the names to symbol macros instead of
+local variables.  It also differs from `let` in that each expression is
+evaluated in the context of the previous bindings -- more like Scheme's
+`let*`.  The following expression:
+
+    (let& ((NAME EXPR))
+      BODY)
+
+... is equivalent to the following:
+
+    (begin
+      (declare `NAME EXPR)
+      BODY)
+
+Since `let&` constructs symbol macros, each bound expression is not
+always evaluated exactly once, as with `let`.  Instead, each expression
+is evaluated once each time its associated name is evaluated within
+`BODY` -- perhaps zero times, perhaps many more.
+
+The `let&` form generally has lower overhead than `let`, since it does
+not involve an anonymous function call (as does `let`).
+
+
+##### `(let-global (...BINDINGS) ...BODY)`
+
+This form modifies the value of some number of global variables *during
+the execution of BODY*. Afterwards, the original values are restored.
+Note that, unlike `let` or `let&`, the variables must already be in
+scope.
+
+BINDINGS is a sequence of `(TARGET VALUE)` pairs.  Each TARGET can be
+either a symbol or a [destructuring target](reference.md#destructuring).
+Each name mentioned in TARGET must identify a previously declared global
+variable.
+
+This expression evaluates to the value of the last expression in BODY.
 
 
 ##### `(not A)`

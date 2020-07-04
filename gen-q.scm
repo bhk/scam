@@ -180,9 +180,9 @@
 
 ;; bind-target (and indirectly, bind-nxmap)
 
-(let ((pair (bind-target _1 "x" "." (IString "s"))))
-  (expect EnvErrorKey (dict-key pair))
-  (expect 1 (match-perror (dict-value pair) _1 "expected symbol, ")))
+(let (({=key: value} (bind-target _1 "x" "." (IString "s"))))
+  (expect EnvErrorKey key)
+  (expect 1 (match-perror value _1 "expected symbol, ")))
 
 
 ;; base-env and resolve

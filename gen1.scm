@@ -252,9 +252,7 @@
 
 
 ;; Call lambda value
-(define (c1-Funcall nodes)
-  (define `func (first nodes))
-  (define `args (rest nodes))
+(define (c1-Funcall [func ...args])
   (define `fnval (protect-arg (c1 func)))
   (define `commas
     (subst " " "" (or (wordlist (words (.. "x" args)) 9
@@ -314,39 +312,38 @@
   (.. (protect-expr expr) "\n"))
 
 
-;; Construct a file-syntax assignment for a simple variable
-;;
-;; After "LHS := RHS", $(LHS) or $(value LHS) == RHS.
-;;
-(define `(c1-file-set lhs rhs)
-  (.. (protect-lhs lhs) " := " (protect-rhs rhs) "\n"))
-
-
-;; Construct a file-syntax assignment for a recursive variable
+;; Construct a file-syntax assignment.
 ;;
 ;; After "LHS = RHS", $(value LHS) == RHS
 ;;
-(define (c1-file-fset lhs rhs)
+(define (c1-file-set lhs rhs ?is-simple)
   (define `(unescape str)
     (subst "$`" "$" str))
 
-  (if (or (findstring "$" (subst "$`" "" rhs))
-          (findstring "$`." rhs))
-      ;; RHS is non-const (has un-escaped "$"), or would contain "$."
-      (c1-file-expr
-       (.. "$(call ^fset," (protect-arg lhs) "," (protect-arg rhs) ")"))
-      ;; RHS is const
-      (if (or (findstring "#" rhs)
-              (findstring "\n" rhs)
-              ;; leading whitespace?
-              (filter "~%" (subst "\t" "~" " " "~" rhs)))
+  (cond
+   (is-simple
+    (.. (protect-lhs lhs) " := " (protect-rhs rhs) "\n"))
 
-          ;; Use 'define ... endef' so that $(value F) will be *identical*
-          ;; to RHS almost always.
-          (.. "define " (protect-lhs lhs) "\n"
-              (protect-define (unescape rhs))
-              "\nendef\n")
-          (.. (protect-lhs lhs) " = " (unescape (protect-rhs rhs)) "\n"))))
+   ((or (findstring "$" (subst "$`" "" rhs))
+        (findstring "$`." rhs))
+    ;; RHS is non-const (has un-escaped "$"), or would contain "$."
+    (c1-file-expr
+     (.. "$(call ^fset," (protect-arg lhs) "," (protect-arg rhs) ")")))
+
+   ;; RHS is const
+   ((or (findstring "#" rhs)
+        (findstring "\n" rhs)
+        ;; leading whitespace?
+        (filter "~%" (subst "\t" "~" " " "~" rhs)))
+
+    ;; Use 'define ... endef' so that $(value F) will be *identical*
+    ;; to RHS almost always.
+    (.. "define " (protect-lhs lhs) "\n"
+        (protect-define (unescape rhs))
+        "\nendef\n"))
+
+   (else
+    (.. (protect-lhs lhs) " = " (unescape (protect-rhs rhs)) "\n"))))
 
 
 ;; Compile a vector of expressions to file syntax.
@@ -364,21 +361,19 @@
 
      ;; Normalize (IBuiltin "call" (IString S)) to (ICall S ...).
      ;; Compile (IBuiltin "eval" (IString "...")) as "...\n"
-     ((IBuiltin name args)
-      (case (first args)
+     ((IBuiltin name [arg1 ...other-args])
+      (case arg1
         ((IString value)
          (if (filter "eval" name)
              (.. value "\n")
              (if (filter "call" name)
-                 (c1-file (ICall value (rest args))))))))
+                 (c1-file (ICall value other-args)))))))
 
      ;; Handle assignments using "a = b" vs. "$(call ^fset,a,b)"
      ((ICall name args)
-      (if (not (filter-out [nil] (word 3 args)))
-          (if (filter "^set" name)
-              (c1-file-set (c1 (nth 1 args)) (c1 (nth 2 args)))
-              (if (filter "^fset" name)
-                  (c1-file-fset (c1 (nth 1 args)) (c1 (nth 2 args)))))))
+      (define `[var value] args)
+      (if (filter "^set:2 ^fset:2" (.. name ":" (words args)))
+          (c1-file-set (c1 var) (c1 value) (filter "^set" name))))
 
      ;; Compile block members as also in file scope
      ((IBlock nodes) (c1-file* nodes)))
