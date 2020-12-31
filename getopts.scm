@@ -64,33 +64,38 @@
 ;; OPTS = a string of option specifiers\
 ;; Result = a dictionary
 ;;
-;; The resulting dictionary maps each option name to a *vector* of values
-;; supplied for that option.  Options can appear zero or more times.  If not
-;; seen, the option name will not appear as a key in the dictionary.
+;; `ARGV` is a vector of command line arguments that will be parsed as a
+;; sequence of options, option values, and/or non-option arguments.
+;; Generally, options may appear in any order, before or after non-option
+;; arguments, but an argument of `--` indicates that all subsequent
+;; arguments are to be treated as non-option arguments.
 ;;
-;; The key `"*"` holds elements in ARGV that were not options or option
-;; arguments.  In other words, `(dict-get "*" RESULT)` yields all of the
-;; non-option arguments.
+;; The result is a dictionary that maps each option name to a *vector* of
+;; values, or nil.  If an option was specified more than once in `OPTS`, the
+;; vector will hold one eleent for each occurrence.
+;;
+;; The key `"*"` holds all non-option arguments.
 ;;
 ;; If errors were encountered, the key `"!"` holds a vector of
 ;; `GetoptsError` records:
 ;;
-;;  - `(MissingArg OPT)` : Option specifier OPT takes an argument but was found
-;;    in last element of argv.
-;;  - `(BadOption ARG)` : Argument ARG began with "-" but did not match any
+;;  - `(MissingArg OPT)` : Option specifier `OPT` describes an option that
+;;    takes an argument, but the option appeared in the last element of
+;;    `ARGV`, so its argument is missing.
+;;  - `(BadOption ARG)` : Argument `ARG` began with "-" but did not match any
 ;;    option specifiers.
 ;;
-;; Words in OPTS begin with `-` or `--` and may end with `=`.  Leading
-;; dashes and the trailing `=` are not included in the dictionary keys.
-;; Option names may not contain `%`, `!`, `*`, or whitespace.
+;; `OPTS` describes the options that may be provided and whether or not
+;; values are expected with them.  Each word in `OPTS` is an "option
+;; specifier"; it begins with `-` or `--`, followed by an option name, and
+;; optionally ending with `=`.  Option names may not contain `%`, `!`, `*`,
+;; or whitespace.
 ;;
-;; If an option specifier ends in `"="`, the value will be the next argument
-;; in ARGV (which will be consumed).  Otherwise, the value `1` is supplied
-;; for each occurrence of the option.
-;;
-;; If `--` is seen in ARGV, all elements following `--` are treated as
-;; non-option arguments.  Otherwise, options can appear in any order, before
-;; and after non-option arguments.
+;; If an option specifier ends in `"="`, it indicates that the option (when
+;; found in `ARGV`) will be followed by another argument that contains the
+;; value to be associated with the option.  When an option specifier does
+;; not end in `"="`, value `1` is supplied for each occurrence of the
+;; option.
 ;;
 ;; Example:
 ;;

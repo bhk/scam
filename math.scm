@@ -30,8 +30,7 @@
 ;; `sin`, etc. -- yield an approximation with a finite number of digits.
 ;; These functions provide an optional precision argument that may be
 ;; provided by the caller; otherwise the default is 16 significant digits
-;; (slightly more precise than 64-bit IEEE-754 binary floating point) unless
-;; otherwise specified.
+;; (slightly more precise than 64-bit IEEE-754 binary floating point).
 ;;
 ;; Precision can be specified in two ways: significant digits, or place.
 ;;

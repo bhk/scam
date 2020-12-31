@@ -587,10 +587,10 @@
   (print (vsprintf fmt values)))
 
 
-;; Compare A to B, and if unequal display diagnostics and terminate
-;; execution.  This function is exported to enable clients to easily
-;; implement variants of `expect`, since FILE-LINE data must come
-;; from a macro in order to reflect the location of the caller.
+;; Compare A to B, and if they are not equal, display diagnostics and
+;; terminate execution.  This function is exported to enable users to
+;; implement variants of `expect` in macros that supply their own FILE-LINE
+;; value, obtained from `(current-file-line)`.
 ;;
 ;; FILE-LINE = "file:line:" prefix for the diagnostic message.
 ;;
@@ -640,10 +640,8 @@
 
 ;; Like `expect`, but only the formatted versions of A and B are compared.
 ;; This accommodates only minor differences in the concrete layout that do
-;; not affect the meaning in some contexts.  For example, a record ending in
-;; a `&list` member (that is empty) will have a trailing space when
-;; constructed, but not after being retrieved from another record (when
-;; stored as a trailing `&list` parameter).
+;; not affect the meaning of some types; chiefly, this ignores trailing
+;; spaces in record values.
 ;;
 (define `(fexpect a b)
   &public
