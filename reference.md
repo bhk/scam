@@ -49,10 +49,10 @@ Symbols that are exported from the module will be available to the caller of
 `require`.
 
 If you run SCAM with a module (file) name as an argument, SCAM will invoke
-the module a **program**.  This will load the module and then run a function
-called "main" if the module has defined such a function.  Alternatively, you
-can compile a program and then invoke the resulting executable file
-directly.
+the module as a **program**.  This will load the module and then run a
+function called "main" if the module has defined such a function.
+Alternatively, you can compile a program and then invoke the resulting
+executable file directly.
 
 
 ## Syntax
@@ -682,15 +682,9 @@ empty dictionaries properly):
        {=v: k})
 
 The other way to destructure dictionaries is called "field destructuring",
-<<<<<<< HEAD
-and it treats the dictionary as an collection indexed by keys.  In this kind
-of target, all keys must be symbols or string literals (constants), and no
-"rest" syntax is supported.  For example:
-=======
 and it treats the dictionary as an unordered collection indexed by keys.  In
 this kind of target, all keys must be symbols or string literals
 (constants), and no "rest" syntax is supported.  For example:
->>>>>>> bff1e94... Update documentation: destructuring, etc.
 
     (let (({results: r, errors: e} EXPR))
        BODY)
@@ -704,18 +698,11 @@ this kind of target, all keys must be symbols or string literals
 
 #### Order of Evaluation
 
-<<<<<<< HEAD
-The first [vector example](vector-targets) shows a case where bound
-variables are macros that extract parts of the value when and if they are
-referenced.  In the case of `let`, the original expression that was assigned
-to the destructuring target is nevertheless evaluated only once.
-=======
 The first [vector example](vector-targets) shows a case where the variable
 names are bound to macros that extract parts of the value when and if the
 variables are evaluated.  In the case of `let`, the original expression that
 was assigned to the destructuring target is nevertheless evaluated only
 once.
->>>>>>> bff1e94... Update documentation: destructuring, etc.
 
 When destructuring appears in a macro context, the original expression may
 be evaluated many times, as is normally the case with SCAM macros.
@@ -728,12 +715,8 @@ be evaluated many times, as is normally the case with SCAM macros.
     (define `y (nth 2 EXPR))
 
 In the case of global variables, each bound symbol represents a different
-<<<<<<< HEAD
-global variable, but the original value is always evaluated once.
-=======
 global variable, but the expression that gives the entire value is always
 evaluated once.
->>>>>>> bff1e94... Update documentation: destructuring, etc.
 
     (define [g1 g2] EXPR)
 
@@ -790,13 +773,9 @@ takes the form of a record constructor and it performs destructuring like
 the targets described in this section, but pattern destructuring occurs only
 when the value matches the record type named in the pattern.  In other
 words, patterns are conditional.  Targets, even when they appear in `case`
-<<<<<<< HEAD
-clauses, are unconditional.
-=======
 clauses, are unconditional.  The first non-pattern clause in a `case` will
 always be evaluated, preventing any further clause matches from being
 attempted.
->>>>>>> bff1e94... Update documentation: destructuring, etc.
 
 ## Macros
 

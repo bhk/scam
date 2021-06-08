@@ -74,7 +74,7 @@ $$%: ; 	@true $(info $$$* --> "$(call if,,,$$$*)")
 SCAMDOC = examples/scamdoc.scm
 
 DOCLIBS = $(patsubst %,%.scm,compile core getopts io math peg repl string utf8 memo) \
-          intrinsics.txt
+          intrinsics.txt native.txt
 
 docs: .out/libs.txt
 

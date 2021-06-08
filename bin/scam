@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MAIN := scam `main
-^uid := 4c5fb7204ab86f16
+^uid := 70b58dcf481ae55c
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -115,7 +115,7 @@ endef
 
 define [mod-core]
 # Requires: 
-# Exports: repeat-words}2 intersperse}2 foldr}3 foldl}3 index-of}2 assoc#2{%-initial|6'subst'[]4[0[11'[]4[0[111'[]7[0^d[0[1]0[101[10.|0'2'. assoc-vec#2{`assoc-initial|7'^d'[]0[01[0.|0'2'. assoc-initial}2 sort-by}2 memoize}1 1+}1 split}2 uniq}1 see}2 fexpect#2{`expect-x|7'`format'[]0[01[0.|7'`format'[]0[02[0.|10'5143 assert#1{%-x|0'1'.|10'5092 trace-expect#2!0!]2|1'[]7[0`expect-x[0[1]7[10^n[10[11]4[1101[10[11]0[1101[110.[0[1]7[10^n[10[11]4[1102[10[11]0[1101[110.[0[1]10[105007|7'`untrace'[]7[0`trace[0[1]4[10!p'[]8[0[1]7[10^d[10[11]0[1101[110.[0[1]4[10[110[0[1]7[10^d[10[11]0[1102[110. expect#2{%-x|0'1'.|0'2'.|10'4958 expect-x}3 printf}1+ sprintf}1+ vsprintf}2 vsprintfx}4 format}1 format-add}1 dict-collate}1 dict-values}1 dict-keys}1 dict-compact}1'2 dict-set}3 dict-remove}2 dict-get}2'3 dict-find}2 dict-value#1{^dv|0'1'. dict-key#1{^dk|0'1'. append}0+ word-index?}1 numeric?}1 while}3 reverse}1 indices}1 urange}2 permute}2'3 vec-subtract#2{`vec-filter|4'filter-out|0'2'.|0'1'. vec-intersect#2{`vec-filter|4'filter|0'2'.|0'1'. vec-or#1{^n|4'1|6'filter-out'[]4[0[11.'[]0[01[0. select-words}2 select-vec}2 butlast}1 strip#1!0!]6!0filter|4'!p|0'1'. last#1{^u|6'lastword'[]0[01[0. conj}2 cons}2 concat-vec}1'2 xor}2 identity#1!0!]0!01!0. eq?#2!0!]6!0findstring|6'subst'[]8[0[1]0[102[10.[0[1]4[100'[]4[01'[]8[0[1]0[101[10.[0[1]4[100|4'1
+# Exports: repeat-words}2 intersperse}2 foldr}3 foldl}3 index-of}2 assoc#2{%-initial|6'subst'[]4[0[11'[]4[0[111'[]7[0^d[0[1]0[101[10.|0'2'. assoc-vec#2{`assoc-initial|7'^d'[]0[01[0.|0'2'. assoc-initial}2 sort-by}2 memoize}1 1+}1 split}2 uniq}1 see}2 fexpect#2{`expect-x|7'`format'[]0[01[0.|7'`format'[]0[02[0.|10'5140 assert#1{%-x|0'1'.|10'5092 trace-expect#2!0!]2|1'[]7[0`expect-x[0[1]7[10^n[10[11]4[1101[10[11]0[1101[110.[0[1]7[10^n[10[11]4[1102[10[11]0[1101[110.[0[1]10[105007|7'`untrace'[]7[0`trace[0[1]4[10!p'[]8[0[1]7[10^d[10[11]0[1101[110.[0[1]4[10[110[0[1]7[10^d[10[11]0[1102[110. expect#2{%-x|0'1'.|0'2'.|10'4958 expect-x}3 printf}1+ sprintf}1+ vsprintf}2 vsprintfx}4 format}1 format-add}1 dict-collate}1 dict-values}1 dict-keys}1 dict-compact}1'2 dict-set}3 dict-remove}2 dict-get}2'3 dict-find}2 dict-value#1{^dv|0'1'. dict-key#1{^dk|0'1'. append}0+ word-index?}1 numeric?}1 while}3 reverse}1 indices}1 urange}2 permute}2'3 vec-subtract#2{`vec-filter|4'filter-out|0'2'.|0'1'. vec-intersect#2{`vec-filter|4'filter|0'2'.|0'1'. vec-or#1{^n|4'1|6'filter-out'[]4[0[11.'[]0[01[0. select-words}2 select-vec}2 butlast}1 strip#1!0!]6!0filter|4'!p|0'1'. last#1{^u|6'lastword'[]0[01[0. conj}2 cons}2 concat-vec}1'2 xor}2 identity#1!0!]0!01!0. eq?#2!0!]6!0findstring|6'subst'[]8[0[1]0[102[10.[0[1]4[100'[]4[01'[]8[0[1]0[101[10.[0[1]4[100|4'1
 `xor = $(if $1,$(if $2,,$1),$2)
 `concat-vec = $(call ^u,$(subst $  ,$(call ^d,$2),$1))
 `cons = $(call ^d,$1)$(if $2, )$2
@@ -387,7 +387,7 @@ endef
 
 define [mod-io]
 # Requires: core string
-# Exports: get-tmp-dir}0'1 unescape-path}1 escape-path}1 resolve-path}2 clean-path}1 save-blob}2 hash-output}1+ hash-file}1 hash-files}1 file-exists?}1 cp-file-atomic}2'3 cp-file}2'3 mkdir-p}1 read-file}1 read-lines}1'2'3 chmod-file}2 getline}1 fprintf}2+ vfprintf}3 write-file-atomic}2 mv-file}2 write-file}2 write}2 pipe}2+ shell-lines}1+ shellf}1+ io-sprintf}1+ quote-sh-file}1 quote-sh-arg}1 path-basename#1{^u|6'basename'[]7[0^d[0[1]0[101[10. path-notdir#1{^u|6'notdir'[]7[0^d[0[1]0[101[10. path-dir#1{^u|6'dir'[]7[0^d[0[1]0[101[10.
+# Exports: get-tmp-dir}0'1 unescape-path}1 escape-path}1 resolve-path}2 clean-path}1 save-blob}2 hash-output}1+ hash-file}1 hash-files}1 file-exists?}1 cp-file-atomic}2'3 cp-file}2'3 mkdir-p}1 read-file}1 read-lines}1'2'3 chmod-file}2 getline}1 fprintf}2+ vfprintf}3 write-file-atomic}2 mv-file}2 write-file}2 write}2 pipe}2+ shell-lines}1+ shellf}1+ io-sprintf}1+ io-vsprintf}2 quote-sh-file}1 quote-sh-arg}1 path-basename#1{^u|6'basename'[]7[0^d[0[1]0[101[10. path-notdir#1{^u|6'notdir'[]7[0^d[0[1]0[101[10. path-dir#1{^u|6'dir'[]7[0^d[0[1]0[101[10.
 $(call ^R,core)
 $(call ^R,string)
 `ioshell = $(and $(if $(filter S,$(SCAM_DEBUG)),$(call `printf,shell: %q,$1))1,$(shell $1))

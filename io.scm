@@ -65,6 +65,7 @@
 ;;    `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`.
 ;;
 (define (io-vsprintf fmt args)
+  &public
   (define `(shell-fmt code v)
     (cond ((filter "A" code) (quote-sh-arg v))
           ((filter "F" code) (quote-sh-file v))

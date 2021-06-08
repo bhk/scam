@@ -6,9 +6,10 @@
 | [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-key-_) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-_-value) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`permute`](#permute-lst-zz-prefix) [`printf`](#printf-fmt-values) [`repeat-words`](#repeat-words-v-n) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`urange`](#urange-min-max) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`vsprintfx`](#vsprintfx-fmt-values-codes-fmt-fn) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
 | [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-list) [`append-for`](#append-for-target-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-target-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`define`](#define-forms) [`defmacro`](#defmacro-name-argname-body) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-target-vector-body) [`foreach`](#foreach-target-list-delim-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lambda`](#lambda-params-body) [`lastword`](#lastword-list) [`let`](#let-bindings-body) [`let&`](#let-bindings-body) [`let-global`](#let-global-bindings-body) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-spec) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`when`](#when-cond-body) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
-| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`cp-file-atomic`](#cp-file-atomic-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd-fmt-args) [`io-sprintf`](#io-sprintf-fmt-args) [`mkdir-p`](#mkdir-p-dir) [`mv-file`](#mv-file-from-to) [`path-basename`](#path-basename-path) [`path-dir`](#path-dir-path) [`path-notdir`](#path-notdir-path) [`pipe`](#pipe-stdin-fmt-args) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd-fmt-args) [`shellf`](#shellf-cmd-fmt-args) [`unescape-path`](#unescape-path-loc) [`vfprintf`](#vfprintf-fd-format-values) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) [`write-file-atomic`](#write-file-atomic-file-name-data) |
+| [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`cp-file-atomic`](#cp-file-atomic-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd-fmt-args) [`io-sprintf`](#io-sprintf-fmt-args) [`io-vsprintf`](#io-vsprintf-fmt-args) [`mkdir-p`](#mkdir-p-dir) [`mv-file`](#mv-file-from-to) [`path-basename`](#path-basename-path) [`path-dir`](#path-dir-path) [`path-notdir`](#path-notdir-path) [`pipe`](#pipe-stdin-fmt-args) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd-fmt-args) [`shellf`](#shellf-cmd-fmt-args) [`unescape-path`](#unescape-path-loc) [`vfprintf`](#vfprintf-fd-format-values) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) [`write-file-atomic`](#write-file-atomic-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
+| [native](#native) | [`name-apply`](#name-apply-func-name-argv) [`native-bound?`](#native-bound-var-name) [`native-call`](#native-call-var-name-args) [`native-eval`](#native-eval-str) [`native-flavor`](#native-flavor-var-name) [`native-name`](#native-name-var-name) [`native-origin`](#native-origin-var-name) [`native-value`](#native-value-var-name) [`native-var`](#native-var-var-name) [`set-native`](#set-native-var-name-value-retval) [`set-native-fn`](#set-native-fn-func-name-value-retval) |
 | [peg](#peg-peg-parser-generator) | [`gen-lex`](#gen-lex-tokens) [`lex`](#lex-text-tokens) [`peg-*`](#peg--pf) [`peg-+`](#peg--pf) [`peg-?`](#peg--pf) [`peg-and`](#peg-and-pfs) [`peg-at`](#peg-at-pf) [`peg-c`](#peg-c-name-pf) [`peg-empty`](#peg-empty-caps) [`peg-not`](#peg-not-pf) [`peg-or`](#peg-or-pfs) [`peg-p`](#peg-p-in-out-caps) [`un-lex`](#un-lex-subj) |
 | [repl](#repl-interactive-mode-for-scam) | [`repl`](#repl-build-dir-prompts) [`repl-ep`](#repl-ep-text-build-dir-is-quiet) |
 | [string](#string-string-manipulation) | [`bytes-from-bytecodes`](#bytes-from-bytecodes-codes) [`gen-polysub`](#gen-polysub-froms-tos-input) [`string-from-bytecodes`](#string-from-bytecodes-codes) [`string-len`](#string-len-s) [`string-lower`](#string-lower-str) [`string-repeat`](#string-repeat-str-num) [`string-slice`](#string-slice-first-last-str) [`string-to-bytecodes`](#string-to-bytecodes-str) [`string-to-bytes`](#string-to-bytes-s) [`string-to-chars`](#string-to-chars-s) [`string-upper`](#string-upper-str) |
@@ -242,10 +243,10 @@ execution.
 
 ##### `(expect-x A B FILE-LINE)`
 
-Compare A to B, and if unequal display diagnostics and terminate
-execution.  This function is exported to enable clients to easily
-implement variants of `expect`, since FILE-LINE data must come
-from a macro in order to reflect the location of the caller.
+Compare A to B, and if they are not equal, display diagnostics and
+terminate execution.  This function is exported to enable users to
+implement variants of `expect` in macros that supply their own FILE-LINE
+value, obtained from `(current-file-line)`.
 
 FILE-LINE = "file:line:" prefix for the diagnostic message.
 
@@ -254,10 +255,8 @@ FILE-LINE = "file:line:" prefix for the diagnostic message.
 
 Like `expect`, but only the formatted versions of A and B are compared.
 This accommodates only minor differences in the concrete layout that do
-not affect the meaning in some contexts.  For example, a record ending in
-a `&list` member (that is empty) will have a trailing space when
-constructed, but not after being retrieved from another record (when
-stored as a trailing `&list` parameter).
+not affect the meaning of some types; chiefly, this ignores trailing
+spaces in record values.
 
 
 ##### `(foldl F Z V)`
@@ -488,33 +487,38 @@ ARGV = argument vector, as supplied to `main`\
 OPTS = a string of option specifiers\
 Result = a dictionary
 
-The resulting dictionary maps each option name to a *vector* of values
-supplied for that option.  Options can appear zero or more times.  If not
-seen, the option name will not appear as a key in the dictionary.
+`ARGV` is a vector of command line arguments that will be parsed as a
+sequence of options, option values, and/or non-option arguments.
+Generally, options may appear in any order, before or after non-option
+arguments, but an argument of `--` indicates that all subsequent
+arguments are to be treated as non-option arguments.
 
-The key `"*"` holds elements in ARGV that were not options or option
-arguments.  In other words, `(dict-get "*" RESULT)` yields all of the
-non-option arguments.
+The result is a dictionary that maps each option name to a *vector* of
+values, or nil.  If an option was specified more than once in `OPTS`, the
+vector will hold one eleent for each occurrence.
+
+The key `"*"` holds all non-option arguments.
 
 If errors were encountered, the key `"!"` holds a vector of
 `GetoptsError` records:
 
- - `(MissingArg OPT)` : Option specifier OPT takes an argument but was found
-   in last element of argv.
- - `(BadOption ARG)` : Argument ARG began with "-" but did not match any
+ - `(MissingArg OPT)` : Option specifier `OPT` describes an option that
+   takes an argument, but the option appeared in the last element of
+   `ARGV`, so its argument is missing.
+ - `(BadOption ARG)` : Argument `ARG` began with "-" but did not match any
    option specifiers.
 
-Words in OPTS begin with `-` or `--` and may end with `=`.  Leading
-dashes and the trailing `=` are not included in the dictionary keys.
-Option names may not contain `%`, `!`, `*`, or whitespace.
+`OPTS` describes the options that may be provided and whether or not
+values are expected with them.  Each word in `OPTS` is an "option
+specifier"; it begins with `-` or `--`, followed by an option name, and
+optionally ending with `=`.  Option names may not contain `%`, `!`, `*`,
+or whitespace.
 
-If an option specifier ends in `"="`, the value will be the next argument
-in ARGV (which will be consumed).  Otherwise, the value `1` is supplied
-for each occurrence of the option.
-
-If `--` is seen in ARGV, all elements following `--` are treated as
-non-option arguments.  Otherwise, options can appear in any order, before
-and after non-option arguments.
+If an option specifier ends in `"="`, it indicates that the option (when
+found in `ARGV`) will be followed by another argument that contains the
+value to be associated with the option.  When an option specifier does
+not end in `"="`, value `1` is supplied for each occurrence of the
+option.
 
 Example:
 
@@ -842,9 +846,10 @@ target](reference.md#destructuring).
     > (foreach (x "1 2 3") (1+ x))
     "2 3 4"
 
-`DELIM` specifies the separator between list elements.  This defaults to
-a single space when `DELIM` is absent.  When it is present and evaluates
-to `nil`, all element results are concatenated.
+`DELIM` specifies the separator that will appear between elements of the
+*resulting* list.  This defaults to a single space when `DELIM` is
+absent.  When it is present and evaluates to `nil`, all element results
+will be concatenated.
 
 
 ##### `(if COND THEN-EXPR [ELSE-EXPR])`
@@ -1296,6 +1301,17 @@ ARGS = arguments references by CMD-FMT
 [See `io-vsprintf`.]
 
 
+##### `(io-vsprintf FMT ARGS)`
+
+Format a string, similarly to vsprintf, but with the following format
+sequences supported:
+   `%s` : the argument is output literally
+   `%A` : the argument is quoted for a POSIX shell
+   `%V` : the argument is treated as a vector of strings, each to be
+          quoted as an argument to a POSIX shell
+   `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`.
+
+
 ##### `(mkdir-p DIR)`
 
 Create directory DIR and parent directories, if necessary.
@@ -1461,8 +1477,7 @@ result is always numerically exact.  Some functions -- like `/`, `log`,
 `sin`, etc. -- yield an approximation with a finite number of digits.
 These functions provide an optional precision argument that may be
 provided by the caller; otherwise the default is 16 significant digits
-(slightly more precise than 64-bit IEEE-754 binary floating point) unless
-otherwise specified.
+(slightly more precise than 64-bit IEEE-754 binary floating point).
 
 Precision can be specified in two ways: significant digits, or place.
 
@@ -1840,6 +1855,97 @@ Read data from FILENAME, logging the IO transaction for playback.
 Write DATA to FILENAME, logging the IO transaction for playback.  The
 limit on the size of DATA is system-specific, but at least 60KB for
 any data and 100KB for text files.
+
+
+# Native
+
+This section describes features that are not officially part of the SCAM
+language.  They provide access to lower-level ("native") Make features,
+and cannot be described completely without introducing implementation
+complexities of SCAM and "alien" aspects of Make.  They may be useful
+when using SCAM to interoperate tightly with non-SCAM Make code.
+
+There is not a "native" module.  These features are
+[intrinsics](#intrinsics), so `(require "native")` is not required.
+
+## Exports
+
+##### `(name-apply FUNC-NAME ARGV)`
+
+Call the function variable whose native name is NAME with elements of
+vector ARGV as arguments.
+
+
+##### `(native-bound? VAR-NAME)`
+
+Return 1 if native variable VAR-NAME has been assigned a value (as a data
+or function variable), or `nil` if unassigned.
+
+
+##### `(native-call VAR-NAME ...ARGS)`
+
+Call a function, given its native name.
+
+
+##### `(native-eval STR)`
+
+Evaluate STR as GNU Make source.
+
+
+##### `(native-flavor VAR-NAME)`
+
+Describe the flavor of native variable VAR-NAME.  One of:
+
+ * `"simple"`
+ * `"recursive"`
+ * `"undefined"`
+
+
+##### `(native-name VAR-NAME)`
+
+Get the "native name" of a SCAM global variable, function, or a built-in
+function.
+
+
+##### `(native-origin VAR-NAME)`
+
+Describe the GNU make origin of native variable VAR-NAME.  Origin values
+include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
+See GNU Make docs for more.
+
+
+##### `(native-value VAR-NAME)`
+
+Return the value of native variable VAR-NAME.
+
+
+##### `(native-var VAR-NAME)`
+
+Evaluate a GNU Make variable.  Unlike `value`, native-var will trigger
+expansion of recursive variables.
+
+
+##### `(set-native VAR-NAME VALUE ?RETVAL)`
+
+Assign VALUE to the native variable VAR-NAME as a data variable.  This
+will replace any data or function variable binding for VAR-NAME.
+
+
+##### `(set-native-fn FUNC-NAME VALUE ?RETVAL)`
+
+Assign VALUE to the native variable FUNC-NAME as a function variable.
+This will replace any data or function variable binding for FUNC-NAME.
+
+Function variables cannot store values with complete fidelity -- the
+value read back using `(native-value FUNC-NAME)` may not be exactly the
+same.  However, it is guaranteed that when a SCAM function value is
+assigned to a function, the variable's *behavior* (when called as a
+function) will be as expected; furthermore, the value read back will be
+functionally equivalent to the original SCAM function.
+
+Function names cannot begin or end in spaces, and other limitations may
+apply depending on the version of Make, but any valid SCAM symbol will
+work.
 
 
 # peg: PEG Parser Generator
