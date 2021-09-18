@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MAIN := scam `main
-^uid := 70b58dcf481ae55c
+^uid := 3a01c15fe8ec6686
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -14,10 +14,10 @@ $(call ^R,gen)
 $(call ^R,io)
 `usage-string := Usage:$'$'    scam [-i]                  Enter interactive mode$'    scam FILE ARGS...          Compile and execute FILE$'    scam -o FILE [OPTS] FILE   Build an executable from SRC$'    scam -e EXPR               Print the value of expression EXPR$'    scam -v / --version        Show version$'    scam -h / --help           Show this message$'$'Options:$'$'  --quiet           Do not display progress messages$'  --build-dir DIR   Specify directory for intermediate files$'  --                Stop processing options$'
 define `perror
-$(and $(call `vfprintf,2,scam: $1
-,$(foreach N,2,$(^v)))1,1)
+$(if $(call `vfprintf,2,scam: $1
+,$(foreach N,2,$(^v))),)1
 endef
-`main = $(call ^Y,$(call `getopts,$1,-o= -e= -v --version -h --help -i --quiet --build-dir= --boot),,,,,,,,,$`(and $`(call ^set,`*is-boot*,$`(call `dict-get,boot,$`1))1,$`(call ^set,`build-dir,$`(or $`(call ^u,$`(lastword $`(call `dict-get,build-dir,$`1))),$`(addsuffix .scam/,$`(dir $`(call ^u,$`(lastword $`(call `dict-get,o,$`1))))),$`(SCAM_BUILD_DIR),$`(HOME)/.scam/))1,$`(or $`(if $`(call `dict-get,!,$`1),$`(and $`(foreach ;,$`(call `dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is missing an argument,$`(call ^n,2,$`(call ^u,$`;))),$`(if $`(filter !:GetoptsError1,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is not a recognized option,$`(call ^n,2,$`(call ^u,$`;))),$`(call `perror,[internal error])))))1,$`(call `perror,try `scam -h` for help))),$`(call ^n,1,$`(filter-out !.,$`(foreach ;,$`(call `dict-get,e,$`1),$`(call ^d,$`(if $`(call `repl-ep,$`(call ^u,$`;),$`(`build-dir),$`(call `dict-get,quiet,$`1)),1))))),$`(if $`(or $`(call `dict-get,h,$`1),$`(call `dict-get,help,$`1)),$`(and $`(info $`(`usage-string))1,0)),$`(if $`(call `dict-get,o,$`1),$`(if $`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(call `perror,too many input files were given with `-o`),$`(or $`(call `build-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call ^u,$`(lastword $`(call `dict-get,o,$`1))),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0))),$`(if $`(or $`(call `dict-get,v,$`1),$`(call `dict-get,version,$`1)),$`(and $`(info SCAM version 2.1.0)1,0)),$`(if $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(or $`(call `run-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0)),$`(if $`(or $`(call `dict-get,i,$`1),$`(if $`(or $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call `dict-get,e,$`1)),,1)),$`(and $`(info SCAM v2.1.0 interactive mode. Type `?` for help.)1,$`(call `repl,$`(`build-dir))1,0)))))
+`main = $(call ^Y,$(call `getopts,$1,-o= -e= -v --version -h --help -i --quiet --build-dir= --boot),,,,,,,,,$`(call ^set,`*is-boot*,$`(call `dict-get,boot,$`1))$`(call ^set,`build-dir,$`(or $`(call ^u,$`(lastword $`(call `dict-get,build-dir,$`1))),$`(addsuffix .scam/,$`(dir $`(call ^u,$`(lastword $`(call `dict-get,o,$`1))))),$`(SCAM_BUILD_DIR),$`(HOME)/.scam/))$`(or $`(if $`(call `dict-get,!,$`1),$`(if $`(foreach ;,$`(call `dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is missing an argument,$`(call ^n,2,$`(call ^u,$`;))),$`(if $`(filter !:GetoptsError1,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is not a recognized option,$`(call ^n,2,$`(call ^u,$`;))),$`(call `perror,[internal error]))))),)$`(call `perror,try `scam -h` for help)),$`(call ^n,1,$`(filter-out !.,$`(foreach ;,$`(call `dict-get,e,$`1),$`(call ^d,$`(if $`(call `repl-ep,$`(call ^u,$`;),$`(`build-dir),$`(call `dict-get,quiet,$`1)),1))))),$`(if $`(or $`(call `dict-get,h,$`1),$`(call `dict-get,help,$`1)),$`(info $`(`usage-string))0),$`(if $`(call `dict-get,o,$`1),$`(if $`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(call `perror,too many input files were given with `-o`),$`(or $`(call `build-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call ^u,$`(lastword $`(call `dict-get,o,$`1))),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0))),$`(if $`(or $`(call `dict-get,v,$`1),$`(call `dict-get,version,$`1)),$`(info SCAM version 2.1.1)0),$`(if $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(or $`(call `run-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0)),$`(if $`(or $`(call `dict-get,i,$`1),$`(if $`(or $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call `dict-get,e,$`1)),,1)),$`(info SCAM v2.1.1 interactive mode. Type `?` for help.)$`(if $`(call `repl,$`(`build-dir)),)0)))
 
 endef
 
@@ -65,12 +65,12 @@ $(eval $(call `esc-LHS,$1) :=$` $(subst
 ,$`',$(subst #,$`",$(subst $`,$`$`,$2))))$3
 endef
 define ^fset
-$(and $(eval define $(call `esc-LHS,$1)
+$(eval define $(call `esc-LHS,$1)
 $(subst \$ 
 ,\$` 
 ,$(subst define,$` define,$(subst endef,$` endef,$2
 )))endef
-)1,$3)
+)$3
 endef
 define ^E
 $(subst $`,$`$2,$`(if ,,$(subst 
@@ -80,32 +80,32 @@ endef
 ^tags := 
 ^at = $(call ^set,^tags,$(^tags) $(filter-out $(^tags),$1))
 `*required* := 
-^load = $(and $(if $(if $(filter-out u%,$(flavor [mod-$1])),1),$(eval $(value [mod-$1])),$(eval include $(subst $ 	,\	,$(subst $  ,\ ,$(value SCAM_DIR)$1.o))))1,$1)
-^R = $(and $(or $(filter $(call ^d,$1),$(`*required*)),$(and $(call ^set,`*required*,$(`*required*) $(call ^d,$1))1,$(call ^load,$1)))1,)
+^load = $(if $(if $(if $(filter-out u%,$(flavor [mod-$1])),1),$(eval $(value [mod-$1])),$(eval include $(subst $ 	,\	,$(subst $  ,\ ,$(value SCAM_DIR)$1.o)))),)$1
+^R = $(if $(or $(filter $(call ^d,$1),$(`*required*)),$(call ^set,`*required*,$(`*required*) $(call ^d,$1))$(call ^load,$1)),)
 `trace-info = $(info TRACE: $1$2$3$4)
 `trace-digits = $(if $(findstring /1111111111,$1),$(call `trace-digits,$(subst /1111111111,1/,$1)),$(subst !:,,$(subst :!,0!,$(subst :0,::,$(subst :00,:::,$(subst :0000,:::::,$(subst $  ,,!:$(foreach ;,/$(subst /, /,$1),$(words $(subst /,,$(subst 1, 1,$;))))!:)))))))
 `trace-words = $(if $(word $1,$2),$2,$(call `trace-words,$1,1 $2))
-`trace-body = $(subst :D,$4,$(subst :N,$(patsubst '%,%,$2),$(subst :C,$`(call [S-$3],$`1,$`2,$`3,$`4,$`5,$`6,$`7,$`8,$`9),$(subst :E,$`(eval ^TI:=$`$`(^TI) ):C$`(eval ^TI:=$`$`(subst x ,,x$`$`(^TI))),$(subst :I,info $`(^TI),$(if $(filter c,$1),$(and $(call ^set,[K-$3],$(or $(value [K-$3]),///////),)1,$`(eval [K-$3]:=$`(subst /1111111111,1/,$`([K-$3])1)):D),$(if $(filter p%,$1),$(subst :,:$` ,$(call ^u,$(patsubst p%,%,$1))):D,$(if $(filter t f,$1),$(if $(or $(filter f,$1),$(filter ^ta ^f ^tc ^tp ^n,$2)),$`(:I--> :N):E$`(:I<-- :N),$`(:I--> (:N$`(^ta)))$`(call ^tp,$`(^TI)<-- :N:,:E)),$(if $(filter x%,$1),$`(foreach ^X,1,:C)$`(if $`(^X),,$`(if $`(foreach ^X,$(wordlist 2,99999999,$(call `trace-words,$(or $(patsubst x%,%,$1),11),1)),$`(if :C,)),)),$(error TRACE: Unknown mode: '$1'))))))))))
+`trace-body = $(subst :D,$4,$(subst :N,$(patsubst '%,%,$2),$(subst :C,$`(call [S-$3],$`1,$`2,$`3,$`4,$`5,$`6,$`7,$`8,$`9),$(subst :E,$`(eval ^TI:=$`$`(^TI) ):C$`(eval ^TI:=$`$`(subst x ,,x$`$`(^TI))),$(subst :I,info $`(^TI),$(if $(filter c,$1),$(if $(call ^set,[K-$3],$(or $(value [K-$3]),///////),),)$`(eval [K-$3]:=$`(subst /1111111111,1/,$`([K-$3])1)):D,$(if $(filter p%,$1),$(subst :,:$` ,$(call ^u,$(patsubst p%,%,$1))):D,$(if $(filter t f,$1),$(if $(or $(filter f,$1),$(filter ^ta ^f ^tc ^tp ^n,$2)),$`(:I--> :N):E$`(:I<-- :N),$`(:I--> (:N$`(^ta)))$`(call ^tp,$`(^TI)<-- :N:,:E)),$(if $(filter x%,$1),$`(foreach ^X,1,:C)$`(if $`(^X),,$`(if $`(foreach ^X,$(wordlist 2,99999999,$(call `trace-words,$(or $(patsubst x%,%,$1),11),1)),$`(if :C,)),)),$(error TRACE: Unknown mode: '$1'))))))))))
 `trace-match = $(foreach ;,$(if $(filter '% `% "%,$1),$(patsubst "%,%,$1),'$1),$(filter-out $(foreach ;;,^% `% `trace% `esc-% `set-native-fn `filtersub,$(if $(filter-out $(;;),$;),$(;;))),$(filter $;,$2)))
 `*trace-ids* := 
 `trace-id = $(or $(call `filtersub,$1:%,%,$(`*trace-ids*)),$(if $2,$(call ^set,`*trace-ids*,$(`*trace-ids*) $1:$(words $(`*trace-ids*)),$(words $(`*trace-ids*)))))
 define `trace
-$(subst "`,`,$(subst "',',$(addprefix ",$(filter %,$(foreach ;,$(filter-out %:v %:-,$1),$(foreach ;;,$(foreach ;;,$(call `trace-match,$(filter-out :%,$(subst :, :,$;)),$(filter-out $(`*do-not-trace*) [% ~trace ~untrace ~trace-ext ~untrace-ext ^Y  $(call `filtersub,%:-,%,$1),$(.VARIABLES))),$(if $(filter filerec%,$(origin $(;;))$(flavor $(;;))),$(;;))),$(foreach ;;;,$(call `trace-id,$(;;),1),$(and $(and $(if $(filter u%,$(origin [S-$(;;;)])),$(call ^fset,[S-$(;;;)],$(value $(;;)),))1,$(if $(filter %:v,$1),$(call `trace-info,[,$(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),] ,$(;;)))1,$(call ^fset,$(;;),$(call `trace-body,$(or $(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),t),$(subst #,$`",$(;;)),$(;;;),$(value [S-$(;;;)])),))1,$(;;)))))))))
+$(subst "`,`,$(subst "',',$(addprefix ",$(filter %,$(foreach ;,$(filter-out %:v %:-,$1),$(foreach ;;,$(foreach ;;,$(call `trace-match,$(filter-out :%,$(subst :, :,$;)),$(filter-out $(`*do-not-trace*) [% ~trace ~untrace ~trace-ext ~untrace-ext ^Y  $(call `filtersub,%:-,%,$1),$(.VARIABLES))),$(if $(filter filerec%,$(origin $(;;))$(flavor $(;;))),$(;;))),$(foreach ;;;,$(call `trace-id,$(;;),1),$(if $(if $(if $(filter u%,$(origin [S-$(;;;)])),$(call ^fset,[S-$(;;;)],$(value $(;;)),)),)$(if $(if $(filter %:v,$1),$(call `trace-info,[,$(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),] ,$(;;))),)$(call ^fset,$(;;),$(call `trace-body,$(or $(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),t),$(subst #,$`",$(;;)),$(;;;),$(value [S-$(;;;)])),),)$(;;))))))))
 endef
 `trace-rev = $(if $1,$(call `trace-rev,$(wordlist 2,99999,$1)) $(word 1,$1))
-`trace-dump = $(foreach ;,$(sort $(foreach ;,$1,$(foreach ;;,$(value [K-$(call `trace-id,$;)]),$(if $(findstring 1,$(;;)),$(and $(call ^set,[K-$(call `trace-id,$;)],///////,)1,$(call ^d,$(subst :, ,$(call `trace-digits,$(;;))) $;)))))),$(call ^d,$(call `trace-info,$(call ^u,$;))))
-`untrace = $(and $(call `trace-dump,$(foreach ;,$(filter $1,$(filter-out :%,$(subst :, :,$(`*trace-ids*)))),$(foreach ;;,$(call `trace-id,$;),$(and $(call ^fset,$;,$(value [S-$(;;)]),)1,$;))))1,$2)
+`trace-dump = $(foreach ;,$(sort $(foreach ;,$1,$(foreach ;;,$(value [K-$(call `trace-id,$;)]),$(if $(findstring 1,$(;;)),$(if $(call ^set,[K-$(call `trace-id,$;)],///////,),)$(call ^d,$(subst :, ,$(call `trace-digits,$(;;))) $;))))),$(call ^d,$(call `trace-info,$(call ^u,$;))))
+`untrace = $(if $(call `trace-dump,$(foreach ;,$(filter $1,$(filter-out :%,$(subst :, :,$(`*trace-ids*)))),$(foreach ;;,$(call `trace-id,$;),$(if $(call ^fset,$;,$(value [S-$(;;)]),),)$;))),)$2
 `do-not-trace = $(call ^set,`*do-not-trace*,$(`*do-not-trace*) $1)
 `start-trace = $(call `trace,$(value SCAM_TRACE))
 SHELL := /bin/bash
 `*atexits* := 
 `at-exit = $(if $(and $2,$(findstring $  $(call ^d,$1) , $(`*atexits*) )),,$(call ^set,`*atexits*,$(call ^d,$1) $(`*atexits*)))
-`run-at-exits = $(and $(foreach ;,$(`*atexits*),$(call ^d,$(call ^Y,,,,,,,,,,$(call ^u,$;))))1,)
+`run-at-exits = $(if $(foreach ;,$(`*atexits*),$(call ^d,$(call ^Y,,,,,,,,,,$(call ^u,$;)))),)
 `check-exit = $(if $(subst 0,,$(subst 9,,$(subst 8,,$(subst 7,,$(subst 6,,$(subst 5,,$(subst 4,,$(subst 3,,$(subst 2,,$(subst 1,,$(patsubst -%,%,$(subst $ 	,x,$(subst $  ,x,$1))))))))))))),$(error scam: main returned '$1'),$(or $1,0))
 define ^start
-$(and $(call `start-trace,$1)1,$(call `do-not-trace,^R ^load)1,$(call ^R,$1)1,$(call `start-trace,$1)1,$(eval $(call ^Y,$(call `check-exit,$(call ^Y,$3,,,,,,,,,$(value $2))),,,,,,,,,.DEFAULT_GOAL :=
+$(if $(call `start-trace,$1),)$(if $(call `do-not-trace,^R ^load),)$(call ^R,$1)$(if $(call `start-trace,$1),)$(eval $(call ^Y,$(call `check-exit,$(call ^Y,$3,,,,,,,,,$(value $2))),,,,,,,,,.DEFAULT_GOAL :=
 .PHONY: [exit]
-[exit]: $`(.DEFAULT_GOAL);@exit $`1$``(call `run-at-exits))))
+[exit]: $`(.DEFAULT_GOAL);@exit $`1$``(call `run-at-exits)))
 endef
 $(if $(call `do-not-trace,^start `start-trace),)
 $(if $(call `at-exit,$`(call `trace-dump,$`(filter-out :%,$`(subst :, :,$`(`*trace-ids*))))),)
@@ -165,28 +165,28 @@ endef
 `sprintf = $(call `vsprintf,$1,$(foreach N,2,$(^v)))
 `printf = $(info $(call `vsprintf,$1,$(foreach N,2,$(^v))))
 define `expect-x
-$(if $(findstring $(subst $20,1,$10),1),$(if $(findstring O,$(SCAM_DEBUG)),$(info $3: OK: $1)),$(and $(info $3: error: assertion failed
+$(if $(findstring $(subst $20,1,$10),1),$(if $(findstring O,$(SCAM_DEBUG)),$(info $3: OK: $1)),$(info $3: error: assertion failed
 A: $(call `format,$1)
 B: $(call `format,$2)
 
 Raw:
 A: $1
 B: $2
-)1,$(if $(findstring K,$(SCAM_DEBUG)),$(call `at-exit,$`(error $`1),1),$(error ))))
+)$(if $(findstring K,$(SCAM_DEBUG)),$(call `at-exit,$`(error $`1),1),$(error )))
 endef
 `assert-x = $(or $1,$(error $(info $2: error: assertion failed)))
 define `see
-$(if $(findstring $1,$2),1,$(and $(info Expected: $(subst 
+$(if $(findstring $1,$2),1,$(info Expected: $(subst 
 ,
-          ,$1))1,$(info $   Within: $(subst 
+          ,$1))$(info $   Within: $(subst 
 ,
-          ,$2))))
+          ,$2)))
 endef
 `uniq-x = $(if $1,$(word 1,$1) $(call `uniq-x,$(filter-out $(word 1,$1),$(wordlist 2,99999999,$1))))
 `uniq = $(subst ~1,~,$(subst ~p,%,$(filter %,$(call `uniq-x,$(subst %,~p,$(subst ~,~1,$1))))))
 `split = $(subst !x,,$(patsubst !x,!.,!x$(subst $ 	,!+,$(subst !!,!1,$(subst $  ! ,!0,$(subst $(subst $  , ! ,$(subst !,!!,$1)), !x,$(subst $  , ! ,$(subst !,!!,$2))))))))
 `1+ = $(if $(filter %1 %2 %3 %4,$1),$(subst 1~,2,$(subst 2~,3,$(subst 3~,4,$(subst 4~,5,$1~)))),$(if $(filter %5 %6 %7,$1),$(subst 5~,6,$(subst 6~,7,$(subst 7~,8,$1~))),$(if $(findstring 9~,$1~),$(call `1+,$(or $(subst 9~,,$1~),0))0,$(patsubst %0,%1,$(patsubst %8,%9,$1)))))
-`mcache = $(and $(if $6,$(info Warning: memoized function passed more than three arguments))1,$(if $(if $(if $(filter-out u%,$(flavor $1)),1),,1),$(call ^set,$1,$(call ^Y,$3,$4,$5,,,,,,,$2),))1,$($1))
+`mcache = $(if $(if $6,$(info Warning: memoized function passed more than three arguments)),)$(if $(if $(if $(if $(filter-out u%,$(flavor $1)),1),,1),$(call ^set,$1,$(call ^Y,$3,$4,$5,,,,,,,$2),)),)$($1)
 `memoenc = $(if $(or $1,$2,$3),~~$(subst ~,~0,$1)$(call `memoenc,$2,$3))
 `memoize = $(if $(if $(if $(filter-out u%,$(flavor $1)),1),,1),$(info Warning: [memoize-1] function '$1' not defined.),$(call ^Y,$(value $1),*memo$(call `memoenc,$1),$1,,,,,,,$`(call ^fset,$`3,$``(call `mcache,$`(call ^E,$`2)$``(call `memoenc,$``1,$``2,$``3),$`(call ^E,$`1),$``1,$``2,$``3,$``(or $``4,$``5,$``6,$``7,$``8)),)))
 `sort-by = $(filter-out %!!,$(subst !!,!! ,$(sort $(foreach ;,$2,$(call ^d,$(call ^Y,$(call ^u,$;),,,,,,,,,$1))!!$;))))
@@ -212,7 +212,7 @@ $(if $(or 1,$(call ^R,math),$(call ^R,peg),$(call ^R,utf8)),)
 *1 := 
 *2 := 
 define `help
-$(and $(info Commands:
+$(info Commands:
   :q or ^D : exit REPL loop
   :        : reset input state
   :e       : show environment
@@ -222,16 +222,16 @@ $(and $(info Commands:
 Global variables in REPL:
   *1 = most recent value printed
   *2 = second most recent value
-)1,$(call `printf,LIBS = %s
-,$(`LIBS)))
+)$(call `printf,LIBS = %s
+,$(`LIBS))
 endef
 `describe-binding = $(if $(or $3,$(if $(filter i%,$(word 2,$2)),,1)),$(if $(filter !:EDefn6,$(word 1,$2)),built-in function,$(if $(filter !:EDefn1,$(word 1,$2)),$(call `sprintf,function (%s),$(subst +, or more,$(subst $  , or ,$(call ^n,4,$2))) arguments),$(if $(filter !:EDefn2,$(word 1,$2)),$(call `sprintf,compound macro (%s),$(subst +, or more,$(subst $  , or ,$(call ^n,4,$2))) arguments),$(if $(filter !:EDefn0,$(word 1,$2)),variable,$(if $(filter !:EDefn3,$(word 1,$2)),symbol macro: $(call `format,$(wordlist 4,99999999,$2)),$(if $(filter !:EDefn4,$(word 1,$2)),executable macro,$(if $(filter !:EDefn5,$(word 1,$2)),constructor,))))))))
 `describe-env = $(foreach ;,$(call `reverse,$(call `dict-compact,$1)),$(call ^Y,$(call `describe-binding,$(call ^dk,$;),$(call ^dv,$;),$2),,,,,,,,,$`(if $`1,$`(call `printf,  %s : %s,$`(call ^dk,$(call ^E,$;)),$`1))))
 $(call ^at,!1:REPL0!=REPL!0S!0S!0S!0S!0S!0L)
-`eval-and-print = $(call ^Y,$(call `compile-text,$1,[stdin],$5,$3,$4),$5,$1,,,,,,,$`(if $`(and $(call ^E,$2),$`(filter $`[ [ {,$`(foreach ;,$`(call ^d,$`(call ^n,1,$`(call ^dv,$`(filter errors!=%,$`1)))),$`(if $`(filter !1:P8!0%,$`;!0),$`(word 1,$`(call ^n,3,$`(call ^u,$`;))),)))),!:REPL0 $`(call ^d,$`3) $`(call ^d,$(call ^E,$2)) $`(call ^d,$(call ^E,$3)) $`(call ^d,$(call ^E,$4)) !. $`2,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(and $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`3,[stdin]))))1,!:REPL0 !. $`(call ^d,$(call ^E,$2)) $`(call ^d,$(call ^E,$3)) $`(call ^d,$(call ^E,$4)) 1 $`2),$`(and $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1))),,,,,,,,,$``(if $``1,$``(and $``(call ^set,*2,$``(*1))1,$``(call ^set,*1,$``1)1,$``(info $``(call `format,$``1)))))1,!:REPL0 !. $`(call ^d,$(call ^E,$2)) $`(call ^d,$(call ^E,$3)) $`(call ^d,$(call ^E,$4)) !. $`(call ^dv,$`(filter env!=%,$`1))))))
-`read-eval-print = $(if $(filter !:REPL0,$(word 1,$1)),$(call ^Y,$(call `getline,$(call ^n,$(if $(call ^n,2,$1),2,1),$(call ^n,3,$1))),$(wordlist 7,99999999,$1),$1,,,,,,,$`(if $`(findstring $`(subst ?0,1,$`(strip $`1)0),1),$`(and $`(call `help)1,$`3),$`(if $`(findstring $`(subst :0,1,$`(strip $`1)0),1),!:REPL0 !. $`(call ^d,$`(call ^n,3,$(call ^E,$1))) $`(call ^d,$`(call ^n,4,$(call ^E,$1))) $`(call ^d,$`(call ^n,5,$(call ^E,$1))) !. $`2,$`(if $`(findstring $`(subst :q0,1,$`(strip $`1)0),1),,$`(if $`(findstring $`(subst 0,1,$`10),1),,$`(if $`(findstring $`(subst :e0,1,$`(strip $`1)0),1),$`(and $`(call `describe-env,$`2,)1,$`3),$`(if $`(findstring $`(subst :E0,1,$`(strip $`1)0),1),$`(and $`(call `describe-env,$`2,1)1,$`3),$`(call `eval-and-print,$`(call ^n,2,$(call ^E,$1))$`1,$`(call ^n,3,$(call ^E,$1)),$`(call ^n,4,$(call ^E,$1)),$`(call ^n,5,$(call ^E,$1)),$`2)))))))),)
-`repl = $(and $(call `do-not-trace,~repl ~eval-and-print ~while ~while-0 ~while-N)1,$(call `while,$`1,$(value `read-eval-print),!:REPL0 !. $(call ^d,$(or $2,>!0 +!0)) $(call ^d,$1) !. !. $(call ^Y,$(call `compile-text,$(foreach ;,$(`LIBS),(require "$;"))(declare *1 &native)(declare *2 &native),[stdin],,,),,,,,,,,,$`(and $`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1)))1,$`(call ^dv,$`(filter env!=%,$`1)))))1,$(info ))
-`repl-ep = $(foreach ;,$(call ^d,$(call `eval-and-print,$1,,$2,$3,$(call ^Y,$(call `compile-text,$(foreach ;,$(`LIBS),(require "$;"))(declare *1 &native)(declare *2 &native),[stdin],,,),,,,,,,,,$`(and $`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1)))1,$`(call ^dv,$`(filter env!=%,$`1)))))),$(if $(filter !1:REPL0!0%,$;!0),$(call ^n,6,$(call ^u,$;)),))
+`eval-and-print = $(call ^Y,$(call `compile-text,$1,[stdin],$5,$3,$4),$5,$1,,,,,,,$`(if $`(and $(call ^E,$2),$`(filter $`[ [ {,$`(foreach ;,$`(call ^d,$`(call ^n,1,$`(call ^dv,$`(filter errors!=%,$`1)))),$`(if $`(filter !1:P8!0%,$`;!0),$`(word 1,$`(call ^n,3,$`(call ^u,$`;))),)))),!:REPL0 $`(call ^d,$`3) $`(call ^d,$(call ^E,$2)) $`(call ^d,$(call ^E,$3)) $`(call ^d,$(call ^E,$4)) !. $`2,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(if $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`3,[stdin])))),)!:REPL0 !. $`(call ^d,$(call ^E,$2)) $`(call ^d,$(call ^E,$3)) $`(call ^d,$(call ^E,$4)) 1 $`2,$`(if $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1))),,,,,,,,,$``(if $``1,$``(call ^set,*2,$``(*1))$``(call ^set,*1,$``1)$``(info $``(call `format,$``1)))),)!:REPL0 !. $`(call ^d,$(call ^E,$2)) $`(call ^d,$(call ^E,$3)) $`(call ^d,$(call ^E,$4)) !. $`(call ^dv,$`(filter env!=%,$`1)))))
+`read-eval-print = $(if $(filter !:REPL0,$(word 1,$1)),$(call ^Y,$(call `getline,$(call ^n,$(if $(call ^n,2,$1),2,1),$(call ^n,3,$1))),$(wordlist 7,99999999,$1),$1,,,,,,,$`(if $`(findstring $`(subst ?0,1,$`(strip $`1)0),1),$`(if $`(call `help),)$`3,$`(if $`(findstring $`(subst :0,1,$`(strip $`1)0),1),!:REPL0 !. $`(call ^d,$`(call ^n,3,$(call ^E,$1))) $`(call ^d,$`(call ^n,4,$(call ^E,$1))) $`(call ^d,$`(call ^n,5,$(call ^E,$1))) !. $`2,$`(if $`(findstring $`(subst :q0,1,$`(strip $`1)0),1),,$`(if $`(findstring $`(subst 0,1,$`10),1),,$`(if $`(findstring $`(subst :e0,1,$`(strip $`1)0),1),$`(if $`(call `describe-env,$`2,),)$`3,$`(if $`(findstring $`(subst :E0,1,$`(strip $`1)0),1),$`(if $`(call `describe-env,$`2,1),)$`3,$`(call `eval-and-print,$`(call ^n,2,$(call ^E,$1))$`1,$`(call ^n,3,$(call ^E,$1)),$`(call ^n,4,$(call ^E,$1)),$`(call ^n,5,$(call ^E,$1)),$`2)))))))),)
+`repl = $(if $(call `do-not-trace,~repl ~eval-and-print ~while ~while-0 ~while-N),)$(if $(call `while,$`1,$(value `read-eval-print),!:REPL0 !. $(call ^d,$(or $2,>!0 +!0)) $(call ^d,$1) !. !. $(call ^Y,$(call `compile-text,$(foreach ;,$(`LIBS),(require "$;"))(declare *1 &native)(declare *2 &native),[stdin],,,),,,,,,,,,$`(if $`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1))),)$`(call ^dv,$`(filter env!=%,$`1)))),)$(info )
+`repl-ep = $(foreach ;,$(call ^d,$(call `eval-and-print,$1,,$2,$3,$(call ^Y,$(call `compile-text,$(foreach ;,$(`LIBS),(require "$;"))(declare *1 &native)(declare *2 &native),[stdin],,,),,,,,,,,,$`(if $`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1))),)$`(call ^dv,$`(filter env!=%,$`1))))),$(if $(filter !1:REPL0!0%,$;!0),$(call ^n,6,$(call ^u,$;)),))
 
 endef
 
@@ -264,8 +264,8 @@ $(or $(`*is-quiet*),$(call `write,2,... $1 $2
 ))
 endef
 define `bail-if
-$(if $1,$(and $(call `fprintf,2,scam: %s
-,$1)1,$(call `memo-drop)1,1),$(and 1,))
+$(if $1,$(if $(call `fprintf,2,scam: %s
+,$1),)$(if $(call `memo-drop),)1,)
 endef
 `descendants = $(if $2,$(call `descendants,$1,$(call `append,$(wordlist 2,99999999,$2),$(call `vec-filter,filter-out,$2 $3,$(call ^Y,$(call ^n,1,$2),,,,,,,,,$1))),$(call `append,$3,$(word 1,$2))),$3)
 define `env-cmp
@@ -285,11 +285,11 @@ $(subst !n,
 endef
 `modid-from-source = $(if $(`*is-boot*),$(basename $(call `escape-path,$1)),$(`*obj-dir*)$(call `escape-path,$1))
 define `modid-read-lines
-$(if $(or $(filter %.scm,$(call ^d,$1)),$(`*is-boot*)),$(and $(call `memo-hash-file,$(if $(`*is-boot*),$(`*obj-dir*)$1.o,$1.o))1,$(call `read-lines,$(if $(`*is-boot*),$(`*obj-dir*)$1.o,$1.o),$(and $2,1),$2)),$(wordlist 1,$(or $2,99999999),$(call `split,
+$(if $(or $(filter %.scm,$(call ^d,$1)),$(`*is-boot*)),$(if $(call `memo-hash-file,$(if $(`*is-boot*),$(`*obj-dir*)$1.o,$1.o)),)$(call `read-lines,$(if $(`*is-boot*),$(`*obj-dir*)$1.o,$1.o),$(and $2,1),$2),$(wordlist 1,$(or $2,99999999),$(call `split,
 ,$(value [mod-$1]))))
 endef
 define `modid-deps
-$(call ^Y,$(call `modid-read-lines,$1,4),,,,,,,,,$`(and $`(call `assert-x,$`1,compile.scm:323)1,$`(call ^u,$`(call `filtersub,#!0Requires:!0%,%,$`1))))
+$(call ^Y,$(call `modid-read-lines,$1,4),,,,,,,,,$`(if $`(call `assert-x,$`1,compile.scm:323),)$`(call ^u,$`(call `filtersub,#!0Requires:!0%,%,$`1)))
 endef
 `modid-import = $(call `env-parse,$(call `modid-read-lines,$1,4),$2)
 `locate-source = $(call ^n,1,$(filter-out !.,$(foreach ;,$(call `cons,$1,$(addsuffix /,$(call `split,:,$(SCAM_LIBPATH)))),$(call ^d,$(call `file-exists?,$(call `resolve-path,$(call ^u,$;),$2))))))
@@ -307,7 +307,7 @@ $ endef
 endef
 $(call ^at,!1:Mod0!=ModSuccess!0S!0L !1:Mod1!=ModError!0S)
 `get-source-module = $(or $(if $(if $3,,1),!:Mod1 $(call ^d,$(call `sprintf,cannot find `%s`,$1))),$(if $(call `memo-call,$(if $2,`compile-module,`compile-and-test-module),$3),!:Mod1 $(call ^d,$(call `sprintf,compilation of `%s` failed,$3))),!:Mod0 $(call ^d,$(call `modid-from-source,$3)) $(call `memo-blob-call,`modid-import,$(call `modid-from-source,$3),$2))
-`get-module = $(call ^Y,$(if $(filter %.scm,$(call ^d,$1)),$(call `get-source-module,$1,$3,$(call `m-locate-source,$(call ^u,$(dir $(call ^d,$2))),$1)),$(and $(if $(`*is-boot*),!:Mod1 standard!0modules!0not!0available!0with!0--boot)1,$(if $(if $(filter-out u%,$(flavor [mod-$1])),1),!:Mod0 $(call ^d,$1) $(call `modid-import,$1,),!:Mod1 $(call ^d,$(call `sprintf,standard module `%s` not found,$1))))),,,,,,,,,$`(or $`(if $`(filter !:Mod0,$`(word 1,$`1)),$`(if $`(word 1,$`(foreach ;,$`(wordlist 3,99999999,$`1),$`(foreach ;;,$`(call ^d,$`(call ^dv,$`;)),$`(if $`(filter !1:EDefn4!0%,$`(;;)!0),1,)))),$`(if $`(`*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$`(and $`(call `memo-hash-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call ^n,2,$`1).o,$`(call ^n,2,$`1).o))1,$`(call ^R,$`(call ^n,2,$`1))))),),$`1))
+`get-module = $(call ^Y,$(if $(filter %.scm,$(call ^d,$1)),$(call `get-source-module,$1,$3,$(call `m-locate-source,$(call ^u,$(dir $(call ^d,$2))),$1)),$(if $(if $(`*is-boot*),!:Mod1 standard!0modules!0not!0available!0with!0--boot),)$(if $(if $(filter-out u%,$(flavor [mod-$1])),1),!:Mod0 $(call ^d,$1) $(call `modid-import,$1,),!:Mod1 $(call ^d,$(call `sprintf,standard module `%s` not found,$1)))),,,,,,,,,$`(or $`(if $`(filter !:Mod0,$`(word 1,$`1)),$`(if $`(word 1,$`(foreach ;,$`(wordlist 3,99999999,$`1),$`(foreach ;;,$`(call ^d,$`(call ^dv,$`;)),$`(if $`(filter !1:EDefn4!0%,$`(;;)!0),1,)))),$`(if $`(`*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$`(if $`(call `memo-hash-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call ^n,2,$`1).o,$`(call ^n,2,$`1).o)),)$`(call ^R,$`(call ^n,2,$`1)))),),$`1))
 `M.require = $(or $(if $(call `skip-flags,$3),$(call `gen-error,$(call ^n,1,$(call `skip-flags,$3)),too many arguments to require)),$(if $(filter !:P1,$(word 1,$(call ^n,1,$3))),$(foreach ;,$(call ^d,$(call `get-module,$(call ^n,3,$(call ^n,1,$3)),$(`*compile-file*),$(filter &private,$(call `get-flags,$3)))),$(if $(filter !1:Mod1!0%,$;!0),$(call `gen-error,$(call ^n,1,$3),require: %s,$(call ^n,2,$(call ^u,$;))),$(if $(filter !1:Mod0!0%,$;!0),!:IL12 $(call ^d,$(wordlist 3,99999999,$(call ^u,$;))) !:IL7 ^R $(call ^d,!:IL8 $(call ^d,!:IL4 $(call ^d,$(call ^n,2,$(call ^u,$;)))) $(call ^d,!:IL11 require $(call ^d,$(call ^n,2,$(call ^u,$;))))),))),$(call `err-expected,Q,$(call ^n,1,$3),$2,STRING,(require STRING))))
 `runtime-module-name = $(if $(`*is-boot*),$(filter-out $(subst -q.scm,.scm,$(call ^d,$1)),runtime.scm),runtime)
 `compile-prelude = $(foreach ;,$(call `runtime-module-name,$1),$(foreach ;;,$(call ^d,$(call `get-module,$;,.,)),$(if $(filter !1:Mod0!0%,$(;;)!0),$(wordlist 3,99999999,$(call ^u,$(;;))),$(if $(filter !1:Mod1!0%,$(;;)!0),$(error $(call ^n,2,$(call ^u,$(;;)))),))))
@@ -319,28 +319,28 @@ $(call `concat-vec,$(wordlist 2,99999999,$(call `split,
 ),$1)
 endef
 define `compile-module
-$(or $(if $(call `vec-filter,filter,$(call ^d,$1),$(`*compiling*)),$(call `bail-if,dependency loop: $(call `concat-vec,$(call `conj,$(`*compiling*),$1), -> ))),$(call ^set,`*compiling*,$(call ^set,`*compiling*,$(call `conj,$(`*compiling*),$1),$(`*compiling*)),$(and $(call `build-message,compile,$1)1,$(call ^Y,$(call `parse-and-gen,$(call `trim-hashbang,$(call `memo-read-file,$1)),$(call `compile-prelude,$1),$1,1),$1,,,,,,,,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(and $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`(call `trim-hashbang,$`(call `memo-read-file,$(call ^E,$1))),$`2))))1,$`(call `memo-drop)1,1),$`(and $`(call `bail-if,$`(call `memo-write-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call `modid-from-source,$`2).o,$`(call `modid-from-source,$`2).o),# Requires: $`(call ^dv,$`(filter require!=%,$`1))
+$(or $(if $(call `vec-filter,filter,$(call ^d,$1),$(`*compiling*)),$(call `bail-if,dependency loop: $(call `concat-vec,$(call `conj,$(`*compiling*),$1), -> ))),$(call ^set,`*compiling*,$(call ^set,`*compiling*,$(call `conj,$(`*compiling*),$1),$(`*compiling*)),$(if $(call `build-message,compile,$1),)$(call ^Y,$(call `parse-and-gen,$(call `trim-hashbang,$(call `memo-read-file,$1)),$(call `compile-prelude,$1),$1,1),$1,,,,,,,,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(if $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`(call `trim-hashbang,$`(call `memo-read-file,$(call ^E,$1))),$`2)))),)$`(if $`(call `memo-drop),)1,$`(if $`(call `bail-if,$`(call `memo-write-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call `modid-from-source,$`2).o,$`(call `modid-from-source,$`2).o),# Requires: $`(call ^dv,$`(filter require!=%,$`1))
 $`(call ^Y,$`(filter p:% x:%,$`(foreach ;,$`(call `dict-compact,$`(call ^dv,$`(filter env!=%,$`1))),$`(word 2,$`(call ^dv,$`;)):$`(call ^k,$`(call ^dk,$`;))!=$`(call ^d,$`(word 1,$`(call ^dv,$`;)) i $`(wordlist 3,99999999,$`(call ^dv,$`;))))),,,,,,,,,# Exports: $``(call `env-compress,$``(call `filtersub,x:%,%,$``1))
 # Private: $``(call `env-compress,$``(call `filtersub,p:%,%,$``1))
-)$`(call ^dv,$`(filter code!=%,$`1))))1,))))))
+)$`(call ^dv,$`(filter code!=%,$`1)))),)))))
 endef
 `modid-deps-all = $(call `descendants,$(value `modid-deps),$(call `uniq,$(call `cons,$1,$(foreach ;,$(call `runtime-module-name,),$(if $;,$(call ^d,$(if $(filter %.scm,$;),$(call `modid-from-source,$;),$;)))))))
 define `link
-$(and $(call `build-message,link,$1)1,$(call `bail-if,$(or $(call `memo-write-file,$1,$(call ^Y,$(call `modid-deps-all,$2),,,,,,,,,#!/bin/bash
+$(if $(call `build-message,link,$1),)$(call `bail-if,$(or $(call `memo-write-file,$1,$(call ^Y,$(call `modid-deps-all,$2),,,,,,,,,#!/bin/bash
 :; for v in "$``{@//!/!1}" ; do v=$``{v// /!0} ; v=$``{v//	/!+}; a[++n]=$``{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$``{a[*]} exec make -Rr --no-print-directory -f"$``0" 9>&1
 SCAM_MAIN := $`(call `protect-rhs,$`(call ^d,$(call ^E,$2)) $`(call `gen-native-name,main,))
 ^uid := $`(call `hash-output,cat -- %V,$`(filter-out !.,$`(foreach ;,$`1,$`(call ^d,$`(if $`(or $`(filter %.scm,$`(call ^d,$`(call ^u,$`;))),$`(`*is-boot*)),$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call ^u,$`;).o,$`(call ^u,$`;).o))))))
-$`(subst ~x,,$`(subst ~x~x ,,$`(foreach ;,$`1,$`(subst ~,~~x,$`(call `construct-bundle,$`(call ^u,$`;),$`(filter compile,$`1)))~x~x)))$``(eval $``(value [mod-runtime]))
-)),$(call `memo-chmod-file,$1,+x))))
+$`(subst |~,,$`(subst |~ ,,$`(foreach ;,$`1,$`(subst |~,||~~,$`(call `construct-bundle,$`(call ^u,$`;),$`(filter compile,$`1)))|~)))$``(eval $``(value [mod-runtime]))
+)),$(call `memo-chmod-file,$1,+x)))
 endef
-`run = $(and $(if $3,$(call `build-message,run,$1))1,$(call `modid-deps-all,$(call `modid-from-source,$1))1,$(if $(filter-out 0,$(lastword $(call `shellf,SCAM_ARGS=%A %s -Rr --no-print-directory -f%A SCAM_MAIN=%A SCAM_TMP=%A SCAM_DIR=%A 1>&9 ; echo " $`?",$2,$(MAKE),$(if $(`*is-boot*),$(if $(`*is-boot*),$(`*obj-dir*)runtime.o,runtime.o),$(firstword $(MAKEFILE_LIST))),$(call ^d,$(call `modid-from-source,$1)) $(call `gen-native-name,main,),$(`*obj-dir*),$(if $(`*is-boot*),$(`*obj-dir*))))),$(and 1,$(call `memo-drop)1,1),$(and 1,)))
+`run = $(if $(if $3,$(call `build-message,run,$1)),)$(if $(call `modid-deps-all,$(call `modid-from-source,$1)),)$(if $(filter-out 0,$(lastword $(call `shellf,SCAM_ARGS=%A %s -Rr --no-print-directory -f%A SCAM_MAIN=%A SCAM_TMP=%A SCAM_DIR=%A 1>&9 ; echo " $`?",$2,$(MAKE),$(if $(`*is-boot*),$(if $(`*is-boot*),$(`*obj-dir*)runtime.o,runtime.o),$(firstword $(MAKEFILE_LIST))),$(call ^d,$(call `modid-from-source,$1)) $(call `gen-native-name,main,),$(`*obj-dir*),$(if $(`*is-boot*),$(`*obj-dir*))))),$(if $(call `memo-drop),)1,)
 `compile-and-test-module = $(or $(call `memo-call,`compile-module,$1),$(and $(call `memo-hash-file,$(subst .scm,-q.scm,$1)),$(or $(call `memo-call,`compile-module,$(subst .scm,-q.scm,$1)),$(if $(call `memo-call,`run,$(subst .scm,-q.scm,$1),,1),$(call `bail-if,$(subst .scm,-q.scm,$1) failed)))))
 define `build-program
-$(call ^set,`*obj-dir*,$(call ^set,`*obj-dir*,$(if $3,$(patsubst %//,%/,$3/),.scam/)$(or $(`cache-instance),$(call ^set,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^set,`*is-quiet*,$(call ^set,`*is-quiet*,$4,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(and $(call `memo-start-session,$(`*obj-dir*)db)1,1)),$(if $(if $(call `memo-hash-file,$1),,1),$(and $(call `fprintf,2,scam: file `%s` does not exist
-,$1)1,1),$(or $(call `memo-call,$(if ,`compile-module,`compile-and-test-module),$1),$(call `memo-call,`link,$2,$(call `modid-from-source,$1)))))))
+$(call ^set,`*obj-dir*,$(call ^set,`*obj-dir*,$(if $3,$(patsubst %//,%/,$3/),.scam/)$(or $(`cache-instance),$(call ^set,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^set,`*is-quiet*,$(call ^set,`*is-quiet*,$4,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(if $(call `memo-start-session,$(`*obj-dir*)db),)1),$(if $(if $(call `memo-hash-file,$1),,1),$(if $(call `fprintf,2,scam: file `%s` does not exist
+,$1),)1,$(or $(call `memo-call,$(if ,`compile-module,`compile-and-test-module),$1),$(call `memo-call,`link,$2,$(call `modid-from-source,$1)))))))
 endef
-`run-program = $(call ^set,`*obj-dir*,$(call ^set,`*obj-dir*,$(if $3,$(patsubst %//,%/,$3/),.scam/)$(or $(`cache-instance),$(call ^set,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^set,`*is-quiet*,$(call ^set,`*is-quiet*,$4,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(and $(call `memo-start-session,$(`*obj-dir*)db)1,1)),$(or $(call `memo-call,$(if ,`compile-module,`compile-and-test-module),$1),$(call `run,$1,$2,)))))
-`compile-text = $(and $(call `assert-x,$(if $(`*is-boot*),,1),compile.scm:791)1,$(call ^set,`*obj-dir*,$(call ^set,`*obj-dir*,$(if $4,$(patsubst %//,%/,$4/),.scam/)$(or $(`cache-instance),$(call ^set,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^set,`*is-quiet*,$(call ^set,`*is-quiet*,$5,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(and $(call `memo-start-session,$(`*obj-dir*)db)1,1)),$(call `parse-and-gen,$1,$(or $3,$(call `compile-prelude,)),$2,)))))
+`run-program = $(call ^set,`*obj-dir*,$(call ^set,`*obj-dir*,$(if $3,$(patsubst %//,%/,$3/),.scam/)$(or $(`cache-instance),$(call ^set,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^set,`*is-quiet*,$(call ^set,`*is-quiet*,$4,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(if $(call `memo-start-session,$(`*obj-dir*)db),)1),$(or $(call `memo-call,$(if ,`compile-module,`compile-and-test-module),$1),$(call `run,$1,$2,)))))
+`compile-text = $(if $(call `assert-x,$(if $(`*is-boot*),,1),compile.scm:791),)$(call ^set,`*obj-dir*,$(call ^set,`*obj-dir*,$(if $4,$(patsubst %//,%/,$4/),.scam/)$(or $(`cache-instance),$(call ^set,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^set,`*is-quiet*,$(call ^set,`*is-quiet*,$5,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(if $(call `memo-start-session,$(`*obj-dir*)db),)1),$(call `parse-and-gen,$1,$(or $3,$(call `compile-prelude,)),$2,))))
 
 endef
 
@@ -366,7 +366,7 @@ $(call ^at,!1:EDefn0!=EVar!0W!0W !1:EDefn1!=EFunc!0W!0W!0S !1:EDefn2!=EMacro!0W!
 `gensym = !:P2 0 $(call ^d,$(call `gensym-name,$(call `symbol-name,$1),$2,))
 `gen-error = !:P8 $(or $(call `form-index,$1),$(if $(call `numeric?,$1),$1,0)) $(call ^d,$(call `vsprintf,$2,$(foreach N,3,$(^v))))
 `form-description = $(if $(findstring $(subst %0,1,$10),1),form,$(if $(findstring $(subst L0,1,$10),1),list,$(if $(findstring $(subst S0,1,$10),1),symbol,$(if $(findstring $(subst P0,1,$10),1),target,$(if $(findstring $(subst Q0,1,$10),1),literal string,$(call `form-typename,$1))))))
-`err-expected = $(call `gen-error,$(or $2,$3),$(if $2,invalid,missing) $4 in $5$(if $1,; expected a $(subst ~x,,$(subst ~x~x , or ,$(foreach ;,$1,$(subst ~,~~x,$(call `form-description,$(call ^u,$;)))~x~x)))),$6,$7)
+`err-expected = $(call `gen-error,$(or $2,$3),$(if $2,invalid,missing) $4 in $5$(if $1,; expected a $(subst |~,,$(subst |~ , or ,$(foreach ;,$1,$(subst |~,||~~,$(call `form-description,$(call ^u,$;)))|~)))),$6,$7)
 `check-arity = $(if $(if $(or $(filter 0+ $(words $2),$1),$(and $(findstring +,$1),$(word $(patsubst %+,%,$1),$2))),,1),$(call `gen-error,$3,$(subst %S,$(if $(findstring $(subst 10,1,$(subst +, or more,$(subst $  , or ,$1))0),1),,s),$(if ,,`%s` accepts %s argument%S, not %s)),$(call `symbol-name,$3),$(subst +, or more,$(subst $  , or ,$1)),$(words $2)))
 $(call ^at,!1:NX0!=Bind!0S!0S)
 `parse-target = $(or $(if $(filter !:P2,$(word 1,$1)),$(if $(filter ?% ...%,$1),,$(call ^d,!:NX0 $(call ^d,$(call ^n,3,$1)) $(call ^d,$(or $2,$`1)))),),$(call `pt,$1,$(or $2,$`1)))
@@ -390,7 +390,7 @@ define [mod-io]
 # Exports: get-tmp-dir}0'1 unescape-path}1 escape-path}1 resolve-path}2 clean-path}1 save-blob}2 hash-output}1+ hash-file}1 hash-files}1 file-exists?}1 cp-file-atomic}2'3 cp-file}2'3 mkdir-p}1 read-file}1 read-lines}1'2'3 chmod-file}2 getline}1 fprintf}2+ vfprintf}3 write-file-atomic}2 mv-file}2 write-file}2 write}2 pipe}2+ shell-lines}1+ shellf}1+ io-sprintf}1+ io-vsprintf}2 quote-sh-file}1 quote-sh-arg}1 path-basename#1{^u|6'basename'[]7[0^d[0[1]0[101[10. path-notdir#1{^u|6'notdir'[]7[0^d[0[1]0[101[10. path-dir#1{^u|6'dir'[]7[0^d[0[1]0[101[10.
 $(call ^R,core)
 $(call ^R,string)
-`ioshell = $(and $(if $(filter S,$(SCAM_DEBUG)),$(call `printf,shell: %q,$1))1,$(shell $1))
+`ioshell = $(if $(if $(filter S,$(SCAM_DEBUG)),$(call `printf,shell: %q,$1)),)$(shell $1)
 `quote-sh-arg = '$(subst ','\'',$1)'
 `quote-sh-file = $(call `quote-sh-arg,$(if $(filter -%,$(call ^d,$1)),./)$1)
 `io-vsprintf = $(call `vsprintfx,$1,$2,s A F V,$`(if $`(filter A,$`1),$`(call `quote-sh-arg,$`2),$`(if $`(filter F,$`1),$`(call `quote-sh-file,$`2),$`(if $`(filter V,$`1),$`(subst $`  ,!0,$`(foreach ;,$`(call ^u,$`2),$`(call `quote-sh-arg,$`;))),$`2))))
@@ -422,8 +422,8 @@ endef
 `vfprintf = $(call `write,$1,$(call `vsprintf,$2,$3))
 `fprintf = $(call `vfprintf,$1,$2,$(foreach N,3,$(^v)))
 define `getline
-$(and $(if $1,$(call `write,1,$1))1,$(call `concat-vec,$(call `shell-lines,head -1),
-))
+$(if $(if $1,$(call `write,1,$1)),)$(call `concat-vec,$(call `shell-lines,head -1),
+)
 endef
 `chmod-file = $(call `shellf,chmod %s %F 2>&1,$2,$1)
 `read-lines = $(call `shell-vwrap,cat %F 2>/dev/null && echo,$(call ^d,$1),$2,$3)
@@ -436,7 +436,7 @@ endef
 `cp-file-atomic = $(call `shellf,(%s a=$`(mktemp %F) && (cp %F "$`a" && mv -f "$`a" %F) || rm "$`a") 2>&1,$(if $3,$(call `io-sprintf,mkdir -p %F &&,$(call ^u,$(dir $(call ^d,$2))))),$2.tmp.XXXX,$1,$2)
 `file-exists? = $(if $(call `shellf,[[ -f %F ]] && echo t,$1),$1)
 `*hash-cmd* := 
-`get-hash-cmd = $(or $(`*hash-cmd*),$(and $(call ^set,`*hash-cmd*,$(subst md5,md5 -r,$(or $(notdir $(word 1,$(shell which md5 sha1sum shasum 2>/dev/null))),$(error $(if ,,no md5, shasum, or sha1sum in path)))))1,$(`*hash-cmd*)))
+`get-hash-cmd = $(or $(`*hash-cmd*),$(call ^set,`*hash-cmd*,$(subst md5,md5 -r,$(or $(notdir $(word 1,$(shell which md5 sha1sum shasum 2>/dev/null))),$(error $(if ,,no md5, shasum, or sha1sum in path)))))$(`*hash-cmd*))
 `hash-files = $(foreach ;,$(if $(filter s%,$(call `get-hash-cmd)),!0!0,!0),$(foreach ;;,$(call `shellf,%s -- %V 2>/dev/null | sed 's/\(^................\)[^ ]*/\1/;s/!/!1/g;s/ /!0/g;s/	/!+/g',$(call `get-hash-cmd),$1),$(foreach ;;;,$(word 1,$(subst !0, ,$(;;))),$(subst %,!8,$(patsubst $(;;;)$;%,%,$(;;)))!=$(call ^d,$(;;;)))))
 `hash-file = $(call ^dv,$(call `hash-files,$(call ^d,$1)))
 `hash-output = $(call `ioshell,( $(call `io-vsprintf,$1,$(foreach N,2,$(^v))) ) | $(if $(filter md5,$(basename $(call `get-hash-cmd))),md5 -q,$(call `get-hash-cmd) -) | sed 's/\(^................\).*/\1/')
@@ -694,9 +694,10 @@ define `crumb
 $`.{$(subst 
 ,~N,$(subst $`,~S,$(subst $],~R,$(subst $(if ,,,),~C,$(subst $[,~L,$(subst ~,~1,$(call ^k,$1)!=$(call ^d,$2)))))))$`.}
 endef
+`c1-void = $(call `c1,$(or $(if $(filter !:IL6 !:IL7,$(word 1,$1)),$(and $(filter error eval info ^R ^at ^set ^fset,$(word 2,$1)),$(if $(filter ^set ^fset,$(word 2,$1)),$(if $(word 3,$(wordlist 3,99999999,$1)),,1),1),$1),$(if $(filter !:IL4 !:IL11,$(word 1,$1)),!:IL4 !.,)),$(if $1,!:IL6 if $(call ^d,$1) $(call ^d,!:IL4 !.))))
 `c1-arg = $(if $(if $(filter !:IL7 !:IL5 !:IL6 !:IL3 !:IL2 !:IL0,$(word 1,$1)),1,),$(call `c1,$1),$(call `protect-arg,$(call `c1,$1)))
 `c1-arg-trim = $(if $(if $(filter !:IL7 !:IL5 !:IL6 !:IL3 !:IL2 !:IL0,$(word 1,$1)),1,),$(call `c1,$1),$(call `protect-trim,$(call `protect-arg,$(call `c1,$1))))
-`c1-vec = $(subst ~x,,$(subst ~x~x ,$(subst ~,~~x,$2),$(foreach ;,$1,$(subst ~,~~x,$(call $3,$(call ^u,$;)))~x~x)))
+`c1-vec = $(subst |~,,$(subst |~ ,$(subst |~,||~~,$2),$(foreach ;,$1,$(subst |~,||~~,$(call $3,$(call ^u,$;)))|~)))
 `c1-Error = $(call `crumb,errors,$(if $(filter !:P8,$(word 1,$1)),$1,!:P8 0 $(call ^d,internal:bad IL: $1)))
 `c1-Builtin = $`($(if $(filter-out =,$1),$1 )$(call `protect-ltrim,$(call `c1-vec,$2,$(if ,,,),$(if $(filter and or,$1),`c1-arg-trim,`c1-arg))))
 `c1-args9 = $(if $(word 9,$1),$(if ,,$(call `c1-vec,$(wordlist 1,8,$1),$(if ,,,),`c1-arg),$(call `protect-arg,$(call `c1,$(call `il-vector,$(wordlist 9,99999999,$1))))),$(call `c1-vec,$1,$(if ,,,),`c1-arg))
@@ -704,12 +705,13 @@ endef
 `i-8 = $(words $(wordlist 9,99999999,$(call `repeat-words,. . . .,$1)))
 `c1-ugly-arg = $(subst $`,$`$(subst .,-,$(subst <.,,<$2)),$(subst %,$(if $(filter $1,1 2 3 4 5 6 7 8 ;),$`$1,$(if $(filter ;%,$1),$`($1),$(if $(findstring +,$1),$(if $(filter $1,1+ 2+ 3+ 4+ 5+ 6+ 7+ 8+),$`(foreach N,$(subst +,,$1),$`(^v)),$(if $(filter 9+,$1),$`9,$`(wordlist $(call `i-8,$(subst +,,$1)),99999999,$`9))),$`(call ^n,$(call `i-8,$1),$`9)))),$(if $(filter .,$2),%,$`(call ^E,%$(filter %`,$(if ,,,$(subst .,`,$(subst <..,,<$2))))))))
 `c1-Funcall = $`(call ^Y,$(call `c1-args9,$(wordlist 2,99999999,$1))$(subst $  ,,$(or $(wordlist $(words x$(wordlist 2,99999999,$1)),9,$(if ,,, , , , , , , , ,)),$(if ,,,)))$(call `protect-arg,$(call `c1,$(call ^n,1,$1))))
-`c1-Block = $(if $(word 2,$1),$`(and $(call `c1-vec,$1,$(if ,,1,),`c1-arg)),$(if $1,$(call `c1,$(call ^n,1,$1))))
+`c1-Block = $(subst |~,,$(subst |~ ,,$(foreach ;,$(call `butlast,$1),$(subst |~,||~~,$(call `c1-void,$(call ^u,$;)))|~)))$(call `c1,$(call ^u,$(lastword $1)))
 `c1-Var = $`$(or $(filter a b c d e f g h i j k l m n o p q r s t u v w x y z A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _,$1),($(subst $`,$``,$1)))
 `c1 = $(if $(filter !:IL4,$(word 1,$1)),$(subst $`,$``,$(call ^n,2,$1)),$(if $(filter !:IL0,$(word 1,$1)),$(or $(if $(filter .,$(word 3,$1)),$(addprefix $`,$(filter $(word 2,$1),1 2 3 4 5 6 7 8 ;))),$(call `c1-ugly-arg,$(word 2,$1),$(word 3,$1))),$(if $(filter !:IL7,$(word 1,$1)),$(call `c1-Call,$(word 2,$1),$(wordlist 3,99999999,$1)),$(if $(filter !:IL5,$(word 1,$1)),$(call `c1-Var,$(word 2,$1)),$(if $(filter !:IL8,$(word 1,$1)),$(call `c1-vec,$(wordlist 2,99999999,$1),,`c1),$(if $(filter !:IL1,$(word 1,$1)),$(call `c1-Lambda,$(call `c1,$(call ^n,2,$1))),$(if $(filter !:IL9,$(word 1,$1)),$(call `c1-Block,$(wordlist 2,99999999,$1)),$(if $(filter !:IL2,$(word 1,$1)),$(call `c1-Funcall,$(wordlist 2,99999999,$1)),$(if $(filter !:IL6,$(word 1,$1)),$(call `c1-Builtin,$(word 2,$1),$(wordlist 3,99999999,$1)),$(if $(filter !:IL3,$(word 1,$1)),$(call `c1-Builtin,foreach,$(call ^d,!:IL4 $(call ^d,$(word 2,$1))) $(call ^d,$(call ^n,3,$1)) $(call ^d,$(wordlist 4,99999999,$1))),$(if $(filter !:IL10,$(word 1,$1)),$(call `c1-Where,$(word 2,$1)),$(if $(filter !:IL11,$(word 1,$1)),$(call `crumb,$(word 2,$1),$(call ^n,3,$1)),$(if $(filter !:IL12,$(word 1,$1)),$(call `c1,$(wordlist 3,99999999,$1)),$(if $1,$(call `c1-Error,$1)))))))))))))))
 define `c1-file-set
 $(if $3,$(call `protect-lhs,$1) := $(call `protect-rhs,$2)
-,$(if $(or $(findstring $`,$(subst $``,,$2)),$(findstring $``.,$2)),$(call `protect-expr,$`(call ^fset,$(call `protect-arg,$1),$(call `protect-arg,$2)))
+,$(if $(or $(findstring $`,$(subst $``,,$2)),$(findstring $``.,$2)),$(subst 
+,$`',$`(call ^fset,$(call `protect-arg,$1),$(call `protect-arg,$2)))
 ,$(if $(or $(findstring #,$2),$(findstring 
 ,$2),$(filter ~%,$(subst $  ,~,$(subst $ 	,~,$2)))),define $(call `protect-lhs,$1)
 $(call `protect-define,$(subst $``,$`,$2))
@@ -719,11 +721,12 @@ $ endef
 endef
 define `c1-file
 $(or $(if $(filter !:IL6,$(word 1,$1)),$(foreach ;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$1))),$(if $(filter !1:IL4!0%,$;!0),$(if $(filter eval,$(word 2,$1)),$(call ^n,2,$(call ^u,$;))
-,$(if $(filter call,$(word 2,$1)),$(call `c1-file,!:IL7 $(call ^n,2,$(call ^u,$;)) $(wordlist 2,99999999,$(wordlist 3,99999999,$1))))),)),$(if $(filter !:IL7,$(word 1,$1)),$(if $(filter ^set:2 ^fset:2,$(word 2,$1):$(words $(wordlist 3,99999999,$1))),$(call `c1-file-set,$(call `c1,$(call ^n,1,$(wordlist 3,99999999,$1))),$(call `c1,$(call ^n,2,$(wordlist 3,99999999,$1))),$(filter ^set,$(word 2,$1)))),$(if $(filter !:IL9,$(word 1,$1)),$(subst ~x,,$(subst ~x~x ,,$(foreach ;,$(wordlist 2,99999999,$1),$(subst ~,~~x,$(call `c1-file,$(call ^u,$;)))~x~x))),))),$(if ,,$(call `protect-expr,$(call `c1,$(if $(if $(filter !:IL6 !:IL7,$(word 1,$1)),$(filter error eval info ^R ^at,$(word 2,$1)),$(if $(filter !:IL11,$(word 1,$1)),1,)),$1,!:IL6 if $(call ^d,$1) $(call ^d,!:IL4 !.))))
+,$(if $(filter call,$(word 2,$1)),$(call `c1-file,!:IL7 $(call ^n,2,$(call ^u,$;)) $(wordlist 2,99999999,$(wordlist 3,99999999,$1))))),)),$(if $(filter !:IL7,$(word 1,$1)),$(if $(filter ^set:2 ^fset:2,$(word 2,$1):$(words $(wordlist 3,99999999,$1))),$(call `c1-file-set,$(call `c1,$(call ^n,1,$(wordlist 3,99999999,$1))),$(call `c1,$(call ^n,2,$(wordlist 3,99999999,$1))),$(filter ^set,$(word 2,$1)))),$(if $(filter !:IL9,$(word 1,$1)),$(subst |~,,$(subst |~ ,,$(foreach ;,$(wordlist 2,99999999,$1),$(subst |~,||~~,$(call `c1-file,$(call ^u,$;)))|~))),))),$(if ,,$(subst 
+,$`',$(call `c1-void,$1))
 ))
 endef
 define `gen1
-$(call ^Y,$(subst $`.}, ,$(subst $`.{, $`.{,$(call ^d,$(if $2,$(subst ~x,,$(subst ~x~x ,,$(foreach ;,$1,$(subst ~,~~x,$(call `c1-file,$(call ^u,$;)))~x~x))),$(call `c1,!:IL9 $1))))),,,,,,,,,$`(call `append,code!=$`(call ^d,$`(call `concat-vec,$`(filter-out $``.{%,$`1))),$`(call `dict-collate,$`(foreach ;,$`(call `filtersub,$``.{%,%,$`1),$`(subst ~1,~,$`(subst ~L,$`[,$`(subst ~C,$`(if ,,,),$`(subst ~R,$`],$`(subst ~S,$``,$`(subst ~N,
+$(call ^Y,$(subst $`.}, ,$(subst $`.{, $`.{,$(call ^d,$(if $2,$(subst |~,,$(subst |~ ,,$(foreach ;,$1,$(subst |~,||~~,$(call `c1-file,$(call ^u,$;)))|~))),$(call `c1,!:IL9 $1))))),,,,,,,,,$`(call `append,code!=$`(call ^d,$`(call `concat-vec,$`(filter-out $``.{%,$`1))),$`(call `dict-collate,$`(foreach ;,$`(call `filtersub,$``.{%,%,$`1),$`(subst ~1,~,$`(subst ~L,$`[,$`(subst ~C,$`(if ,,,),$`(subst ~R,$`],$`(subst ~S,$``,$`(subst ~N,
 ,$`(call ^u,$`;)))))))))))
 endef
 
@@ -745,16 +748,16 @@ $(call ^R,string)
 `*memo-log* := 
 `*memo-hashes* := 
 `*memo-dir* := 
-`memo-dir = $(and $(if $(if $(findstring $(subst $(call ^u,$(dir $(call ^d,$(`*memo-db-file*))))0,1,$(`*memo-dir*)0),1),,1),$(and $(call ^set,`*memo-dir*,$(call ^u,$(dir $(call ^d,$(`*memo-db-file*)))))1,$(call `mkdir-p,$(`*memo-dir*))))1,$(`*memo-dir*))
+`memo-dir = $(if $(if $(if $(findstring $(subst $(call ^u,$(dir $(call ^d,$(`*memo-db-file*))))0,1,$(`*memo-dir*)0),1),,1),$(call ^set,`*memo-dir*,$(call ^u,$(dir $(call ^d,$(`*memo-db-file*)))))$(call `mkdir-p,$(`*memo-dir*))),)$(`*memo-dir*)
 $(call ^at,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
 `memo-playback = $(call ^Y,$(call `dict-get,$1,$(`*memo-cache*) $(`*memo-db*)),,,,,,,,,$`(if $`(filter !:PMDB0,$`(word 1,$`1)),$`1,$`(if $`(filter !:PMDB1,$`(word 1,$`1)),$`(call `memo-playback,$`(call ^d,$`(call ^n,2,$`1)) $`(call ^d,$`(if $`(filter :%,$`(call ^n,3,$`1)),$`(call `memo-do-apply,$`(patsubst :%,%,$`(call ^n,3,$`1)),$`(wordlist 4,99999999,$`1)),$`(call ^na,$`(call ^n,3,$`1),$`(wordlist 4,99999999,$`1))))),)))
 `memo-add-entry = $(call ^set,`*memo-log*,$(call `append,$(`*memo-log*),$(call ^k,$(`*memo-key*))!=$(call ^d,$1)))
-`memo-record = $(call ^set,`*memo-key*,$(call ^set,`*memo-key*,$1,$(`*memo-key*)),$(call ^set,`*memo-log*,$(call ^set,`*memo-log*,,$(`*memo-log*)),$(call ^Y,$(call ^na,$2,$3),$1,,,,,,,,$`(and $`(if $`(`*memo-key*),$`(and $`(call `memo-add-entry,!:PMDB0 $`(call ^d,$`1))1,$`(call ^set,`*memo-db*,$`(call `append,$`(`*memo-db*),$`(`*memo-log*)))))1,$`1))))
-`memo-drop = $(and $(call ^set,`*memo-key*,)1,$(call `memo-save-session))
+`memo-record = $(call ^set,`*memo-key*,$(call ^set,`*memo-key*,$1,$(`*memo-key*)),$(call ^set,`*memo-log*,$(call ^set,`*memo-log*,,$(`*memo-log*)),$(call ^Y,$(call ^na,$2,$3),$1,,,,,,,,$`(if $`(if $`(`*memo-key*),$`(if $`(call `memo-add-entry,!:PMDB0 $`(call ^d,$`1)),)$`(call ^set,`*memo-db*,$`(call `append,$`(`*memo-db*),$`(`*memo-log*)))),)$`1)))
+`memo-drop = $(call ^set,`*memo-key*,)$(call `memo-save-session)
 `get-io-tag = $(if $1,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1),))
-`memo-log-io = $(and $(if $(`*memo-key*),$(call ^set,`*memo-key*,$(call ^d,$(or $(call `get-io-tag,$(call `dict-get,$(`*memo-key*),$(`*memo-db*)),$1,$2),$(and $(call `memo-add-entry,!:PMDB1 $(call ^d,$(`*memo-tag*)) $(call ^d,$1) $2)1,$(call ^set,`*memo-tag*,$(call `1+,$(`*memo-tag*)),$(`*memo-tag*))))) $(call ^d,$3)))1,$3)
+`memo-log-io = $(if $(if $(`*memo-key*),$(call ^set,`*memo-key*,$(call ^d,$(or $(call `get-io-tag,$(call `dict-get,$(`*memo-key*),$(`*memo-db*)),$1,$2),$(if $(call `memo-add-entry,!:PMDB1 $(call ^d,$(`*memo-tag*)) $(call ^d,$1) $2),)$(call ^set,`*memo-tag*,$(call `1+,$(`*memo-tag*)),$(`*memo-tag*)))) $(call ^d,$3))),)$3
 `memo-io = $(call `memo-log-io,$1,$(foreach N,2,$(^v)),$(call ^na,$1,$(foreach N,2,$(^v))))
-`memo-do-apply = $(call ^Y,$(call `dict-find,$1 $2,$(`*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ^dv,$`1),$`(call ^Y,$`(foreach ;,$`(call ^d,$`(call `memo-playback,$`2 $`3)),$`(if $`(filter !1:PMDB0!0%,$`;!0),$`(call ^n,2,$`(call ^u,$`;)),$`(call `memo-record,$`2 $`3,$`2,$`3))),$`2 $`3,,,,,,,,$``(and $``(call ^set,`*memo-cache*,$``(call `append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(`*memo-cache*)))1,$``1))))
+`memo-do-apply = $(call ^Y,$(call `dict-find,$1 $2,$(`*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ^dv,$`1),$`(call ^Y,$`(foreach ;,$`(call ^d,$`(call `memo-playback,$`2 $`3)),$`(if $`(filter !1:PMDB0!0%,$`;!0),$`(call ^n,2,$`(call ^u,$`;)),$`(call `memo-record,$`2 $`3,$`2,$`3))),$`2 $`3,,,,,,,,$``(call ^set,`*memo-cache*,$``(call `append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(`*memo-cache*)))$``1)))
 `memo-apply = $(call `memo-log-io,:$1,$2,$(call `memo-do-apply,$1,$2))
 `memo-call = $(call `memo-apply,$1,$(foreach N,2,$(^v)))
 `blobify = $(call `save-blob,$(call `memo-dir),$(call ^na,$1,$(foreach N,2,$(^v))))
@@ -762,23 +765,23 @@ $(call ^at,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
 $(if $(call `memoize,`read-blob),)
 `memo-blob-call = $(if $(`*memo-on*),$(call `read-blob,$(call `memo-apply,`blobify,$(call `cons,$1,$(foreach N,2,$(^v))))),$(call ^na,$1,$(foreach N,2,$(^v))))
 define `memo-save-session
-$(if $(if $(findstring $(subst $(`*memo-db-disk*)0,1,$(`*memo-db*)0),1),,1),$(and $(call `memo-dir)1,$(call `expect-x,,$(call `write-file-atomic,$(`*memo-db-file*),$(`*memo-tag*)
+$(if $(if $(findstring $(subst $(`*memo-db-disk*)0,1,$(`*memo-db*)0),1),,1),$(if $(call `memo-dir),)$(if $(call `expect-x,,$(call `write-file-atomic,$(`*memo-db-file*),$(`*memo-tag*)
 $(subst !0, ,$(subst $  ,
 ,$(subst 
 ,!n,$(`*memo-db*))))
-),memo.scm:284)1,$(call ^set,`*memo-db-disk*,$(`*memo-db*))))
+),memo.scm:284),)$(call ^set,`*memo-db-disk*,$(`*memo-db*)))
 endef
 define `memo-start-session
-$(and $(call ^set,`*memo-on*,1)1,$(if $(if $(findstring $(subst $10,1,$(`*memo-db-file*)0),1),,1),$(and $(call ^set,`*memo-db-file*,$1)1,$(call ^set,`*memo-db*,$(filter %,$(subst !n,
+$(call ^set,`*memo-on*,1)$(if $(if $(findstring $(subst $10,1,$(`*memo-db-file*)0),1),,1),$(call ^set,`*memo-db-file*,$1)$(call ^set,`*memo-db*,$(filter %,$(subst !n,
 ,$(subst 
-, ,$(subst $  ,!0,$(call `read-file,$1))))))1,$(call ^set,`*memo-tag*,$(or $(word 1,$(`*memo-db*)),0))1,$(call ^set,`*memo-db*,$(wordlist 2,99999999,$(`*memo-db*)))1,$(call ^set,`*memo-db-disk*,$(`*memo-db*)))))
+, ,$(subst $  ,!0,$(call `read-file,$1))))))$(call ^set,`*memo-tag*,$(or $(word 1,$(`*memo-db*)),0))$(call ^set,`*memo-db*,$(wordlist 2,99999999,$(`*memo-db*)))$(call ^set,`*memo-db-disk*,$(`*memo-db*)))
 endef
-`memo-minus = $(and $(if $1,$(and $(call ^set,`*memo-on*,)1,$(call ^set,`*memo-cache*,)1,$(call ^set,`*memo-hashes*,)1,$(call `memo-save-session)))1,$2)
+`memo-minus = $(if $(if $1,$(call ^set,`*memo-on*,)$(call ^set,`*memo-cache*,)$(call ^set,`*memo-hashes*,)$(call `memo-save-session)),)$2
 `hash-add = $(call ^set,`*memo-hashes*,$(call `append,$(`*memo-hashes*),$1))
-`do-hash-file = $(if $(`*memo-on*),$(call ^dv,$(or $(call `dict-find,$1,$(`*memo-hashes*)),$(and $(call `hash-add,$(call `hash-files,$(sort $(call `cons,$1,$(if $(`*memo-hashes*),,$(foreach ;,$(`*memo-db*),$(foreach ;;,$(call ^d,$(call ^dv,$;)),$(if $(filter !1:PMDB1!0%,$(;;)!0),$(if $(filter $(call ^n,3,$(call ^u,$(;;))),`do-hash-file `do-write-blob),$(word 1,$(wordlist 4,99999999,$(call ^u,$(;;))))),))))))))1,$(call `dict-find,$1,$(`*memo-hashes*))))),$(call `hash-file,$1))
+`do-hash-file = $(if $(`*memo-on*),$(call ^dv,$(or $(call `dict-find,$1,$(`*memo-hashes*)),$(if $(call `hash-add,$(call `hash-files,$(sort $(call `cons,$1,$(if $(`*memo-hashes*),,$(foreach ;,$(`*memo-db*),$(foreach ;;,$(call ^d,$(call ^dv,$;)),$(if $(filter !1:PMDB1!0%,$(;;)!0),$(if $(filter $(call ^n,3,$(call ^u,$(;;))),`do-hash-file `do-write-blob),$(word 1,$(wordlist 4,99999999,$(call ^u,$(;;))))),)))))))),)$(call `dict-find,$1,$(`*memo-hashes*)))),$(call `hash-file,$1))
 `memo-hash-file = $(call `memo-io,`do-hash-file,$1)
-`memo-read-file = $(and $(call `memo-hash-file,$1)1,$(call `read-file,$1))
-`do-write-blob = $(if $(if $(findstring $(subst $(call `dict-get,$1,$(`*memo-hashes*))0,1,$(call ^u,$(notdir $(call ^d,$2)))0),1),,1),$(and $(call ^set,`*memo-hashes*,$(call `dict-remove,$1,$(`*memo-hashes*)))1,$(call `cp-file-atomic,$2,$1,1)))
+`memo-read-file = $(if $(call `memo-hash-file,$1),)$(call `read-file,$1)
+`do-write-blob = $(if $(if $(findstring $(subst $(call `dict-get,$1,$(`*memo-hashes*))0,1,$(call ^u,$(notdir $(call ^d,$2)))0),1),,1),$(call ^set,`*memo-hashes*,$(call `dict-remove,$1,$(`*memo-hashes*)))$(call `cp-file-atomic,$2,$1,1))
 `memo-write-file = $(if $(`*memo-on*),$(call ^Y,$(call `save-blob,$(call `memo-dir),$2),,,,,,,,,$`(call `memo-io,`do-write-blob,$(call ^E,$1),$`1)),$(call `write-file,$1,$2))
 `memo-chmod-file = $(call `memo-io,`chmod-file,$1,$2)
 
@@ -786,14 +789,8 @@ endef
 
 define [mod-escape]
 # Requires: core
-# Exports: protect-define}1 protect-rhs}1 protect-lhs}1 protect-expr}1 protect-arg}1 protect-trim}1 protect-ltrim}1 escape#1!0!]6!0subst|4'$|4'$`|0'1'.
+# Exports: protect-define}1 protect-rhs}1 protect-lhs}1 protect-expr#1!0!]6!0subst|4'!n|4'$!A|0'1'. protect-arg}1 protect-trim}1 protect-ltrim}1 escape#1!0!]6!0subst|4'$|4'$`|0'1'.
 $(call ^R,core)
-define `protect-hash2
-$(if $(findstring \.#,$1),$(call `protect-hash2,$(subst \.#,.#\\,$1)),$(subst .#,,$1))
-endef
-define `quote-hash
-$(if $(findstring #,$1),$(call `protect-hash2,$(subst #,.#\#,$1)),$1)
-endef
 `protect-ltrim = $(if $(findstring $(word 1,0$10),0),$` )$1
 define `protect-trim
 $(if $(and $(findstring $1,$(wordlist 1,99999999,$1)),$(filter-out 
@@ -807,22 +804,21 @@ endef
 `check-balance = $(call `check-balance-r,$(subst $],!R .,$(subst $[,!L,$(subst !,,$(subst $ 	,,$(subst $  ,,$1))))))
 `make-balanced = $(if $(findstring !,$2),$(call `balance2,$(subst !L,$`[,$(subst !R,$`],$(subst $  ,,$(call `balance-match,$(subst $[, !L,$(subst $], !R ,$(subst $(if ,,,),$(if ,,!C,),$(call ^d,$1))))))))),$(if $(findstring $(if ,,,),$2),$`(if ,,$1),$1))
 `protect-arg = $(if $(or $(findstring $[,$1),$(findstring $],$1),$(findstring $(if ,,,),$1)),$(call `make-balanced,$1,$(call `check-balance,$1)),$1)
-define `protect-expr
-$(subst 
-,$`',$1)
-endef
 define `protect-lhs
 $(subst #,$`",$(subst X,$(subst 
 ,$`',$(call `protect-arg,$1)),$(if $(or $(findstring :,$1),$(findstring =,$1),$(if $(findstring $1,$(wordlist 1,99999999,$1)),,1),$(filter ifeq ifneq ifdef ifndef else endif define endef override include sinclude -include export unexport private undefine vpath,$1)),$`(if ,,X),X)))
 endef
+define `double-bs
+$(if $(findstring \.#,$1),$(call `double-bs,$(subst \.#,.#\\,$1)),$(subst .#,,$1))
+endef
 define `protect-rhs
-$(call `quote-hash,$(call `protect-ltrim,$(subst 
-,$`',$1)))
+$(call `protect-ltrim,$(subst 
+,$`',$(if $(or $(findstring #,$1),$(findstring \,$1)),$(call `double-bs,$(subst \.#.#,.#\\#,$(subst #,.#\#,$1).#.#)),$1)))
 endef
 define `protect-define
-$(if $(or $(findstring define,$1),$(findstring endef,$1),$(findstring \,$1)),$(subst ~x,,$(subst ~x~x ,
+$(if $(or $(findstring define,$1),$(findstring endef,$1),$(findstring \,$1)),$(subst |~,,$(subst |~ ,
 ,$(foreach ;,$(call `split,
-,$1),$(subst ~,~~x,$(if $(filter define endef,$(word 1,$(call ^u,$;))),$` )$(call ^u,$;)$(if $(filter %\,$(call ^d,$(call ^u,$;))),$` ))~x~x))),$1)
+,$1),$(subst |~,||~~,$(if $(filter define endef,$(word 1,$(call ^u,$;))),$` )$(call ^u,$;)$(if $(filter %\,$(call ^d,$(call ^u,$;))),$` ))|~))),$1)
 endef
 
 endef
@@ -862,7 +858,7 @@ $(call ^R,gen0)
 `c0-for2 = $(if $2,$(if $6,!:IL3 $(subst .,,$3) $(call ^d,$(call `c0,$(call ^n,2,$5),$1)) $(call ^Y,$(call `c0-block,$6,$2 $(call `append,:!=$(call ^d,!:EDefn7 $3),$1)),,,,,,,,,$7),$(call `err-expected,,,$4,$(if $(word 2,$5),BODY,$(filter VEC LIST,$8)),$8)),$(call `err-expected,S,$(call ^n,1,$5),$4,TARGET,$8))
 `M.for = $(if $(filter !:P0,$(word 1,$(call ^n,1,$3))),$(if $(wordlist 3,99999999,$(call ^n,1,$3)),$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$(wordlist 3,99999999,$(call ^n,1,$3))),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$(value `il-promote))),$;,$2,$(wordlist 3,99999999,$(call ^n,1,$3)),$(wordlist 2,99999999,$3),$(value `il-demote),(for (TARGET VEC) BODY))),$(call `err-expected,S,,$2,TARGET,(for (TARGET VEC) BODY))),$(if $(wordlist 1,2,$3),$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$(wordlist 1,2,$3)),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$(value `il-promote))),$;,$2,$(wordlist 1,2,$3),$(wordlist 3,99999999,$3),$(value `il-demote),(for TARGET VEC BODY))),$(call `err-expected,S,,$2,TARGET,(for TARGET VEC BODY))))
 `M.append-for = !:IL6 filter $(call ^d,!:IL4 %) $(call ^d,$(if $(filter !:P0,$(word 1,$(call ^n,1,$3))),$(if $(wordlist 3,99999999,$(call ^n,1,$3)),$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$(wordlist 3,99999999,$(call ^n,1,$3))),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$(value `il-promote))),$;,$2,$(wordlist 3,99999999,$(call ^n,1,$3)),$(wordlist 2,99999999,$3),$`1,(append-for (TARGET VEC) BODY))),$(call `err-expected,S,,$2,TARGET,(append-for (TARGET VEC) BODY))),$(if $(wordlist 1,2,$3),$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$(wordlist 1,2,$3)),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$(value `il-promote))),$;,$2,$(wordlist 1,2,$3),$(wordlist 3,99999999,$3),$`1,(append-for TARGET VEC BODY))),$(call `err-expected,S,,$2,TARGET,(append-for TARGET VEC BODY)))))
-`c0-cfor2 = $(or $(foreach ;,$(call ^d,$(call ^Y,,,,,,,,,,$7)),$(if $(filter !1:IL4!0%,$;!0),$(if $(findstring $(subst $  0,1,$(call ^n,2,$(call ^u,$;))0),1),$(if $3,$(foreach ;;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$3),p,$(;;),$(call ^Y,!:IL0 $(subst .,,$(;;)) .,,,,,,,,,$5)),$(;;),$2,$3,$4,$`1,$6)),$(call `err-expected,S,,$2,TARGET,$6))),)),$(call `subst-in-il,~x,,$(call `il-subst,!:IL4 ~x~x!0,$(call `subst-in-il,~,~~x,$7),$(if $3,$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$3),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$5)),$;,$2,$3,$4,!:IL8 $`(call ^d,$`(call `subst-in-il,~,~~x,$`1)) $`(call ^d,!:IL4 ~x~x),$6)),$(call `err-expected,S,,$2,TARGET,$6)))))
+`c0-cfor2 = $(if $(findstring $(subst !:IL4 !00,1,$70),1),$(if $3,$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$3),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$5)),$;,$2,$3,$4,$`1,$6)),$(call `err-expected,S,,$2,TARGET,$6)),$(call `subst-in-il,|~,,$(call `il-subst,!:IL4 |~!0,$(call `subst-in-il,|~,||~~,$7),$(if $3,$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$3),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$5)),$;,$2,$3,$4,!:IL8 $`(call ^d,$`(call `subst-in-il,|~,||~~,$`1)) $`(call ^d,!:IL4 |~),$6)),$(call `err-expected,S,,$2,TARGET,$6)))))
 `c0-cfor = $(call `c0-cfor2,$1,$2,$3,$4,$5,$6,$(if $(word 3,$3),$(call `c0,$(call ^n,3,$3),$1),!:IL4 !0))
 `M.concat-for = $(if $(filter !:P0,$(word 1,$(call ^n,1,$3))),$(call `c0-cfor,$1,$2,$(wordlist 3,99999999,$(call ^n,1,$3)),$(wordlist 2,99999999,$3),$(value `il-promote),(concat-for (TARGET VEC ?DELIM) BODY)),$(call `c0-cfor,$1,$2,$(wordlist 1,3,$3),$(wordlist 4,99999999,$3),$(value `il-promote),(concat-for TARGET VEC DELIM BODY)))
 `M.foreach = $(if $(filter !:P0,$(word 1,$(call ^n,1,$3))),$(call `c0-cfor,$1,$2,$(wordlist 3,99999999,$(call ^n,1,$3)),$(wordlist 2,99999999,$3),$`1,(foreach (TARGET LIST ?DELIM) BODY)),$(if $(wordlist 1,2,$3),$(foreach ;,$(call `current-depth,$1);,$(call `c0-for2,$1,$(call `bind-target,$(call ^n,1,$(wordlist 1,2,$3)),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$`1)),$;,$2,$(wordlist 1,2,$3),$(wordlist 3,99999999,$3),$`1,(foreach TARGET LIST BODY))),$(call `err-expected,S,,$2,TARGET,(foreach TARGET LIST BODY))))
@@ -912,7 +908,7 @@ $(if $(call `def-split,`split-utf8-cont,$(wordlist 128,191,$(`all-bytes)),!1.%!0
 `string-slice = $(call ^u,$(subst $  ,,$(wordlist $1,$2,$(call `string-to-chars,$3))))
 $(call ^fset,`string-upper,$(call `gen-polysub,$(wordlist 97,122,$(`all-bytes)),$(wordlist 65,90,$(`all-bytes))))
 $(call ^fset,`string-lower,$(call `gen-polysub,$(wordlist 65,90,$(`all-bytes)),$(wordlist 97,122,$(`all-bytes))))
-`string-to-bytecodes = $(and $(if $(if $(value `num-enc),,1),$(and $(call ^fset,`num-enc,$(call `gen-polysub,!10 !11 0 1 2 3 4 5 6 7 8 9,$(addprefix !1,a b c d e f g h i j k l)))1,$(call ^fset,`s2b-sub,$(call `gen-polysub,$(subst !0, ,$(call ^d,$(call `num-enc,$(`all-bytes)))),$(addsuffix !0,$(call `indices,$(`all-bytes)))))))1,$(filter %,$(call `s2b-sub,$(call `num-enc,$(subst $ 	,!+,$(subst $  ,!0,$(subst !,!1,$1)))))))
+`string-to-bytecodes = $(if $(if $(if $(value `num-enc),,1),$(call ^fset,`num-enc,$(call `gen-polysub,!10 !11 0 1 2 3 4 5 6 7 8 9,$(addprefix !1,a b c d e f g h i j k l)))$(call ^fset,`s2b-sub,$(call `gen-polysub,$(subst !0, ,$(call ^d,$(call `num-enc,$(`all-bytes)))),$(addsuffix !0,$(call `indices,$(`all-bytes)))))),)$(filter %,$(call `s2b-sub,$(call `num-enc,$(subst $ 	,!+,$(subst $  ,!0,$(subst !,!1,$1))))))
 `bytes-from-bytecodes = $(foreach ;,$(patsubst 0,999,$1),$(or $(word $;,$(`all-bytes)),!.))
 `string-from-bytecodes = $(call `concat-vec,$(call `bytes-from-bytecodes,$1))
 `string-repeat = $(subst .,$1,$(subst $  ,,$(call `repeat-words,. . . . .,$2)))
@@ -1024,7 +1020,7 @@ $(call ^R,math0)
 $(call ^R,math1)
 `u-zeros = $(if $(filter-out -%,$1),$(subst 1, 0,$(if $(findstring 10,$1),$(call `tally,$(subst 0, 0,$1)),$(subst 0,,$1))))
 `round-uf-const = $(foreach ;,$(subst $  ,,$(wordlist $(words 0 $2),99999999,$1)),$(and $(subst 0111111111,,$(subst .01111,,.$;)),$(subst 0,,$(subst .011111,,.$;)),$(if $(filter 011111%,$;),$(filter 0%,$(subst 0, 0,$(foreach ;;,$(subst 01111111111,10,$(subst $  ,,$(wordlist 1,$(words $2),$1)1)),$(if $(findstring 01111111111,$(;;)),$(call `u-carry-fn,$(;;),0111111111,0),$(;;))))),$(wordlist 1,$(words $2),$1))))
-`get-uf-const = $(or $(call `round-uf-const,$($1/v),$2),$(if $(word 1,$2),$(and $(call ^set,$1/c,$(patsubst %,0,0 0 0 0 0 $(join $2,$($1/c))),)1,$(call ^set,$1/v,$(wordlist 2,99999999,$(call `uf-round,$(words $($1/c)),2,$(call $1,$($1/c)))),)1,$(call `get-uf-const,$1,$2))))
+`get-uf-const = $(or $(call `round-uf-const,$($1/v),$2),$(if $(word 1,$2),$(if $(call ^set,$1/c,$(patsubst %,0,0 0 0 0 0 $(join $2,$($1/c))),),)$(if $(call ^set,$1/v,$(wordlist 2,99999999,$(call `uf-round,$(words $($1/c)),2,$(call $1,$($1/c)))),),)$(call `get-uf-const,$1,$2)))
 `uf-addsub = $(if $2,$(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $1,$(if $3,$(subst 101,0,$(subst 11011,0,$(subst 1110111,0,$(patsubst 0%,%0111111111,$(patsubst 0111111%,%101111,$2)))))1,$2)))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;)))),$1)
 `uf-atan-loop = $(if $6,$(if $(filter 0,$(word 1,$1)),$(if $(filter 0,$(word 2,$1)),0 0 $(call `uf-atan-loop,$(wordlist 3,99999999,$1),$2,$3,$4,$5,$(wordlist 3,99999999,$6)),0 $(call `uf-atan-loop,$(wordlist 2,99999999,$1),$2,$3,$4,$5,$(wordlist 2,99999999,$6))),$(call `uf-addsub,$(wordlist 3,99999999,$(subst 0,0 ,$(subst 1,,$5))$(call `uf-div,0 $1,$(strip $(subst 0, 0,$5)),$(words 0 $6),2)),$(if $(word $(words 0 $2),$6),$2 $(call `uf-atan-loop,$(foreach ;,$(words $(wordlist $(words 0 $2),99999999,$6)),$(wordlist 1,$;,$(call `uf-mul,$(or $(wordlist 1,$;,$3),0),$(or $(wordlist 1,$;,$1),0)))),$2,$3,$4,$(call `u-add-ones,$5,11),$(wordlist $(words 0 $2),99999999,$6))),$4)))
 `uf-atanh-3 = $(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $2 $(call `uf-atan-loop,$(foreach ;,$(words $4),$(wordlist 1,$;,$(call `uf-mul,$(or $(wordlist 1,$;,$1),0),$(or $(wordlist 1,$;,$3),0)))),$2,$3,,0111,$(wordlist $(words 0 $2),99999999,$4)),$1))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;))))
@@ -1033,7 +1029,7 @@ $(call ^R,math1)
 `uf-log = $(subst $  01111111111,1 0,$(subst 1,11,$(call `uf-atanh,$(call `uf-div,$(or $1,0),$2,$(words $3),2),$3)))
 `log-M = $(call `uf-log,0 011,011 0 011,0 0 $1)
 `calc-m-powers = $(if $(findstring 1,$(word 1,$1)),$(call ^set,`m-powers,$2,$2),$(call `calc-m-powers,$(wordlist 2,99999999,$(call `uf-mul,$1,01 0 011)),$2$(if $2, )$(patsubst 00%,0%,$(subst $  ,,$1))))
-`calc-m-powers-r = $(and $(call ^set,`m-powers-r,$(patsubst 00%,0%,$(foreach ;,$(or $(`m-powers),$(call `calc-m-powers,0 01 0 011,)),$(subst $  ,,$(call `uf-div,01 0 01,$(wordlist 1,6,$(subst 0, 0,$;)),4,2)))))1,$(`m-powers-r))
+`calc-m-powers-r = $(call ^set,`m-powers-r,$(patsubst 00%,0%,$(foreach ;,$(or $(`m-powers),$(call `calc-m-powers,0 01 0 011,)),$(subst $  ,,$(call `uf-div,01 0 01,$(wordlist 1,6,$(subst 0, 0,$;)),4,2)))))$(`m-powers-r)
 `psrch = $(if $(findstring $(subst $30,1,$20),1),$(words $3),$(foreach ;,$(words $(subst 0 0,0,$(patsubst %,0,$2 $3))),$(if $(findstring 1,$(call `uf-cmp,$(subst 0, 0,$(word $;,$2)),$1)),$(call `psrch,$1,$2,$(wordlist 1,$;,$2)),$(call `psrch,$1,$(wordlist 2,$;,0 $2),$3))))
 `uf-log-fr2 = $(if $(filter 01%,$(word 1,$1)),$(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $(wordlist $(words $2),99999999,$(call `uf-mul,$(call `get-uf-const,`log-M,$3 0 $2),$2)),$(subst 101,0,$(subst 11011,0,$(subst 1110111,0,$(patsubst 0%,%0111111111,$(patsubst 0111111%,%101111,0 $(call `uf-log,$(wordlist 2,99999999,$1),011 $(wordlist 2,99999999,$1),$3 0 $(word 75,$3)))))))1))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;)))),$(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $(wordlist $(words $2),99999999,$(call `uf-mul,$(call `get-uf-const,`log-M,$3 0 $2),$2)),0 $(call `uf-log,$(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 101,0,$(subst 11011,0,$(subst 1110111,0,$(patsubst 0%,%0111111111,$(patsubst 0111111%,%101111,$(wordlist 2,99999999,$1))))))1)),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;)))),01 $(wordlist 2,99999999,$1),$3 0 $(word 75,$3))))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;)))))
 `uf-log-fr = $(foreach ;,$(call `psrch,$1,$(or $(`m-powers-r),$(call `calc-m-powers-r)),),$(call `uf-log-fr2,$(if $(filter 0,$;),0 $1,$(foreach ;;,$(words 0 0 $2),$(wordlist 1,$(;;),$(call `uf-mul,$(or $(wordlist 1,$(;;),$(strip $(subst 0, 0,$(word $;,$(or $(`m-powers),$(call `calc-m-powers,0 01 0 011,)))))),0),$(or $(wordlist 1,$(;;),$1),0))))),$(strip $(subst 0, 0,$(call `d2u,$;))),$2))

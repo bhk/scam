@@ -1292,8 +1292,8 @@ to remain the same for the duration of the program's execution.
 Execute shell command, hash what it writes to `stdout`, and return the
 hash.
 
-CMD-FMT = format string as per `io-vsprintf`
-ARGS = arguments references by CMD-FMT
+CMD-FMT = format string as per `io-vsprintf` \
+ARGS = arguments for CMD-FMT
 
 
 ##### `(io-sprintf FMT ...ARGS)`
@@ -1305,11 +1305,12 @@ ARGS = arguments references by CMD-FMT
 
 Format a string, similarly to vsprintf, but with the following format
 sequences supported:
-   `%s` : the argument is output literally
-   `%A` : the argument is quoted for a POSIX shell
-   `%V` : the argument is treated as a vector of strings, each to be
-          quoted as an argument to a POSIX shell
-   `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`.
+
+ - `%s` : the argument is output literally \
+ - `%A` : the argument is quoted for a POSIX shell \
+ - `%V` : the argument is treated as a vector of strings, each to be
+          quoted as an argument to a POSIX shell \
+ - `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`. \
 
 
 ##### `(mkdir-p DIR)`
@@ -1352,7 +1353,7 @@ Return the exit status and output.  The output is returned unmolested,
 except that NUL bytes may result in truncated lines.
 
 STDIN = bytes to provide as input to the command.  If nil, /dev/null is
-   supplied.  The size of STDIN may be limited by the maximum command size.
+   supplied.  The size of STDIN may be limited by the maximum command size.\
 FMT ...ARGS = arguments passed to `io-vsprintf` to construct the command.
 
 Result = [STATUS STDOUT STDERR]
@@ -1401,8 +1402,8 @@ string, do the following:
 
     (concat-vec RESULT "\n")
 
-CMD-FMT = format string as per `io-vsprintf`
-ARGS = arguments references by CMD-FMT
+CMD-FMT = format string as per `io-vsprintf` \
+ARGS = arguments for CMD-FMT
 
 Note: Zero bytes in the output may result in truncated lines.
 
@@ -1922,7 +1923,8 @@ Return the value of native variable VAR-NAME.
 ##### `(native-var VAR-NAME)`
 
 Evaluate a GNU Make variable.  Unlike `value`, native-var will trigger
-expansion of recursive variables.
+expansion of recursive variables.  This compiles to `$(VAR-NAME)`.  Note:
+VAR-NAME may not contain literal balanced parentheses.
 
 
 ##### `(set-native VAR-NAME VALUE ?RETVAL)`
