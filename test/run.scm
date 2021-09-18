@@ -172,6 +172,13 @@
 ;; Regression tests
 ;;--------------------------------
 
+
+;; whitespace in final IBlock expression
+
+(expect " a " (begin 1 " a "))
+
+ ;; lexical scoping with foreach
+
 (begin
   (define `(id x) (foreach (v 1) x))
   (expect [1 2 3] (foreach (v [1 2 3]) (id v))))

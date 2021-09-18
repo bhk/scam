@@ -265,7 +265,8 @@
 ;; Block: evaluate all nodes and return value of last node
 (define (c1-Block nodes)
   (if (word 2 nodes)
-      (.. "$(and " (c1-vec nodes "1," (native-name c1-arg)) ")")
+      (.. "$(and " (c1-vec (butlast nodes) "1," (native-name c1-arg))
+          "1," (c1-arg-trim (last nodes)) ")")
       (if nodes
           (c1 (first nodes)))))
 
