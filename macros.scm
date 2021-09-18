@@ -363,7 +363,7 @@
   (append (depth-marker new-depth) env))
 
 
-(define (c0-for2 env bindings depth sym tmpl body body-x where)
+(define (c0-for2 env bindings depth sym tmpl body out-x where)
   (define `[target list] tmpl)
   (define `has-list (word 2 tmpl))
   (define `body-or-list (if has-list "BODY" (filter "VEC LIST" where)))
@@ -374,7 +374,7 @@
 
   (if bindings
       (if body
-          (for-node depth (c0 list env) (body-x (c0-block body env-in)))
+          (for-node depth (c0 list env) (out-x (c0-block body env-in)))
           (err-expected "" nil sym body-or-list where))
       (err-expected "S" target sym "TARGET" where)))
 
@@ -384,27 +384,28 @@
 ;; SYM = `for | `foreach | ...
 ;; TMPL = [TARGET LIST ?DELIM]
 ;; BODY = [...EXPR]
-;; WORD-X = function to apply to IL of each word prior to bindings
-;; BODY-X = function to apply to IL of `foreach` result
+;; IN-X = function to apply to IL of the `foreach` variable (prior to the
+;;        evaluation of the body)
+;; OUT-X = function to apply to IL of the result of the body (for each item)
 ;;
 ;; The result is summarized informally as:
 ;;
-;;   (foreach *word* LIST (let ((TARGET (WORD-X *word*))) (BODY-X BODY)))
+;;   (foreach *word* LIST (let ((TARGET (IN-X *word*))) (OUT-X BODY)))
 ;;
-(define `(c0-for env sym tmpl body word-x body-x where)
+(define `(c0-for env sym tmpl body in-x out-x where)
   (define `[target] tmpl)
 
   (if tmpl
       (foreach (depth (.. (current-depth env) ";"))
         (define `bindings
-          (bind-target target "p" depth (word-x (for-arg depth))))
-        (c0-for2 env bindings depth sym tmpl body body-x where))
+          (bind-target target "p" depth (in-x (for-arg depth))))
+        (c0-for2 env bindings depth sym tmpl body out-x where))
       (err-expected "S" nil sym "TARGET" where)))
 
 
 ;; For old-style syntax
-(define `(c0-for-old env sym args word-x body-x where)
-  (c0-for env sym (wordlist 1 2 args) (nth-rest 3 args) word-x body-x where))
+(define `(c0-for-old env sym args in-x out-x where)
+  (c0-for env sym (wordlist 1 2 args) (nth-rest 3 args) in-x out-x where))
 
 
 (define (M.for env sym args)
@@ -445,46 +446,42 @@
 ;; without corrupting the rest of the result or the delimiter itself,
 ;; and with minimal overhead.
 ;;
-;; We do this by encoding the result of each iteration with (subst "~" "~~x"
-;; ...), and then use "~x~x" as a marker for the end of each element.  (It
-;; cannot appear within encoded text.)  After `foreach` completes, "~x~x "
-;; identifies gaps between elements (to be replaced with delim), and then
-;; all "~x" instances can be deleted, un-doing the encoding *and* removing
-;; the "~x~x" marker from the last word.
+;; In the result of each iteration, we encode "|~" with "||~~" and append
+;; "|~" to the end of each element.  After `foreach` completes, "|~<SPC>" is
+;; replaced with the (encoded) delimiter and then all "|~" instances are
+;; deleted, un-doing the encoding *and* removing any trailing "|~".
 
+(define (c0-cfor2 env sym tmpl body in-x where delim-value)
+  (define `(enc str)
+    (subst-in-il "|~" "||~~" str))
 
-(define (c0-cfor2 env sym tmpl body word-x where delim-value)
-  (define `(xenc node)
-    (subst-in-il "~" "~~x" node))
+  (define `(out-x node)
+    (IConcat [(enc node) (IString "|~")]))
 
-  (define `(xenc-each node)
-    (IConcat [(xenc node) (IString "~x~x")]))
+  (define `(dec eresult)
+    (subst-in-il "|~" nil
+                 (il-subst (IString "|~ ") (enc delim-value)
+                           eresult)))
 
-  (define `(xdec out delim)
-    (subst-in-il "~x" nil (il-subst (IString "~x~x ") (xenc delim) out)))
-
-  (define `(loop-result body-x)
+  (define `(loop-result out-x)
     ;; [TARGET LIST DELIM ...BODY]  ->  [TARGET LIST ...BODY]
-    (c0-for env sym tmpl body word-x body-x where))
+    (c0-for env sym tmpl body in-x out-x where))
 
-  (or (case (delim-value)
-        ((IString str)
-         (if (eq? str " ")
-             ;; Simple `foreach` is all we need
-             (loop-result identity))))
-
+  (if (eq? delim-value (IString " "))
+      ;; Simple `foreach` is all we need
+      (loop-result identity)
       ;; General case: apply xenc to words and xdec to result
-      (xdec (loop-result xenc-each) delim-value)))
+      (dec (loop-result out-x))))
 
 
 ;; Compile concat-for[each] expresions to to IFor.
 ;;
-(define (c0-cfor env sym tmpl body word-x where)
+(define (c0-cfor env sym tmpl body in-x where)
   (define `delim-value
     (if (word 3 tmpl)
         (c0 (nth 3 tmpl) env)
         (IString " ")))
-  (c0-cfor2 env sym tmpl body word-x where delim-value))
+  (c0-cfor2 env sym tmpl body in-x where delim-value))
 
 
 (define (M.concat-for env sym args)

@@ -143,8 +143,8 @@
 (expect (c0-ser "(foreach (z 1 \" \") z)" nil)
         "(.foreach ;,1,{;})")
 
-(expect (.. "(.subst ~x,,(.subst ~x~x ,(.subst ~,~~x,{G}),"
-            "(.foreach ;,1,(.subst ~,~~x,{;})~x~x)))")
+(expect (.. "(.subst |~,,(.subst |~ ,(.subst |~,||~~,{G}),"
+            "(.foreach ;,1,(.subst |~,||~~,{;})|~)))")
         (c0-ser "(foreach (z 1 g) z)" {g: (EVar "p" "G")}))
 
 (expect 1 (see "!(PError 2 'missing TARGET in (foreach (TARGET LIST ?DELIM) BODY)"
@@ -226,13 +226,13 @@
 
 
 ;; delim == IString   (that contains "~x")
-(expect (c0-ser "(concat-for (x \"a b\" \"~x\") x)" { d: (EVar "p" "D" ) })
-        (.. "(.subst ~x,,(.subst ~x~x ,~~xx,"
-            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))"))
+(expect (c0-ser "(concat-for (x \"a b\" \"|~\") x)" { d: (EVar "p" "D" ) })
+        (.. "(.subst |~,,(.subst |~ ,||~~,"
+            "(.foreach ;,a b,(.subst |~,||~~,(^u {;}))|~)))"))
 
 ;; general case
-(expect (.. "(.subst ~x,,(.subst ~x~x ,(.subst ~,~~x,{D}),"
-            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))")
+(expect (.. "(.subst |~,,(.subst |~ ,(.subst |~,||~~,{D}),"
+            "(.foreach ;,a b,(.subst |~,||~~,(^u {;}))|~)))")
         (c0-ser "(concat-for (x \"a b\" d) x)" { d: (EVar "p" "D") }))
 
 ;;--------------------------------
@@ -243,14 +243,9 @@
 (expect "(.foreach ;,a b,(^u {;}))"
         (c0-ser "(concat-for x \"a b\" \" \" x)" { d: (EVar "p" "D") }))
 
-;; delim == IString   (that contains "~x")
-(expect (.. "(.subst ~x,,(.subst ~x~x ,~~xx,"
-            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))")
-        (c0-ser "(concat-for x \"a b\" \"~x\" x)" { d: (EVar "p" "D" ) }))
-
 ;; general case
-(expect (.. "(.subst ~x,,(.subst ~x~x ,(.subst ~,~~x,{D}),"
-            "(.foreach ;,a b,(.subst ~,~~x,(^u {;}))~x~x)))")
+(expect (.. "(.subst |~,,(.subst |~ ,(.subst |~,||~~,{D}),"
+            "(.foreach ;,a b,(.subst |~,||~~,(^u {;}))|~)))")
         (c0-ser "(concat-for x \"a b\" d x)" { d: (EVar "p" "D") }))
 
 ;;--------------------------------
