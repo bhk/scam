@@ -197,7 +197,7 @@
 ;;
 ;; Interestingly, "#" characters must not be quoted.
 ;;
-(define (protect-expr str)
+(define `(protect-expr str)
   &public
   (replace-nl str))
 

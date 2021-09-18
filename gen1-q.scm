@@ -131,10 +131,17 @@
 
 ;; Block: a sequence of expressions
 
-(expect "$(and X1,$[)"
-        (c1 (IBlock [ (IString "X") (IString "(") ])))
+(expect "$(call ^set,v,x)"
+        (c1-void (ICall "^set" [ (IString "v") (IString "x") ])))
+(expect "$(if $(call ^set,v,x,$v),)"
+        (c1-void (ICall "^set" [ (IString "v") (IString "x") (IVar "v") ])))
+
 (expect "X"
         (c1 (IBlock [ (IString "X") ])))
+(expect "$(if $(shell ls),) x "
+        (c1 (IBlock [ (IString nil)
+                      (IBuiltin "shell" [(IString "ls")])
+                      (IString " x ") ])))
 
 
 ;; Lambda: construct an anonymous function

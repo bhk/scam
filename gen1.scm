@@ -106,25 +106,26 @@
                             (crumb-decode (promote w)))))))
 
 
+(declare (c1 node))
+
+
 ;; Construct a node that expands NODE but returns nil.
 ;;
-(define `(voidify node)
-  (define `void-fns
-    "error eval info ^R ^at")
-  (if (case node
-        ((IBuiltin name args) (filter void-fns name))
-        ((ICall name args) (filter void-fns name))
-        ((ICrumb _ _) 1))
-      node
-      (IBuiltin "if" [node (IString "")])))
+(define (c1-void node)
+  (define `(use-if-void name args node)
+    (and (filter "error eval info ^R ^at ^set ^fset" name)
+         (if (filter "^set ^fset" name)
+             (not (word 3 args))
+             1)
+         node))
 
-
-(define `one-char-names
-  (._. "a b c d e f g h i j k l m n o p q r s t u v w x y z"
-       "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"))
-
-
-(declare (c1 node))
+  (c1 (or (case node
+            ((IBuiltin name args) (use-if-void name args node))
+            ((ICall name args) (use-if-void name args node))
+            ((IString _) (IString nil))
+            ((ICrumb _ _) (IString nil)))
+          (if node
+              (IBuiltin "if" [node (IString "")])))))
 
 
 ;; These nodes generate code with balanced parens and without leading or
@@ -264,11 +265,14 @@
 
 ;; Block: evaluate all nodes and return value of last node
 (define (c1-Block nodes)
-  (if (word 2 nodes)
-      (.. "$(and " (c1-vec (butlast nodes) "1," (native-name c1-arg))
-          "1," (c1-arg-trim (last nodes)) ")")
-      (if nodes
-          (c1 (first nodes)))))
+  (.. (concat-for (node (butlast nodes) nil)
+        (c1-void node))
+      (c1 (last nodes))))
+
+
+(define `one-char-names
+  (._. "a b c d e f g h i j k l m n o p q r s t u v w x y z"
+       "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"))
 
 
 (define (c1-Var name)
@@ -379,7 +383,7 @@
      ;; Compile block members as also in file scope
      ((IBlock nodes) (c1-file* nodes)))
 
-   (c1-file-expr (c1 (voidify node)))))
+   (c1-file-expr (c1-void node))))
 
 
 ;; Compile a vector of IL nodes.
