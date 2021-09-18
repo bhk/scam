@@ -58,11 +58,12 @@
 
 ;; Format a string, similarly to vsprintf, but with the following format
 ;; sequences supported:
-;;    `%s` : the argument is output literally
-;;    `%A` : the argument is quoted for a POSIX shell
-;;    `%V` : the argument is treated as a vector of strings, each to be
-;;           quoted as an argument to a POSIX shell
-;;    `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`.
+;;
+;;  - `%s` : the argument is output literally \
+;;  - `%A` : the argument is quoted for a POSIX shell \
+;;  - `%V` : the argument is treated as a vector of strings, each to be
+;;           quoted as an argument to a POSIX shell \
+;;  - `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`. \
 ;;
 (define (io-vsprintf fmt args)
   &public
@@ -113,8 +114,8 @@
 ;;
 ;;     (concat-vec RESULT "\n")
 ;;
-;; CMD-FMT = format string as per `io-vsprintf`
-;; ARGS = arguments references by CMD-FMT
+;; CMD-FMT = format string as per `io-vsprintf` \
+;; ARGS = arguments for CMD-FMT
 ;;
 ;; Note: Zero bytes in the output may result in truncated lines.
 ;;
@@ -125,8 +126,8 @@
 
 ;; Execute command, capturing STDERR and STDOUT, return exit code
 ;;
-;; CMD-FMT = format string as per `io-vsprintf`
-;; ARGS = arguments references by CMD-FMT
+;; CMD-FMT = format string as per `io-vsprintf` \
+;; ARGS = arguments for CMD-FMT
 ;;
 ;; Result = [CODE LINES...]
 ;;
@@ -140,7 +141,7 @@
 ;; except that NUL bytes may result in truncated lines.
 ;;
 ;; STDIN = bytes to provide as input to the command.  If nil, /dev/null is
-;;    supplied.  The size of STDIN may be limited by the maximum command size.
+;;    supplied.  The size of STDIN may be limited by the maximum command size.\
 ;; FMT ...ARGS = arguments passed to `io-vsprintf` to construct the command.
 ;;
 ;; Result = [STATUS STDOUT STDERR]
@@ -432,8 +433,8 @@
 ;; Execute shell command, hash what it writes to `stdout`, and return the
 ;; hash.
 ;;
-;; CMD-FMT = format string as per `io-vsprintf`
-;; ARGS = arguments references by CMD-FMT
+;; CMD-FMT = format string as per `io-vsprintf` \
+;; ARGS = arguments for CMD-FMT
 ;;
 (define (hash-output cmd-fmt ...args)
   &public
