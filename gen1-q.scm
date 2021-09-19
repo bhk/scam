@@ -164,7 +164,7 @@
 (expect "x := $  $` \n"
         (c1-file-set "x" " $` " 1))
 
-(expect "x := \\#$'\\\n"
+(expect "x := \\#$'\\\\#\n"
         (c1-file-set "x" "#\n\\" 1))
 
 (expect "x$\" := \\#\n"

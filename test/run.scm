@@ -46,10 +46,10 @@
 
 ;; compile-time escaping
 
-(define v0 &native "$a$$a$$$a\\\\n")
-(expect v0 "$a$$a$$$a\\\\n")
+(define v0 "$a$$a$$$a#\\#\\\\#\\\\n")
+(expect v0 "$a$$a$$$a#\\#\\\\#\\\\n")
 
-(define v1 &native " $a $$a $$$a \\\\n\n ")
+(define v1 " $a $$a $$$a \\\\n\n ")
 (expect v1 " $a $$a $$$a \\\\n\n ")
 
 (define (f0) &native nil)
@@ -172,6 +172,10 @@
 ;; Regression tests
 ;;--------------------------------
 
+;; "\\" in file syntax
+
+(define rhs-0 "\\")
+(expect rhs-0 "\\")
 
 ;; whitespace in final IBlock expression
 

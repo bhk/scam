@@ -36,15 +36,22 @@
 
 ;; ^set
 
-(set-native ".v" "$$")
-(expect (native-value ".v") "$$")
-(expect (native-call ".v") "$$")
+(define `(test-set value)
+  (set-native ".v" value)
+  (expect (native-value ".v") value)
+  (expect (native-var ".v") value))
+(test-set "a$b$$b\\#")
+(test-set "\\")
+(test-set "\\\\")
 
 ;; ^fset
 
-(set-native-fn ".f" "$$")
-(expect (native-value ".f") "$$")
-(expect (native-call ".f") "$")
+(define `(test-fset code value)
+  (set-native ".v" value)
+  (expect (native-call ".v" "A" "B") value))
+(test-fset "$1$$\\#" "A$\\#")
+(test-fset "\\" "\\")
+(test-fset "\\\\" "\\\\")
 
 ;; ...
 

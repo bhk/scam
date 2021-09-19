@@ -46,21 +46,6 @@
   (subst "$" "$`" str))
 
 
-;; Double all backslash characters preceding "!D", and then remove "!D"
-(define (protect-hash2 str)
-  (if (findstring "\\.#" str)
-      (protect-hash2 (subst "\\.#" ".#\\\\" str))
-    (subst ".#" "" str)))
-
-
-;; Quote hash ("#") characters with backslash:
-;;    #  -->    \#
-;;   \#  -->  \\\#
-(define (quote-hash str)
-  (if (findstring "#" str)
-      (protect-hash2 (subst "#" ".#\\#" str))
-    str))
-
 (define `(replace-nl str)
   (subst "\n" "$'" str))
 
@@ -224,15 +209,42 @@
               "X"))))
 
 
+;; Double all backslash characters immediately preceding ".#", and then
+;; remove all ".#".
+;;
+(define (double-bs str)
+  (if (findstring "\\.#" str)
+      (double-bs (subst "\\.#" ".#\\\\" str))
+    (subst ".#" "" str)))
+
+
 ;; Escape RHS of "=" or ":=" assignment
 ;;
-;;  - escape "#" with backslashes
+;;  - escape literal "#" with backslashes
+;;  - protect trailing "\" with a "#" comment to avoid [1]
+;;  - double backslashes immediately preceding comment or \#
 ;;  - protect leading space
 ;;  - encode newlines
 ;;
+;; [1]: Make has quirky handling of one or more \ at the end of a line:
+;;        0 --> 0;   1 --> 0;  2 --> 2;  3 --> 1 + space;  4 --> 4
+;;
 (define (protect-rhs str)
   &public
-  (quote-hash (protect-ltrim (replace-nl str))))
+  (define `str-esc
+    (subst "#" ".#\\#" str))
+
+  (define `str-bs
+    ;; Assert: ".#.#" cannot appear within str-esc
+    (subst "\\.#.#" ".#\\\\#" (.. str-esc ".#.#")))
+
+  (define `hash-bs
+    (if (or (findstring "#" str)
+            (findstring "\\" str))
+        (double-bs str-bs)
+        str))
+
+  (protect-ltrim (replace-nl hash-bs)))
 
 
 ;; Escape body of "define ... endef" statement
