@@ -61,7 +61,8 @@
 
 
 ;; Evaluate a GNU Make variable.  Unlike `value`, native-var will trigger
-;; expansion of recursive variables.
+;; expansion of recursive variables.  This compiles to `$(VAR-NAME)`.  Note:
+;; VAR-NAME may not contain literal balanced parentheses.
 ;;
 (declare (native-var var-name) &public)
 
