@@ -46,6 +46,64 @@ an overflow.  SCAM can compute `(^ 2 1024)` exactly, and an arbitrary number
 of digits for even `(pow 2 (pow 2 1024))`.
 
 
+## Make Quirks
+
+### Trailing "\" in RHS of "="/":=" assignment
+
+When we have:
+
+   $(eval VAR := <N-BACKSLASHES><SUFFIX>)
+
+... the resulting value of $(VAR) is:
+
+      N=...   0    1     2      3       4        5         6
+SUFFIX="":    ""   "\"   "\\"   "\\\"   "\\\\"   "\\\\\"   "\\\\\\"
+SUFFIX="x":   "x"  "\x"  "\\x"  "\\\x"  "\\\\x"  "\\\\\x"  "\\\\\\x"
+SUFFIX="#":   ""   "#"   "\"    "\#"    "\\"     "\\#"     "\\\"
+SUFFIX="\n":  ""   ""    "\\"   "\ "    "\\\\"   "\\ "     "\\\\\\"  <-???
+
+The "\n" SUFFIX corresponds to the usual case when reading makefiles.  The
+"" case is encountered only in $(eval ...), or maybe at the end of a file?
+
+
+### "=" in variable names
+
+Variable names containing "=" disappear into a black hole.
+
+    EQ := =
+    a$(EQ)b := 1
+    $(info $(a$(EQ)b))                  -->  ""
+    $(info $(filter a%,$(.VARIABLES)))  -->  ""
+
+
+### ")" in variable names
+
+When scanning variable names, Make 3.81 skips over "$(...)" but does not
+skip "(...)" when it does not follow "$".  This can be particularly
+confusing because when scanning the expression that *encloses* the variable
+reference, Make *does* skip "(...)".
+
+    $(info $(a(b)c))  => value of variable "a(b" and literal "c)"
+
+The following shows the actual value of "a(b)c":
+
+   [ = (
+   ] = )
+   $(info $(a$[b$]c))
+
+
+### ")" in function names
+
+Within `$(call NAME,...)`, Make 3.81 seems to scan the function name again,
+stopping at any ")" in the function name, even if it is obtained via a
+variable reference.  So, while `$(a$[b$]c)` will work, `$(call a$[b$]c)`
+will not -- it will expand the variable "a(b", wherein $0 expands to
+"a(b)c".
+
+This suggests that `call` was implemented as "setup_local_vars;
+construct_fake_var; expand_var".
+
+
 ## Building SCAM with SCAM
 
 When the SCAM compiler builds *any* SCAM program, it translates a source
