@@ -340,7 +340,7 @@
 
 ;; macro defined in ".;;" and expanded at ".;;" with an arg (IArg ";;" ".")
 ;;   (lambda (_)
-;;     (foreach a XXX
+;;     (foreach (a XXX)
 ;;        (define `(cm x) a)
 ;;        (cm 1)))
 ;;

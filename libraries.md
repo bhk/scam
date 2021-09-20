@@ -594,10 +594,10 @@ Add SUFFIX to the end of each word in LIST.
 values of BODY.  This is functionally similar to what is called `concat-map`
 in some other languages.
 
-    > (append-for x [[1 2] [3 4]]
+    > (append-for (x [[1 2] [3 4]])
     +     x)
     "1 2 3 4"
-    > (append-for x [7 1 5 3]
+    > (append-for (x [7 1 5 3])
     +    (if (> x 3) [x]))
     "7 5"
 

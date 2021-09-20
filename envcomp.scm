@@ -65,11 +65,11 @@
 ;; string to some other value (e.g its value before prior substitutions).
 ;;
 (define (rank-freqs subs env ?map)
-  (for e (freqs subs env)
-       (printf "%s %s \"%s\""
-               (nth 1 e)
-               (nth 2 e)
-               (dict-get (nth 3 e) map (nth 3 e)))))
+  (for (e (freqs subs env))
+    (printf "%s %s \"%s\""
+            (nth 1 e)
+            (nth 2 e)
+            (dict-get (nth 3 e) map (nth 3 e)))))
 
 
 ;; Compress target by replacing each string in SUBS with a string in CHARS.
@@ -82,7 +82,8 @@
 
   (if from-strings
       (reduce-string (reduce target)
-                     (for s (rest from-strings) (reduce s))
+                     (for (s (rest from-strings))
+                       (reduce s))
                      (rest to-strings))
       target))
 
@@ -94,8 +95,8 @@
 ;; also applies to subsequent strings in FROM_STRINGS.
 ;;
 (define (reduce-strings subs from-strings to-strings)
-  (for s subs
-       (reduce-string s from-strings to-strings)))
+  (for (s subs)
+    (reduce-string s from-strings to-strings)))
 
 
 (define (compare-size label original new extra)
@@ -110,7 +111,7 @@
 
   (if subs
       (append [from to]
-              (compile-subs (for s (rest subs)
+              (compile-subs (for (s (rest subs))
                                  (subst from to s))
                             (rest subchars)))))
 
@@ -175,8 +176,8 @@
              (concat-vec (patsubst ["# Exports: %"] "%"
                                    export-lines) "\n")))
     (strip
-     (foreach line export-lines
-              (env-parse line nil)))))
+     (foreach (line export-lines)
+       (env-parse line nil)))))
 
 (define scam-tenv (tokenize-key scam-env))
 
@@ -304,7 +305,8 @@
 
 ;; (printf "best-chars: (%s)  %q " (words best-chars) best-chars)
 ;; Display actual number of occurrences:
-(foreach c best-chars (printf "'%s' x %s" c (count c scam-tenv)))
+(foreach (c best-chars)
+  (printf "'%s' x %s" c (count c scam-tenv)))
 
 
 ;;

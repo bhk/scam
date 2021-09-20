@@ -127,12 +127,6 @@
 (expect "3" (c0-ser "(let& ((a 1) (b 2) (a 3)) a)"))
 (expect "(^n 2,x y z)" (c0-ser "(let& (([a b] \"x y z\")) b)"))
 
-;; capture in sym macro value
-(c0-ser "(foreach n 1 (let& ((m n)) (.. m (lambda () m))))"
-        "(.foreach \"0,1,{\"0}`{.n\"0})")
-(c0-ser "(let& ((m (foreach n,1,n))) (.. m (lambda () m))))"
-        "(.foreach \"0,1,{\"0})`(.foreach \"0,1,{\"0})")
-
 ;;--------------------------------
 ;; (foreach (VAR LIST DELIM?) BODY)
 ;;--------------------------------

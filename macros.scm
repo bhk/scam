@@ -928,7 +928,7 @@
    ((and (not filter-args-ovr)
          (eval-only-once? value))
     ;; Prevent multiple evaluation of a complex expression: wrap in
-    ;; "(foreach X (to-word EXPR) ...)"
+    ;; "(foreach (X (to-word EXPR)) ...)"
     (define `f-depth (.. depth ";"))
     (define `f-arg (for-arg f-depth))
     (define `f-value (il-promote f-arg))

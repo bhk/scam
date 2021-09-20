@@ -23,7 +23,7 @@
 ;; PLACE is the decimal place of the least siginificant digit (e.g. -16).
 ;;
 (define `(arctanh-seq x-in place)
-  (foreach x x-in
+  (foreach (x x-in)
     (atanh-loop x (*~ x x place) 1 place 0)))
 
 
@@ -67,7 +67,8 @@
   (strip (m-powers-loop scale-m (* 10 scale-max))))
 
 (define m-powers-r
-  (foreach x m-powers (/ scale-max x 4)))
+  (foreach (x m-powers)
+    (/ scale-max x 4)))
 
 
 ;; X = a number

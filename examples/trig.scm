@@ -135,11 +135,10 @@
 ;; Call approximating function after validating digits-in.
 ;;
 (define (appx fn x digits-in)
-  (foreach
-      loop-digits (+ 2 (or digits-in 16))
-      (or (filter "NaN" loop-digits)
-          (round (fn x (.. "-" loop-digits))
-                 (.. "-" (or digits-in 16))))))
+  (foreach (loop-digits (+ 2 (or digits-in 16)))
+    (or (filter "NaN" loop-digits)
+        (round (fn x (.. "-" loop-digits))
+               (.. "-" (or digits-in 16))))))
 
 
 (define (sin x ?digits)

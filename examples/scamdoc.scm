@@ -97,10 +97,10 @@
   ;; Distinguish line endings, remove comments in non-comment lines, convert
   ;; spaces to "!s" in non-comment lines.
   (define `b
-    (foreach line a
-             (if (filter ";%" line)
-                 (.. line "!.")
-                 (word 1 (subst ";" " " line)))))      ;;(subst "!0" "!s" ...)
+    (foreach (line a)
+      (if (filter ";%" line)
+          (.. line "!.")
+          (word 1 (subst ";" " " line)))))      ;;(subst "!0" "!s" ...)
 
   ;; Combine comment lines
   (define `c (subst "\n!. ;" "\n;" "!." nil b))
@@ -117,11 +117,10 @@
 
 (define (get-comment-text comments)
   (define `lines
-    (foreach
-        line (subst "\n" "\n " comments)
-        (patsubst [" %"] "%"
-                  (patsubst ";%" "%"
-                            (patsubst ";%" "%" line)))))
+    (foreach (line (subst "\n" "\n " comments))
+      (patsubst [" %"] "%"
+                (patsubst ";%" "%"
+                          (patsubst ";%" "%" line)))))
 
   ;; Trim trailing newlines to exactly one
   (if comments
@@ -150,17 +149,17 @@
   (declare comment-text)
 
   (strip
-   (foreach line (pre-process text)
-            (if (filter ";%" line)
-                (begin
-                  (set comment-text (get-comment-text line))
-                  (if (filter "# ## ###" (word 1 comment-text))
-                      (set comment-text nil
-                           ;; and return...
-                           [ { text: comment-text } ])))
-                (set comment-text nil
-                     ;; and return...
-                     (get-export line comment-text))))))
+   (foreach (line (pre-process text))
+     (if (filter ";%" line)
+         (begin
+           (set comment-text (get-comment-text line))
+           (if (filter "# ## ###" (word 1 comment-text))
+               (set comment-text nil
+                    ;; and return...
+                    [ { text: comment-text } ])))
+         (set comment-text nil
+              ;; and return...
+              (get-export line comment-text))))))
 
 
 (define `test1
@@ -185,13 +184,12 @@
 
 (define (expand-template t funcs ...args)
   (define `vsubst
-    (foreach
-        w (subst "{" " {" "}" " " [t])
-        (if (filter "{%" w)
-            (begin
-              (define `fn (or (dict-get (subst "{" nil  w) funcs) "?"))
-              [(apply fn args)])
-            w)))
+    (foreach (w (subst "{" " {" "}" " " [t]))
+      (if (filter "{%" w)
+          (begin
+            (define `fn (or (dict-get (subst "{" nil  w) funcs) "?"))
+            [(apply fn args)])
+          w)))
   (promote (subst " " nil vsubst)))
 
 
