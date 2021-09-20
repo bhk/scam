@@ -348,8 +348,10 @@
 
 
 ;;--------------------------------
-;; (for TARGET VEC BODY)
-;; (append-for TARGET VEC BODY)
+;; (for (TARGET VEC) BODY)
+;; (append-for (TARGET VEC) BODY)
+;; (foreach (TARGET LIST ?DELIM) BODY)
+;; (concat-for (TARGET VEC ?DELIM) BODY)
 ;;--------------------------------
 
 
@@ -363,95 +365,32 @@
   (append (depth-marker new-depth) env))
 
 
-(define (c0-for2 env bindings depth sym tmpl body out-x where)
-  (define `[target list] tmpl)
-  (define `has-list (word 2 tmpl))
-  (define `body-or-list (if has-list "BODY" (filter "VEC LIST" where)))
-
+(define (c0-for3 env bindings depth list body out-x where)
   (define `env-in
     (._. bindings
          (for-env depth env)))
 
-  (if bindings
-      (if body
-          (for-node depth (c0 list env) (out-x (c0-block body env-in)))
-          (err-expected "" nil sym body-or-list where))
-      (err-expected "S" target sym "TARGET" where)))
+  (or (dict-get EnvErrorKey bindings)
+      (for-node depth (c0 list env) (out-x (c0-block body env-in)))))
 
 
-;; Compile to IFor.  Delimiter = " ".
-;;
-;; SYM = `for | `foreach | ...
-;; TMPL = [TARGET LIST ?DELIM]
-;; BODY = [...EXPR]
-;; IN-X = function to apply to IL of the `foreach` variable (prior to the
-;;        evaluation of the body)
-;; OUT-X = function to apply to IL of the result of the body (for each item)
-;;
-;; The result is summarized informally as:
-;;
-;;   (foreach *word* LIST (let ((TARGET (IN-X *word*))) (OUT-X BODY)))
-;;
-(define `(c0-for env sym tmpl body in-x out-x where)
-  (define `[target] tmpl)
-
-  (if tmpl
-      (foreach (depth (.. (current-depth env) ";"))
-        (define `bindings
-          (bind-target target "p" depth (in-x (for-arg depth))))
-        (c0-for2 env bindings depth sym tmpl body out-x where))
-      (err-expected "S" nil sym "TARGET" where)))
+(declare (c0-for2 env sym args in-x out-x where tmpl))
 
 
-;; For old-style syntax
-(define `(c0-for-old env sym args in-x out-x where)
-  (c0-for env sym (wordlist 1 2 args) (nth-rest 3 args) in-x out-x where))
+;; IFor (Make's foreach) always inserts a space between each resulting
+;; value.  When DELIM is present, we have to replace that space with the
+;; user-supplied delimiter after `foreach` completes, without replacing any
+;; spaces that occur within the individual values. For each value, we encode
+;; the result with "|~" with "||~~" and append "|~".  In the result of
+;; `foreach`, we replace "|~<SPC>" with the (encoded) delimiter and then
+;; delete all "|~" instances, un-doing the encoding *and* removing any
+;; trailing "|~".
 
+(define (c0-for-d env sym args in-x where tmpl delim-value)
+  ;; DELIM is specified and not " "
+  (define `use-delim
+    (filter-out [(IString " ")] [delim-value]))
 
-(define (M.for env sym args)
-  (case (first args)
-    ;; New syntax
-    ((PList _ tmpl)
-     (c0-for env sym tmpl (rest args) il-promote il-demote
-             "(for (TARGET VEC) BODY)"))
-
-    ;; Old syntax
-    (_  (c0-for-old env sym args il-promote il-demote
-                    "(for TARGET VEC BODY)"))))
-
-
-(define (M.append-for env sym args)
-  (define `for-value
-    (case (first args)
-      ;; New syntax
-      ((PList _ tmpl)
-       (c0-for env sym tmpl (rest args) il-promote identity
-               "(append-for (TARGET VEC) BODY)"))
-
-      ;; Old syntax
-      (_ (c0-for-old env sym args il-promote identity
-                     "(append-for TARGET VEC BODY)"))))
-
-  (IBuiltin "filter" [ (IString "%") for-value ]))
-
-
-;;--------------------------------
-;; (foreach (TARGET LIST ?DELIM) BODY)
-;; (concat-for (TARGET LIST ?DELIM) BODY)
-;;--------------------------------
-
-;; Since IFor (Make's foreach) always inserts a space between the result of
-;; each iteration, we have to replace that space with the user-supplied
-;; delimiter after `foreach` completes.  The complex part is doing this
-;; without corrupting the rest of the result or the delimiter itself,
-;; and with minimal overhead.
-;;
-;; In the result of each iteration, we encode "|~" with "||~~" and append
-;; "|~" to the end of each element.  After `foreach` completes, "|~<SPC>" is
-;; replaced with the (encoded) delimiter and then all "|~" instances are
-;; deleted, un-doing the encoding *and* removing any trailing "|~".
-
-(define (c0-cfor2 env sym tmpl body in-x where delim-value)
   (define `(enc str)
     (subst-in-il "|~" "||~~" str))
 
@@ -464,53 +403,85 @@
                            eresult)))
 
   (define `(loop-result out-x)
-    ;; [TARGET LIST DELIM ...BODY]  ->  [TARGET LIST ...BODY]
-    (c0-for env sym tmpl body in-x out-x where))
+    (c0-for2 env sym args in-x out-x where tmpl))
 
-  (if (eq? delim-value (IString " "))
-      ;; Simple `foreach` is all we need
-      (loop-result identity)
+  (if use-delim
       ;; General case: apply xenc to words and xdec to result
-      (dec (loop-result out-x))))
+      (dec (loop-result out-x))
+      ;; Simple `foreach` is all we need
+      (loop-result identity)))
 
 
-;; Compile concat-for[each] expresions to to IFor.
+;; TMPL = [TARGET LIST ?DELIM]
 ;;
-(define (c0-cfor env sym tmpl body in-x where)
-  (define `delim-value
-    (if (word 3 tmpl)
-        (c0 (nth 3 tmpl) env)
-        (IString " ")))
-  (c0-cfor2 env sym tmpl body in-x where delim-value))
+(define (c0-for2 env sym args in-x out-x where tmpl)
+  (define `[target list delim] tmpl)
+  (define `body (rest args))
+
+  (cond
+   ((not tmpl)
+    (err-expected "P" nil sym "TARGET" where))
+   ((not (word 2 tmpl))
+    (err-expected "%" nil sym (filter "VEC LIST" where) where))
+   ((not (word 2 args))
+    (err-expected "%" nil sym "BODY" where))
+   ((word 3 tmpl)
+    ;; DELIM is present
+    (if (findstring "DELIM" where)
+        (c0-for-d env sym args in-x where
+                  (wordlist 1 2 tmpl)
+                  (c0 delim env))
+        (gen-error (nth 3 tmpl) "extra form after VEC in %s" where)))
+
+   (else
+    (foreach (depth (.. (current-depth env) ";"))
+      (define `bindings
+        (bind-target target "p" depth (in-x (for-arg depth))))
+      (c0-for3 env bindings depth list body out-x where)))))
+
+
+;; Compile to IFor.
+;;
+;; SYM = `for | `foreach | ...
+;; IN-X = function to apply to IL of the `foreach` variable (prior to the
+;;        evaluation of the body)
+;; OUT-X = function to apply to IL of the result of the body (for each item)
+;;
+;; The result is summarized informally as:
+;;
+;;   (foreach *word* LIST
+;;     (let ((TARGET (IN-X *word*)))
+;;       (OUT-X BODY)))
+;;
+(define (c0-for env sym args in-x out-x where)
+  (case (first args)
+    ((PList _ tmpl)
+     (c0-for2 env sym args in-x out-x where tmpl))
+    (else
+     (err-expected "L" (first args) sym "(TARGET ...)" where))))
+
+
+(define (M.for env sym args)
+  (c0-for env sym args il-promote il-demote
+          "(for (TARGET VEC) BODY)"))
+
+
+(define (M.append-for env sym args)
+  (define `for-value
+    (c0-for env sym args il-promote identity
+            "(append-for (TARGET VEC) BODY)"))
+
+  (IBuiltin "filter" [ (IString "%") for-value ]))
 
 
 (define (M.concat-for env sym args)
-  (case (first args)
-    ;; New syntax
-    ((PList _ tmpl)
-     (c0-cfor env sym tmpl (rest args) il-promote
-              "(concat-for (TARGET VEC ?DELIM) BODY)"))
+  (c0-for env sym args il-promote identity
+           "(concat-for (TARGET VEC ?DELIM) BODY)"))
 
-    ;; Old syntax
-    (_ (begin
-         (define `tmpl (wordlist 1 3 args))
-         (define `body (nth-rest 4 args))
-         (c0-cfor env sym tmpl body il-promote
-                  "(concat-for TARGET VEC DELIM BODY)")))))
-
-
-;; (foreach TARGET LIST BODY)
-;; (foreach (TARGET LIST ?DELIM) BODY)
 
 (define (M.foreach env sym args)
-  (case (first args)
-    ;; New syntax
-    ((PList _ tmpl)
-     (c0-cfor env sym tmpl (rest args) identity
-              "(foreach (TARGET LIST ?DELIM) BODY)"))
-
-    ;; Old syntax
-    (_ (c0-for-old env sym args identity identity "(foreach TARGET LIST BODY)"))))
+  (c0-for env sym args identity identity
+           "(foreach (TARGET LIST ?DELIM) BODY)"))
 
 
 ;;--------------------------------
