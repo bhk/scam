@@ -404,23 +404,30 @@
 ;;
 (define (hash-files filenames)
   &public
-  ;; Limit the first word on each line (the hash) to 16 bytes
+  ;; Output is one line per file containing HASH and FILENAME seperated
+  ;; by one space (md5 -r) or two spaces (all others).
+  ;; Limit the first word on each line (the hash) to 16 bytes.
   (define `hash-out
     (shellf (.. "%s -- %V 2>/dev/null | "
                 "sed 's/\\(^................\\)[^ ]*/\\1/;"
                 "s/!/!1/g;s/ /!0/g;s/\t/!+/g'")
             (get-hash-cmd) filenames))
 
-  ;; Output is one line per file containing HASH and FILENAME seperated
-  ;; by one space (md5 -r) or two spaces (all others).
-  (foreach (delim (if (filter "s%" (get-hash-cmd))
-                      "!0!0"
-                      "!0"))
-    (foreach (dline hash-out)
-      (foreach (hash (word 1 (subst "!0" " " dline)))
-        (define `dfile
-          (patsubst (.. hash delim "%") "%" dline))
-        {(promote dfile): hash}))))
+  (define `hashes
+    (foreach (delim (if (filter "s%" (get-hash-cmd))
+                        "!0!0"
+                        "!0"))
+      (foreach (dline hash-out)
+        (foreach (hash (word 1 (subst "!0" " " dline)))
+          (define `dfile
+            (patsubst (.. hash delim "%") "%" dline))
+          {(promote dfile): hash}))))
+
+  ;; For each file missing from results, provide {=FILE: nil}.
+  (dict-compact (._. hashes
+                     (foreach (f filenames)
+                       {(promote f): nil}))))
+
 
 
 ;; Return the hash of one file (see `hash-files`).
