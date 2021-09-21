@@ -312,27 +312,17 @@ For example:
 Here is an overview of ways to manipulate vectors, and the analogous
 operations on word lists:
 
-    +--------------------+------------------------+-----------------------------+
-    | Operation          | Vectors                | Word Lists                  |
-    +====================+========================+=============================+
-    | Create             | `[A B C]`              | `(._. A B C)`               |
-    +--------------------+------------------------+-----------------------------+
-    | Get item N         | `(nth N VEC)`          | `(word N LIST)`             |
-    +--------------------+------------------------+-----------------------------+
-    | Get first item     | `(first VEC)`          | `(firstword LIST)`          |
-    +--------------------+------------------------+-----------------------------+
-    | Get last item      | `(last VEC)`           | `(lastword LIST)`           |
-    +--------------------+------------------------+-----------------------------+
-    | Add item to front  | `(cons ITEM VEC)`      | `(._. WORD LIST)`           |
-    +--------------------+------------------------+-----------------------------+
-    | Add item to back   | `(conj VEC ITEM)`      | `(._. LIST WORD)`           |
-    +--------------------+------------------------+-----------------------------+
-    | Append sequences   | `(append V1 V2...)`    | `(._. LIST1 LIST2)`         |
-    +--------------------+------------------------+-----------------------------+
-    | Count items        | `(words VEC)`          | `(words LIST)`              |
-    +--------------------+------------------------+-----------------------------+
-    | Get range          | `(wordlist A B VEC)`   | `(wordlist A B LIST)`       |
-    +--------------------+------------------------+-----------------------------+
+| Operation          | Vectors                | Word Lists              |
+| ------------------ | ---------------------- | ----------------------- |
+| Create             | `[A B C]`              | `(._. A B C)`           |
+| Get item N         | `(nth N VEC)`          | `(word N LIST)`         |
+| Get first item     | `(first VEC)`          | `(firstword LIST)`      |
+| Get last item      | `(last VEC)`           | `(lastword LIST)`       |
+| Add item to front  | `(cons ITEM VEC)`      | `(._. WORD LIST)`       |
+| Add item to back   | `(conj VEC ITEM)`      | `(._. LIST WORD)`       |
+| Append sequences   | `(append V1 V2...)`    | `(._. LIST1 LIST2)`     |
+| Count items        | `(words VEC)`          | `(words LIST)`          |
+| Get range          | `(wordlist A B VEC)`   | `(wordlist A B LIST)`   |
 
 
 ### Dictionaries
@@ -560,8 +550,8 @@ value.
     > (f 1 2 3 4 nil nil)
     [3 4]
 
-"Rest" parameters (`...NAME`) may appear only as the last of the formal
-parameter.  Optional `?NAME` parameters may not be followed by non-optional,
+"Rest" parameters (`...NAME`) may appear only at the end of the parameter
+list.  Optional `?NAME` parameters may not appear before non-optional,
 non-rest parameters.
 
 ## Variables
@@ -573,11 +563,11 @@ Global variables are defined by the `(define TARGET ...)` and `(define
 (TARGET ...ARGS) ...)` special forms.
 
 Local variables include function parameters and names defined with `let`,
-`let&`, for-expressions (`for`, `foreach`, `concat-for`, ...) and pattern
-matching expressions.  Local variables are immutable. They are assigned a
-value when initialized, and they cannot be assigned a different value.  The
-visibility and lifetime of a local variable is limited to the expression in
-which it is defined. See [`let`](libraries.md#let).
+for-expressions (`for`, `foreach`, `concat-for`, ...) and pattern matching
+expressions.  Local variables are immutable. They are assigned a value when
+initialized, and they cannot be assigned a different value.  The visibility
+and lifetime of a local variable is limited to the expression in which it is
+defined. See [`let`](libraries.md#let).
 
 Global variables are mutable and have unlimited lifetime.  They are visible to
 other SCAM modules, which means that if two modules in your program declare
@@ -601,24 +591,25 @@ SCAM has lexical scoping rules.  Variables names are valid expressions only
 when the variables declaration is in scope.  Variables are introduced into
 scope in one of the following ways:
 
- - A let expression -- `let`, `let&`, or `let-global` -- introduces names
-   whose scope extends to the end of the let expression.
+ - A `let` expression introduces names whose scope is the body of the let
+   expression.
 
  - Each function parameter appearing in an argument list -- in a function
    definition or in a `lambda` expression -- introduces a name whose scope
-   extends to the end of the function.
+   is the body of the function.
 
  - The `define` and `require` forms, when appearing in a **block** context,
-   introduce names whose scope extends to the end of the block.
+   introduce names whose scope extends from the next statement in the block
+   to the end of the block.
 
 A block is a sequence of expressions that are evaluated in order.  The
 values of these expressions are discarded except for the last expression,
 which supplies the value for the entire block.  The sequence of top-level
-expressions in a module are a block.  The sequence of expressions in a
-function body constitute a block.  Other expressions such as the `begin`
-special form contain blocks.  Lists of arguments passed to functions or
-macros are *not* blocks.  One argument cannot introduce a variable name for
-a subsequent expressions to use.
+expressions in a module are a block.  A sequence of expressions that forms
+the body of a function, macro, or let expression constitutes a block.  Other
+expressions such as the `begin` special form contain blocks.  Lists of
+arguments passed to functions or macros are *not* blocks.  One argument
+cannot introduce a variable name for a subsequent expressions to use.
 
 ### Destructuring
 
@@ -739,8 +730,8 @@ As a quick reference, here is an informal grammar that summarizes the above
 discussion on destructuring syntax and fills in a few details.  In this
 grammar, parentheses are used for grouping, a `,*` suffix indicates
 repetition of zero or more items with comma delimiters, a `?` suffix means
-the item may not appear, and a `*` suffix means zero or more repetitions of
-the item.
+the item may not appear, and a `*` suffix denotes zero or more repetitions
+of the item.
 
     Params       = Target*  OptName*  RestName?
     Target       = Name | VecTarget | PairTarget | FieldTarget
@@ -1048,12 +1039,13 @@ that case, the compiler can quickly identify how to recreate the program.
 In UNIX-based systems, SCAM source files may be marked as executable files
 and labeled with a hashbang (`#!`).  For example:
 
-    #!/usr/bin/env scam --quiet --
+    #!/usr/bin/env -S scam --quiet --
     (define (main argv)
       (print "Hello, world!"))
 
-The `--quiet` option ensures consistent behavior by suppressing the progress
-messages (to stderr) that would otherwise appear when compilation occurs.
+The `--quiet` option ensures consistent behavior by suppressing the
+compilation progress messages (written to stderr) that appear when a
+previous compilation result is not found in the cache.
 
 The `--` option ensures that remaining arguments are treated as the program
 name and program arguments, and are not interpreted as options by the SCAM

@@ -59,11 +59,11 @@
 ;; Format a string, similarly to vsprintf, but with the following format
 ;; sequences supported:
 ;;
-;;  - `%s` : the argument is output literally \
-;;  - `%A` : the argument is quoted for a POSIX shell \
+;;  - `%s` : the argument is output literally
+;;  - `%A` : the argument is quoted for a POSIX shell
 ;;  - `%V` : the argument is treated as a vector of strings, each to be
-;;           quoted as an argument to a POSIX shell \
-;;  - `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`. \
+;;           quoted as an argument to a POSIX shell
+;;  - `%F` : the argument is quoted for a POSIX shell using `quote-sh-file`.
 ;;
 (define (io-vsprintf fmt args)
   &public

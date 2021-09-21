@@ -68,7 +68,7 @@
   (promote (subst " " nil subj)))
 
 
-;; Construct PEG empty string.
+;; Construct a PEG empty string.
 ;;
 ;; Return a parsing function that always succeeds, consuming no symbols,
 ;; with captures CAPS.
@@ -173,7 +173,7 @@
         (Yes pos caps))))
 
 
-;; Construct PEG zero-or-more repetition.
+;; Construct a PEG zero-or-more repetition.
 ;;
 ;; Return a parsing function that will call PF sequentially until it fails,
 ;; and then succeed.  The resulting position will be what was returned by
@@ -187,7 +187,7 @@
     (match* subj pos pf nil)))
 
 
-;; Construct PEG negative lookahead.
+;; Construct a PEG negative lookahead.
 ;;
 ;; Return a parsing function that will succeed if PF fails and fail if PF
 ;; succeeds.
@@ -204,7 +204,7 @@
 ;; Derived operators
 ;;--------------------------------
 
-;; Construct PEG optional match.
+;; Construct a PEG optional match.
 ;;
 ;; Return a parsing function that will always succeed, returning PF's results
 ;; if PF succeeds, or returning the starting position and no captures
@@ -215,7 +215,7 @@
   (peg-or pf (peg-empty)))
 
 
-;; Construct PEG positive lookahead.
+;; Construct a PEG positive lookahead.
 ;;
 ;; Return a parsing function that will succeed if PF succeeds, but which
 ;; will not consume any symbols or produce any captures.
@@ -228,7 +228,7 @@
         (Yes pos nil))))
 
 
-;; Construct PEG one-or-more repetition.
+;; Construct a PEG one-or-more repetition.
 ;;
 ;; See `peg-*`.
 ;;
@@ -242,7 +242,7 @@
 ;;--------------------------------
 
 
-;; Construct symbol capture.
+;; Construct a symbol capture.
 ;;
 ;; Return a parsing function that succeeds when PF succeeds, and on success,
 ;; adds to the set of captures a dictionary pair whose key is NAME and whose

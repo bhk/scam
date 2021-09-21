@@ -36,7 +36,7 @@
 ;;
 ;; ## Sessions
 ;;
-;; Memoized functions must be called within the context of a **session*.
+;; Memoized functions must be called within the context of a **session**.
 ;; The `memo-on` function initiates a **session**, evaluates a given
 ;; expression within the context of that session, and then terminates the
 ;; session.  (If called during a session, `memo-on` is a no-op.)  At the
@@ -143,8 +143,11 @@
       value)))
 
 
-;; Discard memoization results from the current session, preventing them
-;; from being persisted.
+;; Discard the result of the currently-being-evaluated memoized function,
+;; preventing it from being persisted.  This is appropriate in the event of
+;; an error or any other case that has resulted in, or will result in,
+;; un-logged or un-replayable IO, or when the cost of logging of further IO
+;; activity and results will probably exceed the benefit.
 ;;
 (define (memo-drop)
   &public
@@ -313,8 +316,8 @@
 
 
 ;; Evaluate EXPR with memoization initialized.  If a session is not active,
-;; begin one using DBFILE as the database.  DBFILE will be evaluated only
-;; when a session is initiated.
+;; begin one using DBFILE as the database.  If a session is already in
+;; progress, that session will be used and DBFILE will be ignored.
 ;;
 (define `(memo-on dbfile expr)
   &public

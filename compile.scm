@@ -721,7 +721,7 @@
 ;; EXE-FILE = name of an executable file to create.\
 ;; ARGV = a vector to pass to the program's `main` function\
 ;; BUILD-DIR = nil, or the [object directory](#object-directory)\
-;; IS-QUIET = non-nil to suppress progress messages.
+;; IS-QUIET = non-nil to suppress compilation progress messages
 ;;
 ;; On success, return `nil`.\
 ;; On failure, display message and return 1.
@@ -745,7 +745,7 @@
 ;; SRC-FILE = name of the SCAM source file\
 ;; ARGV = a vector to pass to the program's `main` function\
 ;; BUILD-DIR = nil, or the [object directory](#object-directory)\
-;; IS-QUIET = non-nil to suppress progress messages.
+;; IS-QUIET = non-nil to suppress compilation progress messages
 ;;
 ;; On success, return `nil`.\
 ;; On failure, display message and return 1.
@@ -768,7 +768,7 @@
 ;;    at the outset.  If nil, SCAM's default environment will be used.
 ;;    Otherwise, it must be a previously returned ENV-OUT value.\
 ;; BUILD-DIR = nil, or the [object directory](#object-directory).\
-;; IS-QUIET = non-nil to suppress progress messages.
+;; IS-QUIET = non-nil to suppress compilation progress messages
 ;;
 ;; Result = `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
 ;;

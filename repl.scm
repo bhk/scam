@@ -204,7 +204,7 @@
 ;;
 ;; TEXT = SCAM source text containing zero or more expressions.\
 ;; BUILD-DIR = [build directory](#build-directory); `nil` for default.\
-;; IS-QUIET = When non-nil, suppresses compilation progress messaged.\
+;; IS-QUIET = non-nil to suppress compilation progress messages
 ;;
 ;; Result = non-nil on error.
 ;;
