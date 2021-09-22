@@ -663,26 +663,20 @@
                (memo-chmod-file exe-file "+x"))))
 
 
-;; Link and run a test module.
+;; Run a compiled SCAM module.  This function is not generally memoizable
+;; because it does not track the I/O of the module itself.
+;;
 ;; On success, return `nil`.
 ;; On failure, return 1.
 ;;
-(define (run src argv show-status)
+(define (run src argv)
   (define `mod (modid-from-source src))
-
-  (if show-status
-      (build-message "run" src))
-
-  ;; This will read mod and its descendants, marking them as
-  ;; dependencies; we don't need to track other IO.
-  (modid-deps-all mod)
 
   (define `runner
     (if *is-boot*
         (modid-object "runtime")
         (firstword (native-var "MAKEFILE_LIST"))))
 
-  ;; (native-value "MAKE") does not seem to provide the actual value
   (declare MAKE &native)
 
   (define `scam-main
@@ -692,12 +686,31 @@
     (if *is-boot*
         *obj-dir*))
 
-  (define `run
+  (define `out
     (shellf (.. "SCAM_ARGS=%A %s -Rr --no-print-directory -f%A SCAM_MAIN=%A "
                 "SCAM_TMP=%A SCAM_DIR=%A 1>&9 ; echo \" $?\"")
             argv MAKE runner scam-main *obj-dir* scam-dir))
 
-  (drop-if (filter-out 0 (lastword run))))
+  (filter-out 0 (lastword out)))
+
+
+;; Run a compiled SCAM test module.  This function is memoizable, because we
+;; assume (boldly?) that the result of a test is purely dependent on the
+;; modules that are executed, and because we track indirect module
+;; dependencies.
+;;
+;; On success, return `nil`.
+;; On failure, return 1.
+;;
+(define (run-test src)
+  (define `mod (modid-from-source src))
+
+  ;; This will read mod and its descendants, logging them as dependencies.
+  (modid-deps-all mod)
+
+  (build-message "run" src)
+
+  (drop-if (run src nil)))
 
 
 ;; Compile a module and test it.
@@ -711,7 +724,7 @@
       ;; Does a test file exist?
       (and (memo-hash-file test-src)
            (or (m-compile-module test-src)
-               (if (memo-call (native-name run) test-src nil 1)
+               (if (memo-call (native-name run-test) test-src)
                    (bail-if (.. test-src " failed")))))))
 
 
@@ -755,7 +768,7 @@
   (compile-memo-on
    build-dir is-quiet
    (or (m-compile-and-maybe-test-module src-file nil)
-       (run src-file argv nil))))
+       (run src-file argv))))
 
 
 ;; Compile SCAM source code to a function.
