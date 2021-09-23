@@ -38,7 +38,7 @@ Options:
   1)
 
 
-(define `version "3.0.0a")
+(define `version "3.0")
 
 
 (define (main argv)
