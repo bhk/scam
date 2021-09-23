@@ -337,19 +337,16 @@
   (define `path-dirs
     (addsuffix "/" (filter-out [""] (split ":" (native-var "SCAM_LIBPATH")))))
 
+  (define `paths
+    (for (dir (cons base-dir path-dirs))
+      (resolve-path dir name)))
+
   (vec-or
-   (for (dir (cons base-dir path-dirs))
-     (file-exists? (resolve-path dir name)))))
-
-
-;; locate-source is safe to memoize because:
-;;  1. results will not change during a program invocation.
-;;  2. it does not call memo-io or memo-call
-;;(memoize (native-name locate-source))
-
-
-(define (m-locate-source base name)
-  (memo-io (native-name locate-source) base name))
+   (for (path paths)
+     ;; use `memo-hash-file`, not `file-exists?`, because it's faster for
+     ;; incremental builds (leveraging the hash cache)
+     (if (memo-hash-file path)
+         path))))
 
 
 ;; Skip initial comment lines, retaining comment lines that match
@@ -463,7 +460,7 @@
 (define (get-module name base private)
   (define `mod
     (if (filter "%.scm" [name])
-        (get-source-module name private (m-locate-source (path-dir base) name))
+        (get-source-module name private (locate-source (path-dir base) name))
         (get-builtin-module name)))
 
   (let ((mod mod))
