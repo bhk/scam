@@ -335,7 +335,7 @@
 ;;
 (define (locate-source base-dir name)
   (define `path-dirs
-    (addsuffix "/" (split ":" (native-var "SCAM_LIBPATH"))))
+    (addsuffix "/" (filter-out [""] (split ":" (native-var "SCAM_LIBPATH")))))
 
   (vec-or
    (for (dir (cons base-dir path-dirs))
