@@ -745,19 +745,19 @@ of the item.
 
 Here is a list of the forms in SCAM that introduce bindings:
 
-     (lambda (Params) Body)
-     (define (Name Params) Body)
-     (define `(Name Params) Body)
-     (define Target Value)
-     (define `Target Value)
-     (let ((Target Value)...) Body)
-     (let& ((Target Value)...) Body)
-     (let-global ((Target Value)...) Body)
-     (for (Target List) Body)
-     (foreach (Target List) Body)
-     (append-for (Target Value) Body)
-     (concat-for (Target Value) Body)
-     (case REC (Pattern/Target Body) ...)
+     (lambda (PARAMS) BODY)
+     (define (NAME PARAMS) BODY)
+     (define `(NAME PARAMS) BODY)
+     (define TARGET VALUE)
+     (define `TARGET VALUE)
+     (let ((TARGET VALUE)...) BODY)
+     (let& ((TARGET VALUE)...) BODY)
+     (let-global ((TARGET VALUE)...) BODY)
+     (for (TARGET LIST) BODY)
+     (foreach (TARGET LIST ?DELIM) BODY)
+     (append-for (TARGET VALUE) BODY)
+     (concat-for (TARGET VALUE ?DELIM) BODY)
+     (case REC (PATTERN/TARGET BODY) ...)
 
 Note that `case` clauses accept either "patterns" or targets.  A pattern
 takes the form of a record constructor and it performs destructuring like
