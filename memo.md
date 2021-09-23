@@ -1,69 +1,92 @@
 # memo.scm
 
-The `memo` module supports memoization.  The source file contains API
-documentation.  This document describes the theory of operation, and
-introduces some terminology, concepts, and implications that programmers
-should be aware of when using memo.scm.
+The `memo` module implements persistent memoization.  Memoization caches the
+results of function calls to avoid re-computing them.  "Persistent" means
+that results are available not just during the invocation of a program, but
+during future invocations as well.  Also, persistent memoization can be
+applied to functions that perform IO.  SCAM uses persistent memoization to
+rebuild SCAM programs accurately and efficiently.  [The `memo` module
+functionality is not to be confused with the `memoize` function in the
+`core` library.]
 
+The `memo.scm` source file contains API documentation.  This document
+describes the theory of operation, and introduces some terminology,
+concepts, and implications that programmers should be aware of when using
+this module.
 
-### Wrapping a function call or expression.
+## Wrapping
 
 In order to utilize memoization, the programmer must identify what
-procedures are to be memoized and "wrap" all calls to them.  For example, we
-can replace:
+procedures are to be memoized and "wrap" all calls to them.  For example, to
+wrap the following function call:
 
     (foo a b c)
 
-... with:
+... we replace it with:
 
-    (memo-apply (native-name foo) [a b c])
+    (memo-call (native-name foo) a b c)
 
-We say that a function call is "memoized" when calls to it are made through
-a caching wrapper (e.g. memo-apply or memo-call).
+We say that a function call is "memoized" when calls to it are wrapped.
 
 Memoization of a function call is *valid* when the memoized form is
 *equivalent* to the original form.  By "equivalent" we mean that the
-behavior of the program will not be affected by the transformation
+behavior of the program will not be affected by this transformation
 (ignoring, of course, time of execution and writes to cache files done by
 the memoization module itself).
 
 For any SCAM function that is a "pure function" -- that is, its result value
 is uniquely determined by its inputs, and it has no side effects --
-supplying a cached value from previous invocation (with the same inputs)
+supplying a cached value from previous invocation (with the same arguments)
 will be indistinguishable from invoking the procedure again.  Therefore,
 memoization of any pure function will always be valid.
 
 
-### IO
-
-The `memo` module supports memoization of procedures that perform IO as long
-as the IO operations meet the following constraints:
-
- - Operations that mutate external state must have an idempotent effect.
-   (Performing the operation once must be equivalent to performing it two
-   or more times.)  [Note that this rules out read operations that depend
-   on and modify an external cursor or "seek position".]
-
- - The memo module must be apprised of each IO operation performed.
-
-This may be accomplished by using the IO functions exposed by the memo
-module -- memo-read-file, memo-write-file, etc. -- or by constructing custom
-IO functions and calling them through `memo-io`.
+## IO
 
 IO operations have two different impacts on memoization.  First, the return
-value of each IO operation is effectively an additional "input" value to the
-memoized procedure, since it can affect the subsequent behavior of the
-procedure.  The memoization cannot use a cached value (and *skip* calling
-the actual function) until is validates that the previously-called IO
-operations will return the same values (if they were to be called).
+value of each IO operation constitutes an additional "input" to the memoized
+procedure, since it can affect the subsequent behavior of the procedure.
+The memoization cannot use a cached return value (and *skip* calling the
+actual function) until it validates that the previously-called IO operations
+will return the same values (if they were to be called).
 
 Second, an IO operation can have side effects.  In order to ensure that
 memoization is valid -- i.e., that a memoized call is equivalent to actual
 invocation of the function -- the memoized call will skip invocation only
 when it can validate that side effects are equivalent (or make it so).
 
+When a memoized function is invoked, its IO operations are logged, and
+stored in the memoization cache along with the function name, arguments, and
+return value.  In order to enable this, *memoized functions must apprise the
+memo module of all IO they perform*.  They can do this by using the IO
+functions exposed by the memo module -- memo-read-file, memo-write-file,
+etc. -- or by constructing custom IO functions and calling them through
+`memo-io`.
 
-#### Nested Calls
+To ensure validity of memoization with IO, additional constraints apply to
+the memoized functions.  To describe them, we first need to introduce the
+concept of a **session**.
+
+A session is a period of time during which we make assumptions of
+immutability of external files.  Specifically: during a session, no changes
+will be made to a file that will invalidate a prior read or write made by a
+memoized function.  *Between* sessions, we assume that files and other
+external state may change, but *during* a session we assume that files
+written to or read by your memoized functions are not being modified by some
+external process.
+
+A program uses the `memo-on` function to control the scope of sessions.
+
+To summarize the constraints:
+
+ - No write-after-read: During a session, your program may not write
+   to a file that has been read by a memoized function.
+
+ - No write-after-write: During a session, your program may not write
+   to a file that has been written to by a memoized function.
+
+
+## Nested Calls
 
 Memoized procedures can call other memoized procedures.  Values returned by
 a nested call are treated as dependencies of the parent, similarly to how IO
@@ -73,103 +96,105 @@ independently.
 For example, consider two memoized functions: f and g, and a previously
 cached call in which f called g, and in which both f and g perform IO.  It
 is possible for g to experience a cache miss (requiring re-invoking the
-original procedure) without f experiencing a cache miss.  For example, one
-of g's IO operations might now return a different value than previously,
-causing g to be re-invoked, but as long as the return value of g remains the
-same it will not invalidate the cached result for f.  Likewise, changes to
-f's inputs or f's IO results could cause a cache miss for f while g's cache
-entries remain relevant and usable.
+original procedure) without f experiencing a cache miss.  For example, a
+file read by g might have changed, which will cause g to be re-invoked, but
+as long as the return value of g remains the same it will not invalidate the
+cached result for f.  Likewise, changes to f's inputs or f's IO results
+could cause a cache miss for f while g's cache entries remain relevant and
+usable.
 
 
-### Sessions
+## More on Sessions
 
-A session is a span of time during which we place constraints on changes to
-external state: During a session, the memozation code can assume that
-supported IO operations will return the same result.  This means that files
-read by the program must not be modified later in the session -- either by
-the program itself or by external entities.
+When a memoized function is called with a set of arguments and no match is
+found in the cache DB, we invoke the function and log all the IO operations
+it performs in the cache DB along with the function name, its arguments, and
+its result.
 
-The `memo-on` call is used to indicate the duration of sessions.
+When a subsequent matching call (in which the function name and arguments
+are all the same) is made, what actually happens depends on whether this
+new call takes place during the same session as the logged call.
 
-These assumptions are important for enabling certain implementation
-approaches and for constructing an argument for validity of memoization.
+ 1. If this new call occurs within the same session as the cache entry, we
+    simply return the cached result.  There is no need to re-validate the IO
+    reads or writes, due to immutability assumptions that hold during a
+    session.  We call this an intra-session cache hit.
 
-For example, during a compiler invocation we assume that source files are
-not being modified.  This assumption is reasonable because we would not be
-able to define the behavior of the compiler under such a condition in any
-reasonable and implementable way.  With the assumption that source files
-(and output files) are not being modified by external entities, we can treat
-a compiler "invocation" as a session, and then the memo module can safely
-use cached results from earlier in the session without re-validating input
-operations.
+ 2. If the new call occurs in a later, *different* session, we cannot assume
+    that file inputs and outputs have not changed.  Therefore, we proceed to
+    *replay* the logged IO operations to validate that the input files have
+    not changed, and to ensure that written files are as they were, or make
+    them so.  If all the replayed operations succeed, then the cached result
+    is returned.  We call this a cross-session cache hit.  On the other hand,
+    if one of the replayed operations returns a different result than what
+    was logged, we abandon the replay attempt and fall back to invoking the
+    function, again logging its IO operations and its result in the cache.
+    Either way, whether via replay validation or invocation, the result will
+    be available for subsequent calls within the same session without
+    further replay.
 
+The assumption that external processes will not modify files is nothing new.
+For example, compilers read source files and write out object files.  In
+order to make any assertions about the behavior of the program, we *must*
+assume that, while it is compiling, no external processes are modifying
+those files -- otherwise, there would be no way to predict its behavior.
 
-### Ephemeral vs. Persistent Memoization
+We extend these immutability assumptions to cover the program itself so that
+we can implement intra-session memoization.  As in classic memoization, an
+intra-session cache hit returns a value immediately.  This can change time
+complexity of a program from exponential to linear.
 
-During a session, the results of memoized functions are stored in a cache.
-When a subsequent call is made within the same session to the same function
-with the same arguments, the cached result will be supplied.  The memoize
-function will not be called, and its IO operations (if any) will not be
-re-validated.  We call this "ephemeral" caching.
+Inter-session cache hits provide a very different benefit.  They allow
+re-use of output files generated by a previous session.  Cross-session
+memoization, however, must replay IO to validate file contents, and this
+extends to nested memoized functions.  So while we it allows us to avoid
+costly computation, cross-session memoization will not change the big-O
+order of time complexity.
 
-When there is no matching call within the same session, calls from a
-previous session are examined.  If there is a match, then the IO operations
-performed by the previous call are replayed, and if their return values
-match a previous call, the result from the previous call is supplied and the
-memoized function is not called.  We call this "persistent" caching.
-
-When a persistent cache entry is used during a session, its result is added
-to the ephemeral cache, so that subsequent matching calls in the same
-session will return immediately without re-validation of IO.
-
-    For an example of the implications of ephemeral and persistent
-    memoization, consider the example of SCAM compilation.  Persistent
-    memoization enables incremental builds: the second time the compiler
-    is invoked to compile a given source file, build results from the
-    prior invocation will be re-used if their dependencies have not
-    changed.  The IO re-validation step detects when source files in this
-    session (compiler invocation) are the same as in a previous session.
-    Ephemeral memoization, on the other hand, provides an important
-    optimization within each session.  Since a SCAM module may depend on
-    exports from a required module, each `require` statement triggers
-    compilation of the required file, which in turn can trigger
-    compilation of other files.  There can be no dependency cycles, but
-    the number of compilations can grow exponentially.  Without ephemeral
-    caching, we would have the benefit of persistent caching, but each
-    persistent cache hit involves re-validation of the call's IO and
-    nested memoized calls.  While each file would be *compiled* only
-    once, the re-validation of IO would grow exponentially.  Ephemeral
-    caching is the avoidance of IO re-validation during a session.
+Consider the SCAM compiler's use of memoization.  Cross-session memoization
+without intra-session memoization (enabled by the intra-session immutability
+assumptions) would yield abysmal performance, due to the potential
+exponential time complexity of compilation (each `require` statement in a
+module triggers a compilation).  On the other hand, intra-session
+memoization without cross-session memoization would leave us without
+incremental build capability.
 
 
-### Proxy IO Operations
+## Proxy IO Operations
 
-Since `read-file` may have very large return values, and `write-file` may
-have very large input values, treating them as IO dependencies in the most
-straightforward manner (as described above) would result in a very large
-persistent memoization database.
+There are a couple of important optimizations that keep the cache DB size
+manageable.  Since `read-file` may have very large return values, and
+`write-file` may have very large input values, treating them as IO
+dependencies in the most straightforward manner (as described above) would
+result in a very large memoization database.
 
-Instead, we rely on `hash-file` as a proxy for these operations.  The
-reasoning is that if `hash-file` returns the same value on replay, then
-`read-file` would return the same value on replay.  Likewise, if `hash-file`
-returns the same value as earlier (after a `write-file` operation), then the
-`write-file` results are still valid.
+When `memo-read-file` reads the contents of a file, the IO operation that is
+logged (and later replayed) is `do-hash-file` instead of `read-file`.
+Hashing serves as a proxy for reading: any change to the file that would
+invalidate the read result would also invalidate the hash result.
+
+When `memo-write-file` writes data to a file, it writes the data to a
+content-addressed BLOB store then uses `do-write-blob` to copy the BLOB to
+the destination file.  Creating the BLOB is not logged, only `do-write-blob`
+is.  If, for some reason, the BLOB has disappeared from the cache,
+`do-write-blob` will fail and we will fall back to invoking the wrapped
+function.
 
 
-### Dropping Memoization
+## Dropping Memoization
 
 A memoized function may choose to "drop" memoization for the current call.
-This will prevent persistent caching of the current invocation, discarding
-the cache data relevant to it.  This can be used in error scenarios in order
-to avoid cluttering the database with entries that are unlikely to be
-valuable.
+This will prevent cross-session caching of the current invocation,
+discarding the cache data relevant to it.  This can be used in error
+scenarios in order to avoid cluttering the database with entries that are
+unlikely to be valuable.
 
 
-### Cache Files, Instances, and Conflicts
+## Cache Files, Instances, and Conflicts
 
 Persistent caching makes use of a database file, whose name is passed to
 `memo-on`.  In addition to the database file, BLOB files are also written
-into the directory that containts the database file.
+into the directory that contains the database file.
 
 In order for one session to take advantage of cached results from a previous
 session, both sessions will have to name the same database file.
@@ -178,9 +203,11 @@ Generally speaking, different programs should use different database files.
 The database uses function names to identify memoized operations, and two
 different programs might assign different definitions to the same name
 (especially when the two programs are different versions of the same
-project).  Different database files can co-exist in the same directory (the
-BLOB files are written atomically, so there is no potential for confusion).
-The SCAM compiler hashes the its own source files to generate a unique ID.
+project).  Different database files can co-exist in the same directory.  The
+SCAM compiler hashes its own source files to generate a unique ID that it
+incorporates into its DB name, so that one version of SCAM will not corrupt
+the cache of another.  (The BLOB files are written atomically, so one BLOB
+cache can be shared.)
 
 If global state differs between two invocations of the same program --
 e.g. current directory, or environment variables -- persistent memoization

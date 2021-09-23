@@ -1,66 +1,8 @@
 ;; # memo: Persistent Memoization
 ;;
-;; The `memo` module implements persistent memoization, which caches the
-;; results of function calls to avoid re-computing them.  "Persistent" means
-;; that results are available not just during the invocation of a program,
-;; but during future invocations as well.  Also, persistent memoization can
-;; be applied to functions that perform IO.  SCAM uses persistent
-;; memoization to rebuild SCAM programs accurately with with minimal
-;; repeated work.  [The `memo` module functionality is not to be confused
-;; with the `memoize` function in the `core` library.]
+;; See [memo.md](memo.md) for an overview of this module and its usage.
+;; Individual functions are documented herein.
 ;;
-;; `memo-call` and `memo-apply` perform "memoized" invocations of functions.
-;; They take a function and a set of arguments, and either invoke the
-;; function with the arguments or return a result cached from a previous
-;; invocation.  When a cached result is returned, it must also be the case
-;; that any side effects (e.g. file writes) from the previous invocation are
-;; in effect.
-;;
-;; In order to meet these requirements, any IO operations performed by the
-;; memoized functions must adhere to these requirements:
-;;
-;; * The IO operation must be logged using a mechanism provided by this
-;;   module. The logging mechanisms provided include `memo-io`, which wraps
-;;   arbitrary IO operations, or `memo-write-file` and `memo-read-file`,
-;;   which provide ready-to-use logged and replayable read and write
-;;   operations.
-;;
-;; * IO operations must be replayable.  Performing the operation two or more
-;;   times will result in the same external state as performing it once
-;;   does, and will return the same values each time.
-;;
-;; * IO operations must not be mutually-conflicting during a
-;;   [session](#sessions).  One IO operation may not have an effect on
-;;   external state that would un-do the effect of another IO operation, or
-;;   that would modify the return value of a previously-executed function
-;;
-;; ## Sessions
-;;
-;; Memoized functions must be called within the context of a **session**.
-;; The `memo-on` function initiates a **session**, evaluates a given
-;; expression within the context of that session, and then terminates the
-;; session.  (If called during a session, `memo-on` is a no-op.)  At the
-;; beginning of a session, previously cached results are read from a
-;; specified DB file.  At the end of the session, cached results are written
-;; to the DB file.
-;;
-;; It is assumed that any external state that affects the program will not
-;; change during the session.  Using the compiler as an example, when source
-;; files are modified during compilation, the compiler cannot guarantee
-;; valid results.  This assumption means that each unique IO operation only
-;; needs to be performed once during a session.
-;;
-;; It is assumed that external state *may* change *between* sessions.  When
-;; cached results from one session apply to a memoized call in a subsequent
-;; session, and the results depend upon IO, those IO operations will be
-;; replayed to check the validity of the cached results.  (When external
-;; side effects are involved, replaying the IO serves the purpose of
-;; re-effecting the change -- so replay does more than just validation.)
-;;
-;; If a memoized function is called when a session is not active, it is a
-;; fatal error.
-;;
-
 
 (require "core.scm")
 (require "io.scm")
@@ -68,8 +10,8 @@
 
 
 (define *memo-on* nil)        ;; are we in a session?
-(define *memo-cache* nil)     ;; ephemeral (per-session) cache
-(define *memo-db* nil)        ;; persistent DB
+(define *memo-cache* nil)     ;; ephemeral (intra-session) cache
+(define *memo-db* nil)        ;; persistent (cross-session) DB
 (define *memo-db-file* nil)   ;; currently-loaded file
 (define *memo-db-disk* nil)   ;; version currently in file
 (define *memo-key* nil)       ;; next key to assign (when recording)
@@ -315,9 +257,18 @@
   value)
 
 
-;; Evaluate EXPR with memoization initialized.  If a session is not active,
-;; begin one using DBFILE as the database.  If a session is already in
-;; progress, that session will be used and DBFILE will be ignored.
+;; Evaluate EXPR with memoization initialized.
+;;
+;; If a session is already in progress, that session will be used and DBFILE
+;; will be ignored.
+;;
+;; If a session is not active, `memo-on` will initiate one prior to the
+;; evaluation of EXPR, using DBFILE as the database, and after the
+;; evaluation of EXPR, it will terminate the session and write any database
+;; changes to DBFILE.
+;;
+;; If a memoized function is called when a session is not active, it is a
+;; fatal error.
 ;;
 (define `(memo-on dbfile expr)
   &public

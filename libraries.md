@@ -66,7 +66,7 @@ SRC-FILE = name of the SCAM source file\
 EXE-FILE = name of an executable file to create.\
 ARGV = a vector to pass to the program's `main` function\
 BUILD-DIR = nil, or the [object directory](#object-directory)\
-IS-QUIET = non-nil to suppress progress messages.
+IS-QUIET = non-nil to suppress compilation progress messages
 
 On success, return `nil`.\
 On failure, display message and return 1.
@@ -84,7 +84,7 @@ ENV-IN = the environment (symbol definitions) visible to TEXT
    at the outset.  If nil, SCAM's default environment will be used.
    Otherwise, it must be a previously returned ENV-OUT value.\
 BUILD-DIR = nil, or the [object directory](#object-directory).\
-IS-QUIET = non-nil to suppress progress messages.
+IS-QUIET = non-nil to suppress compilation progress messages
 
 Result = `{ code: CODE, errors: ERRORS, env: ENV-OUT, requires: MODS }`
 
@@ -110,7 +110,7 @@ Compile and execute a SCAM program.
 SRC-FILE = name of the SCAM source file\
 ARGV = a vector to pass to the program's `main` function\
 BUILD-DIR = nil, or the [object directory](#object-directory)\
-IS-QUIET = non-nil to suppress progress messages.
+IS-QUIET = non-nil to suppress compilation progress messages
 
 On success, return `nil`.\
 On failure, display message and return 1.
@@ -1736,65 +1736,8 @@ Return the integer portion of X (rounding towards zero).
 
 # memo: Persistent Memoization
 
-The `memo` module implements persistent memoization, which caches the
-results of function calls to avoid re-computing them.  "Persistent" means
-that results are available not just during the invocation of a program,
-but during future invocations as well.  Also, persistent memoization can
-be applied to functions that perform IO.  SCAM uses persistent
-memoization to rebuild SCAM programs accurately with with minimal
-repeated work.  [The `memo` module functionality is not to be confused
-with the `memoize` function in the `core` library.]
-
-`memo-call` and `memo-apply` perform "memoized" invocations of functions.
-They take a function and a set of arguments, and either invoke the
-function with the arguments or return a result cached from a previous
-invocation.  When a cached result is returned, it must also be the case
-that any side effects (e.g. file writes) from the previous invocation are
-in effect.
-
-In order to meet these requirements, any IO operations performed by the
-memoized functions must adhere to these requirements:
-
-* The IO operation must be logged using a mechanism provided by this
-  module. The logging mechanisms provided include `memo-io`, which wraps
-  arbitrary IO operations, or `memo-write-file` and `memo-read-file`,
-  which provide ready-to-use logged and replayable read and write
-  operations.
-
-* IO operations must be replayable.  Performing the operation two or more
-  times will result in the same external state as performing it once
-  does, and will return the same values each time.
-
-* IO operations must not be mutually-conflicting during a
-  [session](#sessions).  One IO operation may not have an effect on
-  external state that would un-do the effect of another IO operation, or
-  that would modify the return value of a previously-executed function
-
-## Sessions
-
-Memoized functions must be called within the context of a **session*.
-The `memo-on` function initiates a **session**, evaluates a given
-expression within the context of that session, and then terminates the
-session.  (If called during a session, `memo-on` is a no-op.)  At the
-beginning of a session, previously cached results are read from a
-specified DB file.  At the end of the session, cached results are written
-to the DB file.
-
-It is assumed that any external state that affects the program will not
-change during the session.  Using the compiler as an example, when source
-files are modified during compilation, the compiler cannot guarantee
-valid results.  This assumption means that each unique IO operation only
-needs to be performed once during a session.
-
-It is assumed that external state *may* change *between* sessions.  When
-cached results from one session apply to a memoized call in a subsequent
-session, and the results depend upon IO, those IO operations will be
-replayed to check the validity of the cached results.  (When external
-side effects are involved, replaying the IO serves the purpose of
-re-effecting the change -- so replay does more than just validation.)
-
-If a memoized function is called when a session is not active, it is a
-fatal error.
+See [memo.md](memo.md) for an overview of this module and its usage.
+Individual functions are documented herein.
 
 ## Exports
 
@@ -1824,8 +1767,11 @@ per the `chmod` command.
 
 ##### `(memo-drop)`
 
-Discard memoization results from the current session, preventing them
-from being persisted.
+Discard the result of the currently-being-evaluated memoized function,
+preventing it from being persisted.  This is appropriate in the event of
+an error or any other case that has resulted in, or will result in,
+un-logged or un-replayable IO, or when the cost of logging of further IO
+activity and results will probably exceed the benefit.
 
 
 ##### `(memo-hash-file FILENAME)`
@@ -1841,9 +1787,18 @@ function being recorded (if there is one).
 
 ##### `(memo-on DBFILE EXPR)`
 
-Evaluate EXPR with memoization initialized.  If a session is not active,
-begin one using DBFILE as the database.  DBFILE will be evaluated only
-when a session is initiated.
+Evaluate EXPR with memoization initialized.
+
+If a session is already in progress, that session will be used and DBFILE
+will be ignored.
+
+If a session is not active, `memo-on` will initiate one prior to the
+evaluation of EXPR, using DBFILE as the database, and after the
+evaluation of EXPR, it will terminate the session and write any database
+changes to DBFILE.
+
+If a memoized function is called when a session is not active, it is a
+fatal error.
 
 
 ##### `(memo-read-file FILENAME)`
@@ -1994,7 +1949,7 @@ See also `un-lex`.
 
 ##### `(peg-* PF)`
 
-Construct PEG zero-or-more repetition.
+Construct a PEG zero-or-more repetition.
 
 Return a parsing function that will call PF sequentially until it fails,
 and then succeed.  The resulting position will be what was returned by
@@ -2005,14 +1960,14 @@ appended.
 
 ##### `(peg-+ PF)`
 
-Construct PEG one-or-more repetition.
+Construct a PEG one-or-more repetition.
 
 See `peg-*`.
 
 
 ##### `(peg-? PF)`
 
-Construct PEG optional match.
+Construct a PEG optional match.
 
 Return a parsing function that will always succeed, returning PF's results
 if PF succeeds, or returning the starting position and no captures
@@ -2033,7 +1988,7 @@ captures from all functions, appended.
 
 ##### `(peg-at PF)`
 
-Construct PEG positive lookahead.
+Construct a PEG positive lookahead.
 
 Return a parsing function that will succeed if PF succeeds, but which
 will not consume any symbols or produce any captures.
@@ -2041,7 +1996,7 @@ will not consume any symbols or produce any captures.
 
 ##### `(peg-c NAME PF)`
 
-Construct symbol capture.
+Construct a symbol capture.
 
 Return a parsing function that succeeds when PF succeeds, and on success,
 adds to the set of captures a dictionary pair whose key is NAME and whose
@@ -2050,7 +2005,7 @@ value is a vector of all matched symbols.
 
 ##### `(peg-empty ?CAPS)`
 
-Construct PEG empty string.
+Construct a PEG empty string.
 
 Return a parsing function that always succeeds, consuming no symbols,
 with captures CAPS.
@@ -2058,7 +2013,7 @@ with captures CAPS.
 
 ##### `(peg-not PF)`
 
-Construct PEG negative lookahead.
+Construct a PEG negative lookahead.
 
 Return a parsing function that will succeed if PF fails and fail if PF
 succeeds.
@@ -2118,7 +2073,7 @@ Evaluate TEXT and print results and errors as REPL mode does.
 
 TEXT = SCAM source text containing zero or more expressions.\
 BUILD-DIR = [build directory](#build-directory); `nil` for default.\
-IS-QUIET = When non-nil, suppresses compilation progress messaged.\
+IS-QUIET = non-nil to suppress compilation progress messages
 
 Result = non-nil on error.
 
