@@ -210,13 +210,23 @@ $(if ,, ) :=
 ;;
 (define (^E str ?pre)
   &native
-  (subst "$" (.. "$" pre)
-         (.. "$(if ,,"
-             (subst "$" "$`"
-                    ")" "$]"
-                    "(" "$["
-                    "\n" "$'" str)
-             ")")))
+  (define `(E exp) (.. "$" pre exp))
+
+  (if (or (findstring "," str)
+          (findstring " $ " (.. " $" str "$ ")))
+      ;; protect commas and/or whitespace
+      (.. (E "(if ,,")
+          (subst "$" (E "`")
+                 ")" (E "]")
+                 "(" (E "[")
+                 str)
+          ")")
+      ;; no commas and no leading/trailing whitespace
+      (subst "$" (E "`")
+             ")" (E "]")
+             "(" (E "[")
+             str)))
+
 
 ;;--------------------------------------------------------------
 ;; Support for fundamental data types, and utility functions

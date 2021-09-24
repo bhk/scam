@@ -96,8 +96,11 @@
 (expect (^E "$,)")
         "$(if ,,$`,$])")
 
-(expect (^E "$" "`")
-        "$`(if ,,$``)")
+(expect (^E " $ " "`")
+        "$`(if ,, $`` )")
+
+(expect (^E "a($)b")
+        "a$[$`$]b")
 
 (define `(TE str)
   (expect ((^E str))
