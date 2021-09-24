@@ -741,7 +741,10 @@
                                (or d e f g h)))))))
 
 
-;; Sort a vector VALUES in order of increasing `(KEY-FUNC i)` for each item i.
+;; Sort a vector VALUES in order of increasing keys, where the key for each
+;; item `i` is given by `(KEY-FUNC i)`.  As with `sort`, duplicates are
+;; eliminated, but this applies to the original values, not the keys.  Key
+;; values must not contain ASCII control characters other than TAB.
 ;;
 (define (sort-by key-func values)
   &public

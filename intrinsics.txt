@@ -119,7 +119,8 @@
 (declare (shell command) &public)
 
 
-;; Sort the words in LIST in increasing lexicographical order.
+;; Sort the words in LIST in increasing lexicographical order, and
+;; eliminate duplicate entries.
 ;;
 (declare (sort list) &public)
 
