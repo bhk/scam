@@ -329,9 +329,9 @@
 ;; module (not just the `&public` ones).  Additionally, the qualification
 ;; step will not be required.  (See "qualification", below.)
 ;;
-;; When `MODULE` is one of the [standard library names](#libraries), the
+;; When `MODULE` is one of the [standard library names](#scam-libraries), the
 ;; standard library will be supplied by the compiler.  Otherwise, `MODULE`
-;; must end in `.scm` and identify as SCAM source file.  If it is a relative
+;; must end in `.scm` and identify a SCAM source file.  If it is a relative
 ;; path, it is treated as relative to the directory containing the requiring
 ;; file.  If no such file exists, the directories listed in `SCAM_LIBPATH`
 ;; (colon-delimited) are tried, in order, until a matching file is found.

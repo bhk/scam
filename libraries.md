@@ -368,7 +368,10 @@ Return a list of words in LIST for which `(FN <word>)` is non-nil.
 
 ##### `(sort-by KEY-FUNC VALUES)`
 
-Sort a vector VALUES in order of increasing `(KEY-FUNC i)` for each item i.
+Sort a vector VALUES in order of increasing keys, where the key for each
+item `i` is given by `(KEY-FUNC i)`.  As with `sort`, duplicates are
+eliminated, but this applies to the original values, not the keys.  Key
+values must not contain ASCII control characters other than TAB.
 
 
 ##### `(split DELIM STR)`
@@ -1021,9 +1024,9 @@ This will import all symbols defined in the top-level of the required
 module (not just the `&public` ones).  Additionally, the qualification
 step will not be required.  (See "qualification", below.)
 
-When `MODULE` is one of the [standard library names](#libraries), the
+When `MODULE` is one of the [standard library names](#scam-libraries), the
 standard library will be supplied by the compiler.  Otherwise, `MODULE`
-must end in `.scm` and identify as SCAM source file.  If it is a relative
+must end in `.scm` and identify a SCAM source file.  If it is a relative
 path, it is treated as relative to the directory containing the requiring
 file.  If no such file exists, the directories listed in `SCAM_LIBPATH`
 (colon-delimited) are tried, in order, until a matching file is found.
@@ -1079,7 +1082,8 @@ result is returned by `shell`.
 
 ##### `(sort LIST)`
 
-Sort the words in LIST in increasing lexicographical order.
+Sort the words in LIST in increasing lexicographical order, and
+eliminate duplicate entries.
 
 
 ##### `(subst FROM TO {FROM TO}... VALUE)`
@@ -1493,11 +1497,11 @@ Precision can be specified in two ways: significant digits, or place.
 Examples:
 
     (/ 200 3 5)    ->  66.666        5 significant digits
-    (/ 200 2 -1)   ->  66.7          10⁻¹ is least significant place
-    (/ 200 2 "+0") ->  67            10⁰ is least significant place
-    (/ 200 2 "+1") ->  70
-    (/ 200 2 "+2") -> 100            rounding to nearest 10²
-    (/ 200 2 "+3") ->   0            rounding to nearest 10³
+    (/ 200 3 -1)   ->  66.7          10⁻¹ is least significant place
+    (/ 200 3 "+0") ->  67            10⁰ is least significant place
+    (/ 200 3 "+1") ->  70
+    (/ 200 3 "+2") -> 100            rounding to nearest 10²
+    (/ 200 3 "+3") ->   0            rounding to nearest 10³
 
 ## Exports
 
