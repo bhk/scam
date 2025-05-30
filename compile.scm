@@ -228,7 +228,7 @@
 
   (let ((e (prefix-entries env)))
     (.. "# Exports: " (env-compress (filtersub "x:%" "%" e)) "\n"
-        "# Private: " (env-compress (filtersub "p:%" "%" e)) "\n")))
+        "# Private: " (env-compress (filtersub "p:%" "%" e)) " \n")))
 
 
 ;;--------------------------------------------------------------
