@@ -1,7 +1,7 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MAIN := scam `main
-^uid := d0e8daa7de6a0009
+^uid := e982165748c99142
 
 define [mod-scam]
 # Requires: core repl getopts compile gen io
@@ -17,7 +17,7 @@ define `perror
 $(if $(call `vfprintf,2,scam: $1
 ,$(foreach N,2,$(^v))),)1
 endef
-`main = $(call ^Y,$(call `getopts,$1,-o= -e= -v --version -h --help -i --quiet --build-dir= --boot),,,,,,,,,$`(call ^set,`*is-boot*,$`(call `dict-get,boot,$`1))$`(call ^set,`build-dir,$`(or $`(call ^u,$`(lastword $`(call `dict-get,build-dir,$`1))),$`(addsuffix .scam/,$`(dir $`(call ^u,$`(lastword $`(call `dict-get,o,$`1))))),$`(SCAM_BUILD_DIR),$`(HOME)/.scam/))$`(or $`(if $`(call `dict-get,!,$`1),$`(if $`(foreach ;,$`(call `dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is missing an argument,$`(call ^n,2,$`(call ^u,$`;))),$`(if $`(filter !:GetoptsError1,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is not a recognized option,$`(call ^n,2,$`(call ^u,$`;))),$`(call `perror,[internal error]))))),)$`(call `perror,try `scam -h` for help)),$`(call ^n,1,$`(filter-out !.,$`(foreach ;,$`(call `dict-get,e,$`1),$`(call ^d,$`(if $`(call `repl-ep,$`(call ^u,$`;),$`(`build-dir),$`(call `dict-get,quiet,$`1)),1))))),$`(if $`(or $`(call `dict-get,h,$`1),$`(call `dict-get,help,$`1)),$`(info $`(`usage-string))0),$`(if $`(call `dict-get,o,$`1),$`(if $`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(call `perror,too many input files were given with `-o`),$`(or $`(call `build-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call ^u,$`(lastword $`(call `dict-get,o,$`1))),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0))),$`(if $`(or $`(call `dict-get,v,$`1),$`(call `dict-get,version,$`1)),$`(info SCAM version 3.0)0),$`(if $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(or $`(call `run-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0)),$`(if $`(or $`(call `dict-get,i,$`1),$`(if $`(or $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call `dict-get,e,$`1)),,1)),$`(info SCAM v3.0 interactive mode. Type `?` for help.)$`(if $`(call `repl,$`(`build-dir)),)0)))
+`main = $(call ^Y,$(call `getopts,$1,-o= -e= -v --version -h --help -i --quiet --build-dir= --boot),,,,,,,,,$`(call ^set,`*is-boot*,$`(call `dict-get,boot,$`1))$`(call ^set,`build-dir,$`(or $`(call ^u,$`(lastword $`(call `dict-get,build-dir,$`1))),$`(addsuffix .scam/,$`(dir $`(call ^u,$`(lastword $`(call `dict-get,o,$`1))))),$`(SCAM_BUILD_DIR),$`(HOME)/.scam/))$`(or $`(if $`(call `dict-get,!,$`1),$`(if $`(foreach ;,$`(call `dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is missing an argument,$`(call ^n,2,$`(call ^u,$`;))),$`(if $`(filter !:GetoptsError1,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is not a recognized option,$`(call ^n,2,$`(call ^u,$`;))),$`(call `perror,[internal error]))))),)$`(call `perror,try `scam -h` for help)),$`(call ^n,1,$`(filter-out !.,$`(foreach ;,$`(call `dict-get,e,$`1),$`(call ^d,$`(if $`(call `repl-ep,$`(call ^u,$`;),$`(`build-dir),$`(call `dict-get,quiet,$`1)),1))))),$`(if $`(or $`(call `dict-get,h,$`1),$`(call `dict-get,help,$`1)),$`(info $`(`usage-string))0),$`(if $`(call `dict-get,o,$`1),$`(if $`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(call `perror,too many input files were given with `-o`),$`(or $`(call `build-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call ^u,$`(lastword $`(call `dict-get,o,$`1))),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0))),$`(if $`(or $`(call `dict-get,v,$`1),$`(call `dict-get,version,$`1)),$`(info SCAM version 3.0.1)0),$`(if $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(or $`(call `run-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0)),$`(if $`(or $`(call `dict-get,i,$`1),$`(if $`(or $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call `dict-get,e,$`1)),,1)),$`(info SCAM v3.0.1 interactive mode. Type `?` for help.)$`(if $`(call `repl,$`(`build-dir)),)0)))
 
 endef
 
@@ -317,7 +317,7 @@ endef
 define `compile-module
 $(or $(if $(call `vec-filter,filter,$(call ^d,$1),$(`*compiling*)),$(call `bail-if,dependency loop: $(call `concat-vec,$(call `conj,$(`*compiling*),$1), -> ))),$(call ^set,`*compiling*,$(call ^set,`*compiling*,$(call `conj,$(`*compiling*),$1),$(`*compiling*)),$(if $(call `build-message,compile,$1),)$(call ^Y,$(call `parse-and-gen,$(call `trim-hashbang,$(call `memo-read-file,$1)),$(call `compile-prelude,$1),$1,1),$1,,,,,,,,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(if $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`(call `trim-hashbang,$`(call `memo-read-file,$(call ^E,$1))),$`2)))),)$`(if $`(call `memo-drop),)1,$`(if $`(call `bail-if,$`(call `memo-write-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call `modid-from-source,$`2).o,$`(call `modid-from-source,$`2).o),# Requires: $`(call ^dv,$`(filter require!=%,$`1))
 $`(call ^Y,$`(filter p:% x:%,$`(foreach ;,$`(call `dict-compact,$`(call ^dv,$`(filter env!=%,$`1))),$`(word 2,$`(call ^dv,$`;)):$`(call ^k,$`(call ^dk,$`;))!=$`(call ^d,$`(word 1,$`(call ^dv,$`;)) i $`(wordlist 3,99999999,$`(call ^dv,$`;))))),,,,,,,,,# Exports: $``(call `env-compress,$``(call `filtersub,x:%,%,$``1))
-# Private: $``(call `env-compress,$``(call `filtersub,p:%,%,$``1))
+# Private: $``(call `env-compress,$``(call `filtersub,p:%,%,$``1)) 
 )$`(call ^dv,$`(filter code!=%,$`1)))),)))))
 endef
 `modid-deps-all = $(call `descendants,$(value `modid-deps),$(call `uniq,$(call `cons,$1,$(foreach ;,$(call `runtime-module-name,),$(if $;,$(call ^d,$(if $(filter %.scm,$;),$(call `modid-from-source,$;),$;)))))))
@@ -766,7 +766,7 @@ $(if $(if $(findstring $(subst $(`*memo-db-disk*)0,1,$(`*memo-db*)0),1),,1),$(if
 $(subst !0, ,$(subst $  ,
 ,$(subst 
 ,!n,$(`*memo-db*))))
-),memo.scm:229),)$(call ^set,`*memo-db-disk*,$(`*memo-db*)))
+),memo.scm:241),)$(call ^set,`*memo-db-disk*,$(`*memo-db*)))
 endef
 define `memo-start-session
 $(call ^set,`*memo-on*,1)$(if $(if $(findstring $(subst $10,1,$(`*memo-db-file*)0),1),,1),$(call ^set,`*memo-db-file*,$1)$(call ^set,`*memo-db*,$(filter %,$(subst !n,
