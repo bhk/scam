@@ -28,9 +28,9 @@
 ;; For many operators -- such as `+`, `-`, `*`, `//`, `mod`, and `^` -- the
 ;; result is always numerically exact.  Some functions -- like `/`, `log`,
 ;; `sin`, etc. -- yield an approximation with a finite number of digits.
-;; These functions provide an optional precision argument that may be
-;; provided by the caller; otherwise the default is 16 significant digits
-;; (slightly more precise than 64-bit IEEE-754 binary floating point).
+;; These functions accept an optional argument for specifying precision;
+;; otherwise the default is 16 significant digits (slightly more precise
+;; than 64-bit IEEE-754 binary floating point).
 ;;
 ;; Precision can be specified in two ways: significant digits, or place.
 ;;
@@ -42,9 +42,13 @@
 ;;    place with with value of 10^N.  (Note that SCAM numeric literals may
 ;;    not begin with "+", so places beginning with "+" must be quoted.)
 ;;
+;; The functions `round` and `/` guarantee rounding to the *nearest* unit in
+;; the least significant digit, but more generally the guarantee is within
+;; one unit of the least significant digit.
+;;
 ;; Examples:
 ;;
-;;     (/ 200 3 5)    ->  66.666        5 significant digits
+;;     (/ 200 3 5)    ->  66.667        5 significant digits
 ;;     (/ 200 3 -1)   ->  66.7          10⁻¹ is least significant place
 ;;     (/ 200 3 "+0") ->  67            10⁰ is least significant place
 ;;     (/ 200 3 "+1") ->  70

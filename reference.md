@@ -246,8 +246,10 @@ disjoint.  This allows SCAM to display values in a more meaningful way.
 The empty string (written `""` or `nil`) is used to represent "false" in
 control flow expressions.  Any non-nil value is considered "true"; the value
 "1" is often used to represent true when no other value is an obvious
-candidate.
+candidate.  The Read-Eval-Print loop does not print anything when the typed
+expression evaluates to `nil`.
 
+    > nil
     > (if nil 1 2)
     2
     > (if "false" 1 2)   ; not false...
@@ -274,24 +276,24 @@ implements arbitrary precision decimal floating point arithmetic.
 
 ### Word Lists and Vectors
 
-A word list (or simply "list") is a sequence of "words" separated by the
-following two characters: space (` `, ASCII 32) and tab (`\t`, ASCII 9).  A
-**word** is defined, in turn, as a contiguous sequence of non-separator
-characters.  Any number of separators can appear before, between, or after
-words.  Constructing a word list is as simple as concatenating words and
-spaces.
+A word list (or simply "list") is a sequence of "words" separated one or
+more of the following two characters: space (` `, ASCII 32) and tab (`\t`,
+ASCII 9).  A **word** is defined, in turn, as a contiguous sequence of
+non-separator characters.  Any number of separators can appear before,
+between, or after words.  Constructing a word list is as simple as
+concatenating words and spaces.
 
-Word lists are simple and often convenient, but somewhat specialized because
-the elements they contain cannot include space or tab characters, and they
-exclude the empty string as an element.
+Word lists are simple and efficient, but somewhat specialized because the
+elements they contain cannot include space or tab characters and cannot be
+the empty string.
 
 A vector is SCAM's general purpose data structure for storing a sequence of
 values.  A vector contains an arbitrarily-long sequence of arbitrary
-strings.  Of course, a vector is itself a string (as are all SCAM value), so
-*bang-encoding* is employed.  Bang-encoding is a reversible transformation
-that replaces space and tab characters with non-whitespace characters.
-Bang-encoding preserves sort order, unless an element contains control
-characters.
+strings.  Of course, a vector itself is also a string (as are all SCAM
+values) -- in fact, a word list -- so its elements are encoded using
+*bang-encoding*.  Bang-encoding is a reversible transformation that replaces
+space and tab characters with non-whitespace characters.  Bang-encoding
+preserves sort order, unless an element contains control characters.
 
 In normalized form, a vector consists of some number of bang-encoded
 elements separated by a single space character.  Non-normalized forms (with
@@ -320,7 +322,7 @@ operations on word lists:
 | Get last item      | `(last VEC)`           | `(lastword LIST)`       |
 | Add item to front  | `(cons ITEM VEC)`      | `(._. WORD LIST)`       |
 | Add item to back   | `(conj VEC ITEM)`      | `(._. LIST WORD)`       |
-| Append sequences   | `(append V1 V2...)`    | `(._. LIST1 LIST2)`     |
+| Append sequences   | `(append V1 V2...)`    | `(._. L1 L2 ...)`       |
 | Count items        | `(words VEC)`          | `(words LIST)`          |
 | Get range          | `(wordlist A B VEC)`   | `(wordlist A B LIST)`   |
 

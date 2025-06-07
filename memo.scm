@@ -129,8 +129,8 @@
   (memo-log-io (.. ":" fname) args result))
 
 
-;; Perform an IO operation.  Log the IO as an additional input to the
-;; function being recorded (if there is one).
+;; Perform an IO operation.  Log the results as a dependency of the function
+;; being recorded (if there is one).
 ;;
 (define (memo-io fname ...args)
   &public
@@ -154,7 +154,19 @@
           value))))
 
 
-;; Call `(FNAME ...ARGS)`, or return cached results.
+;; Call `(FNAME ...ARGS)` or return cached results.
+;;
+;; If memoization has been initialized with `memo-on`, and a cached result
+;; is available, and if the operation's IO dependencies are still valid,
+;; then its IO outputs will be replayed and the cached result will be
+;; returned.  Otherwise, the function will be called and its result
+;; returned, and if memoization is intialized, its IO operations and
+;; dependencies recorded.
+;;
+;; Note that FNAME is the *native name* of the function, and ARGS must
+;; be a vector, so typical usage will look something like this:
+;;
+;;     (memo-apply (native-name func) [arg])
 ;;
 (define (memo-apply fname args)
   &public
@@ -311,14 +323,16 @@
       (hash-file filename)))
 
 
-;; Return hash of file contents, logging the IO transaction for playback.
+;; Return the hash of the contents of file FILENAME and log the result as a
+;; dependency of the function being recorded.
 ;;
 (define (memo-hash-file filename)
   &public
   (memo-io (native-name do-hash-file) filename))
 
 
-;; Read data from FILENAME, logging the IO transaction for playback.
+;; Read data from FILENAME and log the result as a dependency of the
+;; function being recorded.
 ;;
 (define (memo-read-file filename)
   &public

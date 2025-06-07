@@ -1480,9 +1480,9 @@ values, but equivalent to all other non-number values.
 For many operators -- such as `+`, `-`, `*`, `//`, `mod`, and `^` -- the
 result is always numerically exact.  Some functions -- like `/`, `log`,
 `sin`, etc. -- yield an approximation with a finite number of digits.
-These functions provide an optional precision argument that may be
-provided by the caller; otherwise the default is 16 significant digits
-(slightly more precise than 64-bit IEEE-754 binary floating point).
+These functions accept an optional argument for specifying precision;
+otherwise the default is 16 significant digits (slightly more precise
+than 64-bit IEEE-754 binary floating point).
 
 Precision can be specified in two ways: significant digits, or place.
 
@@ -1494,9 +1494,13 @@ Precision can be specified in two ways: significant digits, or place.
    place with with value of 10^N.  (Note that SCAM numeric literals may
    not begin with "+", so places beginning with "+" must be quoted.)
 
+The functions `round` and `/` guarantee rounding to the *nearest* unit in
+the least significant digit, but more generally the guarantee is within
+one unit of the least significant digit.
+
 Examples:
 
-    (/ 200 3 5)    ->  66.666        5 significant digits
+    (/ 200 3 5)    ->  66.667        5 significant digits
     (/ 200 3 -1)   ->  66.7          10⁻¹ is least significant place
     (/ 200 3 "+0") ->  67            10⁰ is least significant place
     (/ 200 3 "+1") ->  70
@@ -1747,7 +1751,19 @@ Individual functions are documented herein.
 
 ##### `(memo-apply FNAME ARGS)`
 
-Call `(FNAME ...ARGS)`, or return cached results.
+Call `(FNAME ...ARGS)` or return cached results.
+
+If memoization has been initialized with `memo-on`, and a cached result
+is available, and if the operation's IO dependencies are still valid,
+then its IO outputs will be replayed and the cached result will be
+returned.  Otherwise, the function will be called and its result
+returned, and if memoization is intialized, its IO operations and
+dependencies recorded.
+
+Note that FNAME is the *native name* of the function, and ARGS must
+be a vector, so typical usage will look something like this:
+
+    (memo-apply (native-name func) [arg])
 
 
 ##### `(memo-blob-call FNAME ...ARGS)`
@@ -1780,13 +1796,14 @@ activity and results will probably exceed the benefit.
 
 ##### `(memo-hash-file FILENAME)`
 
-Return hash of file contents, logging the IO transaction for playback.
+Return the hash of the contents of file FILENAME and log the result as a
+dependency of the function being recorded.
 
 
 ##### `(memo-io FNAME ...ARGS)`
 
-Perform an IO operation.  Log the IO as an additional input to the
-function being recorded (if there is one).
+Perform an IO operation.  Log the results as a dependency of the function
+being recorded (if there is one).
 
 
 ##### `(memo-on DBFILE EXPR)`
@@ -1807,7 +1824,8 @@ fatal error.
 
 ##### `(memo-read-file FILENAME)`
 
-Read data from FILENAME, logging the IO transaction for playback.
+Read data from FILENAME and log the result as a dependency of the
+function being recorded.
 
 
 ##### `(memo-write-file FILENAME DATA)`
