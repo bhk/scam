@@ -1,1 +1,2 @@
-bin/scam -diff
+bin/scam -diff linguist-generated
+*.scm linguist-language=Scheme
