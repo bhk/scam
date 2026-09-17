@@ -112,53 +112,46 @@
   (vec-filter "filter-out" b a))
 
 
-;; Return a list of all possible concatenations words from LST.
-;;
-;; ZZ = a string of 0's that determine how long wach concatenation is.
-;;      "" => 1 word, "0" => 2 word, "00" => 3 words, ...
-;; PREFIX = a string to be prepended to each resulting concatenation.
-;;
-;; The list is ordered by the indexes into LST.  Words that appear earlier
-;; in the concatenations are more significant.
-;;
-(define (permute lst zz ?prefix)
-  &public
-  (if (findstring 00 zz)
-      (foreach (n lst)
-        (permute lst (subst "0x" "" (.. zz "x")) (.. prefix n)))
-      (if zz
-          (foreach (n lst)
-            (addprefix (.. prefix n) lst))
-          (addprefix prefix lst))))
-
-
 (define `digits "0 1 2 3 4 5 6 7 8 9")
 (define `nzdigits "1 2 3 4 5 6 7 8 9")
 
 
-(define (urange-x max lst zz)
-  (if (word max lst)
-      lst
-      (urange-x max
-                (._. lst (foreach (n nzdigits)
-                           (permute digits zz n)))
-                (.. zz 0))))
+;; Return a range of sequential integers, with leading zeros, with
+;; elements from 0 through at least MAX-1.
+;;
+;;    e.g.:  "0 1 2 ... 8 9"  or  "000 001 002 ... 998 999"
+;;
+(define (rangeXN numbers max)
+  (define `x10
+    (foreach (d digits)
+      (addprefix d numbers)))
+
+  (if (word max numbers)
+      ;; handle boundary case where numbers has MAX words and last is MAX-1.
+      numbers
+      (rangeXN x10 max)))
 
 
 ;; Return a list of integers in the range MIN..MAX (inclusive).
 ;;
-;; MIN is a positive integer.
-;; MAXi is a non-negative integer.
-;;
-;; MIN and MAX must be in "plain" decimal format (no scientific notation or
-;; decimals).
+;; MIN and MAX are non-negative integers in "plain" decimal format (no
+;; scientific notation or decimals).
 ;;
 ;; Memory requirements and execution time are proportional to MAX, not
 ;; (MAX - MIN).
 ;;
 (define (urange min max)
   &public
-  (wordlist min max (urange-x max nzdigits nil)))
+  (define `(trimLeadingZeros list)
+    (subst " 0000" " "
+           " 00" " "
+           " 0" " "
+           (.. " " list " " max)))
+
+  (if (subst 0 "" min)
+      (if (subst 0 "" max)
+          (wordlist min max (trimLeadingZeros (rangeXN digits max))))
+      (strip (._. 0 (urange 1 max)))))
 
 
 ;; Return a vector of the indices (1, 2, ...) of words in word list (or vector)
