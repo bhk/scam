@@ -22,7 +22,7 @@
 #     functions that it compiles itself, so it cannot cupport REPL mode or
 #     and exectuable macros.
 #
-#  2. In order to support `scam -o ...`, the a compiler must bundle a
+#  2. In order to support `scam -o ...`, the compiler must bundle a
 #     current runtime into the generated program ... NOT the one bundled
 #     within itself.  We name `runtime.scm` on the command line as a source
 #     file, which tells the program to build, test, and bundle THAT runtime,
@@ -44,7 +44,7 @@ C = .out/c
 #----------------------------------------------------------------
 # Phony targets (the "UI")
 
-.PHONY: a b c aok bok cok promote install clean
+.PHONY: a b c aok bok cok promote install clean tags
 
 all: $C.ok
 
@@ -56,6 +56,9 @@ aok: $A.ok
 bok: $B.ok
 cok: $C.ok
 
+tags: .TAGS
+
+.TAGS: *.scm */*.scm ; etags *.scm */*.scm -o .TAGS
 
 # Replace the "golden" compiler with a newer one.
 promote: cok ; $(_@)cp $B/scam bin/scam
@@ -99,7 +102,7 @@ build_message = @ printf '*** build $@\n'
 # Type `make a` to update $A/scam to reflect source changes.
 
 ifneq "" "$(filter a,$(MAKECMDGOALS))"
-$A/scam: *.scm
+$A/scam: *.scm bin/scam
 endif
 
 # Don't pollute user's ~/.scam
@@ -109,7 +112,7 @@ export SCAM_BUILD_DIR=.out/builddir/
 # not implicitly trust them to overwrite the existing output file,
 # and so we delete the output file first.
 
-$A/scam: *.scm bin/scam
+$A/scam: # see 'make a', above
 	$(build_message)
 	bin/scam -o $@ scam.scm
 	touch $@
