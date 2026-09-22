@@ -285,13 +285,12 @@
 
 
 ;; builtin
-(expect (c0 _a {a: (EBuiltin "p" "words" 1)})
+(expect (c0 (PSymbol 1 "words") nil)
         (ILambda (IBuiltin "words" [ (IArg 1 ".") ])))
 
 ;; vararg builtins
-(expect (il-ser (c0-builtin nil "or" "%"))
-        "`(^na or,{^av})")
-
+(expect (il-ser (c0 (PSymbol 1 "or") nil))
+        "!(PError 1 'builtin `or` does not have a value')")
 
 ;;--------------------------------
 ;; c0-block
@@ -464,20 +463,20 @@
  "(define x 1) (dir x)"
  (lambda (env sil)
    (expect env { x: (EVar "p" (xns "~x")) })
-   (expect sil (xns "(IBlock (^set ~x,1),(.dir {~x}))"))))
+   (expect sil (xns "(IBlock (^S ~x,1),(.dir {~x}))"))))
 
 (p1-block-cc
  "(define [a b] 3)"
  (lambda (env sil)
    (expect env { a: (EVar "p" (xns "~a")), b: (EVar "p" (xns "~b")) })
-   (expect sil (xns "(^Y `(IBlock (^set 'a,(^n 1,{1})),(^set 'b,(^n 2,{1}))),3)"))))
+   (expect sil (xns "(^Y `(IBlock (^S 'a,(^n 1,{1})),(^S 'b,(^n 2,{1}))),3)"))))
 
 (expect (c0-ser "(define {a: x} 3)")
-        (xns "(^set ~x,(^dv (.filter a!=%,3)))"))
+        (xns "(^S ~x,(^dv (.filter a!=%,3)))"))
 
 ;; define FUNC
 (expect (c0-ser "(define (f a ?b) (join a b))")
-        (xns "(^fset ~f,`(.join {1},{2}))"))
+        (xns "(^SF ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
         (xns { f: (EFunc "p" "~f" 1) }))
@@ -592,7 +591,7 @@
 ;;--------------------------------
 
 (expect [ {A: (EVar "p" "'A")}
-          (ICall "^set" [(IString "'A") (IString "1")])
+          (ICall "^S" [(IString "'A") (IString "1")])
           (IVar "'A") ]
         (let-global ((*is-boot* nil))
           (gen0 (pN "(define A 1) A") nil)))

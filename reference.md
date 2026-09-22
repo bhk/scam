@@ -905,7 +905,7 @@ To show details for all calls into functions beginning with "foo-":
 
     $ SCAM_TRACE='foo-%' scam myprogram.scm
 
-In the REPL, using [`tracing`](libraries.md#tracing-spec-expr):
+In the REPL, using [`tracing`](libraries.md#tracing-specs-expr):
 
     > (define (fib n)
     +    (if (> n 2)

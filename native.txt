@@ -11,8 +11,11 @@
 ;; There is no "native" module.  These features are SCAM
 ;; [intrinsics](#intrinsics), so `(require "native")` is not required.
 
+
 ;; Call the function variable whose native name is NAME with elements of
-;; vector ARGV as arguments.
+;; vector ARGV as arguments.  Note: If there are more than 8 arguments, the
+;; remaining arguments will be passed in a vector as the 9th argument (this
+;; is the native calling convention for SCAM-compiled functions).
 ;;
 (declare (name-apply func-name argv) &public)
 
@@ -44,25 +47,29 @@
 (declare (native-flavor var-name) &public)
 
 
-;; Get the "native name" of a SCAM global variable, function, or a built-in
-;; function.  This returns the variable name that would be used in raw Make
-;; code.  The difference between the SCAM name and the native name is a
-;; namespace prefix that SCAM prepends to avoid conflicts with variables in
-;; the Make environment.  The namespace prefix also avoids conflicts between
-;; SCAM user functions and function in the SCAM compiler itself.
+;; Get the *native name* of a SCAM global variable, function, or a built-in
+;; function.  VAR is the symbol that names the variable, not an expression
+;; that will be evaluated.
 ;;
-(declare (native-name var-name) &public)
+;; The native name is the variable name as it appears in GNU Make.  The
+;; difference between the SCAM name and the native name is a namespace
+;; prefix that SCAM prepends to avoid conflicts with variables in the Make
+;; environment.  The namespace prefix also avoids conflicts between SCAM
+;; user functions and function in the SCAM compiler itself.
+;;
+(declare (native-name var) &public)
 
 
-;; Describe the GNU make origin of native variable VAR-NAME.  Origin values
-;; include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
-;; See GNU Make docs of `$(origin ...)` for more.
+;; Describe the GNU make origin of a variable. VAR-NAME is an expression
+;; that evaluates to the name of the variable  Origin
+;; values include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`,
+;; ... .  See GNU Make docs of `$(origin ...)` for more.
 ;;
 (declare (native-origin var-name) &public)
 
 
-;; Return the value of native variable VAR-NAME.  This compiles to `$(value
-;; VAR-NAME)`.
+;; Return the value of a variable.  VAR-NAME is an expression that evaluates
+;; to the name of the variable.  This compiles to `$(value VAR-NAME)`.
 ;;
 (declare (native-value var-name) &public)
 

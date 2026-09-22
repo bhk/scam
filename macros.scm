@@ -113,8 +113,8 @@
   (case sym
     ((PSymbol pos var-name)
      (case (resolve sym env)
-       ((EVar _ name) (il-set "^set" name))
-       ((EFunc _ name _) (il-set "^fset" name))
+       ((EVar _ name) (il-set "^S" name))
+       ((EFunc _ name _) (il-set "^SF" name))
        (else
         (gen-error sym "`%s` is not a global variable" (symbol-name sym)))))
     (else

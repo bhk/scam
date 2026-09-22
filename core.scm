@@ -58,6 +58,14 @@
   &public
   (filter "%" vec))
 
+
+;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
+;;
+(define (filtersub pat repl str)
+  &public
+  (patsubst pat repl (filter pat str)))
+
+
 ;; Return elements in vector VEC *except* for the last one.
 ;; This may also be applied to word lists or dictionaries.
 ;;
@@ -600,7 +608,7 @@
                "A: " a "\n"
                "B: " b "\n")
         (if (findstring "K" SCAM_DEBUG)
-            (at-exit error 1)
+            (at-exit error)
             (error "")))))
 
 

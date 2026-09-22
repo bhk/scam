@@ -2,16 +2,16 @@
 
 ;; It is unusual to require "runtime", and not ordinarily supported, since
 ;; it must be loaded before `require` can be called.  runtime-q needs
-;; private symbols, so it requires runtime explicitly.  We set *require* to
+;; private symbols, so it requires runtime explicitly.  We set *RM* to
 ;; prevent runtime from being eval'ed again.
-(declare *required*)
-(set *required* "runtime")
+(declare *RM*)
+(set *RM* "runtime")
 (require "runtime.scm" &private)
 
 
 ;; Many of the runtime functions are tested by calling the "manifest
 ;; functions" that expose their functionality.  For example, "set-native" makes
-;; use of `^set`.
+;; use of `^S`.
 
 (define (expect-x o i file-line)
   (if (findstring (.. o 1) (findstring (.. i 1) (.. o 1)))
@@ -34,7 +34,7 @@
 
 (expect "a b" (nth 2 (.. "1 " (demote "a b") " 3")))
 
-;; ^set
+;; ^S
 
 (define `(test-set value)
   (set-native ".v" value)
@@ -44,7 +44,7 @@
 (test-set "\\")
 (test-set "\\\\")
 
-;; ^fset
+;; ^SF
 
 (define `(test-fset code value)
   (set-native ".v" value)
@@ -58,7 +58,9 @@
 (expect ( (lambda (...x) x) 1 2 "" "3 4" "\n" "")
         [1 2 "" "3 4" "\n"] )
 (expect ( (lambda (...x) x) 1 2 3 4 5 6 7 8 9 10 11 "")
-        [1 2 3 4 5 6 7 8 9 10 11])
+        [1 2 3 4 5 6 7 8 9 10 11 ""])
+(expect ( (lambda (...x) x) )
+        [])
 
 ;; apply
 
@@ -142,14 +144,11 @@
 
 (expect "3 4" (rrest "1 2 3 4"))
 
-(expect "bbc bhi" (filtersub "a%" "b%" "abc def ahi"))
-
-
 ;; atexits
 
 (define at-exit-worked nil)
 (at-exit (lambda () (set at-exit-worked 1)))
-(on-exit)
+(^OE)
 (expect 1 at-exit-worked)
 
 

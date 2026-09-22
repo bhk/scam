@@ -57,11 +57,11 @@
 ;;--------------------------------
 
 (expect (c0-ser "(set v 1)")
-        "(^set V,1)")
+        "(^S V,1)")
 (expect (c0-ser "(set f 1)")
-        "(^fset F,1)")
+        "(^SF F,1)")
 (expect (c0-ser "(set f 1 2)")
-        "(^fset F,1,2)")
+        "(^SF F,1,2)")
 (expect (c0-ser "(set f 1 2 2)")
         "!(PError 2 '`set` accepts 2 or 3 arguments, not 4')")
 (expect (c0-ser "(set 1 2 2)")
@@ -103,20 +103,20 @@
 ;;--------------------------------
 
 (expect (c0-ser "(let-global ((v 1)) f)")
-        "(^set V,(^set V,1,{V}),(.value F))")
+        "(^S V,(^S V,1,{V}),(.value F))")
 (expect (c0-ser "(let-global ((v 1) (f 2)) 9)")
-        "(^set V,(^set V,1,{V}),(^fset F,(^fset F,2,(.value F)),9))")
+        "(^S V,(^S V,1,{V}),(^SF F,(^SF F,2,(.value F)),9))")
 (expect (c0-ser "(let-global (([v] 1) (f 2)) 9)")
-        "(^set V,(^set V,(^n 1,1),{V}),(^fset F,(^fset F,2,(.value F)),9))")
+        "(^S V,(^S V,(^n 1,1),{V}),(^SF F,(^SF F,2,(.value F)),9))")
 
 (expect (c0-ser "(let-global (([x y] 5) (f 2)) a)"
                 {x: (EVar "p" "X"),
                  y: (EVar "p" "Y"),
                  f: (EFunc "p" "F" 1),
                  a: (EDefn.arg 1 ".")})
-        (.. "(^Y `(^set X,(^set X,(^n 1,{1}),{X}),"
-            "(^set Y,(^set Y,(^n 2,{1}),{Y}),"
-            "(^fset F,(^fset F,2,(.value F)),{.1}))),5)"))
+        (.. "(^Y `(^S X,(^S X,(^n 1,{1}),{X}),"
+            "(^S Y,(^S Y,(^n 2,{1}),{Y}),"
+            "(^SF F,(^SF F,2,(.value F)),{.1}))),5)"))
 
 ;;--------------------------------
 ;; (let& ((TARGET VAL)...) BODY)
@@ -235,7 +235,7 @@
    (expect (il-ser (case il
                      ((IEnv _ node) node)
                      (else il)))
-           (xns "(^fset ~foo,`{1})")))
+           (xns "(^SF ~foo,`{1})")))
   (else
    ;; not an ILEnv
    (expect 1 0)))
@@ -243,7 +243,7 @@
 (p1-block-cc
  "(defmacro (foo a) a)"
  (lambda (env sil)
-   (expect sil (xns "(^fset ~foo,`{1})"))
+   (expect sil (xns "(^SF ~foo,`{1})"))
    (expect env (xns { foo: (EXMacro "x" "~foo") }))))
 
 

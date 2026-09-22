@@ -626,19 +626,16 @@
   (define `builtins
     (._. "abspath basename dir error firstword lastword notdir realpath shell"
          "sort suffix wildcard words native-eval native-flavor native-origin"
-         "native-strip native-value addprefix/2 addsuffix/2 filter/2"
+         "native-strip native-value native-var addprefix/2 addsuffix/2 filter/2"
          "filter-out/2 findstring/2 join/2 word/2 patsubst/3 wordlist/3"
          "and/0+ or/0+ native-call/1+ if/2/3"))
 
-  (._.
-   (foreach (w builtins)
-     (define `name (word 1 (subst "/" " " w)))
-     (define `argc  (or (rest (subst "/" " " w)) 1))
-     (define `b-name (subst "native-" nil name))
+  (foreach (w builtins)
+    (define `name (word 1 (subst "/" " " w)))
+    (define `argc  (or (rest (subst "/" " " w)) 1))
+    (define `b-name (subst "native-" nil name))
 
-     {=name: (EBuiltin "i" b-name argc)})
-
-   {native-var: (EBuiltin "i" "=" 1)}))
+    {=name: (EBuiltin "i" b-name argc)}))
 
 
 ;; Resolve a symbol to its definition, or return nil if undefined.

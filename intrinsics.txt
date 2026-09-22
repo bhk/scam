@@ -608,16 +608,10 @@
 (declare (rrest vec) &public)
 
 
-;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
-;;
-(declare (filtersub pat repl str) &public)
-
-
 ;; Add FUNC to a list of functions that will be run after `main` exits.
 ;; The earliest-registered functions will be called last.  Note that
 ;; FUNC is a function *value*, not a function name.
 ;;
-;; If UNIQUE is non-nil and FUNC has already been registered, it will not be
-;; added again.
+;; If FUNC has already been registered, it will not be added again.
 ;;
-(declare (at-exit func ?unique) &public)
+(declare (at-exit func) &public)

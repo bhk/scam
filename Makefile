@@ -101,15 +101,6 @@ build_message = @ printf '*** build $@\n'
 foo: ; false $(call ||,FOO)
 
 
-# It is not always necessary to keep $A/scam up to date with sources.  Any
-# working $A/scam will suffice for building $B/scam except after `make
-# promote`, or when `--boot` behavior has changed, or various other changes.
-# Type `make a` to update $A/scam to reflect source changes.
-
-ifneq "" "$(filter a,$(MAKECMDGOALS))"
-$A/scam: *.scm
-endif
-
 # Don't pollute user's ~/.scam
 export SCAM_BUILD_DIR=.out/builddir/
 
@@ -117,7 +108,7 @@ export SCAM_BUILD_DIR=.out/builddir/
 # not implicitly trust them to overwrite the existing output file,
 # and so we delete the output file first.
 
-$A/scam: bin/scam # see 'make a', above
+$A/scam: bin/scam *.scm
 	$(build_message)
 	bin/scam -o $@ scam.scm
 	touch $@

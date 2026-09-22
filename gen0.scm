@@ -220,15 +220,13 @@
 ;;--------------------------------
 
 
-(define (c0-builtin env name arity)
-  (define `max-argc
-    (word 1 (filter "3 2 1" arity)))
-
-  (ILambda
-   (if max-argc
-       (IBuiltin name (for (n (wordlist 1 max-argc "1 2 3"))
-                        (IArg n ".")))
-       (ICall "^na" [ (IString name) (IVar "^av") ]))))
+(define (c0-builtin sym name arity)
+  (if (or (filter "%+" arity)
+          (eq? "if" name))
+      (gen-error sym "builtin `%s` does not have a value" name)
+      (ILambda
+       (IBuiltin name (for (n (wordlist 1 arity "1 2 3"))
+                        (IArg n "."))))))
 
 
 (define (c0-S-error sym defn)
@@ -263,8 +261,8 @@
     ((ERecord _ encs tag)
      (c0-ctor env sym encs))
 
-    ((EBuiltin _ name arity)
-     (c0-builtin env name arity))
+    ((EBuiltin _ bname arity)
+     (c0-builtin sym bname arity))
 
     (else (c0-S-error sym defn))))
 
@@ -566,7 +564,7 @@
 (define (assign-nx nx flags il)
   (case nx
     ((Bind name xtor)
-     (ICall "^set" [ (IString (gen-native-name name flags)) (xtor il) ]))))
+     (ICall "^S" [ (IString (gen-native-name name flags)) (xtor il) ]))))
 
 
 (define (c0-def-target-2 env nxmap flags value is-define is-macro scope)
@@ -583,9 +581,9 @@
 
   (define `assignment-code
     (if (word 2 nxmap)
-        ;; Mutiple vars => (let ((v VALUE)) (^set NAME1 (XTOR1 v)) ...)
+        ;; Mutiple vars => (let ((v VALUE)) (^S NAME1 (XTOR1 v)) ...)
         (IFuncall [ (ILambda (IBlock set-nodes)) value ])
-        ;; Single var => (^set NAME (XTOR v))))
+        ;; Single var => (^S NAME (XTOR v))))
         (assign-nx (first nxmap) flags value)))
 
   (or (first-perror nxmap)
@@ -650,7 +648,7 @@
             (IEnv {=name: defn}
                   (and is-define
                        (not is-macro)
-                       (ICall "^fset" [(IString gname) body-il])))))))
+                       (ICall "^SF" [(IString gname) body-il])))))))
 
 
 ;; Dispatch to c0-def-symbol or c0-def-compound

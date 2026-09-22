@@ -9,9 +9,20 @@
 ;; must take care to avoid SCAM constructs that depend upon runtime
 ;; functions before those functions are defined.
 
-;; passed from the BASH preamble...
+;; Passed from the BASH preamble. See compile.scm.
 (declare SCAM_MAIN &native)
 (declare SCAM_ARGS &native)
+(declare SCAM_DIR &native)
+
+
+;; Some make distros (Ubuntu) ignore the environment's SHELL and set it to
+;; /bin/sh.  We set it to bash rather than bothering to test the `io` module
+;; with others.
+;;
+(define SHELL
+  &native
+  "/bin/bash")
+
 
 (native-eval "define '
 
@@ -23,8 +34,21 @@ endef
 ' := $'
 ` := $$
 & := ,
-$(if ,, ) :=
-")
+$(if ,, ) :=")
+
+
+;;--------------------------------------------------------------
+;; Support for fundamental data types, and utility functions
+;;--------------------------------------------------------------
+
+(define `nil
+  &public
+  "")
+
+
+(define `(not v)
+  &public
+  (if v nil "1"))
 
 
 ;; (^d string) => "down" = encode as word
@@ -32,6 +56,11 @@ $(if ,, ) :=
 (define (^d str)
   &native
   (or (subst "!" "!1" "\t" "!+" " " "!0" str) "!."))
+
+(define `(demote a)
+  &public
+  (^d a))
+
 
 ;; (up string) => recover string from word
 ;;
@@ -42,171 +71,22 @@ $(if ,, ) :=
   &native
   (up str))
 
+(define `(promote a)
+  &public
+  (^u a))
+
+
 ;; (^n n vec) => Nth member of vector VEC
 ;;
 (define (^n n vec)
   &native
   (up (word n vec)))
 
-;; Encode dictionary key
-;;
-(define (^k str)
-  &native
-  (declare ^d &native)
-  (subst "%" "!8" ^d))
+;; Vector operation exports
 
-;; Get KEY portion of a dictionary pair.
-;;
-(define (^dk pair)
-  &native
-  (up (subst "!8" "%" (word 1 (subst "!=" " " pair)))))
-
-;; Get VALUE portion of a dictionary pair.
-;;
-(define (^dv pair)
-  &native
-  (up (word 2 (subst "!=" " " pair))))
-
-;; ^Y : invokes lambda expression
-;;
-;;  $(call ^Y,a,b,c,d,e,f,g,h,i,lambda) invokes LAMBDA.  A through H
-;;  hold the first 8 arguments; I is a vector of remaining arguments.
-;;
-(declare (^Y ...args)
-         &native)
-(set ^Y "$(call if,,,$(10))")
-
-
-;; ^v: return a vector of all arguments starting at argument N, where N is
-;; 1..8.  The last element in the vector is the last non-nil argument.
-;;
-;; ^av: return a vector of all arguments.
-;;
-;; These are declared as functions, but referenced elsewhere as variables so
-;; that the reference will compile to "$(VAR)" instead of "$(call VAR)", in
-;; order to retain $1, $2, etc..
-
-(declare (^v)
-         &native)
-
-(set ^v (.. "$(subst !.,!. ,$(filter-out %!,$(subst !. ,!.,"
-            "$(foreach n,$(wordlist $N,9,1 2 3 4 5 6 7 8),"
-            "$(call ^d,$($n)))$(if $9, $9) !)))"))
-
-(declare (^av)
-         &native)
-
-(set ^av "$(foreach N,1,$(^v))")
-
-;; Call FN with elements of vector ARGV as arguments.
-
-(declare (^apply fn argv) &native)
-
-(set ^apply (.. "$(call ^Y,$(call ^n,1,$2),$(call ^n,2,$2),$(call ^n,3,$2),"
-                "$(call ^n,4,$2),$(call ^n,5,$2),$(call ^n,6,$2),"
-                "$(call ^n,7,$2),$(call ^n,8,$2),$(wordlist 9,99999999,$2),$1)"))
-
-;; Call function named NAME with elements of vector ARGV as arguments.
-;;
-(define (^na name argv)
-  &native
-  (define `call-expr
-    (.. "$(call " name
-        (subst " ," ","
-               (foreach (n (wordlist 1 (words argv) "1 2 3 4 5 6 7 8"))
-                 (.. ",$(call ^n," n ",$2)")))
-        (if (word 9 argv)
-            (.. ",$(wordlist 9,99999999,$2)"))
-        ")"))
-  (native-call "if" "" "" call-expr))
-
-
-;;--------------------------------------------------------------
-;; ^set and ^fset
-;;--------------------------------------------------------------
-
-(define `(esc-RHS str)
-  (subst "$" "$$"
-         "#" "$\""
-         "\n" "$'" str))
-
-(define (esc-LHS str)
-  ;; $(if ,,...) protects ":", "=", *keywords*, and leading/trailing spaces
-  (.. "$(if ,,"
-      (subst "(" "$["
-             ")" "$]" (esc-RHS str))
-      ")"))
-
-
-;; Assign a new value to a simple variable, and return RETVAL.
-;;
-(define (^set name value ?retval)
-  &native
-  (.. (native-eval (.. (esc-LHS name) " :=$ " (esc-RHS value)))
-      retval))
-
-;; Assign a new value to a recursive variable, and return RETVAL.
-;;
-(define (^fset name value retval)
-  &native
-  (define `qname (esc-LHS name))
-  (define `qbody (subst "endef" "$ endef"
-                         "define" "$ define"
-                         "\\\n" "\\$ \n"
-                         (.. value "\n")))
-
-  (native-eval (.. "define " qname "\n" qbody "endef\n"))
-  retval)
-
-
-;; Escape a value for inclusion in a lambda expression.  Return a value
-;; that, after N expansions (one or more), will yield STR, where N is
-;; described by PRE: "" => one, "`" => two, "``" => three, and so on.
-;;
-;; Also, the escaped value and all expansions thereof (except for the very
-;; last) must be safe for all argument contexts, so it must not contain
-;; unbalanced parens, newlines, or commas (unless within balanced parens).
-;;
-;; Unlike protect-arg, which runs at compile time and is optimized for
-;; small, simple output, ^E also tries to minimize encoding time.
-;;
-(define (^E str ?pre)
-  &native
-  (define `(E exp) (.. "$" pre exp))
-
-  (if (or (findstring "," str)
-          (findstring " $ " (.. " $" str "$ ")))
-      ;; protect commas and/or whitespace
-      (.. (E "(if ,,")
-          (subst "$" (E "`")
-                 ")" (E "]")
-                 "(" (E "[")
-                 str)
-          ")")
-      ;; no commas and no leading/trailing whitespace
-      (subst "$" (E "`")
-             ")" (E "]")
-             "(" (E "[")
-             str)))
-
-
-;;--------------------------------------------------------------
-;; Support for fundamental data types, and utility functions
-;;--------------------------------------------------------------
-
-(define `(name-apply a b) &public (^na a b))
-(define `(apply a b) &public (^apply a b))
-(define `(promote a) &public (^u a))
-(define `(demote a)  &public (^d a))
-(define `(nth a b)   &public (^n a b))
-(define `(set-native a b ?c) &public (^set a b c))
-(define `(set-native-fn a b ?c) &public (^fset a b c))
-
-(define `nil &public "")
-
-(define `(not v)
+(define `(nth a b)
   &public
-  (if v nil "1"))
+  (^n a b))
 
 ;; (nth-rest n vec) == vector starting at Nth item in VEC.
 (define `(nth-rest n vec)
@@ -226,18 +106,154 @@ $(if ,, ) :=
   (nth-rest 3 vec))
 
 
+;; Encode dictionary key
+;;
+(define (^k str)
+  &native
+  (declare ^d &native)
+  (subst "%" "!8" ^d))
+
+;; Get KEY portion of a dictionary pair.
+;;
+(define (^dk pair)
+  &native
+  (^u (subst "!8" "%" (word 1 (subst "!=" " " pair)))))
+
+;; Get VALUE portion of a dictionary pair.
+;;
+(define (^dv pair)
+  &native
+  (^u (word 2 (subst "!=" " " pair))))
+
+;; ^Y : invokes lambda expression
+;;
+;;  $(call ^Y,a,b,c,d,e,f,g,h,i,lambda) invokes LAMBDA.  A through H
+;;  hold the first 8 arguments; I is a vector of remaining arguments.
+;;
+(declare (^Y ...args)
+         &native)
+(set ^Y "$(call if,,,$(10))")
+
+
+;; ^v: return a vector of all arguments starting at argument $N (bound by an
+;; enclosing `foreach`!), where N is 1..8.  The last element in the vector
+;; is the last non-nil argument.
+;;
+;; This is defined as a function, but in order to work it must be referenced
+;; as a variable so that the reference will compile to "$(VAR)" instead of
+;; "$(call VAR)", which would clobber all the arguments.
+;;
+(define (^v)
+  &native
+  (define `maxarg
+    (word 1 (._. (foreach (n "9 8 7 6 5 4 3 2 1")
+                   (if (native-var n) n))
+                 0)))
+
+  (.. (foreach (n (wordlist (native-var "N") maxarg "1 2 3 4 5 6 7 8"))
+        [(native-var n)])
+      (if (native-var 9)
+          (.. " " (native-var 9)))))
+
+
+(define (^NA fname args ?a10)
+  &native
+  (native-call fname (nth 1 args) (nth 2 args) (nth 3 args) (nth 4 args)
+               (nth 5 args) (nth 6 args) (nth 7 args) (nth 8 args)
+               (nth-rest 9 args) a10))
+
+(define `(name-apply n a)
+  &public
+  (^NA n a))
+
+(define `(apply f a)
+  &public
+  (^NA "^Y" a f))
+
+
+;;--------------------------------------------------------------
+;; set-native, set-native-fn (^S, ^SF)
+;;--------------------------------------------------------------
+
+(define `(esc-RHS str)
+  (subst "$" "$$"
+         "#" "$\""
+         "\n" "$'" str))
+
+(define (esc-LHS str)
+  ;; $(if ,,...) protects ":", "=", *keywords*, and leading/trailing spaces
+  (.. "$(if ,,"
+      (subst "(" "$["
+             ")" "$]" (esc-RHS str))
+      ")"))
+
+
+;; Assign a new value to a simple variable, and return RETVAL.
+;;
+(define (^S name value ?retval)
+  &native
+  (.. (native-eval (.. (esc-LHS name) " :=$ " (esc-RHS value)))
+      retval))
+
+(define `(set-native a b ?c)
+  &public
+  (^S a b c))
+
+
+;; Assign a new value to a recursive variable, and return RETVAL.
+;; Note: ^F conflicts with a Make automatic variable
+;;
+(define (^SF name value retval)
+  &native
+  (define `qname (esc-LHS name))
+  (define `qbody (subst "endef" "$ endef"
+                         "define" "$ define"
+                         "\\\n" "\\$ \n"
+                         (.. value "\n")))
+
+  (native-eval (.. "define " qname "\n" qbody "endef\n"))
+  retval)
+
+(define `(set-native-fn a b ?c)
+  &public
+  (^SF a b c))
+
+
+;; Escape a value for inclusion in a lambda expression.  Return a value
+;; that, after N expansions (one or more), will yield STR, where N is
+;; described by PRE: "" => one, "`" => two, "``" => three, and so on.
+;;
+;; Also, the escaped value and all expansions thereof (except for the very
+;; last) must be safe for all argument contexts, so it must not contain
+;; unbalanced parens, newlines, or commas (unless within balanced parens).
+;;
+;; Unlike protect-arg, which runs at compile time and is optimized for
+;; small, simple output, ^E also tries to minimize encoding time.
+;;
+(define (^E str ?pre)
+  &native
+  (define `(E exp)
+    (.. "$" pre exp))
+
+  (define `quoted
+    (subst "$" (E "`")
+           ")" (E "]")
+           "(" (E "[")
+           str))
+
+  (subst "Q" quoted
+         (if (or (findstring "," str)
+                 (findstring " $ " (.. " $" str "$ ")))
+             ;; preserve whitespace and/or contain commas
+             (E "(if ,,Q)")
+             "Q")))
+
+
 ;; (native-bound? VAR-NAME) -> 1 if variable VAR-NAME is defined
 ;;
 (define `(native-bound? var-name)
   &public
   (if (filter-out "u%" (native-flavor var-name)) 1))
-
-
-;; Replace PAT with REPL if STR matches PAT; return nil otherwise.
-;;
-(define (filtersub pat repl str)
-  &public
-  (patsubst pat repl (filter pat str)))
 
 
 ;;--------------------------------------------------------------
@@ -261,39 +277,40 @@ $(if ,, ) :=
 ;;--------------------------------------------------------------
 
 ;; A list of modules that have been loaded
-(define *required* nil)
+(declare *RM*)
 
 ;; overridden by trace.scm
-(define (trace-after-load id) nil)
+(declare (trace-after-load id))
 
 ;; Load the module identified by ID.
 ;;
-(define (load id ?bound-only)
+(define (^L id ?bound-only)
   &native
   (define `(mod-var id)
     (.. "[mod-" id "]"))
 
+  ;; Encode file name for "include ..."
   (define `mod-file
-    ;; Encode for "include ..."
     (subst " " "\\ " "\t" "\\\t"
-           (.. (native-value "SCAM_DIR") id ".o")))
+           (.. SCAM_DIR id ".o")))
 
-  (if (native-bound? (mod-var id))
+  (if (filter "r%" (native-flavor (mod-var id)))
       (native-eval (native-value (mod-var id)))
      (if bound-only
           nil
           (native-eval (.. "include " mod-file))))
-  (trace-after-load id))
+  (trace-after-load id)
+  nil)
 
 
 ;; Execute a module if it hasn't been executed yet.
 ;;
 (define (^R id)
   &native
-  (or (filter [id] *required*)
+  (or (filter [id] *RM*)
       (begin
-        (set *required* (._. *required* [id]))
-        (load id)))
+        (set *RM* (._. *RM* [id]))
+        (^L id)))
   nil)
 
 
@@ -315,47 +332,29 @@ $(if ,, ) :=
             "$(call ^n,1,$9),$(wordlist 2,9999,$9)))"))
 
 
-;; Some make distros (Ubuntu) ignore the environment's SHELL and set it to
-;; /bin/sh.  We set it to bash rather than bothering to test the `io` module
-;; with others.
-;;
-(define SHELL
-  &native
-  "/bin/bash")
-
-
-(define *at-exits* nil)
-
+(declare *AE*)
 
 ;; Call FN immediately prior to program exit.  Note that FN is a function
-;; value, not a function name.  When UNIQUE is set, FN will be added only
-;; if it is note in the list of at-exit functions.
+;; value, not a function name.  FN will be added only if it is not in the
+;; list of at-exit functions.
 ;;
-(define (at-exit fn ?unique)
+(define (^AE fn)
+  &native
+  (set *AE* (._. (filter-out *AE* (native-var "^k")) *AE*)))
+
+
+(define `(at-exit fn)
   &public
-  (if (and unique (findstring (.. " " [fn] " ") (.. " " *at-exits* " ")))
-      nil
-      (set *at-exits* (._. [fn] *at-exits*))))
+  (^AE fn))
 
 
-(define (on-exit)
-  (for (fn *at-exits*)
-    (fn))
+;; run all at-exit functions
+(define (^OE)
+  &native
+  (foreach (kfn *AE*)
+    (define `fn (native-call "^dk" kfn))
+    (native-call "if" nil nil fn))
   nil)
-
-
-;; Validate what was returned from main before it is passed to the bash
-;; `exit` builtin in the <exit> rule.
-;;
-(define (check-exit code)
-  (define `(non-integer? n)
-    (subst "1" "" "2" "" "3" "" "4" "" "5" "" "6" "" "7" "" "8" "" "9" "" "0" ""
-           (patsubst "-%" "%" (subst " " "x" "\t" "x" code))))
-
-  (if (non-integer? code)
-      (error (.. "scam: main returned '" code "'"))
-      (or code 0)))
-
 
 ;;------------------------------------------------------------------------
 ;; Run program
@@ -368,15 +367,15 @@ $(if ,, ) :=
 ;; would be the case when we are running in interactive or immediate mode,
 ;; or when in a compiled program that has explicitly required "trace".  This
 ;; allows tracing of -q tests, except with `--boot`.
-(load "trace" 1)
+(^L "trace" 1)
 
 (^R main-mod)
 
 (define `exit-code
-  (check-exit (native-call main-func SCAM_ARGS)))
+  (or (native-call main-func SCAM_ARGS)) 0)
 
 ;; <exit> is defined last; rules defined in MAIN will supercede.
 ;; Run onExit if and when <exit> is processed.
 (native-eval
  (.. ".PHONY: <exit>\n"
-     "<exit>: ; @exit " exit-code "$(" (native-name on-exit) ")"))
+     "<exit>: ; @exit '" exit-code "'$(" (native-name ^OE) ")"))

@@ -17,7 +17,7 @@
 ;; variable.
 ;;
 ;;     SCAM source:     (set-native "x" 1)    (+ 1 2)
-;;     Function Code:   $(call ^set,x,1)      $(call +,1,2)
+;;     Function Code:   $(call ^S,x,1)        $(call +,1,2)
 ;;     File Code:       x = 1                 $(if $(call +,1,2),)
 ;;
 ;; Most of the functions in this module compile to function syntax.  File
@@ -113,8 +113,8 @@
 ;;
 (define (c1-void node)
   (define `(use-if-void name args node)
-    (and (filter "error eval info ^R ^at ^set ^fset" name)
-         (if (filter "^set ^fset" name)
+    (and (filter "error eval info ^R ^at ^S ^SF" name)
+         (if (filter "^S ^SF" name)
              (not (word 3 args))
              1)
          node))
@@ -162,6 +162,18 @@
     (native-call quotefn a)))
 
 
+(define `one-char-names
+  (._. "a b c d e f g h i j k l m n o p q r s t u v w x y z"
+       "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"
+       "1 2 3 4 5 6 7 8 9 0"))
+
+
+(define (c1-Var name)
+  ;; don't treat names with with spaces or % as one-char
+  (.. "$" (or (findstring name (filter (native-strip name) one-char-names))
+              (.. "(" (escape name) ")"))))
+
+
 (define (c1-Error node)
   (crumb "errors"
          (case node
@@ -172,15 +184,21 @@
 ;; Call built-in function
 (define (c1-Builtin name args)
   ;; (demote <builtin>) == <builtin> for all builtins
-  (.. "$("
-      (if (filter-out "=" name)
-          ;; this space is necessary even when there are no arguments
-          (.. name " "))
-      (protect-ltrim (c1-vec args ","
-                             (if (filter "and or" name)
-                                 (native-name c1-arg-trim)
-                                 (native-name c1-arg))))
-      ")"))
+
+  (if (filter "var" name)
+      ;; special case for `(native-var ...)`
+      (case (first args)
+        ((IString name) (c1-Var name)) ;; handles one-char names
+        (arg (.. "$(" (c1 arg) ")")))
+
+      ;; builtin functions
+      (.. "$(" name
+          " " ;; this space is necessary even when there are no arguments
+          (protect-ltrim (c1-vec args ","
+                                 (if (filter "and or" name)
+                                     (native-name c1-arg-trim)
+                                     (native-name c1-arg))))
+          ")")))
 
 
 ;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
@@ -270,16 +288,6 @@
       (c1 (last nodes))))
 
 
-(define `one-char-names
-  (._. "a b c d e f g h i j k l m n o p q r s t u v w x y z"
-       "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z _"))
-
-
-(define (c1-Var name)
-  (.. "$" (or (filter one-char-names name)
-              (.. "(" (escape name) ")"))))
-
-
 (define (c1 node)
   (case node
     ((IString value) (escape value))
@@ -333,7 +341,7 @@
         (findstring "$`." rhs))
     ;; RHS is non-const (has un-escaped "$"), or would contain "$."
     (c1-file-expr
-     (.. "$(call ^fset," (protect-arg lhs) "," (protect-arg rhs) ")")))
+     (.. "$(call ^SF," (protect-arg lhs) "," (protect-arg rhs) ")")))
 
    ;; RHS is const
    ((or (findstring "#" rhs)
@@ -374,11 +382,11 @@
              (if (filter "call" name)
                  (c1-file (ICall value other-args)))))))
 
-     ;; Handle assignments using "a = b" vs. "$(call ^fset,a,b)"
+     ;; Handle assignments using "a = b" vs. "$(call ^SF,a,b)"
      ((ICall name args)
       (define `[var value] args)
-      (if (filter "^set:2 ^fset:2" (.. name ":" (words args)))
-          (c1-file-set (c1 var) (c1 value) (filter "^set" name))))
+      (if (filter "^S:2 ^SF:2" (.. name ":" (words args)))
+          (c1-file-set (c1 var) (c1 value) (filter "^S" name))))
 
      ;; Compile block members as also in file scope
      ((IBlock nodes) (c1-file* nodes)))

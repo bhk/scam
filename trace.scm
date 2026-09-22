@@ -38,7 +38,8 @@
 ;;
 ;; Names that include a `%` character are treated as wildcards that match
 ;; currently-defined functions.  Additionally, the name may be enclosed in
-;; double-quotes to indicate the [native name](#native) of a function.
+;; double-quotes to indicate the [native name](#native-name-var) of a
+;; function.
 ;;
 ;; Names may be followed by a `:` character followed by a *mode*.  Possible
 ;; modes are:
@@ -376,18 +377,19 @@
 
 
 ;; Evaluate EXPR while functions are instrumented according to
-;; [SPECS](#trace-specifications).  On exit, instrumentation is removed and
-;; invocation counts will be reported, and then reset, for any functions
+;; [SPECS](#trace-specifications).  On return, instrumentation is removed
+;; and invocation counts will be reported, and then reset, for any functions
 ;; instrumented with mode `c`.
 ;;
-;; See the [reference manual](reference.md#debugging) for examples.
+;; See the [reference manual](reference.md#tracing-examples) for examples.
 ;;
 (define `(tracing specs expr)
   &public
   (untrace (trace specs) expr))
 
 
-;; Like `expect`, but evaluation of A and B is done with tracing enabled.
+;; Like [`expect`](#expect-a-b), but evaluation of A and B is done with
+;; tracing enabled.
 ;;
 (define `(trace-expect a b)
   &public

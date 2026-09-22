@@ -202,7 +202,7 @@
 ;; for eval
 (let ((o (parse-and-gen "(define a &native 1)" "" "(test)" "")))
   (expect "" (dict-get "errors" o))
-  (expect "$(call ^set,a,1)" (dict-get "code" o))
+  (expect "$(call ^S,a,1)" (dict-get "code" o))
   (expect { a: (EVar "p" "a") }
           (dict-get "env" o)))
 

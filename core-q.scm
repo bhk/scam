@@ -38,6 +38,8 @@
 
 (expect "a\n b" (strip " a\n b "))
 
+(expect "bbc bhi" (filtersub "a%" "b%" "abc def ahi"))
+
 (expect [[1 2]] (select-vec (lambda (x) (word 2 x)) [[1 2] 3 2]))
 
 (expect "2 23" (select-words (lambda (n) (findstring 2 n)) "1 2 3 23"))

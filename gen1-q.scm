@@ -131,10 +131,10 @@
 
 ;; Block: a sequence of expressions
 
-(expect "$(call ^set,v,x)"
-        (c1-void (ICall "^set" [ (IString "v") (IString "x") ])))
-(expect "$(if $(call ^set,v,x,$v),)"
-        (c1-void (ICall "^set" [ (IString "v") (IString "x") (IVar "v") ])))
+(expect "$(call ^S,v,x)"
+        (c1-void (ICall "^S" [ (IString "v") (IString "x") ])))
+(expect "$(if $(call ^S,v,x,$v),)"
+        (c1-void (ICall "^S" [ (IString "v") (IString "x") (IVar "v") ])))
 
 (expect "X"
         (c1 (IBlock [ (IString "X") ])))
@@ -173,7 +173,7 @@
 (expect "f = $\n"
         (c1-file-set "f" "$`" nil))  ;; "$`" expands to "$" == $(value f)
 
-(expect "$(call ^fset,f,$(foo))\n"
+(expect "$(call ^SF,f,$(foo))\n"
         (c1-file-set "f" "$(foo)" nil))
 
 (expect "define f\n $1\n$2 \nendef\n"
@@ -184,18 +184,18 @@
 
 ;; c1-file
 
-;; (ICall "^set" ...)  -->   c1-file-set
+;; (ICall "^S" ...)  -->   c1-file-set
 (expect "a := A\n"
-        (c1-file (ICall "^set" [ (IString "a") (IString "A") ])))
+        (c1-file (ICall "^S" [ (IString "a") (IString "A") ])))
 
-;; (ICall "^fset" ...)  -->  c1-file-fset
+;; (ICall "^SF" ...)  -->  c1-file-fset
 (expect "a = A\n"
-        (c1-file (ICall "^fset" [ (IString "a") (IString "A") ])))
+        (c1-file (ICall "^SF" [ (IString "a") (IString "A") ])))
 
 ;; (IBuiltin "call" (IString S)) -->  (ICall S ...)
 (expect "a := A\n"
         (c1-file (IBuiltin "call"
-                          [ (IString "^set") (IString "a") (IString "A") ])))
+                          [ (IString "^S") (IString "a") (IString "A") ])))
 
 ;; (IBuiltin "eval" (IString TEXT))  -->  TEXT
 (expect "a=1\nb=2\n"
@@ -219,14 +219,14 @@
   (dict-get "code" (gen1 [ node ] is-file)))
 
 (expect "x := 1\n"
-        (gen-out (ICall "^set" [ (IString "x") (IString 1) ]) 1))
+        (gen-out (ICall "^S" [ (IString "x") (IString 1) ]) 1))
 
-(expect "$(call ^set,x,1)"
-        (gen-out (ICall "^set" [ (IString "x") (IString 1) ]) nil))
+(expect "$(call ^S,x,1)"
+        (gen-out (ICall "^S" [ (IString "x") (IString 1) ]) nil))
 
 ;; Ensure markers are not confused with RHS literals in file syntax.
-(expect {code: "$(call ^fset,f,$`.{ERR)\n"}
-        (gen1 [ (ICall "^fset" [ (IString "f") (IString "$.{ERR") ]) ]
+(expect {code: "$(call ^SF,f,$`.{ERR)\n"}
+        (gen1 [ (ICall "^SF" [ (IString "f") (IString "$.{ERR") ]) ]
               1))
 
 (expect [(PError 1 "MSG")]
