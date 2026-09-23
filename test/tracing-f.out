@@ -1,0 +1,12 @@
+scam: tracing f [mode=t] ...
+scam: tracing main [mode=t] ...
+scam: tracing g [mode=t] ...
+--> (main "f")
+ --> (f 1 2 3)
+  --> (f 2 3)
+   --> (f 3)
+   <-- f: 3
+  <-- f: [3 2]
+ <-- f: [3 2 1]
+3 2 1
+<-- main: 0

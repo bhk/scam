@@ -15,7 +15,7 @@
 (declare *compile-file* &public)
 
 ;; When true, the compiler operates in boot mode: no builtin modules will be
-;; used, and globals in generated code will be prefixed with "~".
+;; used, and globals in generated code will be prefixed with "`".
 (define *is-boot* &public nil)
 
 
@@ -297,7 +297,7 @@
 ;;
 ;; A "native name" for a SCAM variable is the GNU Make variable name used to
 ;; hold its value.  When building the compiler, we prefix the SCAM name with
-;; "~".  The compile flag "--boot" indicates that we are building the
+;; "`".  The compile flag "--boot" indicates that we are building the
 ;; compiler, and *is-boot* will be true.
 
 

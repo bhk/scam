@@ -2,8 +2,8 @@
 
 ;; # Intrinsics
 ;;
-;; There is not an "intrinsics" module; all these exports are defined by the
-;; SCAM language itself and are available to program without any `require`
+;; There is no "intrinsics" module; all these exports are defined by the
+;; SCAM language itself and are available to a program without any `require`
 ;; statement.
 ;;
 ;; Intrinsic symbols fall into three different categories:
@@ -12,14 +12,14 @@
 ;;  - Manifest functions
 ;;  - Manifest macros
 ;;
-;; Manifest functions are like other functions in SCAM, except that they are
-;; provided by the language itself.  Special forms are not functions, so
-;; they do not have values and cannot be passed to other functions.
-
+;; Manifest functions and macros are like other functions and macros in
+;; SCAM, except that they are provided by the language itself.  Special
+;; forms are not functions, so they do not have values and cannot be passed
+;; to other functions.
 
 
 ;;
-;; Make built-in functions
+;; ## Functions Matching Make Primitives
 ;;
 
 
@@ -162,7 +162,7 @@
 
 
 ;;
-;; Special forms
+;; ## Special forms
 ;;
 
 
@@ -175,8 +175,8 @@
 ;;     > (f 1)
 ;;     2
 ;;     > (? f 1)
-;;     --> (f "1")
-;;     <-- f: "2"
+;;     --> (f 1)
+;;     <-- f: 2
 ;;     2
 ;;
 (declare (? fn ...args) &public)
@@ -553,7 +553,7 @@
 
 
 ;;
-;; Runtime functions
+;; ## SCAM Runtime Functions
 ;;
 
 
@@ -614,83 +614,10 @@
 
 
 ;; Add FUNC to a list of functions that will be run after `main` exits.
-;; The earliest-registered functions will be called last.
+;; The earliest-registered functions will be called last.  Note that
+;; FUNC is a function *value*, not a function name.
 ;;
 ;; If UNIQUE is non-nil and FUNC has already been registered, it will not be
 ;; added again.
 ;;
 (declare (at-exit func ?unique) &public)
-
-
-;; Evaluate EXPR with tracing activated according to SPEC.
-;;
-;; SPEC is a string used to specify which functions are traced and how they
-;; are traced.  In its simplest form, it is a list of function names.
-;; Beyond that, a `:` followed by a "mode" may be appended to each name.
-;; Possible modes are:
-;;
-;;  - `t` : Print the function name and arguments when it is called and its
-;;          return value when it returns.  This is the default mode.
-;;
-;;  - `f` : Print just the function name on entry and exit.
-;;
-;;  - `c` : Count the number of times that the function is invoked.
-;;          Function counts will be written to stdout when tracing is
-;;          removed.  This can occur when `(tracing ...)` completes, or when
-;;          `(untrace ...)` is called, or after `main` returns.
-;;
-;;  - `x<N>` : Evaluate the function body N times each time the function is
-;;          invoked.  <N> must be a positive number or the empty string
-;;          (which is treated as 11).
-;;
-;;  - `-` : Exclude the function(s) from instrumentation.  Any functions
-;;          matched by this entry will be skipped even when they match other
-;;          entries in the specification string.  This does not depend on
-;;          the ordering of entries.  For example, `(trace "a% %z:-")` will
-;;          instrument all functions whose names begin with `a` except for
-;;          those whose names end in `z`.
-;;
-;; In place of a function name a pattern may be provided to match multiple
-;; functions.  In a pattern, the `%` character is a wildcard that will match
-;; any sequence of characters.  Some caution must be exercised in general
-;; with tracing, especially when using wildcards: Do not instrument any
-;; function while it is currently running.  SCAM prevents this from
-;; happening when you use `SCAM_TRACE`, or when you call `trace` or
-;; `tracing` at the top level of a source file, the REPL, or your `main`
-;; function.  However, if while nested in one or more other user-defined
-;; functions, you trace any of those functions, then undefined behavior will
-;; result.
-;;
-;; The intent of `x` instrumentation is to cause the function to consume
-;; more time by a factor of N (for profiling purposes).  If your code is
-;; purely functional, or at least limits its side effects to idempotent
-;; operations, repetition of expressions should not alter the behavior of
-;; the program.  This can be used to identify and quantify hotspots in a
-;; program.
-;;
-;; See the [reference manual](reference.md#debugging) for examples.
-;;
-(declare `(tracing spec expr) &public)
-
-
-;; Instrument functions for tracing as described by SPEC.
-;;
-;; SPEC is as documented for `tracing`.
-;;
-;; The return value is a list of the names of the instrumented functions,
-;; which can be passed to `untrace` later.
-;;
-(declare (trace spec) &public)
-
-
-;; Remove instrumentation from functions listed in NAMES, or functions
-;; matched by patterns in NAMES.
-;;
-(declare (untrace names ?retval) &public)
-
-
-;; Add NAMES to the list of functions that should not be instrumented when
-;; `trace` or `tracing` are called.  In order to avoid undefined behavior,
-;; we must avoid instrumenting functions *while* they are executing.
-;;
-(declare (do-not-trace names) &public)

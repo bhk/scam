@@ -612,14 +612,6 @@
   (expect-x a b (current-file-line)))
 
 
-;; Like `expect`, but evaluation of A and B is done with tracing enabled.
-;;
-(define `(trace-expect a b)
-  &public
-  (let ((ab (tracing "%" [a b])))
-    (expect (nth 1 ab) (nth 2 ab))))
-
-
 (define (assert-x cond file-line)
   (or cond
       (error (print file-line ": error: assertion failed"))))

@@ -27,7 +27,7 @@
 ;;
 ;; For many operators -- such as `+`, `-`, `*`, `//`, `mod`, and `^` -- the
 ;; result is always numerically exact.  Some functions -- like `/`, `log`,
-;; `sin`, etc. -- yield an approximation with a finite number of digits.
+;; `sin`, etc. -- yield an approximation with a limited number of digits.
 ;; These functions accept an optional argument for specifying precision;
 ;; otherwise the default is 16 significant digits (slightly more precise
 ;; than 64-bit IEEE-754 binary floating point).

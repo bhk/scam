@@ -45,8 +45,8 @@ C = .out/c
 # Otherwise, we proceed to build and validate $C/scam as a test of $B/scam.
 #
 default: $B/done
-$B/done: $B/scam; @(diff -q bin/scam $B/scam || $(MAKE) $C/done) && touch $@
-$C/done: $C/scam; @diff -q $B/scam $C/scam && touch $@
+$B/done: $B/scam bok; @(diff -q bin/scam $B/scam > /dev/null && echo 'Stopping: .out/b/scam == bin/scam!' || $(MAKE) $C/done) && touch $@
+$C/done: $C/scam cok; @diff -q $B/scam $C/scam && touch $@
 
 
 all: $C.ok
@@ -79,7 +79,7 @@ tags: .TAGS
 
 SCAMDOC = examples/scamdoc.scm
 
-DOCLIBS = $(patsubst %,%.scm,compile core getopts io math peg repl string utf8 memo) \
+DOCLIBS = $(patsubst %,%.scm,compile core getopts io math peg repl string utf8 memo trace) \
           intrinsics.txt native.txt
 
 docs: .out/libs.txt
@@ -90,14 +90,16 @@ promote-docs: .out/libs.txt ; cp .out/libs.txt libraries.md
 
 #----------------------------------------------------------------
 
-qarg = '$(subst ','\'',$1)'# ' balanced for emacs
-target-line = $(shell sed -n '/guard,$1,/=' makefile)
+mf = $(word 1,$(MAKEFILE_LIST))
+show-line = sed -n '/$1/{=;p;}' $(mf) | sed 'N;s/\n/: /;s/^/$(mf):/' >&2
 
-# $(call guard,ID,COMMAND) : drop stdout and print message on failure
-#   ID should be distinct from all other callers of guard
-guard = ( $2 ) > /dev/null || (echo 'makefile:$(target-line): $@ failed:' && /bin/echo " $$ "$(call qarg,$2) && false)
+# $(call ||,UNIQUEID): BASH clause to display file and line on failure
+|| = || ( $(call show-line,call ||.$1) && false )
 
 build_message = @ printf '*** build $@\n' 
+
+foo: ; false $(call ||,FOO)
+
 
 # It is not always necessary to keep $A/scam up to date with sources.  Any
 # working $A/scam will suffice for building $B/scam except after `make
@@ -105,7 +107,7 @@ build_message = @ printf '*** build $@\n'
 # Type `make a` to update $A/scam to reflect source changes.
 
 ifneq "" "$(filter a,$(MAKECMDGOALS))"
-$A/scam: *.scm bin/scam
+$A/scam: *.scm
 endif
 
 # Don't pollute user's ~/.scam
@@ -115,7 +117,7 @@ export SCAM_BUILD_DIR=.out/builddir/
 # not implicitly trust them to overwrite the existing output file,
 # and so we delete the output file first.
 
-$A/scam: # see 'make a', above
+$A/scam: bin/scam # see 'make a', above
 	$(build_message)
 	bin/scam -o $@ scam.scm
 	touch $@
@@ -137,13 +139,13 @@ $C/scam: *.scm $B.ok
 #
 $A.ok: $A/scam test/*.scm
 	@ echo '... test $A/scam'
-	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot --build-dir '.out/ta/scam build dir/'
-	$(_@) .out/ta/run
-	$(_@) $(call guard,AOK1,[[ -d '.out/ta/scam build dir/' ]])
+	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot --build-dir '.out/ta/scam build dir/'   $(call ||,AOK1)
+	$(_@) .out/ta/run   $(call ||,AOK2)
+	$(_@) [[ -d '.out/ta/scam build dir/' ]]  $(call ||,AOK3)
 	$(_@) touch $@
 
 
-$B.ok: $B-o.ok $B-x.ok $B-e.ok $B-i.ok $B-io.ok
+$B.ok: $B-o.ok $B-x.ok $B-e.ok $B-i.ok $B-io.ok $B-trace.ok
 	$(_@) touch $@
 
 
@@ -154,41 +156,51 @@ $B.ok: $B-o.ok $B-x.ok $B-e.ok $B-i.ok $B-io.ok
 
 $B-o.ok: $B/scam test/*.scm
 	@ echo '... test scam -o EXE FILE'
-	$(_@) $B/scam -o .out/tb/using test/using.scm
-	$(_@) .out/tb/using
-	$(_@) $B/scam -o .out/tb/dash-o --build-dir '.out/tb/a b c/' test/dash-o.scm
-	$(_@) $(call guard,BOK1,[[ -d '.out/tb/a b c/' ]])
-	$(_@) .out/tb/dash-o 1 2 > .out/tb/dash-o.out
-	$(_@) $(call guard,BOK2,grep 'result=11:2' .out/tb/dash-o.out)
-	$(_@) ( ! $B/scam test/bug.scm 2>&1 ) | grep -q assertion.failed || (echo 'Fail: bug.scm should fail!'; false)
+	$(_@) $B/scam -o .out/tb/using test/using.scm  $(call ||,Bo1)
+	$(_@) .out/tb/using $(call ||,Bo2)
+	$(_@) $B/scam -o .out/tb/dash-o --build-dir '.out/tb/a b c/' test/dash-o.scm  $(call ||,Bo3)
+	$(_@) [[ -d '.out/tb/a b c/' ]]  $(call ||,Bo4)
+	$(_@) .out/tb/dash-o 1 2 > .out/tb/dash-o.out  $(call ||,Bo5)
+	$(_@) grep -q 'result=11:2' .out/tb/dash-o.out  $(call ||,Bo6)
+	$(_@) ( ! $B/scam test/bug.scm 2>&1 ) | grep -q assertion.failed  $(call ||,Bo7)
 	$(_@) touch $@
 
 
 $B-x.ok: $B/scam test/*.scm
 	@ echo '... test scam FILE ARGS...'
-	$(_@) SCAM_TRACE='%conc:c' $B/scam --build-dir .out/tbx/ -- test/dash-x.scm 3 'a b' > .out/tb/dash-x.out
-	$(_@) $(call guard,BX1,grep '9:3:a b' .out/tb/dash-x.out)
-	$(_@) $(call guard,BX2,grep ' 4 .*conc' .out/tb/dash-x.out)
+	$(_@) $B/scam --build-dir .out/tbx/ -- test/dash-x.scm 3 'a b' > .out/tb/dash-x.out $(call ||,Bx1)
+	$(_@) grep -q '9:3:a b' .out/tb/dash-x.out $(call ||,Bx2)
 	$(_@) touch $@
 
 
 $B-e.ok: $B/scam
 	@ echo '... test scam -e EXPR'
-	$(_@) $B/scam --build-dir .out/tbx -e '(print [""])' -e '[""]' > .out/tb/dash-e.out
-	$(_@) $(call guard,BE1,cat .out/tb/dash-e.out | tr  '\n' '/' | grep '\!\./\[\"\"\]' -)
+	$(_@) $B/scam --build-dir .out/tbx -e '(print [""])' -e '[""]' > .out/tb/dash-e.out $(call ||,Be1)
+	$(_@) cat .out/tb/dash-e.out | tr  '\n' '/' | grep -q '\!\./\[\"\"\]' - $(call ||,Be2)
 	$(_@) touch $@
 
 
 $B-i.ok: $B/scam
 	@ echo '... test scam [-i]'
-	$(_@) $(call guard,BI1,$B/scam <<< $$'(^ 3 7)\n:q\n' 2>&1 | grep 2187)
+	$(_@) $B/scam <<< $$'(^ 3 7)\n:q\n' 2>&1 | grep -q 2187 $(call ||,Bi1)
 	$(_@) touch $@
 
 
 $B-io.ok: $B/scam
 	@ echo '... test io redirection'
-	$(_@) $(call guard,BIO1,$B/scam -e '(write 1 "null")(write 7 "stdout\n")' 7>&1 >/dev/null | grep ^stdout)
-	$(_@) $(call guard,BIO1,$B/scam -e '(write 2 "stderr")' 2>&1 >/dev/null | grep stderr)
+	$(_@) $B/scam -e '(write 1 "null")(write 7 "stdout\n")' 7>&1 >/dev/null | grep -q ^stdout $(call ||,Bio1)
+	$(_@) $B/scam -e '(write 2 "stderr")' 2>&1 >/dev/null | grep -q stderr $(call ||,Bio2)
+	$(_@) touch $@
+
+
+$B-trace.ok: $B/scam test/tracing*
+	@ echo '... test tracing'
+	$(_@) SCAM_TRACE='%' $B/scam test/tracing.scm f > $B/tracing-f.out $(call ||,Bt1)
+	$(_@) diff -q test/tracing-f.out $B/tracing-f.out $(call ||,Bt2)
+	$(_@) $B/scam test/tracing.scm g > $B/tracing-g.out $(call ||,Bt3)
+	$(_@) diff -q test/tracing-g.out $B/tracing-g.out $(call ||,Bt4)
+	$(_@) SCAM_TRACE='f:c' $B/scam test/tracing.scm f > $B/tracing-fc.out $(call ||,Bt5)
+	$(_@) diff -q test/tracing-fc.out $B/tracing-fc.out $(call ||,Bt6)
 	$(_@) touch $@
 
 

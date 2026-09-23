@@ -2,13 +2,13 @@
 
 ;; # Native
 ;;
-;; This section describes features that are not officially part of the SCAM
-;; language.  They provide access to lower-level ("native") Make features,
-;; and cannot be described completely without introducing implementation
-;; complexities of SCAM and "alien" aspects of Make.  They may be useful
-;; when using SCAM to interoperate tightly with non-SCAM Make code.
+;; This section describes features that provide access to lower-level
+;; ("native") GNU Make features that do not fit nicely into the SCAM
+;; language, and require understanding of Make and some aspects of SCAM's
+;; implementation on Make.  These may be useful when using SCAM to
+;; interoperate tightly with non-SCAM Make code.
 ;;
-;; There is not a "native" module.  These features are
+;; There is no "native" module.  These features are SCAM
 ;; [intrinsics](#intrinsics), so `(require "native")` is not required.
 
 ;; Call the function variable whose native name is NAME with elements of
@@ -23,17 +23,19 @@
 (declare `(native-bound? var-name) &public)
 
 
-;; Call a function, given its native name.
+;; Call a Make function names FN-NAME, passing arguments ARGS.  This
+;; compiles to `$(call FN-NAME,...)`.
 ;;
-(declare (native-call var-name ...args) &public)
+(declare (native-call fn-name ...args) &public)
 
 
-;; Evaluate STR as GNU Make source.
+;; Evaluate STR as GNU Make source.  This compiles to `$(eval STR)`.
 ;;
 (declare (native-eval str) &public)
 
 
-;; Describe the flavor of native variable VAR-NAME.  One of:
+;; Describe the flavor of native variable VAR-NAME, as does `$(flavor
+;; VAR-NAME)` in Make.  One of:
 ;;
 ;;  * `"simple"`
 ;;  * `"recursive"`
@@ -43,19 +45,24 @@
 
 
 ;; Get the "native name" of a SCAM global variable, function, or a built-in
-;; function.
+;; function.  This returns the variable name that would be used in raw Make
+;; code.  The difference between the SCAM name and the native name is a
+;; namespace prefix that SCAM prepends to avoid conflicts with variables in
+;; the Make environment.  The namespace prefix also avoids conflicts between
+;; SCAM user functions and function in the SCAM compiler itself.
 ;;
 (declare (native-name var-name) &public)
 
 
 ;; Describe the GNU make origin of native variable VAR-NAME.  Origin values
 ;; include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
-;; See GNU Make docs for more.
+;; See GNU Make docs of `$(origin ...)` for more.
 ;;
 (declare (native-origin var-name) &public)
 
 
-;; Return the value of native variable VAR-NAME.
+;; Return the value of native variable VAR-NAME.  This compiles to `$(value
+;; VAR-NAME)`.
 ;;
 (declare (native-value var-name) &public)
 
@@ -67,21 +74,26 @@
 (declare (native-var var-name) &public)
 
 
-;; Assign VALUE to the native variable VAR-NAME as a data variable.  This
-;; will replace any data or function variable binding for VAR-NAME.
+;; Assign VALUE to a Make variable VAR-NAME using a "simple" assignment
+;; (versus "recursive").  In SCAM, this is called a "data" variable (versus
+;; "function").  This will replace any data or function variable binding for
+;; VAR-NAME.
 ;;
 (declare (set-native var-name value ?retval) &public)
 
 
-;; Assign VALUE to the native variable FUNC-NAME as a function variable.
-;; This will replace any data or function variable binding for FUNC-NAME.
+;; Assign VALUE to the Make variable FUNC-NAME using a "recursive"
+;; assignment.  In SCAM, this is called a "function" variable (versus
+;; "data").  This will replace any data or function variable binding for
+;; FUNC-NAME.
 ;;
 ;; Function variables cannot store values with complete fidelity -- the
 ;; value read back using `(native-value FUNC-NAME)` may not be exactly the
 ;; same.  However, it is guaranteed that when a SCAM function value is
 ;; assigned to a function, the variable's *behavior* (when called as a
-;; function) will be as expected; furthermore, the value read back will be
-;; functionally equivalent to the original SCAM function.
+;; function) will be as expected; and the value when read back using
+;; `(native-value ...)` will be functionally equivalent to the original SCAM
+;; function.
 ;;
 ;; Function names cannot begin or end in spaces, and other limitations may
 ;; apply depending on the version of Make, but any valid SCAM symbol will

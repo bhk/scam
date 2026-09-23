@@ -3,16 +3,17 @@
 | Module | Exports |
 | :-- | :-- |
 | [compile](#compile-scam-compilation) | [`build-program`](#build-program-src-file-exe-file-build-dir-is-quiet) [`compile-text`](#compile-text-text-file-env-in-build-dir-is-quiet) [`run-program`](#run-program-src-file-argv-build-dir-is-quiet) |
-| [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-key-_) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-_-value) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`permute`](#permute-lst-zz-prefix) [`printf`](#printf-fmt-values) [`repeat-words`](#repeat-words-v-n) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`trace-expect`](#trace-expect-a-b) [`uniq`](#uniq-vec) [`urange`](#urange-min-max) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`vsprintfx`](#vsprintfx-fmt-values-codes-fmt-fn) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
+| [core](#core-general-purpose-functions) | [`1+`](#1-n) [`append`](#append-a-b-c-d-e-f-g-h-others) [`assert`](#assert-cond) [`assoc`](#assoc-key-vecv) [`assoc-initial`](#assoc-initial-prefix-vec) [`assoc-vec`](#assoc-vec-key-vec-vecv) [`butlast`](#butlast-vec) [`concat-vec`](#concat-vec-vec-delim) [`conj`](#conj-vec-item) [`cons`](#cons-item-vec) [`dict-collate`](#dict-collate-pairs) [`dict-compact`](#dict-compact-dict-result) [`dict-find`](#dict-find-key-dict) [`dict-get`](#dict-get-key-dict-default) [`dict-key`](#dict-key-key-_) [`dict-keys`](#dict-keys-dict) [`dict-remove`](#dict-remove-key-dict) [`dict-set`](#dict-set-key-value-dict) [`dict-value`](#dict-value-_-value) [`dict-values`](#dict-values-dict) [`eq?`](#eq-a-b) [`expect`](#expect-a-b) [`expect-x`](#expect-x-a-b-file-line) [`fexpect`](#fexpect-a-b) [`filtersub`](#filtersub-pat-repl-str) [`foldl`](#foldl-f-z-v) [`foldr`](#foldr-f-z-v) [`format`](#format-str) [`format-add`](#format-add-func) [`identity`](#identity-a) [`index-of`](#index-of-vec-item) [`indices`](#indices-lst) [`intersperse`](#intersperse-value-vec) [`last`](#last-vec) [`memoize`](#memoize-funcname) [`numeric?`](#numeric-s) [`printf`](#printf-fmt-values) [`repeat-words`](#repeat-words-v-n) [`reverse`](#reverse-list) [`see`](#see-substr-str) [`select-vec`](#select-vec-fn-list) [`select-words`](#select-words-fn-list) [`sort-by`](#sort-by-key-func-values) [`split`](#split-delim-str) [`sprintf`](#sprintf-fmt-values) [`strip`](#strip-vec) [`uniq`](#uniq-vec) [`urange`](#urange-min-max) [`vec-intersect`](#vec-intersect-a-b) [`vec-or`](#vec-or-vec) [`vec-subtract`](#vec-subtract-a-b) [`vsprintf`](#vsprintf-fmt-values) [`vsprintfx`](#vsprintfx-fmt-values-codes-fmt-fn) [`while`](#while-pred-do-initial) [`word-index?`](#word-index-n) [`xor`](#xor-a-b) |
 | [getopts](#getopts-command-line-options-parser) | [`getopts`](#getopts-argv-opts) |
-| [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-list) [`append-for`](#append-for-target-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func-unique) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-target-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`define`](#define-forms) [`defmacro`](#defmacro-name-argname-body) [`demote`](#demote-value) [`dir`](#dir-paths) [`do-not-trace`](#do-not-trace-names) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`filtersub`](#filtersub-pat-repl-str) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-target-vector-body) [`foreach`](#foreach-target-list-delim-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lambda`](#lambda-params-body) [`lastword`](#lastword-list) [`let`](#let-bindings-body) [`let&`](#let-bindings-body) [`let-global`](#let-global-bindings-body) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`trace`](#trace-spec) [`tracing`](#tracing-spec-expr) [`untrace`](#untrace-names-retval) [`when`](#when-cond-body) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
+| [intrinsics](#intrinsics) | [`..`](#-values) [`._.`](#_-values) [`?`](#-fn-args) [`abspath`](#abspath-paths) [`addprefix`](#addprefix-prefix-list) [`addsuffix`](#addsuffix-suffix-list) [`append-for`](#append-for-target-vector-body) [`apply`](#apply-lambda-vec) [`at-exit`](#at-exit-func) [`basename`](#basename-paths) [`begin`](#begin-exprs) [`case`](#case-value-clauses) [`concat`](#concat-values) [`concat-for`](#concat-for-target-vector-delim-body) [`cond`](#cond-clauses) [`current-env`](#current-env) [`current-file`](#current-file) [`current-file-line`](#current-file-line) [`data`](#data-name-ctors) [`declare`](#declare-forms) [`define`](#define-forms) [`defmacro`](#defmacro-name-argname-body) [`demote`](#demote-value) [`dir`](#dir-paths) [`error`](#error-message) [`filter`](#filter-patterns-list) [`filter-out`](#filter-out-patterns-list) [`findstring`](#findstring-sub-str) [`first`](#first-vec) [`firstword`](#firstword-list) [`for`](#for-target-vector-body) [`foreach`](#foreach-target-list-delim-body) [`if`](#if-cond-then-expr-else-expr) [`join`](#join-list-a-list-b) [`lambda`](#lambda-params-body) [`lastword`](#lastword-list) [`let`](#let-bindings-body) [`let&`](#let-bindings-body) [`let-global`](#let-global-bindings-body) [`not`](#not-a) [`notdir`](#notdir-paths) [`nth`](#nth-index-vec) [`nth-rest`](#nth-rest-n-list) [`or`](#or-exprs) [`patsubst`](#patsubst-pat-repl-list) [`print`](#print-values) [`promote`](#promote-value) [`realpath`](#realpath-paths) [`require`](#require-module-private) [`rest`](#rest-vec) [`rrest`](#rrest-vec) [`set`](#set-name-value-retval) [`shell`](#shell-command) [`sort`](#sort-list) [`subst`](#subst-from-to-from-to-value) [`suffix`](#suffix-paths) [`when`](#when-cond-body) [`wildcard`](#wildcard-patterns) [`word`](#word-n-list) [`wordlist`](#wordlist-a-b-list) [`words`](#words-list) |
 | [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`cp-file-atomic`](#cp-file-atomic-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd-fmt-args) [`io-sprintf`](#io-sprintf-fmt-args) [`io-vsprintf`](#io-vsprintf-fmt-args) [`mkdir-p`](#mkdir-p-dir) [`mv-file`](#mv-file-from-to) [`path-basename`](#path-basename-path) [`path-dir`](#path-dir-path) [`path-notdir`](#path-notdir-path) [`pipe`](#pipe-stdin-fmt-args) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd-fmt-args) [`shellf`](#shellf-cmd-fmt-args) [`unescape-path`](#unescape-path-loc) [`vfprintf`](#vfprintf-fd-format-values) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) [`write-file-atomic`](#write-file-atomic-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
-| [native](#native) | [`name-apply`](#name-apply-func-name-argv) [`native-bound?`](#native-bound-var-name) [`native-call`](#native-call-var-name-args) [`native-eval`](#native-eval-str) [`native-flavor`](#native-flavor-var-name) [`native-name`](#native-name-var-name) [`native-origin`](#native-origin-var-name) [`native-value`](#native-value-var-name) [`native-var`](#native-var-var-name) [`set-native`](#set-native-var-name-value-retval) [`set-native-fn`](#set-native-fn-func-name-value-retval) |
+| [native](#native) | [`name-apply`](#name-apply-func-name-argv) [`native-bound?`](#native-bound-var-name) [`native-call`](#native-call-fn-name-args) [`native-eval`](#native-eval-str) [`native-flavor`](#native-flavor-var-name) [`native-name`](#native-name-var-name) [`native-origin`](#native-origin-var-name) [`native-value`](#native-value-var-name) [`native-var`](#native-var-var-name) [`set-native`](#set-native-var-name-value-retval) [`set-native-fn`](#set-native-fn-func-name-value-retval) |
 | [peg](#peg-peg-parser-generator) | [`gen-lex`](#gen-lex-tokens) [`lex`](#lex-text-tokens) [`peg-*`](#peg--pf) [`peg-+`](#peg--pf) [`peg-?`](#peg--pf) [`peg-and`](#peg-and-pfs) [`peg-at`](#peg-at-pf) [`peg-c`](#peg-c-name-pf) [`peg-empty`](#peg-empty-caps) [`peg-not`](#peg-not-pf) [`peg-or`](#peg-or-pfs) [`peg-p`](#peg-p-in-out-caps) [`un-lex`](#un-lex-subj) |
 | [repl](#repl-interactive-mode-for-scam) | [`repl`](#repl-build-dir-prompts) [`repl-ep`](#repl-ep-text-build-dir-is-quiet) |
 | [string](#string-string-manipulation) | [`bytes-from-bytecodes`](#bytes-from-bytecodes-codes) [`gen-polysub`](#gen-polysub-froms-tos-input) [`string-from-bytecodes`](#string-from-bytecodes-codes) [`string-len`](#string-len-s) [`string-lower`](#string-lower-str) [`string-repeat`](#string-repeat-str-num) [`string-slice`](#string-slice-first-last-str) [`string-to-bytecodes`](#string-to-bytecodes-str) [`string-to-bytes`](#string-to-bytes-s) [`string-to-chars`](#string-to-chars-s) [`string-upper`](#string-upper-str) |
+| [trace](#trace-tracing-and-profiling) | [`trace`](#trace-specs) [`trace-expect`](#trace-expect-a-b) [`tracing`](#tracing-specs-expr) |
 | [utf8](#utf8-utf-8-coding) | [`utf8-decode`](#utf8-decode-bytes) [`utf8-encode`](#utf8-encode-codes) |
 
 
@@ -259,6 +260,11 @@ not affect the meaning of some types; chiefly, this ignores trailing
 spaces in record values.
 
 
+##### `(filtersub PAT REPL STR)`
+
+Replace PAT with REPL if STR matches PAT; return nil otherwise.
+
+
 ##### `(foldl F Z V)`
 
 Apply the two-argument function F to all elements of V, starting at the
@@ -317,18 +323,6 @@ Memoize a function that accepts up to three arguments.
 ##### `(numeric? S)`
 
 Return S if S is a valid numeric literal in SCAM, nil otherwise.
-
-
-##### `(permute LST ZZ ?PREFIX)`
-
-Return a list of all possible concatenations words from LST.
-
-ZZ = a string of 0's that determine how long wach concatenation is.
-     "" => 1 word, "0" => 2 word, "00" => 3 words, ...
-PREFIX = a string to be prepended to each resulting concatenation.
-
-The list is ordered by the indexes into LST.  Words that appear earlier
-in the concatenations are more significant.
 
 
 ##### `(printf FMT ...VALUES)`
@@ -394,11 +388,6 @@ leading and trailing spaces will be removed.  Newline characters are
 not disturbed.
 
 
-##### `(trace-expect A B)`
-
-Like `expect`, but evaluation of A and B is done with tracing enabled.
-
-
 ##### `(uniq VEC)`
 
 Return the unique members of VEC *without* re-ordering.  The first
@@ -413,11 +402,8 @@ not preserve ordering.
 
 Return a list of integers in the range MIN..MAX (inclusive).
 
-MIN is a positive integer.
-MAXi is a non-negative integer.
-
-MIN and MAX must be in "plain" decimal format (no scientific notation or
-decimals).
+MIN and MAX are non-negative integers in "plain" decimal format (no
+scientific notation or decimals).
 
 Memory requirements and execution time are proportional to MAX, not
 (MAX - MIN).
@@ -532,8 +518,8 @@ Example:
 
 # Intrinsics
 
-There is not an "intrinsics" module; all these exports are defined by the
-SCAM language itself and are available to program without any `require`
+There is no "intrinsics" module; all these exports are defined by the
+SCAM language itself and are available to a program without any `require`
 statement.
 
 Intrinsic symbols fall into three different categories:
@@ -542,9 +528,16 @@ Intrinsic symbols fall into three different categories:
  - Manifest functions
  - Manifest macros
 
-Manifest functions are like other functions in SCAM, except that they are
-provided by the language itself.  Special forms are not functions, so
-they do not have values and cannot be passed to other functions.
+Manifest functions and macros are like other functions and macros in
+SCAM, except that they are provided by the language itself.  Special
+forms are not functions, so they do not have values and cannot be passed
+to other functions.
+
+## Functions Matching Make Primitives
+
+## Special forms
+
+## SCAM Runtime Functions
 
 ## Exports
 
@@ -570,8 +563,8 @@ the return value is displayed.  For example, in the REPL:
     > (f 1)
     2
     > (? f 1)
-    --> (f "1")
-    <-- f: "2"
+    --> (f 1)
+    <-- f: 2
     2
 
 
@@ -615,13 +608,13 @@ Example:
     "c"
 
 
-##### `(at-exit FUNC ?UNIQUE)`
+##### `(at-exit FUNC)`
 
 Add FUNC to a list of functions that will be run after `main` exits.
-The earliest-registered functions will be called last.
+The earliest-registered functions will be called last.  Note that
+FUNC is a function *value*, not a function name.
 
-If UNIQUE is non-nil and FUNC has already been registered, it will not be
-added again.
+If FUNC has already been registered, it will not be added again.
 
 
 ##### `(basename PATHS)`
@@ -776,13 +769,6 @@ Get the directory of each file path in word list PATHS.
 See also: `notdir`, `path-dir`.
 
 
-##### `(do-not-trace NAMES)`
-
-Add NAMES to the list of functions that should not be instrumented when
-`trace` or `tracing` are called.  In order to avoid undefined behavior,
-we must avoid instrumenting functions *while* they are executing.
-
-
 ##### `(error MESSAGE)`
 
 Terminate execution of the program with a non-zero status code, writing
@@ -799,11 +785,6 @@ equal, treating the first `%` character in a pattern as a wildcard.
 ##### `(filter-out PATTERNS LIST)`
 
 Get all words in LIST that do *not* match PATTERNS.
-
-
-##### `(filtersub PAT REPL STR)`
-
-Replace PAT with REPL if STR matches PAT; return nil otherwise.
 
 
 ##### `(findstring SUB STR)`
@@ -1098,73 +1079,6 @@ given VALUE.  For example:
 ##### `(suffix PATHS)`
 
 Return the file extensions of all file names in PATHS.
-
-
-##### `(trace SPEC)`
-
-Instrument functions for tracing as described by SPEC.
-
-SPEC is as documented for `tracing`.
-
-The return value is a list of the names of the instrumented functions,
-which can be passed to `untrace` later.
-
-
-##### `(tracing SPEC EXPR)`
-
-Evaluate EXPR with tracing activated according to SPEC.
-
-SPEC is a string used to specify which functions are traced and how they
-are traced.  In its simplest form, it is a list of function names.
-Beyond that, a `:` followed by a "mode" may be appended to each name.
-Possible modes are:
-
- - `t` : Print the function name and arguments when it is called and its
-         return value when it returns.  This is the default mode.
-
- - `f` : Print just the function name on entry and exit.
-
- - `c` : Count the number of times that the function is invoked.
-         Function counts will be written to stdout when tracing is
-         removed.  This can occur when `(tracing ...)` completes, or when
-         `(untrace ...)` is called, or after `main` returns.
-
- - `x<N>` : Evaluate the function body N times each time the function is
-         invoked.  <N> must be a positive number or the empty string
-         (which is treated as 11).
-
- - `-` : Exclude the function(s) from instrumentation.  Any functions
-         matched by this entry will be skipped even when they match other
-         entries in the specification string.  This does not depend on
-         the ordering of entries.  For example, `(trace "a% %z:-")` will
-         instrument all functions whose names begin with `a` except for
-         those whose names end in `z`.
-
-In place of a function name a pattern may be provided to match multiple
-functions.  In a pattern, the `%` character is a wildcard that will match
-any sequence of characters.  Some caution must be exercised in general
-with tracing, especially when using wildcards: Do not instrument any
-function while it is currently running.  SCAM prevents this from
-happening when you use `SCAM_TRACE`, or when you call `trace` or
-`tracing` at the top level of a source file, the REPL, or your `main`
-function.  However, if while nested in one or more other user-defined
-functions, you trace any of those functions, then undefined behavior will
-result.
-
-The intent of `x` instrumentation is to cause the function to consume
-more time by a factor of N (for profiling purposes).  If your code is
-purely functional, or at least limits its side effects to idempotent
-operations, repetition of expressions should not alter the behavior of
-the program.  This can be used to identify and quantify hotspots in a
-program.
-
-See the [reference manual](reference.md#debugging) for examples.
-
-
-##### `(untrace NAMES ?RETVAL)`
-
-Remove instrumentation from functions listed in NAMES, or functions
-matched by patterns in NAMES.
 
 
 ##### `(when COND ...BODY)`
@@ -1479,7 +1393,7 @@ values, but equivalent to all other non-number values.
 
 For many operators -- such as `+`, `-`, `*`, `//`, `mod`, and `^` -- the
 result is always numerically exact.  Some functions -- like `/`, `log`,
-`sin`, etc. -- yield an approximation with a finite number of digits.
+`sin`, etc. -- yield an approximation with a limited number of digits.
 These functions accept an optional argument for specifying precision;
 otherwise the default is 16 significant digits (slightly more precise
 than 64-bit IEEE-754 binary floating point).
@@ -1837,13 +1751,13 @@ any data and 100KB for text files.
 
 # Native
 
-This section describes features that are not officially part of the SCAM
-language.  They provide access to lower-level ("native") Make features,
-and cannot be described completely without introducing implementation
-complexities of SCAM and "alien" aspects of Make.  They may be useful
-when using SCAM to interoperate tightly with non-SCAM Make code.
+This section describes features that provide access to lower-level
+("native") GNU Make features that do not fit nicely into the SCAM
+language, and require understanding of Make and some aspects of SCAM's
+implementation on Make.  These may be useful when using SCAM to
+interoperate tightly with non-SCAM Make code.
 
-There is not a "native" module.  These features are
+There is no "native" module.  These features are SCAM
 [intrinsics](#intrinsics), so `(require "native")` is not required.
 
 ## Exports
@@ -1851,7 +1765,9 @@ There is not a "native" module.  These features are
 ##### `(name-apply FUNC-NAME ARGV)`
 
 Call the function variable whose native name is NAME with elements of
-vector ARGV as arguments.
+vector ARGV as arguments.  Note: If there are more than 8 arguments, the
+remaining arguments will be passed in a vector as the 9th argument (this
+is the native calling convention for SCAM-compiled functions).
 
 
 ##### `(native-bound? VAR-NAME)`
@@ -1860,19 +1776,21 @@ Return 1 if native variable VAR-NAME has been assigned a value (as a data
 or function variable), or `nil` if unassigned.
 
 
-##### `(native-call VAR-NAME ...ARGS)`
+##### `(native-call FN-NAME ...ARGS)`
 
-Call a function, given its native name.
+Call a Make function names FN-NAME, passing arguments ARGS.  This
+compiles to `$(call FN-NAME,...)`.
 
 
 ##### `(native-eval STR)`
 
-Evaluate STR as GNU Make source.
+Evaluate STR as GNU Make source.  This compiles to `$(eval STR)`.
 
 
 ##### `(native-flavor VAR-NAME)`
 
-Describe the flavor of native variable VAR-NAME.  One of:
+Describe the flavor of native variable VAR-NAME, as does `$(flavor
+VAR-NAME)` in Make.  One of:
 
  * `"simple"`
  * `"recursive"`
@@ -1882,19 +1800,24 @@ Describe the flavor of native variable VAR-NAME.  One of:
 ##### `(native-name VAR-NAME)`
 
 Get the "native name" of a SCAM global variable, function, or a built-in
-function.
+function.  This returns the variable name that would be used in raw Make
+code.  The difference between the SCAM name and the native name is a
+namespace prefix that SCAM prepends to avoid conflicts with variables in
+the Make environment.  The namespace prefix also avoids conflicts between
+SCAM user functions and function in the SCAM compiler itself.
 
 
 ##### `(native-origin VAR-NAME)`
 
 Describe the GNU make origin of native variable VAR-NAME.  Origin values
 include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
-See GNU Make docs for more.
+See GNU Make docs of `$(origin ...)` for more.
 
 
 ##### `(native-value VAR-NAME)`
 
-Return the value of native variable VAR-NAME.
+Return the value of native variable VAR-NAME.  This compiles to `$(value
+VAR-NAME)`.
 
 
 ##### `(native-var VAR-NAME)`
@@ -1906,21 +1829,26 @@ VAR-NAME may not contain literal balanced parentheses.
 
 ##### `(set-native VAR-NAME VALUE ?RETVAL)`
 
-Assign VALUE to the native variable VAR-NAME as a data variable.  This
-will replace any data or function variable binding for VAR-NAME.
+Assign VALUE to a Make variable VAR-NAME using a "simple" assignment
+(versus "recursive").  In SCAM, this is called a "data" variable (versus
+"function").  This will replace any data or function variable binding for
+VAR-NAME.
 
 
 ##### `(set-native-fn FUNC-NAME VALUE ?RETVAL)`
 
-Assign VALUE to the native variable FUNC-NAME as a function variable.
-This will replace any data or function variable binding for FUNC-NAME.
+Assign VALUE to the Make variable FUNC-NAME using a "recursive"
+assignment.  In SCAM, this is called a "function" variable (versus
+"data").  This will replace any data or function variable binding for
+FUNC-NAME.
 
 Function variables cannot store values with complete fidelity -- the
 value read back using `(native-value FUNC-NAME)` may not be exactly the
 same.  However, it is guaranteed that when a SCAM function value is
 assigned to a function, the variable's *behavior* (when called as a
-function) will be as expected; furthermore, the value read back will be
-functionally equivalent to the original SCAM function.
+function) will be as expected; and the value when read back using
+`(native-value ...)` will be functionally equivalent to the original SCAM
+function.
 
 Function names cannot begin or end in spaces, and other limitations may
 apply depending on the version of Make, but any valid SCAM symbol will
@@ -2189,6 +2117,132 @@ boundaries.
 ##### `(string-upper STR)`
 
 Convert letters to upper case.  Only ASCII letters are supported.
+
+
+# trace: Tracing and Profiling
+
+The `trace` module performs run-time instrumentation of functions.
+
+The function [`trace`](#trace-specs) can be called to instrument
+functions at any point in time.
+
+The [`tracing`](#tracing-specs-expr) macro can be used to perform tracing
+with a limited duration.
+
+When the `trace` module is *present*, it also recognizes `SCAM_TRACE` and
+enhances the output of the [`?` special form](#-fn-args) for call-site
+tracing.
+
+## `SCAM_TRACE`
+
+If the `SCAM_TRACE` environment variable is set, the "trace" module, when
+present, will call `(trace SCAM_TRACE)` on program startup, prior to the
+loading of the main module.
+
+Regarding whether the `trace` module is present: The `trace` module is
+present in the SCAM compiler, and therefore also in programs that are run
+by the SCAM compiler in [immediate mode](reference.md#the-scam-compiler)
+(which includes `-q` test programs).  In the case of executables that
+have been built by the SCAM compiler, it is present only if included --
+anywhere in that program -- with `(require "trace")`.
+
+## Trace Specifications
+
+The `SPECS` argument passed to `trace` or `tracing` or contained in
+`SCAM_TRACE` specifies which functions are to be instrumented and what
+information is to be reported.
+
+    SPECS := SPEC (` ` SPEC)*
+    SPEC := NAME (`:` MODE)?
+
+In its simplest form, it is a list of function names.
+
+Names that include a `%` character are treated as wildcards that match
+currently-defined functions.  Additionally, the name may be enclosed in
+double-quotes to indicate the [native name](#native) of a function.
+
+Names may be followed by a `:` character followed by a *mode*.  Possible
+modes are:
+
+ - `t` : Print the function name and arguments when it is called and its
+         return value when it returns.  This is the default mode.
+
+ - `f` : Print just the function name on entry and exit.
+
+ - `c` : Count the number of times that the function is invoked.
+         Function counts will be written to stdout when tracing is
+         removed.  This can occur when `(tracing ...)` completes, or when
+         the program exits.
+
+ - `xN` : Evaluate the function body N times each time the function is
+         invoked.  N must be a positive number or the empty string
+         (which is treated as 11).
+
+ - `-` : Exclude the function(s) from instrumentation.  Any functions
+         matched by this entry will be skipped even when they match other
+         entries in this specification string.  This does not depend on
+         the ordering of entries.  For example, `(trace "a% %z:-")` will
+         instrument all functions whose names begin with `a` except for
+         those whose names end in `z`.
+
+Some caution must be exercised when tracing functions, especially with
+wildcards:
+
+ 1. Tracing a function *while it is executing* can run afoul of a bug in
+    GNU Make and cause a fatal exception.  This should not occur when you
+    are using `SCAM_TRACE` or calling tracing functions from the
+    top-level of a module (unless native names are used) or from the
+    REPL.
+
+ 2. Tracing a function that is used by the tracing infrastructure itself
+    can lead to infinite recursion.  This can only occur if you use
+    native naming to match system-provided functions, or use wildcards
+    with native names.
+
+The intent of `x` instrumentation is to cause the function to consume
+more time by a factor of N (for profiling purposes).  It does this by
+repeatedly executing the function one each invocation, returning only the
+first result.  When `x` is used with recursive functions, the
+multiplication of work only occurs at the outermost calls, which should
+produce the desired effect.  The `x` mode should be used only with
+functions that operate without side effects.  If your code employs side
+effects, then this might break your program and it might not provide
+meaningful information anyway.
+
+## Exports
+
+##### `(trace SPECS)`
+
+Instrument functions as described by SPECS, a list of [trace
+specifications](#trace-specifications).
+
+Return a list of native names of the instrumented functions.
+
+When `trace` is called, it will instrument specified functions *if* they
+have already been defined, and it will cause tracing to be updated
+immediately after any new module is loaded.  Note that during the
+execution of a module, functions defined early in the module will remain
+un-instrumented until the module completes loading (or until tracing is
+explicitly added with `trace` or `tracing`).
+
+`trace` can be performed repeatedly on the same function; only the most
+recently-named tracing mode will remain in effect.  Invocation counts
+will not be reset by new calls to trace.
+
+
+##### `(trace-expect A B)`
+
+Like `expect`, but evaluation of A and B is done with tracing enabled.
+
+
+##### `(tracing SPECS EXPR)`
+
+Evaluate EXPR while functions are instrumented according to
+[SPECS](#trace-specifications).  On exit, instrumentation is removed and
+invocation counts will be reported, and then reset, for any functions
+instrumented with mode `c`.
+
+See the [reference manual](reference.md#debugging) for examples.
 
 
 # utf8: UTF-8 Coding

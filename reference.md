@@ -37,22 +37,28 @@
 If you run the [SCAM Compiler](#the-scam-compiler) without any arguments it
 will enter interactive mode (a REPL: Read-Eval-Print Loop).  In this mode,
 you can type **expressions** and SCAM will immediately **evaluate** them
-(compute a value) and display the resulting value. Expressions are described
-in the [Syntax](#syntax) section, below.
+(compute a value) and display the resulting value.
 
 SCAM can also read expressions from source files, called **modules**.  In
 the REPL you can load a module using `(require "FILENAME")`.  The first time
 a file is required by a program, the module will be **loaded**, which means
 that all expressions in the module will be executed.  Typically, these
-expressions store function values (or other values) in global variables.
-Symbols that are exported from the module will be available to the caller of
-`require`.
+expressions are `define` expressions that store function values (or other
+values) in global variables.  Symbols that are exported from the module will
+be available to the caller of `require`.
 
 If you run SCAM with a module (file) name as an argument, SCAM will invoke
 the module as a **program**.  This will load the module and then run a
 function called "main" if the module has defined such a function.
 Alternatively, you can compile a program and then invoke the resulting
 executable file directly.
+
+When compiling a module, SCAM looks for a *qualification* test for the
+module, adding `-q` to the file name immediately before to the extension.
+If such a file exists, SCAM runs it as a program to test that module.  On
+success, SCAM will continue to compile or evaluate the requiring module.  On
+failure -- that is, if the program terminates with an error or its `main`
+function returns a non-zero, non-nil value -- the compilation will be halted.
 
 
 ## Syntax
@@ -500,7 +506,7 @@ member of `data Color`:
 
 A *function* is a string that contains executable code. Functions are
 invoked when a compound form is evaluated and the first item in the compound
-form is function value.
+form is not the name of a macro or a special form.
 
     > (define (f x y)
     +   (.. x y))
@@ -801,10 +807,9 @@ Macros are invoked just like functions:
 Each invocation of the macro will be replaced by a `begin` block containing
 the macro body.  Within the macro body, the macro argument names are bound
 to the argument expressions.  Compound macros behave much like functions,
-but macros cannot recurse, and when a macro is invoked, an expression passed
-as an argument argument may be evaluated zero or more times, depending on
-how many times the parameter ends up being evaluated within the macro body.
-For example:
+but macros cannot recurse, and macro arguments may be evaluated zero or more
+times, depending on how many times the parameter ends up being evaluated
+within the macro body.  For example:
 
     > (define `(m a) (.. a a a) "done")
     > (m (print 1))
@@ -868,39 +873,25 @@ See the [SCAM Libraries](libraries.md) document for full details.
 
 ## Debugging
 
+The `trace` module allows you to instrument your code to view or quantify
+its execution.
+
 ### Call Site Tracing
 
 The ["?" special form](libraries.md#-fn-args) allows a simple edit of the
-source to enable or disable tracing at a particular call site.
+source to enable or disable tracing at a particular call site.  If the
+`trace` module has not been loaded, this will output a rudimentary log of
+function entry and exit.  Once the `trace` module is loaded, this will
+include a more comprehensive log of arguments and indication of function
+nesting.
 
 ### Run-time Tracing
 
-Tracing can be activated at run-time in two different ways:
+Tracing can activated without any source code modifications by seting the
+`SCAM_TRACE` environment variable or calling one of the [`trace` module]
+(libraries.md#trace-function-tracing-and-profiling) functions.
 
- 1. In a SCAM program or in interactive mode, use the following:
-
-     - `(tracing SPEC EXPR)` evaluates EXPR with tracing enabled.
-     - `(trace SPEC)` turns on tracing for subsequent expressions.
-     - `(untrace NAMES)` removes instrumentation from functions.
-
- 2. Set the [`SCAM_TRACE`](#scam-trace) environment variable before running
-    a SCAM program.  in order to trace execution that happens during the
-    program's `main` function.
-
-    `SCAM_TRACE` takes the same form as the `SPEC` argument to `trace`.
-
-    Functions cannot be instrumented until after they have been defined, so
-    `SCAM_TRACE` will activate tracing once before requiring the main module
-    (chiefly so the `^load` function can be traced), and again after the
-    main module is loaded, at which point all modules typically have been
-    loaded.  If you want to trace execution that happens during module
-    loading prior to `main` -- e.g. top-level expressions in a `-q.scm` test
-    -- modify the program to call `(trace SPEC)` or `(tracing ...)`.
-
-Refer to the [library documentation](libraries.md#tracing-spec-expr) for
-details on these tracing functions and on the `SPEC` string format.
-
-#### Tracing examples
+### Tracing Examples
 
 To count all function invocations in a SCAM program:
 
@@ -914,63 +905,42 @@ To show details for all calls into functions beginning with "foo-":
 
     $ SCAM_TRACE='foo-%' scam myprogram.scm
 
-In the REPL:
+In the REPL, using [`tracing`](libraries.md#tracing-spec-expr):
 
     > (define (fib n)
     +    (if (> n 2)
     +       (+ (fib (- n 1)) (fib (- n 2)))
-    +       (- n 1)))
+    +       1))
     > (tracing "%" (fib 4))
-    --> (fib "4")
-     --> (fib "3")
-      --> (fib "2")
-      <-- fib: "1"
-      --> (fib "1")
-      <-- fib: "0"
-     <-- fib: "1"
-     --> (fib "2")
-     <-- fib: "1"
-    <-- fib: "2"
-    2
-    > (tracing "%:c" (fib 16))
-    TRACE:     1973 fib
-    610
+    scam: tracing fib [mode=t] ...
+    --> (fib 4)
+     --> (fib 3)
+      --> (fib 2)
+      <-- fib: 1
+      --> (fib 1)
+      <-- fib: 1
+     <-- fib: 2
+     --> (fib 2)
+     <-- fib: 1
+    <-- fib: 3
+    3
+    > (tracing "%:c" (fib 20))
+    scam: tracing fib [mode=c] ...
+    scam: counts: fib = 13529
+    6765
+
+You can use invocation counts, as above, to look for potential hot spots.
 
 To quantify hotspots in a program the `x` mode of tracing can be used with
 `SCAM_TRACE`.  An example scenario would play out like this:
 
-  1. Run `time SCAM_TRACE='func:x1' ./myprogram`.
+  1. Run `time SCAM_TRACE=func:x1 scam myprogram.scm`.
 
-  2. Run `time SCAM_TRACE='func:x11' ./myprogram`.
+  2. Run `time SCAM_TRACE=func:x101 scam myprogram.scm`.
 
-  3. Calculate (duration2 - duration1) / 10 to obtain the amount of time
+  3. Calculate (duration2 - duration1) / 100 to obtain the amount of time
      `func` ordinarily contributes to the program's execution.
 
-
-### Profiling
-
-You can use invocation counts (as described above) to look for potential
-hot spots.
-
-To measure the time spent in a particular function, you can use the
-following approach:
-
- * Time execution of a use case.  For example:
-
-       $ time ...command...
-
-   The command can invoke your program via `scam program.scm ...args...`
-   or it can invoke your program directly, assuming you have compiled it
-   using `scam -o ...`.
-
- * Use an `x11` trace mode to multiply the time spent in an individual
-   function, and run the same use case:
-
-       $ SCAM_TRACE='function-name:x11' time ...command...
-
- * This second invocation should take longer to execute. Dividing the
-  additional time by 10 will give the amount of time spent in that function
-  during that use case.
 
 ## The SCAM Compiler
 
@@ -980,7 +950,7 @@ interactive "REPL" mode.
 
 The SCAM Compiler supports four major modes of operation:
 
-1. Generate an executable from SCAM source.
+1. Compilation mode.
 
    Usage: `scam -o EXE SOURCE`
 
@@ -991,7 +961,7 @@ The SCAM Compiler supports four major modes of operation:
    function (if there is one) will be called with one argument: a vector
    containing all of the command line arguments.
 
-2. Execute a SCAM source file.
+2. Immediate mode.
 
    Usage: `scam SOURCE [--] ARGS...`
 
@@ -1003,16 +973,17 @@ The SCAM Compiler supports four major modes of operation:
    to the target program, and not interpreted as arguments to the SCAM
    Compiler itself.
 
-3. Enter an interactive "REPL" mode.
+3. Interactive "REPL" mode.
 
    Usage: `scam` or `scam -i`
 
-4. Execute an expression provided on the command line.
+4. Expression mode.
 
    Usage: `scam -e EXPR`
 
-   Multiple `-e EXPR` options can appear on the command line.  When EXPR
-   evaluates to `nil`, scam does not print any results.
+   This will execute an expression provided on the command line and display
+   its results just as interactive mode does.  Multiple `-e EXPR` options
+   can appear on the command line.
 
 
 ### Cached Results
@@ -1024,7 +995,7 @@ directory**.  The build directory is determined by one of the following
 
   1. The value given by the `--build-dir` command line option.
   2. If the `-o EXE` option is given, a directory named ".scam"
-     within the directory containing EXE.
+     within the directory containing EXE is used.
   3. The environment variable `SCAM_BUILD_DIR`.
   4. $HOME/.scam
 
@@ -1032,8 +1003,7 @@ SCAM uses hashes to determine the suitability of cached entries; not
 modification times.  As a result, when modifying a source file and
 re-compiling, you may find that the compilation finishes instantly, as if
 the change were not recognized.  This can happen if the modification returns
-the source file to some older state that had been previously compiled; in
-that case, the compiler can quickly identify how to recreate the program.
+the source file to some older state that had been previously compiled.
 
 
 ## Hashbang

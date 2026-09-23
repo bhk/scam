@@ -13,10 +13,11 @@ Let's define a function.
     > (define (hello ?name)
     +    (print "Hello " (or name "world") "!"))
 
-The `+` prompt indicates that more input is required to complete the SCAM
-expression. The `print` function is a SCAM builtin that outputs its
-arguments to stdout.  The `?` before `name` indicates that it is an optional
-argument.  Now that we have defined a function, let's call it.
+After we enter the first line, prompt changes to `+` to indicate that more
+input is required to complete the SCAM expression. The `print` function is a
+SCAM "builtin" that outputs its arguments to stdout.  The `?` before `name`
+indicates that it is an optional argument.  Now that we have defined a
+function, let's call it.
 
     > (hello)
     Hello world!
@@ -45,9 +46,9 @@ simplest form:
 The global variable `*1` holds the most recent return value, and `*2` holds
 the previous return value.
 
+    > 6
+    6
     > 7
     7
-    > 9
-    9
     > (* *1 *2)
-    63
+    42
