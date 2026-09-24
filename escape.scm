@@ -1,4 +1,4 @@
-;;--------------------------------------------------------------
+;--------------------------------------------------------------
 ;; escape : escaping
 ;;--------------------------------------------------------------
 
@@ -67,112 +67,56 @@
 ;;
 (define (protect-trim s)
   &public
-  (if (and (findstring s (wordlist 1 99999999 s))
-           (filter-out "\n%" (word 1 s))
-           (filter-out "%\n" (lastword s)))
-      s
-      (if s
-          (.. "$(if ,," s ")"))))
+  (if (findstring " \\ " (.. " \\" (subst "\n" " " s) "\\ "))
+      (.. "$(if ,," s ")")
+      s))
 
 
-;; `balance-match` operates on a demoted string in which "(" and )" have
-;; been converted to "!L" and "!R" (each surrounded by spaces).  It replaces
-;; balanced pairs of "!L" and "!R" with "(" and ")".  Any occurrences of
-;; "!C" enclosed by "(" and ")" are eliminated.  The caller may handle any
-;; remaining "!L", "!R", or "!C" as necessary.
-
-(define (balance2 e)
-  (promote (if (findstring "!C" e)
-               (.. "$(if ,," (subst "!C" "" e) ")")
-             e)))
-
-;; `stack` is a list of words -- one for each unmatched !L plus one (the
-;; first (which never begins with !L).
+;; OBJ = non-empty object string split into words at "(..." and "...)"
+;; Sanitize (remove "!@" markers from) all matching "(...)".
 ;;
-;; If we see another !L, we push another word on the stack.
-;; If we see a !R, we pop the last word and append "(<content>)" to the previous.
-;;
-(define (balance-match-r w str stack)
-  (if w
-      (balance-match-r (word 1 str)
-           (rest str)
-           (cond
-            ;; !L
-            ((filter "!L%" w)
-             (.. stack " " w))
+(define (clear-nested obj)
+  (define `RECUR
+    (clear-nested
+     (subst " " ""
+            "!@(" " !@("
+            "!@)" "!@) "
+            (foreach (w obj)
+              (if (filter "!@(%!@)" w)
+                  (.. (subst "!@" "" w) " !.")
+                  w)))))
 
-            ;; !R matching !L
-            ((and (filter "!R" w)
-                  (word 2 stack))
-
-             ;; butlast is a bit ugly
-             (let& ((paired (.. "("
-                                (subst "!C" "" "!L" ""
-                                       (lastword stack))
-                                ")")))
-               ;; butlast is inefficient; we know that stack contents are
-               ;; word-encoded, so we can do this:
-               (.. (filter-out "%!" (.. stack "!")) paired)))
-            ;; other
-            (else (.. stack w))))
-      stack))
+  (if (filter "!@(%!@)" obj)
+      RECUR
+      obj))
 
 
-(define (balance-match str)
-  (balance-match-r (word 1 str) (rest str) "!."))
-
-
-(define `(balance str)
-  (balance2
-   (subst " " "" "!R" "$]" "!L" "$["
-          (balance-match (subst "," "!C," ")" " !R " "(" " !L"
-                                (demote str))))))
-
-
-;; check-balance: find matched parentheses, removing them and their contents
-;; from the string.  The returned string describes the remainder:
-;;    If it contains "!" there was an unmatched paren.
-;;    If it contains "," there was a comma outside of matched parens.
-;;
-;; The algorithm splits the string at each !R, making a list with one more
-;; word than the number of !R's.  The first !R is then paired with the last
-;; !L and removed from the list.  Any text preceding the !L is prepended to
-;; the next word in the list.
-;;
-(define (check-balance-r str)
-  (if (word 2 str)
-      (check-balance-r
-       (.. (subst " " "" (filter-out "!L%!R" (subst "!L" " !L" (word 1 str))))
-           (rest str)))
+(define (protect-comma str)
+  (if (findstring "!@," str)
+      (.. "$(if ,," (subst "!@" "" str) ")")
       str))
 
-(define (check-balance str)
-  (check-balance-r (subst " " "" "\t" "" "!" "" "(" "!L" ")" "!R ." str)))
 
-
-;; Already balanced strings are the most common case, and checking balance
-;; is easier than constructing a well-balanced string, so we check before
-;; balancing.
-
-(define (make-balanced str chk)
-  (if (findstring "!" chk)
-      (balance str)
-      (if (findstring "," chk)
-          (.. "$(if ,," str ")")
-          str)))
-
-
-;; Escape argument to a function
+;; Escape "(", ",", and ")" outside of balanced parentheses.
 ;;
-;;  - encode unbalanced parentheses
-;;  - encode "," except where enclosed in balanced (unencoded) parens
-;;
+(define `(escape-unnested str)
+  (promote
+   (protect-comma
+    (subst " " ""
+           "!@)" "$]"
+           "!@(" "$["
+           (clear-nested (subst "," "!@,"
+                                "(" " !@("
+                                ")" "!@) "
+                                [str]))))))
+
+
 (define (protect-arg str)
   &public
   (if (or (findstring "(" str)
-          (findstring ")" str)
-          (findstring "," str))
-      (make-balanced str (check-balance str))
+          (findstring "," str)
+          (findstring ")" str))
+      (escape-unnested str)
       str))
 
 
@@ -180,7 +124,7 @@
 ;;
 ;;  - encode newlines
 ;;
-;; Interestingly, "#" characters must not be quoted.
+;; Interestingly, "#" characters must not be escaped.
 ;;
 (define `(protect-expr str)
   &public
