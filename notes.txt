@@ -1,49 +1,103 @@
 # Notes on SCAM Development
 
-[Not fully thought-out, work-in-progress, not always coherent thoughts...]
+
+## Namespaces
+
+Make variable names for SCAM globals are obtained by applying a prefix to
+the SCAM name: system = "`", user = "'".  The system prefix applies to the
+SCAM compiler itself, and the user prefix to the code it generates.
+
+Prefixing avoids name collisions that can occur between...
+
+1) ...SCAM globals and Make variables.
+
+2) ...SCAM functions and Make built-in functions.
+
+3) ...user code and compiler code.  When the SCAM compiler executes code
+   immediately or interactively, it loads user code definitions into the
+   same Make instance as itself.
+
+4) ... user code and system libraries.  This is a concern in all contexts:
+   immediate, interactive, or compiled executables.
+
+The first-gen compiler build, CA (described above), being compiled as an
+ordinary program, runs in the user namespace.  The `--boot` flag causes CA
+to generate code for the system namespace, so CB and its libraries are in
+the system namespace, making it a candidate golden compiler.
+
+
+## Compiler Build Phases
+
+Since SCAM itself is written in SCAM, we need a pre-existing SCAM compiler
+with which to build it.  This "golden" compiler is typically one built from
+a recent version of the sources, but in order to enable arbitrary changes to
+our compiler sources, we try to avoid assumptions about the internals of the
+golden compiler that would couple it to our source files.  Ideally, we can
+treat it as a black box, one that implements the SCAM language, and just use
+it to compile the compiler as it would any program.  [Herein we refer to the
+golden compiler as "C0", he compiler built by C0 as "CA", the one built by
+CA as "CB", and so on.]
+
+    $ C0 -o CA scam.scm
+
+    scam.scm  ---compile-and-link--->  CA
+     et al             (C0)
+
+
+CA is not a fully functional SCAM compiler, because it does not have the
+embedded libraries to bundle with its program (as the SCAM compiler does).
+These libraries must be compiled by CA itself in order to interoperate with
+CA's other generated code, and in order for CA to understand the format of
+their symbol exports.  One such library is the runtime.  It is not
+explicitly required by use programs, but the code generated for them might
+depend upon functions implemented in the runtime.  Also, the runtime exports
+symbols that are implicitly imported into user code.
+
+Another limitation of CA is that it cannot load and execute its generated
+code in the same Make instance as itself.  (The SCAM compiler relies on this
+for interactive mode and immediate mode execution.)  The reason for this is
+that CA is built from C0 libraries, and treating C0 as a black box, we
+cannot protect against name collisions.  [Even if we were to document
+variable namespace restrictions for SCAM compilers, it would not help us out
+here, because our purpose for CA is to generate a SCAM compiler, so the code
+CA generates will land in the same namespace that the golden compiler (and
+therefore some of CA's executable) uses.]
+
+The current approach to constructing a complete SCAM compiler involves a
+`--boot` flag that is passed to CA when it builds CB as a standalone
+executable:
+
+    $ CA --boot -o CB C.scm
+
+This causes CA to use `runtime.scm` as the runtime for generated code,
+compiling as necessary.  (Compile-time macros are not used by the compiler
+sources in order to avoid the additional complication they would entail.)
+
+
+                    runtime.scm
+                         |
+                         v
+    scam.scm  ---compile-and-link--->  CB
+     et al             (CA)
+
+
+Finally, as a test of CB, we use it to build CC, expecting it to be
+identical to CB.
+
+
 
 ## SCAM Salient Features
 
-### String-based Language with Immutable Strings
-
-This works efficiently with its VM, and it also presents an interesting
-model for a programming language.
-
-### Impure functional language with strict evaluation
-
-### Lexical scoping with blocks
-
-Blocks are important in SCAM because expressions that occur in a block may
-define or declare symbols that are visible to expressions that follow them
-within the block.  These lexically scoped definitions do not require deeper
-nesting.  This enables a programming style that flows down the page
-vertically as new definitions are introduced, rather than down and to the
-right.
-
-### Dynamic language with compile-time warnings
-
-SCAM is dynamically typed language, but references to functions and
-variables must be preceded by a definition or declaration in lexical scope.
-Function declarations and definitions describe the arity of functions, which
-is checked at compile time.
-
-### Built-in Build System
-
-SCAM programs can be constructed from multiple modules.  The SCAM compiler
-contains its own build system, following dependencies and caching
-compilation results.
-
-### Deployable executables
-
-### Hashbang support
-
-### Make as a VM
-
-### Arbitrary-precision floating point arithmetic
-
-For example, with 64-bit floating point arithmetic, computing 2^1024 causes
-an overflow.  SCAM can compute `(^ 2 1024)` exactly, and an arbitrary number
-of digits for even `(pow 2 (pow 2 1024))`.
+ * String-based Language with Immutable Strings
+ * Impure functional language with strict evaluation
+ * Lexical scoping
+ * "Vertical" scoping (`define` introduces bindings visible to
+   expressions that follow it in the same block)
+ * Dynamic language with compile-time warnings
+ * Built-in Build System with Testing
+ * Deployable executables
+ * Make as a VM
+ * Arbitrary-precision floating point arithmetic
 
 
 ## Make Quirks
@@ -104,181 +158,12 @@ This suggests that `call` was implemented as "setup_local_vars;
 construct_fake_var; expand_var".
 
 
-## Building SCAM with SCAM
-
-When the SCAM compiler builds *any* SCAM program, it translates a source
-file (module) to executable code, and then packages it as a program.
-
-    $ scam -o prog prog.scm
-
-For simplicity, let us imagine the compiler itself is implemented in only
-three source files:
-
- - A "runtime" module called RT.scm.  This defines functions that are not
-   explicitly called by the user, but the compiler will emit code that
-   presumes the runtime functionality is present.
-
- - A set of "excutable macros" called CT.scm.  (See `use` in reference.md.)
-
- - The rest of the compler, C.scm.
-
-Together, C + RT + CT provide the base language features of SCAM (all of the
-syntax and functionality available to any module without calling `require`).
-
-The run-time library (or simply "runtime") defines functions that other
-modules implicitly depend upon.  During the code generation phase the
-compiler emits calls to runtime functions that are unknown to the SCAM
-developer.  The compiler also uses the runtime's exports to construct the
-part of the initial environment for other modules.  When a program is
-generated, the runtime code is combined with all other modules, and it runs
-before any other modules run.
-
-The compile-time library is a module that is executed by the compiler itself
-before it compiles other files.  The reason this code is separated from the
-rest of the compiler sources is that it needs to be compiled with C.scm, not
-just any SCAM compiler.  This is because CT.scm makes use of syntax quoting,
-which returns AST structures, and the encodings of these are
-implementation-defined.  (The concrete values used may vary from compiler to
-compiler, but the language provides a consistent interface.)
-
-After the build process completes, we arrive at a SCAM executable that has
-an embedded copy of the RT and CT libraries (pre-compiled by itself), which
-are then used by the compile and link steps:
-
-
-                     rt ------------------+
-                 ct  |                    |
-                  |  |                    |
-                  v  v                    v
-    prog.scm  --compile-->  prog.min  --link-->  prog
-
-
-### Constructing the Compiler
-
-Since SCAM itself is written in SCAM, we need a pre-existing SCAM acompiler
-with which to build it.  This "golden" compiler may be built from some
-unknown previous version of the sources, or it may be a completely different
-implementation, so we do not know how it behaves aside from the language
-definition and document command-line syntax.  It is a black box from our
-point of view.  In particular, we cannot make assumptions about its CT or RT
-libraries.  We can only use it to generate a complete program:
-
-    $ C0 -o Ca C.scm
-
-    C.scm   ---compile-and-link--->  Ca
-                     (C0)
-
-Herein we refer to the golden compiler as "C0".  The compiler built by C0 we
-call "Ca", and we apply a suffix of "b" to things built with Ca, and a
-suffix of "c" to things built by Cb.
-
-Without a compiled version of its own runtime sources, Ca lacks the initial
-environment needed to compile ordinary source files.  It can, however,
-compile its runtime, because C.scm provides a feature that allows a module
-to be compiled with an empty set of imports.  The resulting executable file,
-RTb.min, will likely have embedded dependencies on functions and variables
-defined by itself, so it must be careful to satisfy those dependencies
-before implicitly using them.  This is a manageable constraint because this
-issue is entirely under the control of the compiler and runtime sources, and
-does not require any assumptions about the behavior of C0.
-
-Similarly, the CT library can then be compiled using the newly compiled
-runtime.
-
-With this approach we can use Ca to compile all of the sources and produce
-code that depends only on RTb, eliminating any vestiges of C0.
-
-
-    $ Ca -o Cb C.scm --rt RT.scm --ct CT.scm --symbols
-
-    RT.scm  ---compile--->  RTb.min
-                 (Ca)
-
-                RTb.min
-                  |
-                  v
-    CT.scm  ---compile--->  CTb.min
-                 (Ca)
-
-              RTb.min &             RTb.min &
-               CTb.min               CTb.min
-                  |                     |
-                  v                     v
-    C.scm  ---compile--->  Cb.min  ---link---> Cb
-                (Ca)                   (Ca)
-
-
-The final step requires Ca to load and run CTb (and RTb since CTB depends on
-it).  This means that Ca-compiled code will must coexist with C0-compiled
-code in the same Make instance.  In order to avoid symbols conflicts between
-C0 and Ca, we make use of namespacing.  The code compiled by Ca applies a
-prefix to each Make function and variable name.
-
-At this point, the compiler (Cb) is fully self-hosted.  With bundled copies
-of the run-time and compile-time modules, it should be able to compile any
-programs without the special "--rt" and "--ct" arguments.  As a test of Cb
-we can run it on its own sources, expecting the result to be identical.
-
-    $ Cb -o Cc C.scm --symbols
-
-              RTb.min &             RTb.min &
-               CTb.min               CTb.min
-                  |                     |
-                  v                     v
-    C.scm  ---compile--->  Cc.min  ---link---> Cc    [should match Cb]
-                (Cb)                   (Cb)
-
-
-In order for this to work, Cc must be able to re-use the bundled RT and CT
-binaries.  Since Cc and Cb are built from the same compiler source and same
-namespace, they will retrieve bundles in the same way.  Since they are built
-*by* the same compiler sources, their bundles will be packaged in the same
-way.
-
- ==> To ensure CT is bundled: (1) include "CT.scm" on the command line to
- ensure that it is bundled in the resulting program. (2) Name a dependency
- in gen.scm (which technically would be a problem for C0->Ca.)
-
-
-### Namespaces
-
-One challenge in supporting even the simplest of the scenarios described
-above is the single global namespace of Make.  Programs assign Make
-variables in order to define functions.  If these variable names collide
-with names used by the compiler-provided runtime, problems may arise.
-
-These collisions become more likely when the compiler directly executes the
-code it generates, as when SCAM is used interactively.  In this case,
-collisions between the compiled code and the compiler sources, or collisions
-between different runtimes could arise.
-
-In order to avoid this, SCAM implements namespaces.  Each each function or
-variable defined in SCAM with `define` or `declare` is given a potentially
-different name in Make.  The "global" name is computed by prefixing the SCAM
-symbol name with the namespace and a delimiter character.  The namespace is
-a parameter to compilation.  Released SCAM binaries are built with one
-namespace, and when the code they compile (by default) uses a different
-namespace.
-
-
-### Language Changes
-
-Any non-backwards compatible change in the language would require
-maintaining two sets of sources.
-
- 1. Language2 implemented in Language1
- 2. Language2 implemented in Language2
-
-Only after validating the second set of sources could we abandon the first
-set of sources.
-
-
 ## Semantic Ambiguity
 
 An old software aphorism states that when the documentation disagrees with
 the source code, it is the *code*, not the documentation, that should be
 "trusted".  We might look at the documentation to find out what it is
-*intended* to do, or what someone at some point *thought* does, but if we
+*intended* to do, or what someone at some point *thought* it does, but if we
 want to know what it actually does, the source code is the ultimate guide.
 
 In a self-hosting interpreter or compiler, however, the behavior of the
@@ -325,7 +210,6 @@ Consider some examples:
    arbitrariness of actual language definitions are not as extreme as `24 +
    1275 --> 2`, but JavaScript comes close.)
 
-
 A *compiler* that does not rely on learned behavior actually would serve as
 good documentation for a language.
 
@@ -342,23 +226,6 @@ does this construct handle an empty string?) it is easy to rule out the
 other possibilities we might suspect.
 
 
-## Practical Concerns
-
-We want the source to embody the definition of the language so that we can
-modify parts of the language ... without re-inventing those features.  To
-the extent that we depend on behavior "learned" by previous generations of
-the compiler, we fall short of this goal.
-
- - Language circularity: changing the definition of the language presents
-   obvious challenges.  Allowing "gen1" and "gen2" versions of the source
-   would allow a transition between mutually incompatible versions of the
-   languages.
-
- - Symbol conflict (Make/SCAM)
-
- - Macros interact with a gen0 compiler, but pass data structures that
-
-
 ## Incremental vs. Generational
 
 An approach often employed is to start with a small core and build features
@@ -368,27 +235,21 @@ makes the dependencies clear, but presents the drawback that we cannot use
 some desirable features before they are defined.  Also, this approach does
 not answer how the core itself is constructed.  The core might in fact
 require quite a lot of code, such as the parser, which would benefit from
-*all* of the language's features.
+many of the language's features.
 
-
-    To address these cases, we can use multiple generations.
-
-    For example, the core can be written in the full-blown language and
-    compiled by a prior generation of the compiler.  The core then *runs*
-    the rest of the compiler source code, building as we go.  The execution
-    of the core and the function it employs are somehow isolated from the
-    code that is executed *by* the core.  (A challenge for SCAM due to the
-    single namespace in Make.)
+As a result, we utilize multiple generations of the compiler.  The current
+sources depend on a compiler constructed from a previous version of the
+sources, and so on.  The full dependency chain can be though of as
+stretching back through the version history.
 
 
 ## Homoiconicity
 
-The Lisp family of language famously has the property of "homoiconicity".
+The Lisp family of languages famously has the property of "homoiconicity".
 As given in [2], homoiconicity is the property "where the primary
 representation of the program is a primitive data type in the language
 itself".  This is a very loose definition because the distinction between a
-primitive data type and a non-primitive one is a fairly arbitrary choice on
-the part of the language designer.
+primitive data type and a non-primitive one is fairly arbitrary.
 
 So what might it actually mean?
 
@@ -428,18 +289,12 @@ So what might it actually mean?
       information about the originating source file and position within that
       file?  Does a list of numbers also carry along this baggage?
 
-   b) The "atom" concept is a Lisp primitive distinct from strings, and must
-      remain so, because they have different semantics when passed to eval.
-      Generally speaking, it is not necessary to have both atom and string
-      types in a language.  The lore of Lisp is that symbols are there
-      because comparison of atoms is more efficient, but that is an
-      implementation detail.
-
-      It is not be hard to imagine a Lisp dialect that abandoned atoms,
-      *except* when it comes to `eval`: Strings evaluate to themselves.
-      Atoms evaluate to their binding.  Whatever gets passed to eval must be
-      able to distinguish the two, or else it won't be close enough to Lisp
-      to be called a dialect.
+   b) A Lisp "atom" is similar to a string, but not a string.  One can
+      easily imagine a Lisp dialect that abandoned atoms, *except* for the
+      question of `eval`.  Strings evaluate to themselves.  Atoms evaluate
+      to their binding.  Whatever gets passed to eval must be able to
+      distinguish the two, or else it won't be close enough to Lisp to be
+      called a dialect.
 
    c) All syntax gets shoe-horned into this {list, atom, number, string}
       bucket, even when there are other constructs.  `'a` comes out the same
@@ -452,30 +307,15 @@ the name itself speaks more to the third property, which is the one property
 that is undesirable.  The other properties (and their the benefits) can be
 realized without it.
 
-SCAM's approach is to define a data type for AST nodes. The quoting
+SCAM's approach is to define a proper data type for AST nodes. The quoting
 shorthands `'` and `` ` `` produce *syntax* records.  For example, `` 'a ``
-evaluates to the record ``(Symbol "a")``, and `` "a" `` evaluates to the
+evaluates to the record ``(Symbol "a")``, and `` '"a" `` evaluates to the
 record ``(String "a")``.  Neither of these should be confused with the
 primitive string value "a".
 
 [In SCAM, unless you are manipulating syntax, you would not use these
 quoting constructs.  The vector syntax ``[1 2 3 "a" "b"]`` is a more
 general-purpose, lighter-weight primitive for structuring values.]
-
-
-
-## Self-Hosting vs. Self-Defined
-
- a) Incrementally defining a language
- b) Self-Hosting
-
-(a) presents a dependency chain, building from a core.  This is similar to
-building the "standard" language primitives up from a small bae in Lisp or
-Forth.
-
-(b) allows us to implement the "core" in the language itself.  Our core
-might be more complicated than the simple Lisp/Forth readers and
-interpreters.
 
 
 ### Interspersing Language Extensions with Ordinary Code
@@ -519,78 +359,17 @@ the ordinary code portions that make use of them.  In this approach:
 
 ### Compile-time execution
 
-Lisp-style macros demand compile-time execution of macros, and the functions
-they call.  Arbitrary restrictions on what can be called in compile time
-would limit the power of the feature.  Construction of complex user-defined
-data values at compile-time is also useful.
+Lisp-style macros involve run-time execution of macros defined in the
+program.  For a compiler, this implies compile-time execution of the code
+being compiled, which brings up the question of the granularity of compiled
+units.
 
-Where do we draw the line between compile-time and run-time execution?  It's
-clear that `main` can be defined at compile-time and executed only at run
-time.  But what about code that is at the top-level, not a function
-definition, and not within a function?
+ELisp provides forms like `(eval-and-compile BODY...)` and
+`(eval-when-compile BODY...)` to control this at an expression level.
 
- - Execute it only at run-time.  (Current SCAM; does not allow for
-   user-defined macros.)
-
- - Execute at run time BY DEFAULT.
-
-   ELisp: compile- vs. run (load) time
-
-    - (eval-and-compile BODY...) is evaluated at compile-time and again
-      at run-time.  (Useful mainly for side-effects?)
-
-    - (require ...) : at compile-time loads (runs) the required file
-      to obtain functions and macros.
-
-    - (defmacro ...) : compile-time and run-time
-
-    - (eval-when-compile BODY...) compiles to a constant.
-
-      (eval-when-compile
-         (defmacro ...))
-
- - Execute at compile-time BY DEFAULT.
-
-   Program execution = load modules + call `main`
-
-   Compilation introduces the notions of compile time (load modules) and run
-   time `(main)` ... but otherwise does not change behavior from an
-   interpreted-only model.
-
-   Intead of `(eval-when-compile ...)` for sub-expressions, `(eval-at-define
-   ...)` might be a better name.
-
-
-Compile-time environment: dependencies for compile-time execution clean.
-Compilation should be doable at a different time and place, and should not
-vary with other environmental conditions that might affect the run time
-behavior.  Maybe this should be up to the user (but we shouldn't make his
-job too hard).
-
-Debugging: If compilation involves Turing-complete user-defined operations,
-the compiler/debugger won't know how to reverse the transformation to obtain
-source-level meaning.
-
-
-Compile-time execution should warn about clobbering the compiler's own
-functions!
-
-1. Macros require compile-time "execution".  It defines something at
-   compile-time that affects how subsequent things are compiled.
-
-2. How does compile-time execution relate to run-time?
-
-   We cannot expect external inputs to match exactly, so execution path may
-   differ.  What if the compile-time path runs through one 'defmacro' but
-   the run-time path runs through another?
-
-     (if (eq? DEBUG 1)
-         (defmacro show (a) )
-       (defmacro show (a) (print a)))
-
-3. In CL, "compiler macros" must preserve semantics and cannot extend syntax.
-
-   Does this mean that macros are fundamentally run-time?
+SCAM compiles an entire module before executing it.  In order to use
+compile-time macros, the user places them in a separate module, which
+is included with the `use` special form.
 
 
 ----------------------------------------------------------------

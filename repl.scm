@@ -37,6 +37,7 @@
          "  :        : reset input state\n"
          "  :e       : show environment\n"
          "  :E       : show environment (including imported entries)\n"
+         "  :R LIBS  : reset environmen to only LIBS\n"
          "  ?        : this message\n\n"
          "Global variables in REPL:\n"
          "  *1 = most recent value printed\n"
@@ -120,6 +121,22 @@
       (REPL "" prompts build-dir is-quiet nil newenv)))))
 
 
+(define (load-env libs)
+  (begin
+    (define `env-text
+      (.. (foreach (lib libs)
+            (.. "(require \"" lib "\")"))
+          "(declare *1 &native)"
+          "(declare *2 &native)"))
+    (let (({code: f, env: e} (compile-text env-text "[stdin]" nil nil nil)))
+      (f) ;; load modules referenced by the environment
+      e)))
+
+
+(define `initial-env
+  (load-env LIBS))
+
+
 ;; Collect another line of input and process it.
 ;;
 ;; A `nil` value for PROMPTS indicates non-interactive mode to
@@ -162,21 +179,13 @@
          (describe-env env 1)
          state)
 
+        ((eq? ":R" (word 1 (native-strip line)))
+         (REPL text prompts build-dir is-quiet _
+               (load-env (rest (native-strip line)))))
+
         (else
          (eval-and-print (.. text line)
                          prompts build-dir is-quiet env)))))))
-
-
-(define `initial-env
-  (begin
-    (define `env-text
-      (.. (foreach (lib LIBS)
-            (.. "(require \"" lib "\")"))
-          "(declare *1 &native)"
-          "(declare *2 &native)"))
-    (let (({code: f, env: e} (compile-text env-text "[stdin]" nil nil nil)))
-      (f) ;; load modules referenced by the environment
-      e)))
 
 
 ;; Enter REPL mode, and return to caller when the user exits with `:q` or

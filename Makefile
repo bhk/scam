@@ -7,26 +7,7 @@
 #    $A/scam   $B/*    	  latest (from runtime.scm)
 #    $B/scam   $C/*    	  latest (from runtime.scm)
 #
-# Some complications:
-#
-#  A) Generated code contains dependencies on a particular runtime.  When we
-#     modify the compiler sources we can change the runtime as long as we
-#     make consistent changes to code generation.
-#
-#  B) $A/scam involves two runtimes: one that its code utilizes (built into
-#     its own executable), and another it bundles generated executables
-#     after compiling from source (but does not itself load or execute).
-#
-#  C) Two different runtime versions cannot run together in the same
-#     Make instance, because runtime functions are not prefixed.
-#
-#  D) Due to B & C, $A/scam cannot support immediate execution ("scam
-#     script.scm") or REPL mode or executable macros.
-#
-# $A/scam is built as "user" code, whereas $B and $C uses the "system"
-# namespace (using --boot).
-#
-#
+# See notes.txt for more on these build phases.
 
 SHELL := /bin/bash
 
@@ -41,15 +22,20 @@ C = .out/c
 .PHONY: default a b c aok bok cok promote install clean bench tags
 
 
+default: $B/done
+
 # If $B/scam is the same as bin/scam, we can stop without further validation.
 # Otherwise, we proceed to build and validate $C/scam as a test of $B/scam.
 #
-default: $B/done
 $B/done: $B/scam bok; @(diff -q bin/scam $B/scam > /dev/null && echo 'Stopping: .out/b/scam == bin/scam!' || $(MAKE) $C/done) && touch $@
+
 $C/done: $C/scam cok; @diff -q $B/scam $C/scam && touch $@
 
 
-all: $C.ok
+all: $C.ok docs
+	$(_@) diff -q bin/scam .out/b/scam  || echo '** "make promote" to update bin/scam'
+	$(_@) diff -q libraries.md .out/libs.txt || echo '** "make promote-docs" to update libraries.md'
+
 
 a: $A/scam
 b: $B/scam

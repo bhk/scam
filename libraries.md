@@ -9,7 +9,7 @@
 | [io](#io-file-io-and-shell-interaction) | [`chmod-file`](#chmod-file-filename-mode) [`clean-path`](#clean-path-path) [`cp-file`](#cp-file-src-dst-make-dst-dir) [`cp-file-atomic`](#cp-file-atomic-src-dst-make-dst-dir) [`escape-path`](#escape-path-path) [`file-exists?`](#file-exists-filename) [`fprintf`](#fprintf-fd-format-values) [`get-tmp-dir`](#get-tmp-dir-tmpl) [`getline`](#getline-prompt) [`hash-file`](#hash-file-filename) [`hash-files`](#hash-files-filenames) [`hash-output`](#hash-output-cmd-fmt-args) [`io-sprintf`](#io-sprintf-fmt-args) [`io-vsprintf`](#io-vsprintf-fmt-args) [`mkdir-p`](#mkdir-p-dir) [`mv-file`](#mv-file-from-to) [`path-basename`](#path-basename-path) [`path-dir`](#path-dir-path) [`path-notdir`](#path-notdir-path) [`pipe`](#pipe-stdin-fmt-args) [`quote-sh-arg`](#quote-sh-arg-arg) [`quote-sh-file`](#quote-sh-file-filename) [`read-file`](#read-file-filename) [`read-lines`](#read-lines-filename-start-end) [`resolve-path`](#resolve-path-dir-path) [`save-blob`](#save-blob-dir-name-data) [`shell-lines`](#shell-lines-cmd-fmt-args) [`shellf`](#shellf-cmd-fmt-args) [`unescape-path`](#unescape-path-loc) [`vfprintf`](#vfprintf-fd-format-values) [`write`](#write-fd-data) [`write-file`](#write-file-filename-data) [`write-file-atomic`](#write-file-atomic-file-name-data) |
 | [math](#math-numeric-operations) | [`!=`](#-x-y) [`*`](#-x-y) [`*~`](#-x-y-p) [`+`](#-x-y) [`-`](#--x-y) [`/`](#-x-y-p) [`//`](#-x-y) [`0-`](#0--x) [`<`](#-x-y) [`<=`](#-x-y) [`=`](#-x-y) [`>`](#-x-y) [`>=`](#-x-y) [`^`](#-x-y) [`abs`](#abs-x) [`atan`](#atan-m-p) [`atan2`](#atan2-y-x-p) [`ceil`](#ceil-x) [`cos`](#cos-x-p) [`exp`](#exp-x-p) [`floor`](#floor-x) [`format-fixed`](#format-fixed-x-min-width-decimals) [`frexp10`](#frexp10-x) [`get-pi`](#get-pi-p) [`log`](#log-x-b-p) [`max`](#max-x-y) [`min`](#min-x-y) [`mod`](#mod-x-y) [`num-lex`](#num-lex-n) [`num-sort`](#num-sort-v) [`pow`](#pow-x-y-p) [`range`](#range-x-y) [`round`](#round-x-p-dir) [`sin`](#sin-x-p) [`sum`](#sum-args) [`trunc`](#trunc-x) |
 | [memo](#memo-persistent-memoization) | [`memo-apply`](#memo-apply-fname-args) [`memo-blob-call`](#memo-blob-call-fname-args) [`memo-call`](#memo-call-fname-args) [`memo-chmod-file`](#memo-chmod-file-filename-mode) [`memo-drop`](#memo-drop) [`memo-hash-file`](#memo-hash-file-filename) [`memo-io`](#memo-io-fname-args) [`memo-on`](#memo-on-dbfile-expr) [`memo-read-file`](#memo-read-file-filename) [`memo-write-file`](#memo-write-file-filename-data) |
-| [native](#native) | [`name-apply`](#name-apply-func-name-argv) [`native-bound?`](#native-bound-var-name) [`native-call`](#native-call-fn-name-args) [`native-eval`](#native-eval-str) [`native-flavor`](#native-flavor-var-name) [`native-name`](#native-name-var-name) [`native-origin`](#native-origin-var-name) [`native-value`](#native-value-var-name) [`native-var`](#native-var-var-name) [`set-native`](#set-native-var-name-value-retval) [`set-native-fn`](#set-native-fn-func-name-value-retval) |
+| [native](#native) | [`name-apply`](#name-apply-func-name-argv) [`native-bound?`](#native-bound-var-name) [`native-call`](#native-call-fn-name-args) [`native-eval`](#native-eval-str) [`native-flavor`](#native-flavor-var-name) [`native-name`](#native-name-var) [`native-origin`](#native-origin-var-name) [`native-value`](#native-value-var-name) [`native-var`](#native-var-var-name) [`set-native`](#set-native-var-name-value-retval) [`set-native-fn`](#set-native-fn-func-name-value-retval) |
 | [peg](#peg-peg-parser-generator) | [`gen-lex`](#gen-lex-tokens) [`lex`](#lex-text-tokens) [`peg-*`](#peg--pf) [`peg-+`](#peg--pf) [`peg-?`](#peg--pf) [`peg-and`](#peg-and-pfs) [`peg-at`](#peg-at-pf) [`peg-c`](#peg-c-name-pf) [`peg-empty`](#peg-empty-caps) [`peg-not`](#peg-not-pf) [`peg-or`](#peg-or-pfs) [`peg-p`](#peg-p-in-out-caps) [`un-lex`](#un-lex-subj) |
 | [repl](#repl-interactive-mode-for-scam) | [`repl`](#repl-build-dir-prompts) [`repl-ep`](#repl-ep-text-build-dir-is-quiet) |
 | [string](#string-string-manipulation) | [`bytes-from-bytecodes`](#bytes-from-bytecodes-codes) [`gen-polysub`](#gen-polysub-froms-tos-input) [`string-from-bytecodes`](#string-from-bytecodes-codes) [`string-len`](#string-len-s) [`string-lower`](#string-lower-str) [`string-repeat`](#string-repeat-str-num) [`string-slice`](#string-slice-first-last-str) [`string-to-bytecodes`](#string-to-bytecodes-str) [`string-to-bytes`](#string-to-bytes-s) [`string-to-chars`](#string-to-chars-s) [`string-upper`](#string-upper-str) |
@@ -1797,27 +1797,31 @@ VAR-NAME)` in Make.  One of:
  * `"undefined"`
 
 
-##### `(native-name VAR-NAME)`
+##### `(native-name VAR)`
 
-Get the "native name" of a SCAM global variable, function, or a built-in
-function.  This returns the variable name that would be used in raw Make
-code.  The difference between the SCAM name and the native name is a
-namespace prefix that SCAM prepends to avoid conflicts with variables in
-the Make environment.  The namespace prefix also avoids conflicts between
-SCAM user functions and function in the SCAM compiler itself.
+Get the *native name* of a SCAM global variable, function, or a built-in
+function.  VAR is the symbol that names the variable, not an expression
+that will be evaluated.
+
+The native name is the variable name as it appears in GNU Make.  The
+difference between the SCAM name and the native name is a namespace
+prefix that SCAM prepends to avoid conflicts with variables in the Make
+environment.  The namespace prefix also avoids conflicts between SCAM
+user functions and function in the SCAM compiler itself.
 
 
 ##### `(native-origin VAR-NAME)`
 
-Describe the GNU make origin of native variable VAR-NAME.  Origin values
-include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`, ... .
-See GNU Make docs of `$(origin ...)` for more.
+Describe the GNU make origin of a variable. VAR-NAME is an expression
+that evaluates to the name of the variable  Origin
+values include: `"undefined"`, `"file"`, `"command line"`, `"automatic"`,
+... .  See GNU Make docs of `$(origin ...)` for more.
 
 
 ##### `(native-value VAR-NAME)`
 
-Return the value of native variable VAR-NAME.  This compiles to `$(value
-VAR-NAME)`.
+Return the value of a variable.  VAR-NAME is an expression that evaluates
+to the name of the variable.  This compiles to `$(value VAR-NAME)`.
 
 
 ##### `(native-var VAR-NAME)`
@@ -2159,7 +2163,8 @@ In its simplest form, it is a list of function names.
 
 Names that include a `%` character are treated as wildcards that match
 currently-defined functions.  Additionally, the name may be enclosed in
-double-quotes to indicate the [native name](#native) of a function.
+double-quotes to indicate the [native name](#native-name-var) of a
+function.
 
 Names may be followed by a `:` character followed by a *mode*.  Possible
 modes are:
@@ -2232,17 +2237,18 @@ will not be reset by new calls to trace.
 
 ##### `(trace-expect A B)`
 
-Like `expect`, but evaluation of A and B is done with tracing enabled.
+Like [`expect`](#expect-a-b), but evaluation of A and B is done with
+tracing enabled.
 
 
 ##### `(tracing SPECS EXPR)`
 
 Evaluate EXPR while functions are instrumented according to
-[SPECS](#trace-specifications).  On exit, instrumentation is removed and
-invocation counts will be reported, and then reset, for any functions
+[SPECS](#trace-specifications).  On return, instrumentation is removed
+and invocation counts will be reported, and then reset, for any functions
 instrumented with mode `c`.
 
-See the [reference manual](reference.md#debugging) for examples.
+See the [reference manual](reference.md#tracing-examples) for examples.
 
 
 # utf8: UTF-8 Coding

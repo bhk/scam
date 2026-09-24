@@ -1,6 +1,6 @@
 TODO
 
-Enhancements
+Language Enhancements
 ----
 
  * "spread" with "..." syntax.
@@ -68,12 +68,6 @@ Enhancements
        - c0 should honor filename in qpos instead of file/subject globals
     - definition is not visible in REPL
     - no hygienic way to reference values
-
-
- * SCAM 3.0 (compatibility break)
-    - remove old foreach/for/concat-for/... syntax
-    - Put Make builtins in a separate namespace ("suffix" yields the Make
-      definition instead of "Variable not defined")
 
 
 Optimizations for Generated Code
