@@ -330,7 +330,7 @@
       ;; don't overwrite original if it has already been saved
       (when (filter-out (dict-get id *trace-reported*) mode)
         (print "scam: tracing " (trace-unprefix var) " [mode=" mode "] ...")
-        (set *trace-reported* (._. {=id: mode})))
+        (set *trace-reported* (._. *trace-reported* {=id: mode})))
       (if (not (defined? (save-var id)))
           (set-native-fn (save-var id) (native-value var)))
       (define `body

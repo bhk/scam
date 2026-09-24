@@ -284,8 +284,7 @@ $(if ,, ) :=")
 
 ;; Load the module identified by ID.
 ;;
-(define (^L id ?bound-only)
-  &native
+(define `(load id bound-only)
   (define `(mod-var id)
     (.. "[mod-" id "]"))
 
@@ -294,23 +293,26 @@ $(if ,, ) :=")
     (subst " " "\\ " "\t" "\\\t"
            (.. SCAM_DIR id ".o")))
 
-  (if (filter "r%" (native-flavor (mod-var id)))
-      (native-eval (native-value (mod-var id)))
-     (if bound-only
-          nil
-          (native-eval (.. "include " mod-file))))
-  (trace-after-load id)
-  nil)
+  (define `skipped
+    (if (filter "r%" (native-flavor (mod-var id)))
+        (native-eval (native-value (mod-var id)))
+        (or bound-only
+            (native-eval (.. "include " mod-file)))))
+
+  (if skipped
+      nil
+      (begin
+        (trace-after-load id)
+        1)))
 
 
 ;; Execute a module if it hasn't been executed yet.
 ;;
-(define (^R id)
+(define (^R id ?bound-only)
   &native
   (or (filter [id] *RM*)
-      (begin
-        (set *RM* (._. *RM* [id]))
-        (^L id)))
+      (if (load id bound-only)
+          (set *RM* (._. *RM* [id]))))
   nil)
 
 
@@ -367,7 +369,7 @@ $(if ,, ) :=")
 ;; would be the case when we are running in interactive or immediate mode,
 ;; or when in a compiled program that has explicitly required "trace".  This
 ;; allows tracing of -q tests, except with `--boot`.
-(^L "trace" 1)
+(^R "trace" 1)
 
 (^R main-mod)
 

@@ -47,8 +47,9 @@
 
 ;;-------- E?, R?
 
-;; TODO: change codegen to use prefixed version, then delete this and call
-;; runtime function directly.
+;; In order to run in .out/a/scam, we do not make assumptions about the
+;; runtime we are running under... so we use this simulation of the runtime
+;; that will be used in the completed compiler.
 (define (_t ...) nil)
 (set _t (.. "$(" (native-name E?) ")"
             "$(call " (native-name R?) ",$1,$(call $1,$2,$3,$4,$5,$6,$7,$8,"
