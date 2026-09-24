@@ -28,9 +28,11 @@
  * [Debugging](#debugging)
    * [Call Site Tracing](#call-site-tracing)
    * [Run-time Tracing](#run-time-tracing)
-   * [Profiling](#profiling)
+   * [Tracing Examples](#tracing-examples)
  * [The SCAM Compiler](#the-scam-compiler)
- * [Hashbang](#hashbang)
+   * [Cached Results](#cached-results)
+   * [Qualification Tests](#qualification-tests)
+   * [Hashbang Usage](#hashbang-usage)
 
 ## Overview
 
@@ -52,13 +54,6 @@ the module as a **program**.  This will load the module and then run a
 function called "main" if the module has defined such a function.
 Alternatively, you can compile a program and then invoke the resulting
 executable file directly.
-
-When compiling a module, SCAM looks for a *qualification* test for the
-module, adding `-q` to the file name immediately before to the extension.
-If such a file exists, SCAM runs it as a program to test that module.  On
-success, SCAM will continue to compile or evaluate the requiring module.  On
-failure -- that is, if the program terminates with an error or its `main`
-function returns a non-zero, non-nil value -- the compilation will be halted.
 
 
 ## Syntax
@@ -91,10 +86,10 @@ encoding is a factor, UTF-8 is assumed.
 
 ### Numeric Literals
 
-Numbers consist entirely of digits, optionally preceded with a `-`
-character, and optionally including one decimal point after the first digit,
-and optionally followed by an exponent -- "e" or "E" followed by an optional
-sign ("+" or "-") and a decimal integer
+Numbers consist of decimal digits, optionally preceded with a `-` character,
+optionally including one decimal point after the first digit, and optionally
+followed by an exponent -- an "e" or "E" followed by an optional sign ("+"
+or "-") and one or more decimal digits.
 
     123
     12341234234982341234.0987098677896
@@ -377,9 +372,9 @@ dictionary.
     {a: "", b: [1 2 3]}
     > (dict-get "b" *1)
     [1 2 3]
-    > (foreach pair { a: 17, b: 76 } (dict-value pair))
+    > (foreach (pair { a: 17, b: 76 }) (dict-value pair))
     [17 76]
-    > (foreach n (range 4 6) {=n: (^ n 2)})
+    > (foreach (n (range 4 6)) {=n: (^ n 2)})
     {4: 16, 5: 25, 6: 36}
     > (dict-collate {a:" ", b:1, b:2})
     {a: [" "], b: [1 2]}
@@ -732,7 +727,7 @@ modifies their values at run-time.  It similarly evaluates values exactly
 once.
 
 
-#### Overview
+#### Destructuring Syntax
 
 As a quick reference, here is an informal grammar that summarizes the above
 discussion on destructuring syntax and fills in a few details.  In this
@@ -977,6 +972,10 @@ The SCAM Compiler supports four major modes of operation:
 
    Usage: `scam` or `scam -i`
 
+   By default, the REPL environment includes all SCAM libraries.  Use `:E`
+   to inspect imported symbols, and `:R` to modify this.  Enter `?` for a
+   complete list of commands specific to REPL mode.
+
 4. Expression mode.
 
    Usage: `scam -e EXPR`
@@ -1006,7 +1005,17 @@ the change were not recognized.  This can happen if the modification returns
 the source file to some older state that had been previously compiled.
 
 
-## Hashbang
+### Qualification Tests
+
+When compiling a module, SCAM looks for a *qualification* test for the
+module, adding `-q` to the file name immediately before the extension.
+If such a file exists, SCAM runs it as a program to test that module.  On
+success, SCAM will continue to compile or evaluate the requiring module.  On
+failure -- that is, if the program terminates with an error or its `main`
+function returns a non-zero, non-nil value -- the compilation will be halted.
+
+
+### Hashbang Usage
 
 In UNIX-based systems, SCAM source files may be marked as executable files
 and labeled with a hashbang (`#!`).  For example:

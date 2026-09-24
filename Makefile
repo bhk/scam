@@ -114,9 +114,13 @@ $C/scam: *.scm $B.ok
 # v1 tests:
 #  run: validates code generation, object file loading, etc.
 #
+AOK_BUILD_DIR = '.out/ta/scam build dir/'
+
+
 $A.ok: $A/scam test/*.scm
 	@ echo '... test $A/scam'
-	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot --build-dir '.out/ta/scam build dir/'   $(call ||,AOK1)
+	$(_@) rm -rf $(AOK_BUILD_DIR)
+	$(_@) SCAM_LIBPATH='.' $A/scam -o .out/ta/run test/run.scm --boot --build-dir $(AOK_BUILD_DIR)   $(call ||,AOK1)
 	$(_@) .out/ta/run   $(call ||,AOK2)
 	$(_@) [[ -d '.out/ta/scam build dir/' ]]  $(call ||,AOK3)
 	$(_@) touch $@
@@ -145,8 +149,10 @@ $B-o.ok: $B/scam test/*.scm
 
 $B-x.ok: $B/scam test/*.scm
 	@ echo '... test scam FILE ARGS...'
-	$(_@) $B/scam --build-dir .out/tbx/ -- test/dash-x.scm 3 'a b' > .out/tb/dash-x.out $(call ||,Bx1)
-	$(_@) grep -q '9:3:a b' .out/tb/dash-x.out $(call ||,Bx2)
+	$(_@) rm -rf .out/tbx/
+	$(_@) $B/scam --build-dir .out/tbx/ -- test/dash-x.scm 1 'a b' '' > .out/tb/dash-x.out $(call ||,Bx1)
+	$(_@) grep -q '1:a b::3' .out/tb/dash-x.out $(call ||,Bx2)
+	$(_@) ( ! $B/scam --build-dir .out/tbx/ -- test/dash-x.scm --exit 1 ) $(call ||,Bx3)
 	$(_@) touch $@
 
 

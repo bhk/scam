@@ -1,5 +1,5 @@
-#!/usr/bin/env scam --quiet -x --
-;; "scam -x SOURCE" test file
+#!/usr/bin/env scam --quiet --
+;; Immediate mode ("scam FILE") test
 ;;
 ;; - The initial "hashbang" line should be ignored.
 ;; - Requires bundled files.
@@ -17,8 +17,13 @@
           (conc (rest vec) delim))))
 
 (define (main argv)
-  ;; return exit code (check content and lenth of words
-  (print (conc (append (^ (nth 1 argv) 2)
-                       argv)
-               ":"))
-  0)
+  (define `[a b c] argv)
+
+  (or
+   ;; return exit code
+   (if (eq? "--exit" a)
+       b)
+
+   (begin
+     (print (concat-vec argv ":") ":" (^ (words argv) 1))
+     0)))

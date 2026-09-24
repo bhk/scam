@@ -374,7 +374,7 @@ $(if ,, ) :=")
 (^R main-mod)
 
 (define `exit-code
-  (or (native-call main-func SCAM_ARGS)) 0)
+  (or (native-call main-func SCAM_ARGS) 0))
 
 ;; <exit> is defined last; rules defined in MAIN will supercede.
 ;; Run onExit if and when <exit> is processed.
