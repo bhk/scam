@@ -317,8 +317,8 @@ $(if ,, ) :=")
 
 
 ;; Display function/args on entry to traced call
-(define (E? fname ...)
-  (print "--> (" fname "...)"))
+(define (E?)
+  (print "--> (" (native-var 11) "...)"))
 
 
 ;; Display function and return value on exit from traced call
@@ -328,10 +328,10 @@ $(if ,, ) :=")
 
 
 ;; Call site tracing (minimal version independent of trace module)
-(declare (^t fn ...args) &native)
+(declare (^t args1...9 arg10 name fn) &native)
 (set ^t (.. "$(" (native-name E?) ")"
-            "$(call " (native-name R?) ",$1,$(call $1,$2,$3,$4,$5,$6,$7,$8,"
-            "$(call ^n,1,$9),$(wordlist 2,9999,$9)))"))
+            "$(call " (native-name R?) ",$(11),"
+            "$(call $(12),$1,$2,$3,$4,$5,$6,$7,$8,$9,$(10)))"))
 
 
 (declare *AE*)

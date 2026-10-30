@@ -601,7 +601,7 @@
 ;; When PREC is given as a place, we convert it to a number of digits:
 ;;   Eₐ[out] < 1>>P
 ;;   Eᵣ[out] < 1>>(P + log₁₀(out))
-;;          < 1>>N    where N = P + max(0, x/2.3)
+;;           < 1>>N    where N = P + max(0, x/2.3)
 ;;
 ;; Given a number of digits N:
 ;;   0.5>>N > Eᵣ[out]       [note: rounding will add another 0.5>>N]

@@ -137,13 +137,20 @@
 ;; (? <fn> ...args...)
 ;;--------------------------------
 
-(define (M.? env sym [func ...func-args])
-  (define `(trace ctor name)
-    (ctor "^t" (cons (IString name) (c0-vec func-args env))))
+(define (ITrace sym fn args env ?lambda)
+  (define `arg10
+    (if lambda
+        (c0 lambda env)
+        (IString "")))
+  (ICallX "^t" (c0-vec args env)
+          [ arg10 (IString (symbol-name sym)) (IString fn) ]))
 
+
+(define (M.? env sym [func ...func-args])
   (case (resolve func env)
-    ((EFunc _ name _) (trace ICall name))
-    ((EBuiltin _ name _) (trace IBuiltin name))
+    ((EFunc _ name _) (ITrace func name func-args env))
+    ((EBuiltin _ name _) (ITrace func name func-args env))
+    ((EMacro _ _ _ _) (ITrace func "^Y" func-args env func))
     (defn
       (if (eq? "-" defn)
           (err-expected "S" func sym "FUNC" "(? FUNC ARGS...)")
@@ -888,7 +895,7 @@
     ((IVar _) nil)
     ((IString _) nil)
     ((IBuiltin name nodes) (call-once? name nodes))
-    ((ICall name nodes) (call-once? name nodes))
+    ((ICallX name nodes _) (call-once? name nodes))
     (else 1)))
 
 

@@ -121,7 +121,7 @@
 
   (c1 (or (case node
             ((IBuiltin name args) (use-if-void name args node))
-            ((ICall name args) (use-if-void name args node))
+            ((ICallX name args _) (use-if-void name args node))
             ((IString _) (IString nil))
             ((ICrumb _ _) (IString nil)))
           (if node
@@ -133,11 +133,10 @@
 ;;
 (define `(is-balanced? node)
   (case node
-    ((ICall _ _)    1)
+    ((ICallX _ _ _) 1)
     ((IVar _)       1)
     ((IBuiltin _ _) 1)
     ((IFor _ _ _)   1)
-    ((IFuncall _)   1)
     ((IArg _ _)   1)))
 
 
@@ -210,14 +209,6 @@
       (c1-vec nodes "," (native-name c1-arg))))
 
 
-;; Call user-defined function (by name)
-;;
-(define (c1-Call name args)
-  (define `ename (protect-ltrim (escape name)))
-
-  (.. "$(call " ename (if args ",") (c1-args9 args) ")"))
-
-
 (define (i-8 n)
   (words (nth-rest 9 (repeat-words ". . . ." n))))
 
@@ -270,15 +261,20 @@
    (c1-ugly-arg ndx ups)))
 
 
-;; Call lambda value
-(define (c1-Funcall [func ...args])
-  (define `fnval (protect-arg (c1 func)))
-  (define `commas
-    (subst " " "" (or (wordlist (words (.. "x" args)) 9
-                                ", , , , , , , , ,")
-                      ",")))
+;; Call user-defined function (by name)
+;;
+(define (c1-CallX name args xv)
+  (define `ename
+    (protect-ltrim (escape name)))
 
-  (.. "$(call ^Y," (c1-args9 args) commas fnval ")"))
+  (define `commas
+    (subst " " "" (.. "," (wordlist (words (.. "x " args)) 9
+                                    ", , , , , , , , ,"))))
+
+  (.. "$(call " ename
+      (if args (.. "," (c1-args9 args)))
+      (if xv (.. commas (c1-args9 xv)))
+      ")"))
 
 
 ;; Block: evaluate all nodes and return value of last node
@@ -292,12 +288,11 @@
   (case node
     ((IString value) (escape value))
     ((IArg ndx ups) (c1-IArg ndx ups))
-    ((ICall name args) (c1-Call name args))
     ((IVar name) (c1-Var name))
     ((IConcat nodes) (c1-vec nodes "" (native-name c1)))
     ((ILambda code) (c1-Lambda (c1 code)))
     ((IBlock nodes) (c1-Block nodes))
-    ((IFuncall nodes) (c1-Funcall nodes))
+    ((ICallX name nodes xv) (c1-CallX name nodes xv))
     ((IBuiltin name args) (c1-Builtin name args))
     ((IFor name list body) (c1-Builtin "foreach" [(IString name) list body]))
     ((IWhere pos) (c1-Where pos))
@@ -372,7 +367,7 @@
   (or
    (case node
 
-     ;; Normalize (IBuiltin "call" (IString S)) to (ICall S ...).
+     ;; Normalize (IBuiltin "call" (IString S)) to (ICallX S ...).
      ;; Compile (IBuiltin "eval" (IString "...")) as "...\n"
      ((IBuiltin name [arg1 ...other-args])
       (case arg1
@@ -383,7 +378,7 @@
                  (c1-file (ICall value other-args)))))))
 
      ;; Handle assignments using "a = b" vs. "$(call ^SF,a,b)"
-     ((ICall name args)
+     ((ICallX name args _)
       (define `[var value] args)
       (if (filter "^S:2 ^SF:2" (.. name ":" (words args)))
           (c1-file-set (c1 var) (c1 value) (filter "^S" name))))

@@ -72,21 +72,37 @@
 (expect "$(and $(if ,,\na\n))"
         (c1 (IBuiltin "and" [ (IString "\na\n") ])))
 
-;; ICall: call user-defined function by name
+;; ICallX: call function by name, with SCAM args and additional args
 
 (expect "$(call fn)"
-        (c1 (ICall "fn" [] )))
+        (c1 (ICallX "fn" nil nil)))
+
+(expect "$(call fn,1)"
+        (c1 (ICallX "fn" [ (IString 1) ] [])))
+
+(expect "$(call fn,,,,,,,,,,10,11)"
+        (c1 (ICallX "fn" [] [ (IString 10) (IString 11) ])))
+
+(expect "$(call fn,1,,,,,,,,,10)"
+        (c1 (ICallX "fn" [(IString 1)] [ (IString 10) ])))
+
+(expect "$(call fn,1,2,3,4,5,6,7,8,9 a b!0,10,11)"
+        (c1 (ICallX "fn" (for (s "1 2 3 4 5 6 7 8 9 a b!0") (IString s))
+                    [ (IString 10) (IString 11) ])))
+
+(expect "$(call fn,1,2,3,4,5,6,7,8,9 $] $(call ^d,$v))"
+        (c1 (ICall "fn" (conj (for (s "1 2 3 4 5 6 7 8 9 )") (IString s))
+                              (IVar "v")))))
+
+;; ICall: call user-defined SCAM function
 
 (expect "$(call fn,1)"
         (c1 (ICall "fn" [ (IString 1) ])))
 
-;; many args
-(expect "$(call fn,1,2,3,4,5,6,7,8,9 a b!0)"
-        (c1 (ICall "fn" (for (s "1 2 3 4 5 6 7 8 9 a b!0") (IString s)))))
+;; IFuncall: call an anonymous function
 
-(expect "$(call fn,1,2,3,4,5,6,7,8,9 $] $(call ^d,$v))"
-        (c1 (ICall "fn" (conj (for (s "1 2 3 4 5 6 7 8 9 )") (IString s))
-                             (IVar "v")))))
+(expect "$(call ^Y,a,,,,,,,,,$1)"
+        (c1 (IFuncall [ (IArg 1 ".") (IString "a") ])))
 
 ;; i-8
 
@@ -115,19 +131,6 @@
 (expect (c1-IArg ";" "..")  "$-(call ^E,$-;)")
 (expect (c1-IArg ";;" "..")  "$-(call ^E,$-(;;))")
 
-
-;; Funcall: call an anonymous function
-
-(expect "$(call ^Y,,,,,,,,,,$1)"
-        (c1 (IFuncall [ (IArg 1 ".") ] )))
-
-(expect "$(call ^Y,a,,,,,,,,,$1)"
-        (c1 (IFuncall [ (IArg 1 ".") (IString "a") ])))
-
-(expect "$(call ^Y,a,b,c,d,e,f,g,h,i j,$1)"
-        (c1 (IFuncall (cons (IArg 1 ".")
-                           (for (s "a b c d e f g h i j")
-                                (IString s))))))
 
 ;; Block: a sequence of expressions
 

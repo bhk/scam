@@ -364,14 +364,14 @@
 ;; PList = (datavar ...)
 
 (expect (c0-ser "(d!0! 7)")
-        "(^Y {D!0!},7)")
+        "(^Y 7 [{D!0!}])")
 
 
 ;; PList = (arg ...)
 
 (expect (c0-ser "(var 7)" (append (depth-marker ".")
                                   { var: (EDefn.arg 1 ".") }))
-        "(^Y {1},7)")
+        "(^Y 7 [{1}])")
 
 
 ;; PList = (xmacro ...)
@@ -469,7 +469,7 @@
  "(define [a b] 3)"
  (lambda (env sil)
    (expect env { a: (EVar "p" (xns "~a")), b: (EVar "p" (xns "~b")) })
-   (expect sil (xns "(^Y `(IBlock (^S 'a,(^n 1,{1})),(^S 'b,(^n 2,{1}))),3)"))))
+   (expect sil (xns "(^Y 3 [`(IBlock (^S 'a,(^n 1,{1})),(^S 'b,(^n 2,{1})))])"))))
 
 (expect (c0-ser "(define {a: x} 3)")
         (xns "(^S ~x,(^dv (.filter a!=%,3)))"))

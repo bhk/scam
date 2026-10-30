@@ -71,10 +71,19 @@
 ;; (? <fn> ...args...)
 ;;--------------------------------
 
-(expect (c0-ser "(? f 1)")
-        "(^t F,1)")
-(expect (c0-ser "(? m a)"
+(expect (c0-ser "(? f 1 2 3)")
+        "(^t 1,2,3 [,f,F])")
+
+(expect (c0-ser "(? m 1)"
                 { m: (EMacro "p" "." 1 (IArg 0 ".")) })
+        "(^t 1 [`{0},m,^Y])")
+
+(expect (c0-ser "(? (m) 1)"
+                { m: (EMacro "p" "." 1 (IArg 0 ".")) })
+        "!(PError 4 'invalid FUNC in (? FUNC ARGS...); expected a symbol')")
+
+(expect (c0-ser "(? m 1)"
+                { m: (EXMacro "p" "M") })
         "!(PError 4 'FUNC in (? FUNC ...) is not traceable')")
 
 ;;--------------------------------
@@ -84,7 +93,7 @@
 (expect (c0-ser "(let ((a 1) (b \"q\")) (f a b))")
         (c0-ser "((lambda (a b) (f a b)) 1 \"q\")"))
 (expect (c0-ser "(let (([a b] 9)) (.. a b))")
-        "(^Y `(^n 1,{1})(^n 2,{1}),9)")
+        "(^Y 9 [`(^n 1,{1})(^n 2,{1})])")
 (expect (c0-ser "(let a a)")
         "!(PError 4 'expected ((TARGET VALUE)...) in (let ((TARGET VALUE)...) BODY)')")
 (expect (c0-ser "(let (a) a)")
@@ -114,9 +123,9 @@
                  y: (EVar "p" "Y"),
                  f: (EFunc "p" "F" 1),
                  a: (EDefn.arg 1 ".")})
-        (.. "(^Y `(^S X,(^S X,(^n 1,{1}),{X}),"
+        (.. "(^Y 5 [`(^S X,(^S X,(^n 1,{1}),{X}),"
             "(^S Y,(^S Y,(^n 2,{1}),{Y}),"
-            "(^SF F,(^SF F,2,(.value F)),{.1}))),5)"))
+            "(^SF F,(^SF F,2,(.value F)),{.1})))])"))
 
 ;;--------------------------------
 ;; (let& ((TARGET VAL)...) BODY)

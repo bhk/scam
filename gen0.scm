@@ -126,9 +126,8 @@
   (case node
     ((IString s) node)
     ((IBuiltin name args) (IBuiltin name (x* args)))
-    ((ICall name args) (ICall name (x* args)))
+    ((ICallX name args xv) (ICallX name (x* args) (x* xv)))
     ((IArg n ups) (xarg n ups node))
-    ((IFuncall nodes) (IFuncall (x* nodes)))
     ((IConcat nodes) (IConcat (x* nodes)))
     ((IBlock nodes) (IBlock (x* nodes)))
     ((IFor name list body) (xfor name list body))
@@ -275,7 +274,7 @@
 ;;
 (define (c0-dict-key form env)
   (case (il-demote (c0 form env))
-    ((ICall name args)
+    ((ICallX name args _)
      (if (eq? name "^d")
          (ICall "^k" args)
          (ICall name args)))
@@ -532,9 +531,8 @@
   (case node
     ((PError _ _) [node])
     ((IBuiltin _ args) (r* args))
-    ((ICall _ args) (r* args))
+    ((ICallX _ args xv) (append (r* args) (r* xv)))
     ((IFor _ list body) (append (il-errors list) (il-errors body)))
-    ((IFuncall nodes) (r* nodes))
     ((IConcat nodes) (r* nodes))
     ((IBlock nodes) (r* nodes))
     ((ILambda node) (il-errors node))))

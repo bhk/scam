@@ -139,13 +139,14 @@
 ;; `?` macro support:  override E? and R?
 ;;------------------------------------------------------------------------
 
-(define (E? fname ...args)
-  (print (native-var (native-name TI++)) "--> (" (trace-unprefix fname) " "
+(define (E? ...args)
+  (define `fname (native-var 11))
+  (print (native-var (native-name TI++)) "--> (" fname " "
          (foreach ([a] args) (format a)) ")"))
 
 
 (define (R? fname value)
-  (print (native-var (native-name --TI)) "<-- " (trace-unprefix fname) ": " (format value))
+  (print (native-var (native-name --TI)) "<-- " fname ": " (format value))
   value)
 
 

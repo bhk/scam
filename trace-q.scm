@@ -50,10 +50,19 @@
 ;; In order to run in .out/a/scam, we do not make assumptions about the
 ;; runtime we are running under... so we use this simulation of the runtime
 ;; that will be used in the completed compiler.
-(define (_t ...) nil)
+(declare (_t args1...9 arg10 name fn) &native)
 (set _t (.. "$(" (native-name E?) ")"
-            "$(call " (native-name R?) ",$1,$(call $1,$2,$3,$4,$5,$6,$7,$8,"
-            "$(call ^n,1,$9),$(wordlist 2,9999,$9)))"))
+            "$(call " (native-name R?) ",$(11),"
+            "$(call $(12),$1,$2,$3,$4,$5,$6,$7,$8,$9,$(10)))"))
+
+;; Call (^t name args2...9 arg10 fn arg1) with non-SCAM arguments (10, 11, 12)
+(declare (tt name fn argv arg10))
+(set tt
+     (begin
+       (define `(A n) (.. ",$(call ^n," n ",$3)"))
+       (.. "$(call _t" (A 1) (A 2) (A 3) (A 4) (A 5) (A 6) (A 7) (A 8)
+           ",$(wordlist 9,99,$3),$4,$1,$2)")))
+
 
 (declare (E? ...))
 (declare (R? ...))
@@ -62,11 +71,9 @@
 
 (let-global ((*log* nil))
   (define (test-? a b c d e f g h i j) j)
-  (define `upName (trace-unprefix (native-name test-?)))
-
-  (expect "a b" (_t (native-name test-?) 1 2 3 4 5 6 7 8 9 "a b"))
-  (expect *log* (.. "--> (" upName " 1 2 3 4 5 6 7 8 9 \"a b\")\n"
-                    "<-- " upName ": \"a b\"\n")))
+  (expect "a b" (tt "test-?" (native-name test-?) [1 2 3 4 5 6 7 8 9 "a b"] nil))
+  (expect *log* (.. "--> (test-? 1 2 3 4 5 6 7 8 9 \"a b\")\n"
+                    "<-- test-?: \"a b\"\n")))
 
 
 ;;-------- tally-X

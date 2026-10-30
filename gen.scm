@@ -47,8 +47,6 @@
 ;;
 ;; ILambda: An anonymous function whose body is NODE, an IL record.
 ;;
-;; IFuncall: Calls an anonymous function with a vector of arguments.
-;;
 ;; IFor: A GNU Make `foreach` sstatement, where NAME is the automatic
 ;;     variable name (";", ";;", ";;;", depending on nesting level within
 ;;     the current lambda).  LIST and BODY are IL records.
@@ -80,17 +78,24 @@
   &public
   (IArg     &word ndx  &word ups)       ; "$(ndx)"
   (ILambda  node)                       ; (lambda-quote (c1 NODE))
-  (IFuncall &list nodes)                ; "$(call ^Y,NODES...)"
   (IFor     &word name list &list body) ; "$(foreach NAME,LIST,BODY)"
   (IString  value)                      ; "value"
   (IVar     &word name)                 ; "$(name)"
   (IBuiltin &word name  &list nodes)    ; "$(name NODES...)"
-  (ICall    &word name  &list nodes)    ; "$(call name,NODES...)"
+  (ICallX   &word name nodes &list xv)  ; "$(call name,NODES...,XV)" [xv = args 10+]
   (IConcat  &list nodes)                ; "VALUES..."
   (IBlock   &list nodes)                ; "$(if NODES,,)"
   (IWhere   &word pos)                  ; "value"
   (ICrumb   &word key value)            ; <crumb>
   (IEnv     env &list node))            ; used during phase 0
+
+(define (ICall name nodes)
+  &public
+  (strip (ICallX name nodes nil)))
+
+(define (IFuncall nodes)
+  &public
+  (ICallX "^Y" (rest nodes) (word 1 nodes)))
 
 
 ;; Environment Records
@@ -210,7 +215,7 @@
   &public
   (or (case node
         ((IString value) (IString (word 2 node)))
-        ((ICall name [arg]) (if (eq? name "^u") arg)))
+        ((ICallX name [arg] _) (if (eq? name "^u") arg)))
       (ICall "^d" [node])))
 
 

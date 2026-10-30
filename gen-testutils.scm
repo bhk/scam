@@ -34,24 +34,26 @@
          (form-set-indices 0 (PList 9 [ (PString 8 1) (PSymbol 7 2) ])))
 
 
+(define (call-ser pre args ?xv)
+  (declare (il-ser node))
+  (.. "(" pre " " (concat-for (a args ",") (il-ser a))
+      (if xv (.. " [" (concat-for (a xv ",") (il-ser a)) "]"))
+      ")"))
+
 ;; Serialize IL to a compact, readable format.  This transformation is not
 ;; reliably reversible, but the output should be suitable for assertions
 ;; when the inputs are crafted to avoid ambiguities.
 ;;
 (define (il-ser node)
   &public
-  (define `(call-ser pre args)
-    (.. "(" pre " " (concat-for (a args ",") (il-ser a)) ")"))
-
   (case node
     ((IString value) value)
     ((IVar name) (.. "{" name "}"))
     ((IBuiltin name args) (call-ser (.. "." name) args))
     ((IFor name list body) (call-ser ".foreach" [(IString  name) list body]))
-    ((ICall name args) (call-ser name args))
+    ((ICallX name args xv) (call-ser name args xv))
     ((IArg ndx ups) (.. "{" (if ups (patsubst ".%" "%" ups) "!")
                         (patsubst "=%" "%" ndx) "}"))
-    ((IFuncall nodes) (call-ser "^Y" nodes))
     ((IConcat values) (concat-for (v values "") (il-ser v)))
     ((IBlock nodes) (if (word 2 nodes)
                        (call-ser "IBlock" nodes)

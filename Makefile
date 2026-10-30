@@ -152,7 +152,7 @@ $B-x.ok: $B/scam test/*.scm
 	$(_@) rm -rf .out/tbx/
 	$(_@) $B/scam --build-dir .out/tbx/ -- test/dash-x.scm 1 'a b' '' > .out/tb/dash-x.out $(call ||,Bx1)
 	$(_@) grep -q '1:a b::3' .out/tb/dash-x.out $(call ||,Bx2)
-	$(_@) ( ! $B/scam --build-dir .out/tbx/ -- test/dash-x.scm --exit 1 ) $(call ||,Bx3)
+	$(_@) ( ! $B/scam --build-dir .out/tbx/ -- test/dash-x.scm --exit 1 2>/dev/null ) $(call ||,Bx3)
 	$(_@) touch $@
 
 

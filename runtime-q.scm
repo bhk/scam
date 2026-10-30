@@ -165,5 +165,5 @@
 (define (f ...args)
   args)
 
-(expect [1 2 3 4 5 6 7 8 9 10 11]
-        (^t (native-name f) 1 2 3 4 5 6 7 8 9 10 11))
+(expect [1 2 3 4 5 6 7 8 9 "a" "b"]
+        ((.. "$(call ^t,1,2,3,4,5,6,7,8,9 a b,X,F," (native-name f) ")")))
