@@ -121,7 +121,7 @@
 (expect (c0-ser "(let-global (([x y] 5) (f 2)) a)"
                 {x: (EVar "p" "X"),
                  y: (EVar "p" "Y"),
-                 f: (EFunc "p" "F" 1),
+                 f: (EFunc "p" 1 "F"),
                  a: (EDefn.arg 1 ".")})
         (.. "(^Y 5 [`(^S X,(^S X,(^n 1,{1}),{X}),"
             "(^S Y,(^S Y,(^n 2,{1}),{Y}),"
@@ -453,7 +453,7 @@
 (define tc-env
   (append { C: (ERecord "p" "S W L" "!:T0") }
           { D: (ERecord "p" "S W" "!:T1") }
-          { F: (EFunc "p" "F" 0) }
+          { F: (EFunc "p" 0 "F") }
           default-env))
 
 ;; single case

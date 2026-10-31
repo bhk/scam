@@ -114,7 +114,7 @@
     ((PSymbol pos var-name)
      (case (resolve sym env)
        ((EVar _ name) (il-set "^S" name))
-       ((EFunc _ name _) (il-set "^SF" name))
+       ((EFunc _ _ name) (il-set "^SF" name))
        (else
         (gen-error sym "`%s` is not a global variable" (symbol-name sym)))))
     (else
@@ -148,7 +148,7 @@
 
 (define (M.? env sym [func ...func-args])
   (case (resolve func env)
-    ((EFunc _ name _) (ITrace func name func-args env))
+    ((EFunc _ _ name) (ITrace func name func-args env))
     ((EBuiltin _ name _) (ITrace func name func-args env))
     ((EMacro _ _ _ _) (ITrace func "^Y" func-args env func))
     (defn
@@ -545,7 +545,7 @@
 
 (define (defn-native-name defn)
   (case defn
-    ((EFunc _ name _) name)
+    ((EFunc _ _ name) name)
     ((EVar _ name) name)
     ((EBuiltin _ name _) name)))
 

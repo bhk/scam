@@ -73,9 +73,9 @@
    (depth-marker ".")
    { a: (EDefn.arg 1 "."),
      v: (EVar "p" "V"),
-     f: (EFunc "p" "F" 2),
+     f: (EFunc "p" 2 "F"),
      ;; names that an extra promote/demote will corrupt...
-     "f!0!": (EFunc "p" "F!0!" 2),
+     "f!0!": (EFunc "p" 2 "F!0!"),
      "d!0!": (EVar "p" "D!0!") }))
 
 

@@ -242,7 +242,7 @@
         (IVar "~a") )
 
 ;; global function variable
-(expect (c0 _a {a: (EFunc "p" "~a" 1)})
+(expect (c0 _a {a: (EFunc "p" 1 "~a")})
         (IBuiltin "value" [(IString "~a")]))
 
 ;; undefined
@@ -445,9 +445,9 @@
 
 ;; declare FUNC
 (expect (text-to-env "(declare (fn a b))")
-        { fn: (EFunc "p" (gen-native-name "fn" nil) 2) })
+        { fn: (EFunc "p" 2 (gen-native-name "fn" nil)) })
 (expect (text-to-env "(declare (fn a b) &public)")
-        { fn: (EFunc "x" (gen-native-name "fn" nil) 2) })
+        { fn: (EFunc "x" 2 (gen-native-name "fn" nil)) })
 
 ;; declare errors
 (expect (c0-ser "(declare)")
@@ -479,7 +479,7 @@
         (xns "(^SF ~f,`(.join {1},{2}))"))
 
 (expect (text-to-env "(define (f a) a)" nil 1)
-        (xns { f: (EFunc "p" "~f" 1) }))
+        (xns { f: (EFunc "p" 1 "~f") }))
 
 ;; define compound macro
 (expect (text-to-env "(define `(M a) (words a))")

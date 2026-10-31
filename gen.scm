@@ -136,7 +136,7 @@
 (data EDefn
   &public
   (EVar     &word scope &word name)                  ;; simple global var
-  (EFunc    &word scope &word name arity)            ;; recursive global var
+  (EFunc    &word scope arity &word name)            ;; recursive global var
   (EMacro   &word scope &word depth arity &list il)  ;; compound macro
   (EIL      &word scope &word depth &list il)        ;; symbol macro
   (EXMacro  &word scope &word name)                  ;; executable macro

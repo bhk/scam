@@ -24,8 +24,8 @@
 
 ;; A has no imported bindings
 (define mod-A-env
-  { g: (EFunc "x" "F" 1),
-    q: (EFunc "p" "Q" 1) })
+  { g: (EFunc "x" 1 "F"),
+    q: (EFunc "p" 1 "Q") })
 
 ;; env-compress
 
@@ -49,17 +49,17 @@
              all))
 
 (define e1
-  { f: (EFunc "x" "f" 2),
+  { f: (EFunc "x" 2 "f"),
        x: (EVar "x" "X"),
-       g: (EFunc "p" "g" 1),  ;; private
-       g: (EFunc "i" "g" 1),  ;; imported, shadowed
-       z: (EFunc "i" "z" 1),  ;; imported
+       g: (EFunc "p" 1 "g"),  ;; private
+       g: (EFunc "i" 1 "g"),  ;; imported, shadowed
+       z: (EFunc "i" 1 "z"),  ;; imported
        m: (EIL "x" "" nil),
        "a:n\n,x": (EVar "x" "xyz") })
 
 ;; import public members
 (fexpect (export-round-trip e1 nil)
-         { f: (EFunc "i" "f" 2),
+         { f: (EFunc "i" 2 "f"),
            x: (EVar "i" "X"),
            m: (EIL "i" "" nil),
            "a:n\n,x": (EVar "i" "xyz")})
@@ -69,11 +69,11 @@
 ;;   Public members preceded private members.
 ;;   All entries are marked scope="i"
 (fexpect (export-round-trip e1 1)
-         { f: (EFunc "i" "f" 2),
+         { f: (EFunc "i" 2 "f"),
            x: (EVar "i" "X"),
            m: (EIL "i" "" nil),
            "a:n\n,x": (EVar "i" "xyz"),
-           g: (EFunc "i" "g" 1)})
+           g: (EFunc "i" 1 "g")})
 
 
 ;;--------------------------------------------------------------

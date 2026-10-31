@@ -254,7 +254,7 @@
     ((EMacro _ depth _ il)
      (c0-macro depth il env sym))
 
-    ((EFunc _ gname _)
+    ((EFunc _ _ gname)
      (IBuiltin "value" [(IString gname)]))
 
     ((ERecord _ encs tag)
@@ -405,7 +405,7 @@
   (define `symname (symbol-name sym))
 
   (case defn
-    ((EFunc _ realname arity)
+    ((EFunc _ arity realname)
      (or (check-arity arity args sym)
          (ICall realname (c0-vec args env))))
 
@@ -622,7 +622,7 @@
   (define `body-env
     (if is-macro
         env
-        (append { =name: (EFunc scope gname arity) } env)))
+        (append { =name: (EFunc scope arity gname) } env)))
 
   (or (c0-check-body n (first body) is-define)
 
@@ -640,7 +640,7 @@
           (if is-macro
               (EMacro scope body-depth arity
                       (case body-il ((ILambda node) node)))
-              (EFunc scope gname arity)))
+              (EFunc scope arity gname)))
 
         (or (il-error-node body-il)
             (IEnv {=name: defn}

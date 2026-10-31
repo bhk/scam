@@ -56,7 +56,7 @@
       (case defn
         ((EBuiltin _ _ args)
          "built-in function")
-        ((EFunc _ _ arity)
+        ((EFunc _ arity _)
          (sprintf "function (%s)" (describe-arity arity)))
         ((EMacro _ depth arity _)
          (sprintf "compound macro (%s)" (describe-arity arity)))
