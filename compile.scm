@@ -132,7 +132,7 @@
 ;;     "# Exports: " DEFNS
 ;;     "# Private: " DEFNS
 ;;
-;; The "Exports" like includes `&public` symbols, and the "Private" line
+;; The "Exports" line includes `&public` symbols, and the "Private" line
 ;; includes non-public symbols.
 ;;
 ;; Each DEFNS value is a compressed form of the vector of EDefn entries that
@@ -512,6 +512,11 @@
          (IEnv exports (ICall "^R" [arg])))))
      (else
       (err-expected "Q" module sym "STRING" "(require STRING)")))))
+
+
+(define (M.bundle env sym args)
+  (IString nil))
+
 
 
 ;; Get the name of the runtime module, or nil if the runtime should not
