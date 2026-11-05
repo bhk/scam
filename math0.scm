@@ -8,6 +8,7 @@
 ;; Convert decimal digits to unary digits.
 ;;
 (define `(d2u-macro d)
+  &public
   (subst 1 "01" 2 "011" 4 "31" 5 "311"
          7 "61" 9 "81" 8 "611" 6 "3111" 3 "0111" (or d "?")))
 
@@ -15,80 +16,93 @@
 ;; Convert unary digits to decimal digits.
 ;;
 (define `(u2d-macro u)
+  &public
   (subst "0111" 3 "3111" 6 "611" 8 "81" 9 "61" 7
          "311" 5 "31" 4 "011" 2 "01" 1 u))
 
 
 (define (d2u d)
+  &public
   (d2u-macro d))
 
 
 (define (u2d u)
+  &public
   (u2d-macro u))
 
 
 (define `(spread u)
+  &public
   (subst 0 " 0" u))
 
 
 (define `(smash uv)
+  &public
   (subst " " nil uv))
 
 
 (define `(u2uv u)
+  &public
   (native-strip (spread u)))
 
 
-(define `U1 "01")
-(define `U2 "011")
-(define `U3 "0111")
-(define `U4 "01111")
-(define `U5 "011111")
-(define `U6 "0111111")
-(define `U7 "01111111")
-(define `U8 "011111111")
-(define `U9 "0111111111")
-(define `U10 "01111111111")
-(define `T9 "111111111")
-(define `T10 "1111111111")
+(define `U1 &public  "01")
+(define `U2 &public  "011")
+(define `U3 &public  "0111")
+(define `U4          "01111")
+(define `U5 &public  "011111")
+(define `U6          "0111111")
+(define `U7          "01111111")
+(define `U8          "011111111")
+(define `U9 &public  "0111111111")
+(define `U10 &public "01111111111")
+(define `T9 &public  "111111111")
+(define `T10 &public "1111111111")
 
 
 ;; Non-nil if X > 0.  X may be in decimal *or* (perhaps signed) U format.
 ;;
 (define `(n>0? x)
+  &public
   (subst 0 nil (filter-out "-%" x)))
 
 
 (define `(u<0? u)
+  &public
   (findstring 1 (filter "-%" u)))
 
 
 ;; This is exported later in math.scm
 (define `(0- x)
+  &public
   (subst "--" "" (.. "-" x)))
 
 
 ;; Get leading zeros in UF value U.
 ;;
 (define (uf-get-lz u)
+  &public
   (subst ":" " " (filter-out "01%" (subst " " ":" ":01" " 01" u))))
 
 
 ;; Trim leading zeros from UF value U.
 ;;
 (define (uf-trim-lz u)
+  &public
   (subst ":" " " (filter "01%" (subst " " ":" ":01" " 01" u))))
 
 
 ;; Get trailing zeros in UF value U.
 ;;
 (define `(uf-get-tz u)
+  &public
   (subst "." " " (filter "%0" (subst "0 " "0." u))))
 
 
 ;; Trim trailing zeros from UF value U.
 ;;
 (define `(uf-trim-tz u)
+  &public
   (subst "." " " (filter-out "%0" (subst "0 " "0." u))))
 
 
@@ -120,18 +134,21 @@
 ;; numeric value of N, which may have digits with values from 0 to 27.
 ;;
 (define `(uf-carry uf)
+  &public
   (filter "0%" (spread (u-carry (smash uf)))))
 
 
 ;; Add A to B.  A, B, and result are UF-encoded.  Result is modulo 1.
 ;;
 (define `(uf-add a b)
+  &public
   (uf-carry (subst "10" "1" "00" 0 (join a b))))
 
 
 ;; Remove extraneous leading zeros from a U-encoded non-negative integer.
 ;;
 (define `(u-norm-uns u)
+  &public
   (.. 0 (smash (rest (subst "01" "0 1" u)))))
 
 
@@ -146,6 +163,7 @@
 ;; Combine 1's with adjacent ~'s (anti-1's).
 ;;
 (define `(neg-rreduce u)
+  &public
   (subst "111111~~~~~~" nil
          "111~~~" nil
          "11~~" nil
@@ -169,6 +187,7 @@
 ;; to (1 - UF) mod 1.
 ;;
 (define `(uf-complement uf)
+  &public
   (.. (uv-complement-digits uf) 1))
 
 
@@ -197,6 +216,7 @@
 
 
 (define (u-sub-unsigned a b)
+  &public
   ;; add "unary negative" B to A
   (define `x
     (subst "10" "1" "00" 0
@@ -239,6 +259,7 @@
 ;; zeros, and no "-0" value).
 ;;
 (define (u-add a b)
+  &public
   (define `ua (subst "-" nil a))
   (define `ub (subst "-" nil b))
 
@@ -258,6 +279,7 @@
 
 
 (define `(u-sub a b)
+  &public
   (u-add a (0- b)))
 
 
@@ -265,6 +287,7 @@
 ;; E.g.:  0.1 - 0.2  -->  0.9
 ;;
 (define `(uf-sub a b)
+  &public
   ;; Assert: A and B are normalized numbers
   (uf-add a (uf-complement b)))
 
@@ -283,6 +306,7 @@
 
 
 (define `(u-cmp-unsigned a b)
+  &public
   (word 1 (cmp-reduce (join (lzpad a b) (lzpad (neg-digits b) a)))))
 
 
@@ -293,6 +317,7 @@
 ;;   If A<B, return "~..."  (word consisting of ~'s)
 ;;
 (define (u-cmp a b)
+  &public
   (if (findstring "-" (.. a b))
       (if (findstring 1 (.. a b))
           (if (findstring "-" a)
@@ -304,6 +329,7 @@
 
 
 (define `(u-lt? a b)
+  &public
   (findstring 1 (u-cmp b a)))
 
 
@@ -311,10 +337,12 @@
 ;; A and B may contain extraneous spaces.
 ;;
 (define (uf-cmp a b)
+  &public
   (word 1 (cmp-reduce (join a (neg-digits b)))))
 
 
 (define `(uf-lt? a b)
+  &public
   (findstring 1 (uf-cmp b a)))
 
 
@@ -323,6 +351,7 @@
 ;;   RESULT = UF-encoded number [0...1)
 ;;
 (define (uf-sign-sub a b negate?)
+  &public
   ;; expect normalized numbers
   (define `prefix+ (.. (if negate? "-" "+") " "))
   (define `prefix- (.. (if negate? "+" "-") " "))
@@ -351,6 +380,7 @@
 ;; Propagate carry until all digits are proper (9 or less).
 ;;
 (define (u-carry-all u)
+  &public
   (if (findstring U10 u)
       (u-carry-all
        (patsubst "-1%" "-01%"
@@ -362,6 +392,7 @@
 ;; an arbitrary number of "1" characters.
 ;;
 (define (u-add-ones e ones)
+  &public
   (or (filter-out "-% %1111111111" (.. e ones))
       (u-add e (u-carry-all (.. "0" ones)))))
 
@@ -369,12 +400,14 @@
 ;; Subtract 1 from a U-value (possibly include a "-" sign).
 ;;
 (define (u-1 e)
+  &public
   (or (patsubst "%1" "%" (filter-out "-% %0" e))
       (filter-out "0% %1111111111" (.. e 1))
       (u-add e "-01")))
 
 
 (define `(u+1 u)
+  &public
   (or (filter-out "-% %1111111111" (.. u 1))
       (u-add u "01")))
 
@@ -417,6 +450,7 @@
 
 
 (define `(>>1 uf)
+  &public
   (.. "0 " uf))
 
 (define `(j>>1 a b)
@@ -468,10 +502,12 @@
 ;; (uf*CONSTANT u)
 
 (define `(uf*2 u)
+  &public
   (uf-carry_19_10 (subst 1 11 u)))
 
 
 (define `(uf*4 u)
+  &public
   ;; Versus "(subst 1 1111 u) + carry20 + carry10", this is slightly smaller
   ;; and faster for large numbers.
   (subst " 011111" "x 0"
@@ -483,7 +519,7 @@
 (define `(uf*0.1 u)  (.. "0 " u))
 (define `(uf*0.2 u)  (uf*2 (.. "0 " u)))
 (define `(uf*0.4 u)  (uf*4 (.. "0 " u)))
-(define `(uf*0.5 a)  (subst "11" "2" "1 0" " 011111" "2" 1 (.. a " 0")))
+(define `(uf*0.5 a) &public (subst "11" "2" "1 0" " 011111" "2" 1 (.. a " 0")))
 
 (define `(uf*0.3_10 u) (uf-carry_27_10 (>>1 (subst 1 111 u))))
 (define `(uf*0.7_10 u) (uf-carry_81_10 (>>1 (subst 1 1111111 u))))
@@ -612,6 +648,7 @@
 ;; B) digits.
 ;;
 (define (uf-mul a b)
+  &public
   (if (longer? b a)
       (uf-mul b a)
       (uf-carry
@@ -651,11 +688,11 @@
   (.. 0 (subst T10 T9 q)))
 
 
-(define `DIV-TRUNCATE  1)
-(define `DIV-NEAREST   2)
-(define `DIV-CEILING   3)
-(define `DIV-REMAINDER 4)
-(define `DIV-FLOOR     9)  ;; only for signed values
+(define `DIV-TRUNCATE  &public 1)
+(define `DIV-NEAREST   &public 2)
+(define `DIV-CEILING   &public 3)
+(define `DIV-REMAINDER &public 4)
+(define `DIV-FLOOR     &public 9)  ;; only for signed values
 
 
 ;; (div-post POST Q REM B) : Called with results of (uf-div a b num-digits).
@@ -781,6 +818,7 @@
 
 
 (define `(uf*0.25 x)
+  &public
   (subst "11" "2"
          "1 0" " 0112"
          "22" 1
@@ -819,6 +857,7 @@
 ;; N is in decimal.  N > 0.
 ;;
 (define (uf-round n mode u)
+  &public
   (define `q/10
     (>>1 (wordlist 1 n u)))
 
@@ -1042,6 +1081,7 @@
 ;;   UF-number.  This is the reason why Q{x}/10 is returned instead of Q{x}.
 ;;
 (define (uf-div a b n mode)
+  &public
   ;;(assert (findstring 1 (word 1 b)))
   (cond
    ((uf-ends-in-0? b)
@@ -1073,6 +1113,7 @@
 ;;        DIV-REMAINDER => remainder
 ;;
 (define (u-fdiv ua ub mode)
+  &public
   (cond
    ;; extraneous leading zeros
    ((filter "00%" (._. ua ub))

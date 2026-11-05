@@ -1,14 +1,8 @@
 (require "core.scm")
-(require "math0.scm" &private)
-(require "math1.scm" &private)
-(require "math2.scm" &private)
-;; Note: math0-q and math1-q are not ordinarily run as unit tests because
-;; they are always required with "&private".  This file *does* get run as a
-;; unit test, so here we ensure that math0.scm & math1.scm are tested before
-;; math.scm.  Also, we pull in some test utilities.
-(require "math0-q.scm" &private)
-(require "math1-q.scm" &private)
-(require "math2-q.scm" &private)
+(require "math0.scm")
+(require "math1.scm")
+(require "math2.scm")
+(require "math0-q.scm" &private)  ;; for (U ...)
 (require "math.scm" &private)
 
 ;;--------------------------------

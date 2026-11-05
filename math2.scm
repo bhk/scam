@@ -3,8 +3,8 @@
 ;;----------------------------------------------------------------
 
 (require "core.scm")
-(require "math0.scm" &private)
-(require "math1.scm" &private)
+(require "math0.scm")
+(require "math1.scm")
 
 
 ;;----------------------------------------------------------------
@@ -21,6 +21,7 @@
 ;; Return a list with UX words, all "0".  UX may have digits larger than 9.
 ;;
 (define (u-zeros ux)
+  &public
   (if (filter-out "-%" ux)
       (subst 1 " 0"
              (if (findstring "10" ux)
@@ -333,7 +334,7 @@
 ;; When non-nil, override POD for the final rounding step in log, exp, pow,
 ;; sin, cos, atan, atan2.  [Used in testing.]
 ;;
-(declare result-pod)
+(declare result-pod &public)
 
 
 ;; See log-size.
@@ -435,6 +436,7 @@
 ;; Compute log(FX).
 ;;
 (define (fp-log fx pod)
+  &public
   (define `count
     (if (pod-is-place? pod)
         ;; POD = place: U value (negative => left of decimal; non-negative => right)
@@ -451,6 +453,7 @@
 ;; Compute the logarithm of FX in base FB.
 ;;
 (define (fp-log-x-b fx fb pod)
+  &public
   ;; DIV-COUNT is a count (word list) representing the number of significant
   ;; digits needed for the arguments to fp-div in order to obtain a result
   ;; with precision as given by POD.  A-PLACE and B-PLACE given the place of
@@ -683,6 +686,7 @@
 ;; POD = place (0N, -0N) or digits (U)
 ;;
 (define (fp-exp fx pod)
+  &public
   ;; Approximation FIA of I=floor(X/10); FIA >= I
   (define `fia
     (fp-div fx "01 + 011 0111" 0 nil))
@@ -731,6 +735,7 @@
 ;; Compute xʸ, defined as exp(y * log(x)).
 ;;
 (define (fp-pow fx fy pod)
+  &public
   ;; Note: this assumes normalized numbers (as returned by u2fp)
   (define `(fp!=0? f)
     (findstring 1 (word 3 f)))
@@ -796,8 +801,9 @@
 ;;
 (define (uf-pi count)
   ;; 1/239 = 0.(0041841)
-  (define `uf1/239 (extend-fn nil (words count)
-                              " 0 0 01111 01 011111111 01111 01"))
+  (define `uf1/239 (repeat-words
+                    " 0 0 01111 01 011111111 01111 01"
+                    (words count)))
   (define `4*acot5 (uf*4 (uf-atan U2 count)))
   (define `acot239 (uf-atan uf1/239 count))
 
@@ -808,6 +814,7 @@
 ;; Return N digits of π, caching results.
 ;;
 (define `(const-pi count)
+  &public
   (get-uf-const (native-name uf-pi) count))
 
 
@@ -956,6 +963,7 @@
 ;; Compute sin(X) or cos(X)
 ;;
 (define (xsin is-sin x prec)
+  &public
   (fp2d (fp-xsin is-sin (d2fp x) (prec-to-pod prec))))
 
 
@@ -1029,7 +1037,7 @@
 
 
 (define (fp-atan2 fy fx pod ?flip)
-;;  (printf "y=%s x=%s %s" (fp2d fy) (fp2d fx) flip)
+  &public
 
   (cond
    ((findstring " -" fy)

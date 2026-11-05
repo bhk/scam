@@ -1,5 +1,5 @@
 (require "core.scm")
-(require "math0.scm" &private)
+(require "math0.scm")
 (require "math0-q.scm" &private)
 (require "math1.scm" &private)
 

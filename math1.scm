@@ -3,28 +3,31 @@
 ;;----------------------------------------------------------------
 
 (require "core.scm")
-(require "math0.scm" &private)
+(require "math0.scm")
 
 
 ;; Construct an FP number
 ;;
 (define `(make-fp exp sgn frac)
+  &public
   (._. exp sgn frac))
 
 
-(define `(fp.xpo n) (word 1 n))
-(define `(fp.sign n) (word 2 n))
-(define `(fp.uf n) (nth-rest 3 n))
+(define `(fp.xpo n) &public (word 1 n))
+(define `(fp.sign n) &public (word 2 n))
+(define `(fp.uf n) &public (nth-rest 3 n))
 
 
-(define `NaN "NaN")
+(define `NaN &public "NaN")
 
-;; In math.scm this is exported as &public
+;; math.scm re-exports this
 (define `(abs x)
+  &public
   (patsubst "-%" "%" x))
 
 
 (define `(non-digit? u)
+  &public
   (subst 0 "" 1 "" u))
 
 
@@ -47,6 +50,7 @@
 ;; Normalize N (ensure that UF >= 0.1 unless N is zero).
 ;;
 (define (fp-norm x)
+  &public
   (if (filter 0 (word 3 x))
       (foreach (zeros (word 1 (subst "001" "0 01" (smash (fp.uf x)))))
         (define `zeros-tally
@@ -80,6 +84,7 @@
 ;; Syntax for valid numbers:   "-"? DIGITS ("." DIGITS)? ([Ee] SIGN? DIGITS)?
 ;;
 (define (u2fp u ?n-exp ?n-sign ?n-frac)
+  &public
   (cond
    ;; simple integer
    ((not (non-digit? u))
@@ -118,6 +123,7 @@
 ;; exponent may also appear.
 ;;
 (define (fp2u fp)
+  &public
   (define `exp (word 1 fp))
   (define `sgn (word 2 fp))
   (define `frac (nth-rest 3 fp))
@@ -179,6 +185,7 @@
 ;;   nil => mal-formed PREC error
 ;;
 (define (prec-to-pod prec)
+  &public
   (if prec
       (if (filter "+% -%" prec)
           ;; If PREC contains spaces, return nil.
@@ -199,6 +206,7 @@
 ;; digits to the right of the decimal place, U-encoded.
 ;;
 (define `(pod-is-place? pod)
+  &public
   (filter "0% -0%" pod))
 
 
@@ -206,34 +214,41 @@
 ;; FP operations
 ;;--------------------------------
 
-(define `FP0 "0 + 0")
-(define `FP1 "01 + 01")
+(define `FP0 &public "0 + 0")
+(define `FP1 &public "01 + 01")
 
 (define `(fp-negate n)
+  &public
   (subst " +" " !" " -" " +" "!" "-" n))
 
 
 (define `(fp>0? fx)
+  &public
   (findstring "+ 01" (filter-out 0 (.. "." fx))))
 
 
 (define `(fp<0? fx)
+  &public
   (findstring "- 01" (filter-out 0 (.. "." fx))))
 
 
 (define `(fp!=0? fx)
+  &public
   (findstring 1 (fp.uf fx)))
 
 
 (define `(fp-abs fx)
+  &public
   (subst " -" " +" fx))
 
 
 (define `(d2fp dx)
+  &public
   (u2fp (d2u dx)))
 
 
 (define `(fp2d fx)
+  &public
   (u2d (fp2u fx)))
 
 
@@ -249,6 +264,7 @@
 ;; of 1's equals the value of the multi-digit number.
 ;;
 (define (tally w)
+  &public
   (if (word 2 w)
       (tally (.. (subst 1 T10 (word 1 w)) (rest w)))
       (subst 0 nil w)))
@@ -275,6 +291,7 @@
 ;; Add A to B.
 ;;
 (define (fp-add a b)
+  &public
   (define `ae (fp.xpo a))
   (define `as (fp.sign a))
   (define `af (fp.uf a))
@@ -291,6 +308,7 @@
 ;; Subtract B from A.
 ;;
 (define `(fp-sub a b)
+  &public
   (fp-add a (fp-negate b)))
 
 
@@ -301,6 +319,7 @@
 ;; Multiply A by B.
 ;;
 (define (fp-mul a b)
+  &public
   (define `exp (u-add (fp.xpo a) (fp.xpo b)))
   (define `sgn (sign-mul (fp.sign a) (fp.sign b)))
   (define `m (uf-mul (fp.uf a) (fp.uf b)))
@@ -397,6 +416,7 @@
 
 
 (define (fp-div x y pod round)
+  &public
   (define `x.uf (fp.uf x))
   (define `y.uf (fp.uf y))
   (define `q.exp (u-sub (fp.xpo x) (fp.xpo y)))
@@ -436,6 +456,7 @@
 ;;           = (A - B*floor(A/B)) >> BE
 ;;
 (define (fp-mod a b)
+  &public
   (cond
    ;; Normalized and non-zero?
    ((not (findstring 101 (.. (word 3 a) (word 3 b))))
@@ -468,6 +489,7 @@
 ;; Round X to specified precision
 ;;
 (define (fp-round x pod dir)
+  &public
   ;; Convert signed rounding direction to unsigned direction
   (define `udir
     (or (filter [DIV-NEAREST DIV-TRUNCATE] dir)
@@ -505,6 +527,7 @@
 ;; Truncate FX (towards zero).
 ;;
 (define (fp-trunc fx)
+  &public
   (if (n>0? (fp.xpo fx))
       ;; Avoid using EXP as a word index if it's too large
       (if (word 9 (spread (fp.xpo fx)))
@@ -531,12 +554,14 @@
 
 
 (define (fp-floor n)
+  &public
   (cond
    ((findstring " -" n) (fp-mag-ceiling n))
    (n (fp-trunc n))))
 
 
 (define (fp-ceil n)
+  &public
   (cond
    ((findstring " +" n) (fp-mag-ceiling n))
    (n (fp-trunc n))))
@@ -545,6 +570,7 @@
 ;; ASSERT: A and B are normalized (fp.uf >= 0.1)
 ;;
 (define (fp-cmp a b)
+  &public
   (cond
    ;; Both are positive
    ((findstring (findstring "+ 01" a) b)
@@ -574,6 +600,7 @@
 
 
 (define `(fp-lt? fa fb)
+  &public
   (findstring 1 (fp-cmp fb fa)))
 
 
@@ -589,6 +616,7 @@
 ;; N = U-encoded non-negative integer
 ;;
 (define (fp-pwr x n)
+  &public
   (foreach (n/2 (subst "11" 2 "10" "022222" n))
 
     (if (findstring 2 n/2)      ;; n > 1?
@@ -613,6 +641,7 @@
 
 
 (define `(nzeros len)
+  &public
   (extend-fn 0 len " 0 0 0 0"))
 
 
@@ -621,6 +650,7 @@
 ;; nil, empty string is returned.
 ;;
 (define `(uf-fix lst len)
+  &public
   (extend-fn lst len " 0 0 0 0"))
 
 
@@ -650,6 +680,7 @@
 ;; PU = (d2u PD)
 ;;
 (define (fp-fix x wd pd pu)
+  &public
   (define `uf (fp.uf x))
   (define `uf<<1 (nth-rest 4 x))
 
