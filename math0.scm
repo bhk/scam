@@ -103,16 +103,15 @@
              u)))
 
 
-;; Return a well-formed U value (with digit values 0...9) that has the same
-;; numeric value as U.  U may have digits with values from 0 to 27, but MUST
-;; already have enough digits to hold the resulting value.  If carry is
-;; propagated from the top digit, a mal-formed result beginning with "1"
-;; (not "01") will result.
+;; Reduce digits in U to 0..9 by carry propagation.  U may have digits with
+;; values from 0 to 27, but MUST already have enough digits to hold the
+;; resulting value.  (If carry propagates from the top digit, a mal-formed
+;; result beginning with "1" (not "01") will result.)
 ;;
 (define `(u-carry u)
-  (foreach (w (subst "01111111111" "10" u))
+  (foreach (w (subst U10 "10" u))
     ;; Now digits in W are <= 18.
-    (if (findstring "01111111111" w)
+    (if (findstring U10 w)
         (u-carry-fn w U9 0)
         w)))
 
@@ -352,7 +351,7 @@
 ;; Propagate carry until all digits are proper (9 or less).
 ;;
 (define (u-carry-all u)
-  (if (findstring "01111111111" u)
+  (if (findstring U10 u)
       (u-carry-all
        (patsubst "-1%" "-01%"
                  (patsubst "1%" "01%" (subst T10 "X0" "0X" 1 u))))
@@ -1026,7 +1025,7 @@
 ;; Out: The returned value (always UF-encoded) depends on MODE:
 ;;
 ;;     DIV-TRUNCATE  =>  Qt/10
-;;     DIV-NEAREST   =>  Qn/10   [round to nearest, ties to odd]
+;;     DIV-NEAREST   =>  Qn/10   [round to nearest, ties to even]
 ;;     DIV-CEILING   =>  Qc/10
 ;;     DIV-REMAINDER =>  REM
 ;;

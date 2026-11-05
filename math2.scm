@@ -410,7 +410,7 @@
                   (fp-mul (.. "01 + " log-10*0.1)
                           (u2fp exp))
                   FP0)
-              (.. "01 - " (log-frac*0.1)))
+              (.. "01 - " log-frac*0.1))
       ;; 0.1 <= X <= 0.102
       (fp-add (fp-mul (.. "01 + " log-10*0.1)
                       (u2fp (u-sub exp "01")))

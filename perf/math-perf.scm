@@ -83,18 +83,23 @@
   (clk-show (.. "d2d " name) (for (x nums) (u2d (fp2u (u2fp (d2u x))))))
   nil)
 
+(define (do-xnd)
+  (exp (log 1987263498127634 10)))
+
 
 ;;----------------------------------------------------------------
 
 (define (run-composite name f+ f- f* f/ f< f^)
   (printf "%s:" name)
-  (define bi (clk-show "  bi [200]" (clock-int f+ f- f* f<)))
-  (define bf (clk-show "  bf [ 80]" (clock-fp f+ f- f* f<)))
-  (define df (clk-show "  df [ 20]" (binop-fp-20 f/)))
-  (define ei (clk-show "  ei [ 20]" (binop-intsmall-40 f^)))
+  (define bi (clk-show "  binop-int [200]" (clock-int f+ f- f* f<)))
+  (define bf (clk-show "  binop-flt [ 80]" (clock-fp f+ f- f* f<)))
+  (define df (clk-show "  float-div [ 20]" (binop-fp-20 f/)))
+  (define ei (clk-show "  power-int [ 20]" (binop-intsmall-40 f^)))
 
   (define all [ bi bf df ei])
   (printf "   overall: %s  (%s)\n" (sum all) all)
+
+  (clk-show "transcendentals" (do-xnd))
   nil)
 
 
