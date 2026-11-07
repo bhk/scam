@@ -86,11 +86,13 @@
 
 ;;-------- *trace-ids* & related functions
 
-(expect nil (trace-id "&&&"))
-(expect 0 (trace-id "name1" 1))
-(expect 1 (trace-id "name2" 1))
-(expect 0 (trace-id "name1" 1))
-(expect "name1 name2" (dict-keys *trace-ids*))
+;; avoid failure when this module is being compiled by a compiler being traced(!)
+(when (eq? *trace-ids* nil)
+  (expect nil (trace-id "&&&"))
+  (expect 0 (trace-id "name1" 1))
+  (expect 1 (trace-id "name2" 1))
+  (expect 0 (trace-id "name1" 1))
+  (expect "name1 name2" (dict-keys *trace-ids*)))
 
 
 ;;-------- trace-body
@@ -230,12 +232,9 @@
 
 
 ;;-------- trace, untrace
-
-(set *trace-ids* nil)
 (define (bkup-zxcv) nil)
 
-(let-global ((*trace-ids* nil)
-             (bkup-zxcv zxcv)
+(let-global ((bkup-zxcv zxcv)
              (*log* nil))
   ;; `-` mode excludes files matching other SPECs
   (expect "" (trace "zxc% zxcv:-"))

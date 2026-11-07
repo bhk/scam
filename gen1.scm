@@ -123,7 +123,7 @@
             ((IBuiltin name args) (use-if-void name args node))
             ((ICallX name args _) (use-if-void name args node))
             ((IString _) (IString nil))
-            ((ICrumb _ _) (IString nil)))
+            ((ICrumb _ _) node))
           (if node
               (IBuiltin "if" [node (IString "")])))))
 
@@ -390,7 +390,7 @@
 
 
 ;; Compile a vector of IL nodes.
-;; Returns:  { code: CODE, errors: ERRORS }
+;; Returns:  { code: CODE, errors: VEC, env: ENV, require: MODS}
 ;;
 (define (gen1 node-vec is-file)
   &public

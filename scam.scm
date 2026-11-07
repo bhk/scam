@@ -9,6 +9,23 @@
 (require "gen.scm")
 (require "io.scm")
 
+;; Retain symbols for these public modules so they will be available
+;; to code compiled by `compile` or `repl`.
+(bundle "core.scm")
+(bundle "trace.scm")
+(bundle "io.scm")
+(bundle "math.scm")
+(bundle "peg.scm")
+(bundle "string.scm")
+(bundle "utf8.scm")
+(bundle "getopts.scm")
+(bundle "memo.scm")
+(bundle "compile.scm")
+(bundle "repl.scm")
+
+;; The parse module is not yet documented, but needed by CT macros.
+(bundle "parse.scm")
+
 
 (define usage-string
   "Usage:\n

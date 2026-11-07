@@ -322,9 +322,32 @@
       (wordlist 1 (or max 99999999) (split "\n" (native-value (modid-var id))))))
 
 
-;; Scan a builtin module for `require` dependencies.
+;; Strip "...$" decoration from a single dependency IDs or a vector of IDs.
 ;;
-(define (modid-deps id)
+(define `(dep-ids deps)
+  (subst "$" nil deps))
+
+
+;; True is dependency symbols should be retained.  Contains "$$" if private
+;; symbols should be retained.
+;;
+(define `(dep-keep-syms dep)
+  (filter "%$" dep))
+
+
+;; Remove repeated IDs (occurring with and without "...$" decoration),
+;; preserving the decorated forms.
+;;
+(define (deps-min deps)
+  (filter-out (dep-ids (filter "%$" deps)) deps))
+
+
+;; Scan a builtin module for `require` dependencies.  Each dependency is a
+;; module ID with an optional "$" or "$$" suffix indicating "bundle exports"
+;; or "bundle exports and private symbols".
+;;
+(define (modid-deps depname)
+  (define `id (dep-ids depname))
   (let ((lines (modid-read-lines id 4)))
     ;; should not happen... module was not compiled?
     (assert lines)
@@ -371,8 +394,11 @@
 (define (construct-bundle id keep-syms)
   (define `body
     (skip-comments (modid-read-lines id)
-                   (if keep-syms
-                       ["# Req%" "# Exp%"])))
+                   (._. ["# Req%"]
+                        (if keep-syms
+                            ["# Exp%"])
+                        (if (findstring "$$" keep-syms)
+                            ["# Pri%"]))))
 
   (.. "\ndefine " (modid-var id) "\n"
       (concat-vec body "\n") "\n"
@@ -491,32 +517,40 @@
 ;;
 ;; Result = IL node that calls REQUIRE + includes a "require crumb"
 ;;
-(define (M.require env sym args)
+(define (M.require env sym args ?bundle)
   (define `[module] args)
   (define `flags (get-flags args))
   (define `body (skip-flags args))
   (define `mod-name (string-value module))
   (define `read-priv (filter "&private" flags))
+  (define `macro-name (symbol-name sym))  ;; "require" or "bundle"
 
   (or
    (if body
-       (gen-error (first body) "too many arguments to require"))
+       (gen-error (first body) "too many arguments to %s" macro-name))
 
    (case module
      ((PString _ name)
       (case (get-module name *compile-file* read-priv)
         ((ModError message)
-         (gen-error module "require: %s" message))
+         (gen-error module "%s: %s" macro-name message))
         ((ModSuccess id exports)
-         (define `arg (IConcat [(IString id) (ICrumb "require" id)]))
-         (IEnv exports (ICall "^R" [arg])))))
+         (if bundle
+             ;; "MODNAME$" => bundle exports; "MODNAME$$" => and private symbols
+             (ICrumb "require" (.. id "$" (if read-priv "$")))
+             (IEnv exports
+                   (IConcat [ (ICrumb "require" id)
+                              (ICall "^R" [(IString id)]) ]))))))
+
      (else
-      (err-expected "Q" module sym "STRING" "(require STRING)")))))
+      (err-expected "Q" module sym "STRING" "(%s STRING)" macro-name)))))
 
 
+;; Include module in the program, without loading it or importing its
+;; environment.
+;;
 (define (M.bundle env sym args)
-  (IString nil))
-
+  (M.require env sym args 1))
 
 
 ;; Get the name of the runtime module, or nil if the runtime should not
@@ -611,7 +645,7 @@
            (file file))
        (define `outfile (modid-object (modid-from-source file)))
        (define `content
-         (.. "# Requires: " reqs "\n"
+         (.. "# Requires: " (deps-min reqs) "\n"
              (env-export-lines env-out)
              exe))
 
@@ -632,12 +666,15 @@
   (define `runtime-id
     ;; Use `foreach` as cheap `let`
     (foreach (m (runtime-module-name nil))
-      (if m
-          [ (if (filter "%.scm" m)
-                (modid-from-source m)
-                (modid-from-builtin m)) ])))
+      (when m
+        (define `rtid
+          (if (filter "%.scm" m)
+              (modid-from-source m)
+              (modid-from-builtin m)))
+        [ (.. rtid "$") ])))
 
-  (descendants modid-deps (uniq (cons id runtime-id))))
+  (deps-min
+   (descendants modid-deps (uniq (cons id runtime-id)))))
 
 
 ;; Construct a bundled executable from a compiled module.
@@ -650,19 +687,16 @@
   (build-message "link" exe-file)
 
   (define `exe-code
-    (let ((mod-ids (modid-deps-all main-id)))
-      ;; Symbols are valuable only if compile is present
-      (define `keep-syms
-        (filter "compile" mod-ids))
-
+    (let ((mod-deps (modid-deps-all main-id)))
       (define `bundles
-        (concat-for (id mod-ids "")
-          (construct-bundle id keep-syms)))
+        (concat-for (dep mod-deps "")
+          (construct-bundle (dep-ids dep)
+                            (dep-keep-syms dep))))
 
       (define `uid
         (hash-output "cat -- %V"
                      (filter-out [""]
-                                 (for (id mod-ids)
+                                 (for (id (dep-ids mod-deps))
                                    (if (modid-is-source? id)
                                        (modid-object id))))))
 
@@ -741,7 +775,6 @@
 ;;
 ;; SRC-FILE = name of the SCAM source file\
 ;; EXE-FILE = name of an executable file to create.\
-;; ARGV = a vector to pass to the program's `main` function\
 ;; BUILD-DIR = nil, or the [object directory](#object-directory)\
 ;; IS-QUIET = non-nil to suppress compilation progress messages
 ;;

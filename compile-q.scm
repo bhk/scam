@@ -130,16 +130,16 @@
   (expect (.. test-dir "A+01.scm.o") objA)
 
   (write-file objA "# Requires: M!01 M!02\n")
-  (write-file objB (.. "# Requires: M!01 " [idA] "\n"))
+  (write-file objB (.. "# Requires: M!01$ " [idA] "\n"))
 
   (expect (modid-deps-all (modid-from-source "nil.scm"))
-          [(.. test-dir "nil.scm") "runtime"])
+          [(.. test-dir "nil.scm") "runtime$"])
 
   (expect (modid-deps-all idA)
-          [idA "runtime" "M 1" "M 2"])
+          [idA "runtime$" "M 1" "M 2"])
 
   (expect (modid-deps-all idB)
-          [idB "runtime" "M 1" idA "M 2"]))
+          [idB "runtime$" "M 1$" idA "M 2"]))
 
 
 ;; locate-source
@@ -185,7 +185,20 @@
 (let-global ((get-module mock-get-module))
   ;; get-module success
   (expect (c0-ser "(require \"mod.scm\")")
-          "(^R mod!(ICrumb 'require' 'mod'))"))
+          "!(ICrumb 'require' 'mod')(^R mod)"))
+
+
+;;--------------------------------
+;; (bundle MOD)
+;;--------------------------------
+
+(let-global ((get-module mock-get-module))
+  ;; get-module success
+  (expect (c0-ser "(bundle \"mod.scm\")")
+          "!(ICrumb 'require' 'mod$')")
+
+  (expect (c0-ser "(bundle \"mod.scm\" &private)")
+          "!(ICrumb 'require' 'mod$$')"))
 
 
 ;;--------------------------------------------------------------
