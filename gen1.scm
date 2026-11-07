@@ -79,10 +79,12 @@
          code))
 
 
-;; Crumbs are name/value pairs can be placed anywhere in generated code.
-;; They will survive lambda-escaping, protect-XXX, and other transformations
-;; performed during code generation.  Before `gen1` returns, all crumbs are
-;; removed from the generated code and collated into name/vector pairs.
+;; Crumbs are name/value pairs that can be embedded in generated code,
+;; allowing c1-level functions, which typically return only code, to return
+;; error information and other OOB data.  Crumbs survive lambda-escaping,
+;; protect-XXX, and other transformations performed during code generation.
+;; Before `gen1` returns, it removes all crumbs from the code and collates
+;; their names & values into {name: vector} pairs.
 
 (define `(crumb-encode str)
   (subst "~" "~1" "(" "~L" "," "~C" ")" "~R" "$" "~S" "\n" "~N" str))

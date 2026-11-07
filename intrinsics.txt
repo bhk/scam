@@ -356,6 +356,18 @@
 (declare (require module &private?) &public)
 
 
+;; Include a module in the program.  Like require, it causes compilation and
+;; testing of the module, but it does not load the module or imports its
+;; symbols.  This is valuable for programs that use `compile` and `repl` and
+;; want to make one or more modules available to code they compile (e.g.
+;; the SCAM compiler itself).
+;;
+;; The `&private` flag causes private symbols also to be included, so that
+;; `(require MODULE &private)` can be used on a bundled module.
+;;
+(declare (bundle module &private?) &public)
+
+
 ;; Declare and define a function, variable, or macro.
 ;;
 ;; This special form takes several forms:

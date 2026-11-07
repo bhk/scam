@@ -13,20 +13,8 @@
 (require "trace.scm")
 
 
-;; We use this trick to cause bundling of these modules even though this
-;; module does not use them directly.  Code *compiled* at run-time by this
-;; module *may* use them (when and if REPL functions are called).  This
-;; trick would not be of use in ordinary SCAM code; only the compiler with
-;; its `--boot` mechanism can register built-in libraries.
-(or 1
-    (require "math.scm")
-    (require "peg.scm")
-    (require "utf8.scm"))
-
-
-;; Override this on the command line to automatically include a different
-;; set of libraries.  repl supplies *1 and *2.
-(define LIBS "compile core trace getopts io math peg repl string utf8")
+(define default-libs
+  "compile core trace getopts io math peg repl string utf8")
 
 (define *1 &native nil)  ; most recent evaluation result
 (define *2 &native nil)  ; previous result
@@ -37,12 +25,12 @@
          "  :        : reset input state\n"
          "  :e       : show environment\n"
          "  :E       : show environment (including imported entries)\n"
-         "  :R LIBS  : reset environmen to only LIBS\n"
+         "  :R LIBS  : reset environment to only LIBS\n"
          "  ?        : this message\n\n"
          "Global variables in REPL:\n"
          "  *1 = most recent value printed\n"
          "  *2 = second most recent value\n")
-  (printf "LIBS = %s\n" LIBS))
+  (printf "Default libraries = %s\n" default-libs))
 
 
 (define (describe-binding bound-name defn all)
@@ -86,12 +74,16 @@
   ;; TEXT = leftover typed text (awaiting completion of an expression)
   ;; ENV = current environment
   ;; ERROR = error response from most recent evaluation
-  (REPL text prompts build-dir is-quiet error &list env))
+  ;; CFG = [prompts build-dir is-quiet]
+  (REPL error text cfg &list env))
 
 
 ;; Parse and evaluate text, displaying errors or result.
 ;;
-(define (eval-and-print text prompts build-dir is-quiet env)
+(define (eval-and-print text cfg env)
+  (define `[prompts build-dir is-quiet]
+    cfg)
+
   (let ((o (compile-text text "[stdin]" env build-dir is-quiet))
         (env env)
         (text text))
@@ -102,13 +94,13 @@
      ((and prompts
            (filter "( [ {" (case (first errors)
                              ((PError n desc) (word 1 desc)))))
-      (REPL text prompts build-dir is-quiet nil env))
+      (REPL nil text cfg env))
 
      ;; error?
      (errors
       (for (err errors)
         (print (describe-error err text "[stdin]")))
-      (REPL "" prompts build-dir is-quiet 1 env))
+      (REPL 1 "" cfg env))
 
      ;; execute & display result
      (else
@@ -118,7 +110,7 @@
               (set *2 *1)
               (set *1 result)
               (print (format result)))))
-      (REPL "" prompts build-dir is-quiet nil newenv)))))
+      (REPL nil "" cfg newenv)))))
 
 
 (define (load-env libs)
@@ -133,8 +125,10 @@
       e)))
 
 
-(define `initial-env
-  (load-env LIBS))
+(define `(initial-env libs)
+  (load-env (if libs
+                (patsubst "-" nil libs)
+                default-libs)))
 
 
 ;; Collect another line of input and process it.
@@ -146,8 +140,8 @@
 ;;
 (define (read-eval-print state)
   (case state
-    ((REPL text prompts build-dir is-quiet _ env)
-
+    ((REPL _ text cfg env)
+     (define `[prompts build-dir is-quiet] cfg)
      (let ((line (getline (nth (if text 2 1) prompts)))
            (env env)
            (state state))
@@ -161,7 +155,7 @@
 
         ((saw ":")
          ;; Reset text
-         (REPL nil prompts build-dir is-quiet nil env))
+         (REPL nil nil cfg env))
 
         ((saw ":q")
          ;; Exit
@@ -180,29 +174,30 @@
          state)
 
         ((eq? ":R" (word 1 (native-strip line)))
-         (REPL text prompts build-dir is-quiet _
-               (load-env (rest (native-strip line)))))
+         (REPL nil text cfg (load-env (rest (native-strip line)))))
 
         (else
-         (eval-and-print (.. text line)
-                         prompts build-dir is-quiet env)))))))
+         (eval-and-print (.. text line) cfg env)))))))
 
 
-;; Enter REPL mode, and return to caller when the user exits with `:q` or
-;; `Ctrl-D`.
+;; Enter REPL mode, and return when the user exits with `:q` or `Ctrl-D`.
 ;;
 ;; BUILD-DIR = [build directory](#build-directory); `nil` for default.\
 ;; PROMPTS = [P1 P2]; P1 is shown when awaiting an expression; P2 is
-;;   shown when awaiting completion of an expression.  If `nil`, default
-;;   values will be used.
+;;    shown when awaiting completion of an expression.  If `nil`, default
+;;    values will be used.\
+;; LIBS = libraries to load and include in the initial environment;
+;;    nil => use the default libraries; `"-"` => none.
 ;;
-(define (repl ?build-dir ?prompts)
+(define (repl ?build-dir ?prompts ?libs)
   &public
   (define `default-prompts
     ["> " "+ "])
 
   (while identity read-eval-print
-         (REPL nil (or prompts default-prompts) build-dir nil nil initial-env))
+         (REPL nil nil
+                 [(or prompts default-prompts) build-dir nil]
+                 (initial-env libs)))
   (print))
 
 
@@ -210,11 +205,13 @@
 ;;
 ;; TEXT = SCAM source text containing zero or more expressions.\
 ;; BUILD-DIR = [build directory](#build-directory); `nil` for default.\
-;; IS-QUIET = non-nil to suppress compilation progress messages
+;; IS-QUIET = non-nil to suppress compilation progress messages.\
+;; LIBS = libraries to require prior to evaluating TEXT; nil => use the
+;;        default libraries; `"-"` => none.
 ;;
 ;; Result = non-nil on error.
 ;;
-(define (repl-ep text ?build-dir ?is-quiet)
+(define (repl-ep text ?build-dir ?is-quiet ?libs)
   &public
-  (case (eval-and-print text nil build-dir is-quiet initial-env)
-    ((REPL _ _ _ _ error _) error)))
+  (case (eval-and-print text [nil build-dir is-quiet] (initial-env libs))
+    ((REPL error _ _ _) error)))
