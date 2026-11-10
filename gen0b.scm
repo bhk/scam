@@ -1,5 +1,5 @@
 ;;--------------------------------------------------------------
-;; macros.scm : standard macro definitions
+;; gen0b.scm : additional special forms
 ;;--------------------------------------------------------------
 
 (require "core.scm")
@@ -8,15 +8,14 @@
 (require "gen0.scm")
 
 
-;; Functions named "M.<NAME>" implement special forms.  They are
-;; executed at compile-time when a list form starting with the corresponding
-;; NAME is encountered.  These functions are passed a list of arguments
-;; (each an AST) and an environment.  They return an IL tree.
+;; Functions named "M.<NAME>" implement special forms.  They are executed at
+;; compile-time when a list form starting with the corresponding NAME is
+;; encountered.
 ;;
-;; (M.NAME env sym args)
+;; (M.NAME env sym args) -> IL
 ;;    ENV = environment
-;;    SYM = the symbol naming the special form (e.g. `print)
-;;    ARGS = forms passed to the special form
+;;    SYM = the symbol naming the special form (e.g. `print`)
+;;    ARGS = arguments, as a vector of AST nodes
 
 
 ;;--------------------------------
@@ -270,8 +269,7 @@
        ;; use lambda
        (begin
          (define `inner-env
-           (append (depth-marker (.. "." (current-depth env)))
-                   env))
+           (append (depth-marker (depth-down env)) env))
          (define `inner
            (lg* inner-env body tvmap nxmap (IArg 1 ".") pos))
          (IFuncall [(ILambda inner) value]))
@@ -279,11 +277,13 @@
        (lg* env body tvmap nxmap value pos))))
 
 
-;; TVMAP = map of remaining [target value] pairs
-;; Pertaining to the "current" target/value:
-;;   NXMAP = map of [name xtor] pairs
-;;   VALUE = IL node
+;; This function implements two recursive loops in one:
+;; Inner:
+;;   NXMAP = vector of [name xtor] pairs for a target
+;;   VALUE = IL node to which xtor's are applied
 ;;   POS = form-index of target
+;; Outer:
+;;    TVMAP = vector of remaining [target value] pairs
 ;;
 (define (lg* env body tvmap nxmap value pos)
   (cond

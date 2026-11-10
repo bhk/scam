@@ -18,7 +18,7 @@
 
 (define (main argv)
   (define `default-sources
-    (addprefix (dir (current-file)) "../macros.scm"))
+    (addprefix (dir (current-file)) "../gen0b.scm"))
 
   (set default-duration 50)
   (print "parse benchmarks (source files as arguments)")

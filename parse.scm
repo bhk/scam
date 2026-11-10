@@ -264,9 +264,9 @@
       ;; Match `\xHH`
       (foreach (hh match-hh)
         (define `hex (subst "\n" "" hh))
-        (define `byte (bytes-from-bytecodes (hh-to-dec (native-strip hh))))
+        (define `dbyte (bytes-from-bytecodes (hh-to-dec (native-strip hh))))
         (parse-string subj start (1+ pos)
-                      (.. wstr (subst (.. "\\x" hex) byte w))))
+                      (.. wstr (subst (.. "\\x" hex) dbyte w))))
 
       (PQError subj pos "!B")))
 

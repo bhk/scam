@@ -7,7 +7,7 @@
 (require "gen.scm")
 (require "gen0.scm")
 (require "gen-testutils.scm")
-(require "macros.scm" &private)
+(require "gen0b.scm" &private)
 
 ;; symbol to use for the `sym` argument for macros (or `parent` node)
 (define `macro-sym (PSymbol 0 "MACRO"))

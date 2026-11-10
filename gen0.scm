@@ -4,7 +4,6 @@
 
 (require "core.scm")
 (require "parse.scm")
-(require "escape.scm")
 (require "gen.scm")
 
 
@@ -37,18 +36,17 @@
 
 ;; Remove B from the initial part of A.
 ;;
-;; len(Result) = len(A) - len(B) [if len(A) <= len(B); otherwise, A is
-;; returned unchanged]
+;; len(Result) = len(A) - len(B), when len(A) <= len(B).
 ;;
-(define `(str-sub a b)
+(define `(depth-sub a b)
     (patsubst (.. b "%") "%" a))
 
 
-;; Return A+B-C (in domain of string lengths)
-;; Assumes A+B >= C.
+;; Return A+B-C.  Assumes A+B >= C.
 ;;
-(define `(str-add-sub a b c)
+(define `(depth-add-sub a b c)
     (patsubst (.. c "%") "%" (.. a b)))
+
 
 ;; Construct a string describing the number of parameters:
 ;;   "a b c"      ==>   "3"
@@ -85,7 +83,7 @@
   ;; Shift an auto var's name to adjust for change in auto nesting level at
   ;; top of macro
   (define `(auto-shift name)
-    (str-add-sub name new-ad old-ad))
+    (depth-add-sub name new-ad old-ad))
 
   ;; Translate a vector of nodes
   (define `(x* nodes)
@@ -118,7 +116,7 @@
      ;; Capture => shift
      ;;   UPS>=TOP and not MACRO-ARG and not RENAMED-AUTO
      ((findstring top ups)
-      (IArg name (str-add-sub ups shift ".")))
+      (IArg name (depth-add-sub ups shift ".")))
 
      (else
       node)))
@@ -151,7 +149,7 @@
 (define (translate node old-depth new-depth args pos)
   (define `old-ad (depth.a old-depth))
   (define `new-ad (depth.a new-depth))
-  (define `shift (str-add-sub (depth.l new-depth) "." (depth.l old-depth)))
+  (define `shift (depth-add-sub (depth.l new-depth) "." (depth.l old-depth)))
 
   ;; if no-args and old-depth=new-depth and no-IWheres: return node
   (if (or args
@@ -210,7 +208,7 @@
 ;; the first form in compound form.
 ;;
 (define (c0-macro depth node env sym)
-  (translate (ILambda node) (str-sub depth ".") (current-depth env)
+  (translate (ILambda node) (depth-sub depth ".") (current-depth env)
              nil (form-index sym)))
 
 
@@ -438,7 +436,7 @@
       (defn
         (IFuncall (c0-vec (cons sym args) env)))
 
-      ;; Macro/special form.
+      ;; Special form
       ((native-bound? (special-form-func symname))
        (native-call (special-form-func symname) env sym args))
 
@@ -485,8 +483,9 @@
 
 (define (c0-lambda env params body)
   &public
-  (foreach (depth (depth.l (.. "." (current-depth env))))
+  (foreach (depth (depth-down env))
     (let ((bindings (bind-params depth params))
+          (depth depth)
           (env env)
           (body body))
 
@@ -628,7 +627,7 @@
 
       ;; compile function/macro body
       (let ((body-il (c0-lambda body-env args body))
-            (body-depth (depth.l (.. "." (current-depth env))))
+            (body-depth (depth-down env))
             (is-define is-define)
             (is-macro is-macro)
             (arity arity)

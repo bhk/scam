@@ -37,7 +37,6 @@
 ;; No two compilations should occur at the same time (e.g. in different
 ;; instances of SCAM) using the same directory.
 
-
 (require "core.scm")
 (require "parse.scm")
 (require "gen.scm")
@@ -48,9 +47,9 @@
 (require "escape.scm")
 (require "string.scm")
 
-;; "macros" has no exports, but its functions are called from gen0 via
+;; "gen0b" has no exports, but its functions are called from gen0 via
 ;; computed names.
-(require "macros.scm")
+(require "gen0b.scm")
 
 
 ;; When non-nil, emit progress messages.
