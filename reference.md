@@ -461,15 +461,11 @@ Note that the last pattern in the above `case` statement treats any value
 not matching the previous patterns as a number.  Here, we could (and perhaps
 should) have used a `(Num n)` constructor to distinguish numbers from
 operations, but it is worth noting that record values will not be confused
-with ordinary numbers.  They are also distinguished from vectors,
-dictionaries, and other record types.  In fact, we could add a case for
-`Triangle`:
-
-    ...
-    ((Triangle b h) (/ (* (calc b) (calc h)) 2))
-    ...
-
-... and then ask it to calculate `(calc (Add (Triangle 2 3) 4))`.
+with numbers, vectors, dictionaries, or records of other types.  (They
+cannot be distinguished from other strings in general, because records, like
+all SCAM data types, are ultimately strings.)  Also, while case patterns can
+be used to deconstruct vectors and dictionaries, they do not distinguish
+them from each other, so only one non-record pattern can be used effectively.
 
 The type name that follows `data` has no significance except to distinguish
 its record values from those of other record types.  It will not appear
