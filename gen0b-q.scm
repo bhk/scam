@@ -76,7 +76,7 @@
 
 (expect (c0-ser "(? m 1)"
                 { m: (EMacro "p" "." 1 (IArg 0 ".")) })
-        "(^t 1 [`{0},m,^Y])")
+        "(^t 1 [`{0},m,^X])")
 
 (expect (c0-ser "(? (m) 1)"
                 { m: (EMacro "p" "." 1 (IArg 0 ".")) })
@@ -93,7 +93,7 @@
 (expect (c0-ser "(let ((a 1) (b \"q\")) (f a b))")
         (c0-ser "((lambda (a b) (f a b)) 1 \"q\")"))
 (expect (c0-ser "(let (([a b] 9)) (.. a b))")
-        "(^Y 9 [`(^n 1,{1})(^n 2,{1})])")
+        "(^X 9 [`(^n 1,{1})(^n 2,{1})])")
 (expect (c0-ser "(let a a)")
         "!(PError 4 'expected ((TARGET VALUE)...) in (let ((TARGET VALUE)...) BODY)')")
 (expect (c0-ser "(let (a) a)")
@@ -123,7 +123,7 @@
                  y: (EVar "p" "Y"),
                  f: (EFunc "p" 1 "F"),
                  a: (EDefn.arg 1 ".")})
-        (.. "(^Y 5 [`(^S X,(^S X,(^n 1,{1}),{X}),"
+        (.. "(^X 5 [`(^S X,(^S X,(^n 1,{1}),{X}),"
             "(^S Y,(^S Y,(^n 2,{1}),{Y}),"
             "(^SF F,(^SF F,2,(.value F)),{.1})))])"))
 

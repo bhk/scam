@@ -101,7 +101,7 @@
 
 ;; IFuncall: call an anonymous function
 
-(expect "$(call ^Y,a,,,,,,,,,$1)"
+(expect "$(call ^X,a,,,,,,,,,$1)"
         (c1 (IFuncall [ (IArg 1 ".") (IString "a") ])))
 
 ;; i-8

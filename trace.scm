@@ -242,8 +242,8 @@
      ((filter "x%" mode)
       (define `reps (or (patsubst "x%" "%" mode) 11))
       (define `rep-words (patsubst "%" 1 (urange 2 reps)))
-      (.. "$(foreach ^X,1,:C)"
-          "$(if $(^X),,$(if $(foreach ^X," rep-words ",$(if :C,)),))"))
+      (.. "$(foreach ^x,1,:C)"
+          "$(if $(^x),,$(if $(foreach ^x," rep-words ",$(if :C,)),))"))
 
      ;; prefix
      ((filter "p%" mode)

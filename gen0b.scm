@@ -149,7 +149,7 @@
   (case (resolve func env)
     ((EFunc _ _ name) (ITrace func name func-args env))
     ((EBuiltin _ name _) (ITrace func name func-args env))
-    ((EMacro _ _ _ _) (ITrace func "^Y" func-args env func))
+    ((EMacro _ _ _ _) (ITrace func "^X" func-args env func))
     (defn
       (if (eq? "-" defn)
           (err-expected "S" func sym "FUNC" "(? FUNC ARGS...)")

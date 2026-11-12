@@ -195,15 +195,15 @@ Optimizations for Generated Code
 
     B) Lambda-call reduction:
 
-          $(call ^Y,$(value x),...)  -->  $(call x,...)
+          $(call ^X,$(value x),...)  -->  $(call x,...)
 
     C) Up-value elimination:
 
         A: (let ((x y)) ...a...)     -->  (let ((x y) (a a)) ...a...)
         B: ((lambda (x) ...a...) y)  -->  ((lambda (x y) ...a...) y a)
 
-            $(call ^Y,$1,...,$$1$(call escape,$2)...)
-        --> $(call ^Y,$1,$2,...,$$1$$2...)
+            $(call ^X,$1,...,$$1$(call escape,$2)...)
+        --> $(call ^X,$1,$2,...,$$1$$2...)
 
        This would have to be done at the gen0 phase (without knowledge of
        file vs. expression context), but it improves performance

@@ -95,7 +95,7 @@
 
 (define (IFuncall nodes)
   &public
-  (ICallX "^Y" (rest nodes) (word 1 nodes)))
+  (ICallX "^X" (rest nodes) (word 1 nodes)))
 
 
 ;; Environment Records

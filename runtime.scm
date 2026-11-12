@@ -125,14 +125,14 @@ $(if ,, ) :=")
   &native
   (^u (word 2 (subst "!=" " " pair))))
 
-;; ^Y : invokes lambda expression
+;; ^X : expand lambda expression
 ;;
-;;  $(call ^Y,a,b,c,d,e,f,g,h,i,lambda) invokes LAMBDA.  A through H
+;;  $(call ^X,a,b,c,d,e,f,g,h,i,lambda) invokes LAMBDA.  A through H
 ;;  hold the first 8 arguments; I is a vector of remaining arguments.
 ;;
-(declare (^Y ...args)
+(declare (^X ...args)
          &native)
-(set ^Y "$(call if,,,$(10))")
+(set ^X "$(call if,,,$(10))")
 
 
 ;; ^v: return a vector of all arguments starting at argument $N (bound by an
@@ -168,7 +168,7 @@ $(if ,, ) :=")
 
 (define `(apply f a)
   &public
-  (^NA "^Y" a f))
+  (^NA "^X" a f))
 
 
 ;;--------------------------------------------------------------
