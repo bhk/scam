@@ -45,7 +45,9 @@
 ;;     name ";", a nested foreach (within the same lambda) is assigned ";;",
 ;;     and so on.
 ;;
-;; ILambda: An anonymous function whose body is NODE, an IL record.
+;; ILambda: An anonymous function.  BODY is an IL record.  STEM is the
+;;     naming basis for a global function variable, in case we can hoist it
+;;     and reduce a lambda call to a named function call.
 ;;
 ;; IFor: A GNU Make `foreach` sstatement, where NAME is the automatic
 ;;     variable name (";", ";;", ";;;", depending on nesting level within
@@ -77,7 +79,7 @@
 (data IL
   &public
   (IArg     &word ndx  &word ups)       ; "$(ndx)"
-  (ILambda  node)                       ; (lambda-quote (c1 NODE))
+  (ILambda  stem &list body)            ; (lambda-quote (c1 NODE))
   (IFor     &word name list &list body) ; "$(foreach NAME,LIST,BODY)"
   (IString  value)                      ; "value"
   (IVar     &word name)                 ; "$(name)"
@@ -93,9 +95,9 @@
   &public
   (strip (ICallX name nodes nil)))
 
-(define (IFuncall nodes)
+(define (IFuncall lambda args)
   &public
-  (ICallX "^X" (rest nodes) (word 1 nodes)))
+  (ICallX "^X" args [lambda]))
 
 
 ;; Environment Records
@@ -142,6 +144,8 @@
 ;;
 ;; EnvDepthKey: the current nesting depth.
 ;;
+;; EnvFuncKey: name of an enclosing global function.
+;;
 ;; EnvErrorKey: an error that occurred when parsing binding targets.
 ;;
 (data EDefn
@@ -171,8 +175,8 @@
 
 
 (define `EnvDepthKey ":")
-
-(define `EnvErrorKey &public ";")
+(define `EnvFuncKey &public ";")
+(define `EnvErrorKey &public "'")
 
 
 (define `(depth-marker depth)

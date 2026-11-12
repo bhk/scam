@@ -28,9 +28,8 @@
 ;; Lambda Values, Captures, and Lambda-escaping
 ;; ----------------
 ;;
-;; Function code will be *expanded*, so any literals including "$" are
-;; replaced with "$`" so that after one round of expansion they evaulate
-;; to "$".  (The SCAM runtime defines the variable "`" as "$".)
+;; Function code yields a value after *expansion*, so literal occurrences of
+;; "$" are represented by "$`".  (The runtime sets the variable "`" to "$".)
 ;;
 ;;   (define (f x) (.. "$" x))
 ;;   -->  f = $`$1
@@ -45,9 +44,9 @@
 ;; that captured value as part of the anonymous function:
 ;;
 ;;   (define (f x) (lambda (y) (.. "$" y x)))
-;;   -->  $``$`1$(call ^E,$1)
+;;   -->  f = $``$`1$(call ^E,$1)
 ;;
-;; Note that the value of `x` results in the code `$(call ^E,$1)`.  The steps
+;; Note that `x` (an upwards funarg) compiles to `$(call ^E,$1)`.  The steps
 ;; can be summarized as:
 ;;
 ;;           IL             (c1 IL)           (c1-Lambda (c1 IL)
@@ -62,6 +61,9 @@
 ;;    "$"  -> "$`"  (other instances of "$")
 
 
+(declare (c1 node))
+
+
 ;; "FILE" or "FILE:LINE" as given by POS and current file.
 ;;
 (define (c1-Where pos)
@@ -72,11 +74,11 @@
 
 ;; Lambda-escape CODE
 ;;
-(define (c1-Lambda code)
+(define (c1-Lambda body)
   (subst "$" "$`"
          "$`-" "$"
          "$`." "$."
-         code))
+         (c1 body)))
 
 
 ;; Crumbs are name/value pairs that can be embedded in generated code,
@@ -97,18 +99,6 @@
 ;;
 (define (crumb key value)
   (.. "$.{" (crumb-encode {=key: value}) "$.}"))
-
-
-;; Extract crumbs.  Returns { code: CODE, errors: ERRORS }.
-;;
-(define `(crumb-extract code)
-  (let ((dc (subst "$.{" " $.{" "$.}" " " [code])))
-    (append {code: (concat-vec (filter-out "$.{%" dc))}
-            (dict-collate (foreach (w (filtersub "$.{%" "%" dc))
-                            (crumb-decode (promote w)))))))
-
-
-(declare (c1 node))
 
 
 ;; Construct a node that expands NODE but returns nil.
@@ -263,6 +253,15 @@
    (c1-ugly-arg ndx ups)))
 
 
+(define (c1-let stem c1body args)
+  ;; "$-" => non-const lambda
+  (if (findstring "$-" c1body)
+      nil
+      (.. "$(call " (crumb "fn" [stem c1body])
+          (if args (.. "," (c1-args9 args)))
+          ")")))
+
+
 ;; Call user-defined function (by name)
 ;;
 (define (c1-CallX name args xv)
@@ -273,10 +272,19 @@
     (subst " " "" (.. "," (wordlist (words (.. "x " args)) 9
                                     ", , , , , , , , ,"))))
 
-  (.. "$(call " ename
-      (if args (.. "," (c1-args9 args)))
-      (if xv (.. commas (c1-args9 xv)))
-      ")"))
+  (define `hoisted
+    (if (filter "^X" name)
+        (case (first xv)
+          ((ILambda stem body)
+           (if stem
+               (c1-let stem (c1 body) args))))))
+
+  (or
+   hoisted
+   (.. "$(call " ename
+       (if args (.. "," (c1-args9 args)))
+       (if xv (.. commas (c1-args9 xv)))
+       ")")))
 
 
 ;; Block: evaluate all nodes and return value of last node
@@ -292,7 +300,7 @@
     ((IArg ndx ups) (c1-IArg ndx ups))
     ((IVar name) (c1-Var name))
     ((IConcat nodes) (c1-vec nodes "" (native-name c1)))
-    ((ILambda code) (c1-Lambda (c1 code)))
+    ((ILambda _ body) (c1-Lambda body))
     ((IBlock nodes) (c1-Block nodes))
     ((ICallX name nodes xv) (c1-CallX name nodes xv))
     ((IBuiltin name args) (c1-Builtin name args))
@@ -326,7 +334,7 @@
 ;;
 ;; After "LHS = RHS", $(value LHS) == RHS
 ;;
-(define (c1-file-set lhs rhs ?is-simple)
+(define (c1-file-set lhs rhs is-simple)
   (define `(unescape str)
     (subst "$`" "$" str))
 
@@ -334,9 +342,10 @@
    (is-simple
     (.. (protect-lhs lhs) " := " (protect-rhs rhs) "\n"))
 
-   ((or (findstring "$" (subst "$`" "" rhs))
+   ;; If RHS is non-const (has un-escaped "$") it needs to be eval'ed.
+   ;; Also, avoid unescaping a "$`." string literal.
+   ((or (findstring "$" (subst "$`" nil "$." nil rhs))
         (findstring "$`." rhs))
-    ;; RHS is non-const (has un-escaped "$"), or would contain "$."
     (c1-file-expr
      (.. "$(call ^SF," (protect-arg lhs) "," (protect-arg rhs) ")")))
 
@@ -345,9 +354,8 @@
         (findstring "\n" rhs)
         ;; leading whitespace?
         (filter "~%" (subst "\t" "~" " " "~" rhs)))
-
     ;; Use 'define ... endef' so that $(value F) will be *identical*
-    ;; to RHS almost always.
+    ;; to value of RHS almost always.
     (.. "define " (protect-lhs lhs) "\n"
         (protect-define (unescape rhs))
         "\nendef\n"))
@@ -391,11 +399,81 @@
    (c1-file-expr (c1-void node))))
 
 
+(define (split-crumbs code)
+  (subst "$.{" " $.{" "$.}" " " [code]))
+
+
+;; NAME = function name
+;; BODY = function body (as a *literal*, not code that evals to the body)
+;;
+(define (c1-set-fn name body is-file)
+  (if is-file
+      (.. (protect-lhs name) " = " (protect-rhs body) "\n")
+      (.. "$(call ^SF," (protect-arg name) "," (protect-arg (escape body)) ")")))
+
+
+;; CHUNKS = [code] split at crumb boundaries
+;; HOIST-MAP = {body: name, ...}
+;; CODE = vector-encoded code that has been processed
+;; CRUMBS = map of body -> name for hoisted chunks
+;;
+(define (decrumb-loop chunks hoist-map code crumbs is-file)
+  (define `w (word 1 chunks))
+  (define `(recur code-out crumbs-out)
+    (decrumb-loop (rest chunks) hoist-map code-out crumbs-out is-file))
+
+  ;; Handle a hoisted function crumb
+  (define `hoist-recur
+    ;; dictionary pairs are single words
+    (foreach (binding (crumb-decode (promote (subst "$.{" nil w))))
+      (define `{=key: [stem body]}
+        binding)
+      (define `conflict
+        (first (filter (.. [stem] "'%") (dict-values hoist-map))))
+      (define `hoist-name
+        (.. (or conflict stem) "'"))
+
+      (if (eq? key "fn")
+          ;; fn crumb: replace with name
+          (or (foreach (name (dict-get body hoist-map))
+                (recur (.. code [name]) crumbs))
+              (foreach (name hoist-name)
+                ;; Construct function definition, and run it through this
+                ;; loop because it might contain crumbs.  Since it must
+                ;; appear at the start of the code, we run all of CODE back
+                ;; through the loop, too (but it should be one word).
+                (define `new-chunks
+                  (.. (split-crumbs (c1-set-fn name body is-file))
+                      code [name] " " (rest chunks)))
+                (define `new-map
+                  (._. {=body: name} hoist-map))
+                (decrumb-loop new-chunks new-map nil crumbs is-file)))
+          ;; other crumb: extract and add to dict
+          (recur code (._. crumbs binding)))))
+
+  (if chunks
+      (if (filter "$.{%" w)
+          hoist-recur
+          (recur (.. code w) crumbs))
+      (append {code: (concat-vec code)}
+              (dict-collate crumbs))))
+
+
+;; Extract crumbs from CODE, replacing "fn" crumbs with the hoisted function
+;; name.  Collate all other crumb name/values.
+;;
+;; Return {code: RESULTCODE, <NAME>: [<VALUE> ...], ... }
+;;
+(define `(decrumb code is-file)
+  (decrumb-loop (split-crumbs code) nil nil nil is-file))
+
+
 ;; Compile a vector of IL nodes.
 ;; Returns:  { code: CODE, errors: VEC, env: ENV, require: MODS}
 ;;
 (define (gen1 node-vec is-file)
   &public
-  (crumb-extract (if is-file
-                     (c1-file* node-vec)
-                     (c1 (IBlock node-vec)))))
+  (decrumb (if is-file
+               (c1-file* node-vec)
+               (c1 (IBlock node-vec)))
+           is-file))

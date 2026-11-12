@@ -18,10 +18,14 @@
 (define (lines str)
   (words (subst "\n" "\n " [str])))
 
-(set tf-pv (hijack-info tf-pv))
-(set trace-match (hijack-info trace-match))
-(set trace (hijack-info trace))
-(set untrace (hijack-info untrace))
+(define (hijack-info-in patterns)
+  (define `native-pats
+    (patsubst "%" (subst "log" "%" (native-name log)) patterns))
+  (foreach (name (filter native-pats (native-var ".VARIABLES")))
+    (set-native-fn name (hijack-info (native-value name)))))
+
+(hijack-info-in "tf-pv trace% untrace%")
+
 
 ;;-------- trace-prefix, trace-unprefix
 
@@ -174,10 +178,6 @@
 
 ;; trace-body x
 
-
-;; TODO: why?
-(expect fx (native-value (save-var fxID)))
-(set-native-fn (save-var fxID) fx)
 
 ;; ASSERT: proper X1 execution
 (let-global ((*log* nil)

@@ -129,7 +129,7 @@
     ((IConcat nodes) (IConcat (x* nodes)))
     ((IBlock nodes) (IBlock (x* nodes)))
     ((IFor name list body) (xfor name list body))
-    ((ILambda body) (ILambda (recur body (.. "." top) nil)))
+    ((ILambda stem body) (ILambda stem (recur body (.. "." top) nil)))
     ((IWhere p) (if p (IWhere pos) node))
     (else node)))
 
@@ -208,7 +208,7 @@
 ;; the first form in compound form.
 ;;
 (define (c0-macro depth node env sym)
-  (translate (ILambda node) (depth-sub depth ".") (current-depth env)
+  (translate (ILambda nil node) (depth-sub depth ".") (current-depth env)
              nil (form-index sym)))
 
 
@@ -222,6 +222,7 @@
           (eq? "if" name))
       (gen-error sym "builtin `%s` does not have a value" name)
       (ILambda
+       nil
        (IBuiltin name (for (n (wordlist 1 arity "1 2 3"))
                         (IArg n "."))))))
 
@@ -434,7 +435,7 @@
 
       ;; Defined symbol OR non-symbol => evaluate and call
       (defn
-        (IFuncall (c0-vec (cons sym args) env)))
+        (IFuncall (c0 sym env) (c0-vec args env)))
 
       ;; Special form
       ((native-bound? (special-form-func symname))
@@ -481,7 +482,7 @@
             (bind-target (nth n forms) "p" depth (IArg n "."))))))
 
 
-(define (c0-lambda env params body)
+(define (c0-lambda env params body ?stem)
   &public
   (foreach (depth (depth-down env))
     (let ((bindings (bind-params depth params))
@@ -493,7 +494,7 @@
         (append (depth-marker depth) bindings env))
 
       (or (dict-get EnvErrorKey bindings)
-          (ILambda (c0-block body body-env))))))
+          (ILambda stem (c0-block body body-env))))))
 
 
 ;; special form: (lambda ARGS BODY)
@@ -511,13 +512,13 @@
 ;;--------------------------------
 
 
-(define (c0-check-body where first-form is-define)
+(define (c0-check-body where first-form def-mode)
   ;; validate BODY
-  (if is-define
-      (if (not first-form)
-          (gen-error where "no BODY supplied to (define TARGET BODY)"))
+  (if (filter "dec%" def-mode)
       (if first-form
-          (gen-error first-form "too many arguments to (declare ...)"))))
+          (gen-error first-form "too many arguments to (declare ...)"))
+      (if (not first-form)
+          (gen-error where "no BODY supplied to (define TARGET BODY)"))))
 
 
 ;; Return a vector of all PError nodes contained in node (including possibly
@@ -534,7 +535,7 @@
     ((IFor _ list body) (append (il-errors list) (il-errors body)))
     ((IConcat nodes) (r* nodes))
     ((IBlock nodes) (r* nodes))
-    ((ILambda node) (il-errors node))))
+    ((ILambda _ node) (il-errors node))))
 
 
 ;; If `node` contains any PError nodes, return a node that contains only them.
@@ -564,7 +565,9 @@
      (ICall "^S" [ (IString (gen-native-name name flags)) (xtor il) ]))))
 
 
-(define (c0-def-target-2 env nxmap flags value is-define is-macro scope)
+;; DEF-MODE = "define", "declare", or nil (macro)
+;;
+(define (c0-def-target-2 env nxmap flags value scope def-mode)
   ;; Bindings for global variables (names mentioned in target)
   (define `bindings
     (append-for (nx nxmap)
@@ -579,7 +582,7 @@
   (define `assignment-code
     (if (word 2 nxmap)
         ;; Mutiple vars => (let ((v VALUE)) (^S NAME1 (XTOR1 v)) ...)
-        (IFuncall [ (ILambda (IBlock set-nodes)) value ])
+        (IFuncall (ILambda nil (IBlock set-nodes)) [value])
         ;; Single var => (^S NAME (XTOR v))))
         (assign-nx (first nxmap) flags value)))
 
@@ -587,22 +590,21 @@
 
       (il-error-node value)
 
-      (if is-macro
-          (IEnv (bind-nxmap nxmap scope (current-depth env) value) nil)
+      (if def-mode
           (IEnv bindings
-                (if is-define
-                    assignment-code)))))
+                (if (filter "def%" def-mode)
+                    assignment-code))
+          (IEnv (bind-nxmap nxmap scope (current-depth env) value) nil))))
 
 
-(define (c0-def-target env target flags body is-define is-macro)
-  (or (c0-check-body (form-index target) (first body) is-define)
+(define (c0-def-target env target flags body def-mode)
+  (or (c0-check-body (form-index target) (first body) def-mode)
       (c0-def-target-2 env
                        (parse-target target)
                        flags
                        (c0-block body env)
-                       is-define
-                       is-macro
-                       (if (filter "&public" flags) "x" "p"))))
+                       (if (filter "&public" flags) "x" "p")
+                       def-mode)))
 
 
 ;;--------------------------------
@@ -611,92 +613,96 @@
 ;; (define  (NAME PARAMS...) FLAGS BODY)
 ;;--------------------------------
 
-
-(define (c0-def-compound env n name args flags body is-define is-macro)
-  (define `arity (get-arity (for (a args) (symbol-name a))))
-  (define `gname (gen-native-name name flags))
-  (define `scope (if (filter "&public" flags) "x" "p"))
-
+(define (c0-def-compound2 env n name args body gname def-mode scope arity)
   ;; Make function name known *within* the body, unless it is a macro.
   (define `body-env
-    (if is-macro
-        env
-        (append { =name: (EFunc scope arity gname) } env)))
+    (if def-mode
+        (append { =name: (EFunc scope arity gname) }
+                { =EnvFuncKey: gname }
+                env)
+        env))
 
-  (or (c0-check-body n (first body) is-define)
+  (or (c0-check-body n (first body) def-mode)
 
       ;; compile function/macro body
       (let ((body-il (c0-lambda body-env args body))
             (body-depth (depth-down env))
-            (is-define is-define)
-            (is-macro is-macro)
+            (def-mode def-mode)
             (arity arity)
             (scope scope)
             (name name)
             (gname gname))
 
         (define `defn
-          (if is-macro
+          (if def-mode
+              (EFunc scope arity gname)
               (EMacro scope body-depth arity
-                      (case body-il ((ILambda node) node)))
-              (EFunc scope arity gname)))
+                      (case body-il
+                        ((ILambda _ node) node)))))
 
         (or (il-error-node body-il)
             (IEnv {=name: defn}
-                  (and is-define
-                       (not is-macro)
+                  (and (filter "def%" def-mode)
                        (ICall "^SF" [(IString gname) body-il])))))))
+
+
+(define `(c0-def-compound env n name args flags body def-mode)
+  (define `gname
+    (gen-native-name name flags))
+  (define `scope
+    (if (filter "&public" flags) "x" "p"))
+  (define `arity
+    (get-arity (for (a args) (symbol-name a))))
+
+  (c0-def-compound2 env n name args body gname def-mode scope arity))
 
 
 ;; Dispatch to c0-def-symbol or c0-def-compound
 ;;
-(define (c0-def2 env pos what flags body is-define is-macro)
-  (define `def-or-decl
-    (if is-define "define" "declare"))
-  (define `macro-tick
-    (if is-macro "`"))
+(define (c0-def2 env pos what flags body def-mode)
+  (define `syntax
+    (if def-mode
+        (.. def-mode " ")
+        "define `"))
 
   (or
-   ;; check IS-MACRO
-   (if (not is-macro)
+   ;; check for macro
+   (if (filter "def%" def-mode)
        (case what
          ((PQQuote n subform)
-          (c0-def2 env n subform flags body is-define 1))))
+          (c0-def2 env n subform flags body nil))))
 
    ;; get NAME, PARAMS
    (case what
      ((PList list-n [name-form ...params])
       (case name-form
         ((PSymbol sym-n name)
-         (c0-def-compound env list-n name params flags body
-                          is-define is-macro))
+         (c0-def-compound env list-n name params flags body def-mode))
 
         (name-form
          ;; "missing/invalid NAME in (define/declare (NAME) ..."
-         (err-expected "S" name-form what "NAME" "(%s %s(NAME...))"
-                       def-or-decl macro-tick))))
+         (err-expected "S" name-form what "NAME" "(%s(NAME...))" syntax))))
 
      (else
       (if what
-          (c0-def-target env what flags body is-define is-macro)
+          (c0-def-target env what flags body def-mode)
 
           ;; "missing/invalid FORM in ..."
-          (err-expected "L P" what pos "FORM" "(%s %sFORM ...)"
-                        def-or-decl macro-tick))))))
+          (err-expected "L P" what pos "FORM" "(%sFORM ...)" syntax))))))
 
 
 ;; Return IL for a `define` or `declare` form.
 ;;
-(define `(c0-def env sym args is-define)
+(define `(c0-def env sym args def-mode)
   (c0-def2 env (form-index sym) (first args)
            (get-flags args) (skip-flags args)
-           is-define nil))
+           def-mode))
 
 (define (M.define env sym args)
-  (c0-def env sym args 1))
+  (c0-def env sym args "define"))
 
 (define (M.declare env sym args)
-  (c0-def env sym args nil))
+  (c0-def env sym args "declare"))
 
 
 ;;--------------------------------

@@ -78,6 +78,8 @@
 
 ;; translate
 
+(define `(lamb body) (ILambda nil body))
+
 (expect (translate (IString "x") "." "." [] 9)
         (IString "x"))
 ;; IWhere
@@ -88,8 +90,8 @@
 (expect (translate (IArg 2 ".") "." "..." [] 9)
         (IArg 2 "..."))
 ;; symbol macro with interior arg
-(expect (translate (ILambda (IArg 2 ".")) "." "..." [] 9)
-        (ILambda (IArg 2 ".")))
+(expect (translate (lamb (IArg 2 ".")) "." "..." [] 9)
+        (lamb (IArg 2 ".")))
 ;; symbol macro with auto arg
 (expect (translate (IArg ";" ".") ";" ";" [] 9)
         (IArg ";" "."))
@@ -107,8 +109,8 @@
 (expect (translate (IArg 2 "..") ".." ".;;" [(IString "a")] 9)
         (IArg 2 "."))
 ;; compound macro with interior arg
-(expect (translate (ILambda (IArg 2 ".")) ".." "..." [(IString "x")] 9)
-        (ILambda (IArg 2 ".")))
+(expect (translate (lamb (IArg 2 ".")) ".." "..." [(IString "x")] 9)
+        (lamb (IArg 2 ".")))
 ;; compound macro with argument
 (expect (translate (IArg 2 ".") ".." "..." [(IString "a") (IString "b")] 9)
         (IString "b"))
@@ -121,12 +123,12 @@
 (foreach (to-depth ". .. ...")
   (expect (translate (IArg 1 ".") ".." to-depth [(IArg 2 ".")] 9)
           (IArg 2 "."))
-  (expect (translate (ILambda (IArg 1 "..")) ".." to-depth [(IArg 2 ".")] 9)
-          (ILambda (IArg 2 "..")))
+  (expect (translate (lamb (IArg 1 "..")) ".." to-depth [(IArg 2 ".")] 9)
+          (lamb (IArg 2 "..")))
   ;; macro argument w/ interior arg
-  (expect (translate (ILambda (IArg 1 "..")) ".." to-depth
-                     [(ILambda (IArg 1 "."))] 9)
-          (ILambda (ILambda (IArg 1 ".")))))
+  (expect (translate (lamb (IArg 1 "..")) ".." to-depth
+                     [(lamb (IArg 1 "."))] 9)
+          (lamb (lamb (IArg 1 ".")))))
 
 ;; symbol macro with auto vars & old-ad
 (expect (translate (IFor ";;" (IArg ";" ".") (IArg ";;" "."))
@@ -142,8 +144,8 @@
 (expect (translate (IFor ";" (IArg ";" "..")
                          (IConcat [(IArg 1 ".")
                                    (IArg 2 ".")
-                                   (ILambda (IArg 1 ".."))
-                                   (ILambda (IArg 2 ".."))
+                                   (lamb (IArg 1 ".."))
+                                   (lamb (IArg 2 ".."))
                                    (IArg ";" ".")]))
                    ".." "...;;"
                    [(IArg ";;" ".")
@@ -152,8 +154,8 @@
         (IFor ";;;" (IArg ";" "...")
               (IConcat [(IArg ";;" ".")
                         (IFor ";;;;" (IArg ";;" ".") (IArg ";;;;" "."))
-                        (ILambda (IArg ";;" ".."))
-                        (ILambda (IFor ";" (IArg ";;" "..") (IArg ";" ".")))
+                        (lamb (IArg ";;" ".."))
+                        (lamb (IFor ";" (IArg ";;" "..") (IArg ";" ".")))
                         (IArg ";;;" ".")])))
 
 
@@ -274,19 +276,19 @@
 (define `cm
   (IConcat [(IArg 1 ".")                  ;; macro arg
             (IArg 2 "..")                 ;; capture
-            (ILambda (IArg 3 "."))]))     ;; internal arg
+            (lamb (IArg 3 "."))]))     ;; internal arg
 
 (expect (c0 _a (append {a: (EMacro "p" ".." 1 cm)}
                        (depth-marker ".")))
-        (ILambda
+        (lamb
          (IConcat [(IArg 1 ".")
                    (IArg 2 "..")
-                   (ILambda (IArg 3 "."))])))
+                   (lamb (IArg 3 "."))])))
 
 
 ;; builtin
 (expect (c0 (PSymbol 1 "words") nil)
-        (ILambda (IBuiltin "words" [ (IArg 1 ".") ])))
+        (lamb (IBuiltin "words" [ (IArg 1 ".") ])))
 
 ;; vararg builtins
 (expect (il-ser (c0 (PSymbol 1 "or") nil))
@@ -333,7 +335,7 @@
         "7{2}")
 
 ;; (define `(f) (lambda (x) x)) *(f)*
-(expect (c0-ser "(f)" { f: (EMacro "p" "." 0 (ILambda (IArg 1 "."))) })
+(expect (c0-ser "(f)" { f: (EMacro "p" "." 0 (lamb (IArg 1 "."))) })
         "`{1}")
 
 

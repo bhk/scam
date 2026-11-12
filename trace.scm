@@ -98,12 +98,13 @@
 ;; Get native (prefixed) name or pattern for user-facing NAME.  User
 ;; namespace is the default assumption.
 ;;
-;;     X   -> 'X
+;;     'X  -> 'X
 ;;     `X  -> `X
-;;     "X" -> X
+;;     "X" ->  X
+;;      X  -> 'X
 ;;
 (define (trace-prefix name)
-  (or (filter "`%" name)
+  (or (filter "`% '%" name)
       (if (filter "\"%\"" name)
           (patsubst "\"%\"" "%" name)
           (.. "'" name))))

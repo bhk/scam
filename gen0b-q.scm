@@ -92,6 +92,10 @@
 
 (expect (c0-ser "(let ((a 1) (b \"q\")) (f a b))")
         (c0-ser "((lambda (a b) (f a b)) 1 \"q\")"))
+
+(expect (c0-ser "(let ((x 9)) x)" (append {=EnvFuncKey: "f"} default-env))
+        "(^X 9 [f:`{1}])")
+
 (expect (c0-ser "(let (([a b] 9)) (.. a b))")
         "(^X 9 [`(^n 1,{1})(^n 2,{1})])")
 (expect (c0-ser "(let a a)")

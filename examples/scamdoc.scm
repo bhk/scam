@@ -16,12 +16,6 @@
 ;; non-blank lines) it is treated as the documentation for that symbol.
 
 
-;; TODO:
-;;  - Generate links to functions referenced as text:
-;;      Like `sprintf` ...  =>  Like [`sprintf`](#sprintf-???) ...
-;;  - Support exported variables, symbol macros, and data types.
-
-
 (require "core")
 (require "string")
 (require "io")

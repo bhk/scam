@@ -9,19 +9,30 @@
 
 ;; crumbs
 
-(expect { code: "a b c", errors: [1 2], x: ["!=%"] }
-        (crumb-extract (.. "a b"
-                               (crumb "errors" 1)
-                               " "
-                               (crumb "errors" 2)
-                               "c"
-                               (crumb "x" "!=%")
-                               )))
+(expect {name: ["!" "!1" "$." "~"]}
+        (crumb-decode
+         (subst "$.{" nil "$.}" nil (crumb "name" ["!" "!1" "$." "~"]))))
 
-(define `msg "), \n \t ~3 $- $(call $1,2)")
-(expect [msg] (dict-get "x" (crumb-extract (crumb "x" msg))))
-(expect [msg] (dict-get "x" (crumb-extract
-                             (c1-Lambda (protect-trim (crumb "x" msg))))))
+(expect (decrumb (.. "$1$(call " (crumb "fn" ["!1" "$1"]) ",a)") 1)
+        { code: (.. "!1' = $1\n"
+                    "$1$(call !1',a)") })
+
+(expect (decrumb (.. "$1$(call " (crumb "fn" ["!1" "$1"]) ",a)") nil)
+        { code: (.. "$(call ^SF,!1',$`1)"
+                    "$1$(call !1',a)") })
+
+(expect (decrumb (.. "$1$(call " (crumb "fn" ["!1" "$1"]) ",a)"
+                     "$(call "
+                     (crumb "fn" ["!1"
+                                  (.. "$(" (crumb "fn" ["f2" "$1"]) ")")])
+                     ")"
+                     (crumb "errors" "E1") "$3"
+                     (crumb "errors" "E2") "$4")
+                 1)
+        { code: (.. "!1'' = $(!1')\n"
+                    "!1' = $1\n"
+                    "$1$(call !1',a)$(call !1'')$3$4"),
+          errors: ["E1" "E2"] })
 
 
 ;; IString: literal values
@@ -94,6 +105,13 @@
         (c1 (ICall "fn" (conj (for (s "1 2 3 4 5 6 7 8 9 )") (IString s))
                               (IVar "v")))))
 
+;; Hoisted let (ICallX)
+
+(expect (.. "$(call " (crumb "fn" ["f1" "$1"]) ",a)")
+        (c1 (ICallX "^X" [ (IString "a") ]
+                  [ (ILambda "f1" (IArg 1 ".")) ])))
+
+
 ;; ICall: call user-defined SCAM function
 
 (expect "$(call fn,1)"
@@ -102,7 +120,7 @@
 ;; IFuncall: call an anonymous function
 
 (expect "$(call ^X,a,,,,,,,,,$1)"
-        (c1 (IFuncall [ (IArg 1 ".") (IString "a") ])))
+        (c1 (IFuncall (IArg 1 ".") [ (IString "a") ])))
 
 ;; i-8
 
@@ -150,17 +168,11 @@
 ;; Lambda: construct an anonymous function
 ;;    (lambda (args...) body) -->  (ILambda BODY)
 
-(expect "$``"                (c1 (ILambda (IString "$"))))
-(expect "$`1"                (c1 (ILambda (IArg 1 "."))))
-(expect "$(call ^E,$3)"      (c1 (ILambda (IArg 3 ".."))))
-(expect "$-(call ^E,$-3,`)"  (c1 (ILambda (IArg 3 "..."))))
+(expect "$``"                (c1 (ILambda nil (IString "$"))))
+(expect "$`1"                (c1 (ILambda nil (IArg 1 "."))))
+(expect "$(call ^E,$3)"      (c1 (ILambda nil (IArg 3 ".."))))
+(expect "$-(call ^E,$-3,`)"  (c1 (ILambda nil (IArg 3 "..."))))
 
-;; c1-E
-
-(expect [(PError 0 "message")]
-        (dict-get "errors"
-                  (crumb-extract (c1 (IBuiltin "wildcard"
-                                               [(PError 0 "message")])))))
 
 ;; c1-file-set
 
@@ -228,9 +240,12 @@
         (gen-out (ICall "^S" [ (IString "x") (IString 1) ]) nil))
 
 ;; Ensure markers are not confused with RHS literals in file syntax.
-(expect {code: "$(call ^SF,f,$`.{ERR)\n"}
-        (gen1 [ (ICall "^SF" [ (IString "f") (IString "$.{ERR") ]) ]
-              1))
+(expect "$(call ^SF,f,$`.{ERR)\n"
+        (c1-file (ICall "^SF" [ (IString "f") (IString "$.{ERR") ])))
+
+;; But allow a function with crumbs to use file syntax
+(expect "f = $.{k!=v$.}\n"
+        (c1-file (ICall "^SF" [ (IString "f") (ILambda "f" (ICrumb "k" "v")) ])))
 
 (expect [(PError 1 "MSG")]
         (dict-get "errors" (gen1 [(PError 1 "MSG")] 1)))

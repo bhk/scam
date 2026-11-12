@@ -58,7 +58,8 @@
     ((IBlock nodes) (if (word 2 nodes)
                        (call-ser "IBlock" nodes)
                        (il-ser (first nodes))))
-    ((ILambda code) (.. "`" (il-ser code)))
+    ((ILambda stem body) (.. (if stem (.. stem ":"))
+                             "`" (il-ser body)))
     (else (if node
               ;; convert (") to (') to simplify assertions
               (subst "\"" "'" (sprintf "!%q" node))))))

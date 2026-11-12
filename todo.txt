@@ -1,5 +1,14 @@
 TODO
 
+
+Misc
+----
+
+ - scamdoc: Generate links to functions referenced as text:
+    Like `sprintf` ...  =>  Like [`sprintf`](#sprintf-???) ...
+ - scamdoc: Support exported variables, symbol macros, and data types.
+
+
 Language Enhancements
 ----
 
@@ -172,40 +181,13 @@ Optimizations for Generated Code
           (if (if COND nil 1) EXPR)  -->  (if COND (if nil EXPR) (if 1 EXPR))
 
 
- * Extraction and naming of anonymous functions.  The main motivation is to
-   make nested "let" blocks more efficient.  Call overhead and deeper
-   nesting both degrade performance.
+ * `let` optimization:  up-value elimination
 
-    A) Convert lambda literals to variable references:
+   This avoids calls to ^E to "bake" captures into the lambda, *and* it
+   enables conversion of the lambda to a function call (by making it const).
 
-          f = ...LAMBDA...  -->   tmpvar = $(unescape LAMBDA)
-                                  f = ...$(value tmpvar)...
+        (let ((x y)) ...a...)     -->  (let ((x y) (a a)) ...a...)
 
-       Up-value references make this impossible, since the values are not
-       known at tmpvar assignment time.
-
-       This assumes compilation for file context.  In expression context
-       we could do something like:
-
-          ...LAMBDA...  -->  $(set tmpvar,LAMBDA)...$(value tmpvar)...
-
-       ... but this will be unhelpful if the `set` is immediately prior to
-       the value (the assignment has to be less nested).  Also, the assignment
-       must be idempotent; any up-values will potentially corrupt the result.
-
-    B) Lambda-call reduction:
-
-          $(call ^X,$(value x),...)  -->  $(call x,...)
-
-    C) Up-value elimination:
-
-        A: (let ((x y)) ...a...)     -->  (let ((x y) (a a)) ...a...)
-        B: ((lambda (x) ...a...) y)  -->  ((lambda (x y) ...a...) y a)
-
-            $(call ^X,$1,...,$$1$(call escape,$2)...)
-        --> $(call ^X,$1,$2,...,$$1$$2...)
-
-       This would have to be done at the gen0 phase (without knowledge of
-       file vs. expression context), but it improves performance
-       independently of A & B, so it would be good anyway.  (But this can be
-       done manually by the programmer, so maybe isn't as urgent.)
+            f = $(call ^X,$1,...,$$1$(call ^E,$2)...)
+        --> f = $(call ^X,$1,$2,...,$$1$$2...)
+        --> f = $(call f',$1$1)

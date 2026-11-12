@@ -1,10 +1,11 @@
 #!/bin/bash
 :; for v in "${@//!/!1}" ; do v=${v// /!0} ; v=${v//	/!+}; a[++n]=${v:-!.} ; done ; LC_ALL=C SCAM_ARGS=${a[*]} exec make -Rr --no-print-directory -f"$0" 9>&1
 SCAM_MAIN := scam `main
-^uid := 866520c25585134f
+^uid := c54b7ad65332b729
 
 define [mod-scam]
 # Requires: gen core$ trace$ io$ math$ peg$ string$ utf8$ getopts$ memo$ compile$ repl$ parse$
+`main' = $(call ^S,`*is-boot*,$(call `dict-get,boot,$1))$(call ^S,`build-dir,$(or $(call ^u,$(lastword $(call `dict-get,build-dir,$1))),$(addsuffix .scam/,$(dir $(call ^u,$(lastword $(call `dict-get,o,$1))))),$(SCAM_BUILD_DIR),$(HOME)/.scam/))$(or $(if $(call `dict-get,!,$1),$(if $(foreach ;,$(call `dict-get,!,$1),$(call ^d,$(if $(filter !:GetoptsError0,$(word 1,$(call ^u,$;))),$(call `perror,`%s` is missing an argument,$(call ^n,2,$(call ^u,$;))),$(if $(filter !:GetoptsError1,$(word 1,$(call ^u,$;))),$(call `perror,`%s` is not a recognized option,$(call ^n,2,$(call ^u,$;))),$(call `perror,[internal error]))))),)$(call `perror,try `scam -h` for help)),$(call ^n,1,$(filter-out !.,$(foreach ;,$(call `dict-get,e,$1),$(call ^d,$(if $(call `repl-ep,$(call ^u,$;),$(`build-dir),$(call `dict-get,quiet,$1)),1))))),$(if $(or $(call `dict-get,h,$1),$(call `dict-get,help,$1)),$(info $(`usage-string))0),$(if $(call `dict-get,o,$1),$(if $(wordlist 2,99999999,$(call `dict-get,*,$1)),$(call `perror,too many input files were given with `-o`),$(or $(call `build-program,$(call ^n,1,$(call `dict-get,*,$1)),$(call ^u,$(lastword $(call `dict-get,o,$1))),$(`build-dir),$(call `dict-get,quiet,$1)),0))),$(if $(or $(call `dict-get,v,$1),$(call `dict-get,version,$1)),$(info SCAM version 3.0.4)0),$(if $(call ^n,1,$(call `dict-get,*,$1)),$(or $(call `run-program,$(call ^n,1,$(call `dict-get,*,$1)),$(wordlist 2,99999999,$(call `dict-get,*,$1)),$(`build-dir),$(call `dict-get,quiet,$1)),0)),$(if $(or $(call `dict-get,i,$1),$(if $(or $(call ^n,1,$(call `dict-get,*,$1)),$(call `dict-get,e,$1)),,1)),$(info SCAM v3.0.4 interactive mode. Type `?` for help.)$(if $(call `repl,$(`build-dir)),)0))
 $(if $(call ^R,core),)
 $(if $(call ^R,repl),)
 $(if $(call ^R,getopts),)
@@ -28,13 +29,13 @@ define `perror
 $(if $(call `vfprintf,2,scam: $1
 ,$(foreach N,2,$(^v))),)1
 endef
-`main = $(call ^Y,$(call `getopts,$1,-o= -e= -v --version -h --help -i --quiet --build-dir= --boot),,,,,,,,,$`(call ^S,`*is-boot*,$`(call `dict-get,boot,$`1))$`(call ^S,`build-dir,$`(or $`(call ^u,$`(lastword $`(call `dict-get,build-dir,$`1))),$`(addsuffix .scam/,$`(dir $`(call ^u,$`(lastword $`(call `dict-get,o,$`1))))),$`(SCAM_BUILD_DIR),$`(HOME)/.scam/))$`(or $`(if $`(call `dict-get,!,$`1),$`(if $`(foreach ;,$`(call `dict-get,!,$`1),$`(call ^d,$`(if $`(filter !:GetoptsError0,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is missing an argument,$`(call ^n,2,$`(call ^u,$`;))),$`(if $`(filter !:GetoptsError1,$`(word 1,$`(call ^u,$`;))),$`(call `perror,`%s` is not a recognized option,$`(call ^n,2,$`(call ^u,$`;))),$`(call `perror,[internal error]))))),)$`(call `perror,try `scam -h` for help)),$`(call ^n,1,$`(filter-out !.,$`(foreach ;,$`(call `dict-get,e,$`1),$`(call ^d,$`(if $`(call `repl-ep,$`(call ^u,$`;),$`(`build-dir),$`(call `dict-get,quiet,$`1)),1))))),$`(if $`(or $`(call `dict-get,h,$`1),$`(call `dict-get,help,$`1)),$`(info $`(`usage-string))0),$`(if $`(call `dict-get,o,$`1),$`(if $`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(call `perror,too many input files were given with `-o`),$`(or $`(call `build-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call ^u,$`(lastword $`(call `dict-get,o,$`1))),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0))),$`(if $`(or $`(call `dict-get,v,$`1),$`(call `dict-get,version,$`1)),$`(info SCAM version 3.0.4)0),$`(if $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(or $`(call `run-program,$`(call ^n,1,$`(call `dict-get,*,$`1)),$`(wordlist 2,99999999,$`(call `dict-get,*,$`1)),$`(`build-dir),$`(call `dict-get,quiet,$`1)),0)),$`(if $`(or $`(call `dict-get,i,$`1),$`(if $`(or $`(call ^n,1,$`(call `dict-get,*,$`1)),$`(call `dict-get,e,$`1)),,1)),$`(info SCAM v3.0.4 interactive mode. Type `?` for help.)$`(if $`(call `repl,$`(`build-dir)),)0)))
+`main = $(call `main',$(call `getopts,$1,-o= -e= -v --version -h --help -i --quiet --build-dir= --boot))
 
 endef
 
 define [mod-runtime]
 # Requires: 
-# Exports: at-exit#1'!|6'^AE']|0]01]0. ^tags{0'i'^tags native-bound?#1'!|5'if"5[filter-out[]|3]0u!p[]|5]0flavor]0]1|0]101]10."3[1 set-native-fn#2[3'!|6'^SF']|0]01]0.[]|0]02]0.[]|0]03]0. set-native#2[3'!|6'^S']|0]01]0.[]|0]02]0.[]|0]03]0. apply#2'!|6'^NA']|3]0^Y[]|0]02]0.[]|0]01]0. name-apply#2'!|6'^NA']|0]01]0.[]|0]02]0. rrest#1'!|5'wordlist"3[3"3[99999999"0[1[. rest#1'!|5'wordlist"3[2"3[99999999"0[1[. first#1'!|6'^n']|3]01[]|0]01]0. nth-rest#2'!|5'wordlist"0[1[."3[99999999"0[2[. nth#2'!|6'^n']|0]01]0.[]|0]02]0. promote#1'!|6'^u']|0]01]0. demote#1'!|6'^d']|0]01]0. not#1'!|5'if"0[1[."3[]."3[1 nil{3'i'.'!|3'!1.
+# Exports: at-exit#1'!|6'^AE']|0]01]0. ^tags{0'i'^tags native-bound?#1'!|5'if"5[filter-out[]|3]0u!p[]|5]0flavor]0]1|0]101]10."3[1 set-native-fn#2[3'!|6'^SF']|0]01]0.[]|0]02]0.[]|0]03]0. set-native#2[3'!|6'^S']|0]01]0.[]|0]02]0.[]|0]03]0. apply#2'!|6'^NA']|3]0^X[]|0]02]0.[]|0]01]0. name-apply#2'!|6'^NA']|0]01]0.[]|0]02]0. rrest#1'!|5'wordlist"3[3"3[99999999"0[1[. rest#1'!|5'wordlist"3[2"3[99999999"0[1[. first#1'!|6'^n']|3]01[]|0]01]0. nth-rest#2'!|5'wordlist"0[1[."3[99999999"0[2[. nth#2'!|6'^n']|0]01]0.[]|0]02]0. promote#1'!|6'^u']|0]01]0. demote#1'!|6'^d']|0]01]0. not#1'!|5'if"0[1[."3[]."3[1 nil{3'i'.'!|3'!1.
 SHELL := /bin/bash
 define '
 
@@ -53,7 +54,7 @@ $(if ,, ) :=
 ^k = $(subst %,!8,$(^d))
 ^dk = $(call ^u,$(subst !8,%,$(word 1,$(subst !=, ,$1))))
 ^dv = $(call ^u,$(word 2,$(subst !=, ,$1)))
-^Y = $(call if,,,$(10))
+^X = $(call if,,,$(10))
 ^v = $(foreach ;,$(wordlist $N,$(word 1,$(foreach ;,9 8 7 6 5 4 3 2 1,$(if $($;),$;)) 0),1 2 3 4 5 6 7 8),$(call ^d,$($;)))$(if $9, $9)
 ^NA = $(call $1,$(call ^n,1,$2),$(call ^n,2,$2),$(call ^n,3,$2),$(call ^n,4,$2),$(call ^n,5,$2),$(call ^n,6,$2),$(call ^n,7,$2),$(call ^n,8,$2),$(wordlist 9,99999999,$2),$3)
 define `esc-LHS
@@ -89,16 +90,17 @@ endef
 
 define [mod-gen]
 # Requires: core parse
+`il-concat' = $(if $(word 2,$1),!:IL7 $1,$(call ^n,1,$1))
 $(if $(call ^R,core),)
 $(if $(call ^R,parse),)
 `*is-boot* := 
-$(call ^at,!1:IL0!=IArg!0W!0W !1:IL1!=ILambda!0S !1:IL2!=IFor!0W!0S!0L !1:IL3!=IString!0S !1:IL4!=IVar!0W !1:IL5!=IBuiltin!0W!0L !1:IL6!=ICallX!0W!0S!0L !1:IL7!=IConcat!0L !1:IL8!=IBlock!0L !1:IL9!=IWhere!0W !1:IL10!=ICrumb!0W!0S !1:IL11!=IEnv!0S!0L)
+$(call ^at,!1:IL0!=IArg!0W!0W !1:IL1!=ILambda!0S!0L !1:IL2!=IFor!0W!0S!0L !1:IL3!=IString!0S !1:IL4!=IVar!0W !1:IL5!=IBuiltin!0W!0L !1:IL6!=ICallX!0W!0S!0L !1:IL7!=IConcat!0L !1:IL8!=IBlock!0L !1:IL9!=IWhere!0W !1:IL10!=ICrumb!0W!0S !1:IL11!=IEnv!0S!0L)
 `ICall = $(filter %,!:IL6 $1 $(call ^d,$2) )
-`IFuncall = !:IL6 ^Y $(call ^d,$(wordlist 2,99999999,$1)) $(word 1,$1)
-$(call ^at,!1:EDefn0!=EVar!0W!0W !1:EDefn1!=EFunc!0W!0S!0W !1:EDefn2!=EMacro!0W!0W!0S!0L !1:EDefn3!=EIL!0W!0W!0L !1:EDefn4!=EXMacro!0W!0W !1:EDefn5!=ERecord!0W!0S!0S !1:EDefn6!=EBuiltin!0W!0W!0S !1:EDefn7!=EMarker!0W)
+`IFuncall = !:IL6 ^X $(call ^d,$2) $(call ^d,$1)
+$(call ^at,!1:EDefn0!=EVar!0W!0W !1:EDefn1!=EFunc!0W!0S!0W !1:EDefn2!=EMacro!0W!0W!0S!0L !1:EDefn3!=EIL!0W!0W!0L !1:EDefn4!=EXMacro!0W!0W !1:EDefn5!=ERecord!0W!0S!0S !1:EDefn6!=EBuiltin!0W!0W!0S)
 `il-merge-strings = $(if $(filter !:IL3,$(word 1,$(call ^n,1,$1))),$(call `il-merge-strings,$(wordlist 2,99999999,$1),$2$(call ^n,2,$(call ^n,1,$1))),$(call `append,$(if $2,$(call ^d,!:IL3 $(call ^d,$2))),$(word 1,$1),$(if $(word 2,$1),$(call `il-merge-strings,$(wordlist 2,99999999,$1),))))
 `il-flatten = $(filter %,$(foreach ;,$1,$(if $(filter !:IL7,$(word 1,$(call ^u,$;))),$(call `il-flatten,$(wordlist 2,99999999,$(call ^u,$;))),$;)))
-`il-concat = $(call ^Y,$(call `il-merge-strings,$(call `il-flatten,$1),),,,,,,,,,$`(if $`(word 2,$`1),!:IL7 $`1,$`(call ^n,1,$`1)))
+`il-concat = $(call `il-concat',$(call `il-merge-strings,$(call `il-flatten,$1),))
 `il-demote = $(or $(if $(filter !:IL3,$(word 1,$1)),!:IL3 $(call ^d,$(word 2,$1)),$(if $(filter !:IL6,$(word 1,$1)),$(if $(findstring $(subst ^u0,1,$(word 2,$1)0),1),$(call ^n,1,$(call ^n,3,$1))),)),$(call `ICall,^d,$(call ^d,$1)))
 `il-promote = $(call `ICall,^u,$(call ^d,$1))
 `il-vector = $(call `il-concat,$(call `intersperse,!:IL3 !0,$(foreach ;,$1,$(call ^d,$(call `il-demote,$(call ^u,$;))))))
@@ -106,7 +108,8 @@ $(call ^at,!1:EDefn0!=EVar!0W!0W !1:EDefn1!=EFunc!0W!0S!0W !1:EDefn2!=EMacro!0W!
 `il-subst = $(or $(if $(filter !:IL3,$(word 1,$1)),$(if $(filter !:IL3,$(word 1,$2)),$(call `subst-in-il,$(call ^n,2,$1),$(call ^n,2,$2),$3),),),!:IL5 subst $(call ^d,$1) $(call ^d,$2) $(call ^d,$3))
 `il-nth-rest = !:IL5 wordlist $(call ^d,!:IL3 $(call ^d,$1)) $(call ^d,!:IL3 99999999) $(call ^d,$2)
 `gensym-name = $(if $(filter $1&$3!=%,$2),$(call `gensym-name,$1,$2 .,$(words $2)),$1&$3)
-`current-depth = $(foreach ;,$(call ^d,$(call `dict-get,:,$1)),$(if $(filter !1:EDefn7!0%,$;!0),$(word 2,$(call ^u,$;)),.))
+`current-depth = $(or $(call `dict-get,:,$1),.)
+`depth-down = .$(subst ;,,$(call `current-depth,$1))
 `gensym = !:P2 0 $(call ^d,$(call `gensym-name,$(call `symbol-name,$1),$2,))
 `gen-error = !:P8 $(or $(call `form-index,$1),$(if $(call `numeric?,$1),$1,0)) $(call ^d,$(call `vsprintf,$2,$(foreach N,3,$(^v))))
 `form-description = $(if $(findstring $(subst %0,1,$10),1),form,$(if $(findstring $(subst L0,1,$10),1),list,$(if $(findstring $(subst S0,1,$10),1),symbol,$(if $(findstring $(subst P0,1,$10),1),target,$(if $(findstring $(subst Q0,1,$10),1),literal string,$(call `form-typename,$1))))))
@@ -117,11 +120,11 @@ $(call ^at,!1:NX0!=Bind!0S!0S)
 `perror-pattern := $(call ^d,$(word 1,!:P8  !.))!0%
 `first-perror = $(call ^n,1,$(filter $(`perror-pattern),$1))
 `pt-err = $(call ^d,$(call `gen-error,$1,$(call ^n,$(subst 1,$(if $(filter ...%,$(call `symbol-name,$1)),2,1),$2),$(if ,,'?NAME'!0can!0appear!0only!0in!0parameter!0lists!0after!0all!0non-optional!0parameters '...NAME'!0can!0appear!0only!0as!0the!0last!0parameter!0or!0vector!0target!0element invalid!0assignment!0target;!0{=NAME:!0TARGET,!0...}!0unpacks!0pairs,!0{KEY:!0TARGET,!0...}!0extracts!0fields in!0dictionary!0field!0targets,!0keys!0must!0be!0symbols!0or!0string!0literals invalid!0assignment!0target;!0expected!0symbol,!0vector,!0or!0dictionary))))
-`pt-pair = $(or $(if $(filter !:P2,$(word 1,$1)),$(if $(filter =%,$1),$(call `cons,!:NX0 $(call ^d,$(patsubst =%,%,$(call ^n,3,$1))) $(call ^d,$`(call `ICall,^dk,$`(call ^d,$`(if $`(filter $(call ^E,$3),1),$`(call ^Y,$`1,,,,,,,,,$(call ^E,$5)),!:IL5 word $`(call ^d,!:IL3 $`(call ^d,$(call ^E,$3))) $`(call ^d,$`(call ^Y,$`1,,,,,,,,,$(call ^E,$5))))))),$(call `pt,$2,$`(call `ICall,^dv,$`(call ^d,$`(if $`(filter $(call ^E,$3),1),$`(call ^Y,$`1,,,,,,,,,$(call ^E,$5)),!:IL5 word $`(call ^d,!:IL3 $`(call ^d,$(call ^E,$3))) $`(call ^d,$`(call ^Y,$`1,,,,,,,,,$(call ^E,$5)))))))),$(if $(and $(filter ...,$1),$4),$(call `pt,$2,$`(call `il-nth-rest,$(call ^E,$3),$`(call ^Y,$`1,,,,,,,,,$(call ^E,$5)))))),),$(call `pt-err,$1,3))
-`pt-dict = $(or $(foreach ;,$(call ^d,$(call ^dk,$1)),$(if $(filter !1:P2!0%,$;!0),$(if $(filter ... =%,$(call ^n,3,$(call ^u,$;))),$(filter %,$(foreach ;;,$(call `indices,$1),$(call `pt-pair,$(call ^dk,$(word $(call ^u,$(;;)),$1)),$(call ^dv,$(word $(call ^u,$(;;)),$1)),$(call ^u,$(;;)),$(filter $(call ^u,$(;;)),$(words $1)),$2)))),)),$(foreach ;,$1,$(or $(filter %,$(foreach ;;,$(foreach ;;,$(call ^d,$(call ^dk,$;)),$(if $(filter !1:P2!0% !1:P1!0%,$(;;)!0),$(call ^d,$(call ^n,3,$(call ^u,$(;;)))),)),$(call `pt,$(call ^dv,$;),$`(call `ICall,^dv,$`(call ^d,!:IL5 filter $`(call ^d,!:IL3 $`(call ^d,$`(subst %,!8,$`(call ^d,$`(call ^u,$(call ^E,$(;;)))))!=%)) $`(call ^d,$`(call ^Y,$`1,,,,,,,,,$(call ^E,$2)))))))),$(call `pt-err,$(call ^dk,$;),4))))
-`pt-vec = $(filter %,$(foreach ;,$(call `indices,$1),$(or $(if $(filter $(call ^u,$;),$2),$(foreach ;;,$(call ^d,$(call ^n,$(call ^u,$;),$1)),$(if $(filter !1:P2!0%,$(;;)!0),$(if $(filter ...%,$(call ^n,3,$(call ^u,$(;;)))),$(call ^d,!:NX0 $(call ^d,$(or $(patsubst ...%,%,$(call ^n,3,$(call ^u,$(;;)))),$(call ^n,3,$(call ^u,$(;;))))) $(call ^d,$`(call `il-nth-rest,$`(words $(call ^E,$1)),$`(call ^Y,$`1,,,,,,,,,$(call ^E,$3)))))),))),$(call `pt,$(call ^n,$(call ^u,$;),$1),$`(call `ICall,^n,$`(call ^d,!:IL3 $`(call ^d,$`(call ^u,$(call ^E,$;)))) $`(call ^d,$`(call ^Y,$`1,,,,,,,,,$(call ^E,$3))))))))
+`pt-pair = $(or $(if $(filter !:P2,$(word 1,$1)),$(if $(filter =%,$1),$(call `cons,!:NX0 $(call ^d,$(patsubst =%,%,$(call ^n,3,$1))) $(call ^d,$`(call `ICall,^dk,$`(call ^d,$`(if $`(filter $(call ^E,$3),1),$`(call ^X,$`1,,,,,,,,,$(call ^E,$5)),!:IL5 word $`(call ^d,!:IL3 $`(call ^d,$(call ^E,$3))) $`(call ^d,$`(call ^X,$`1,,,,,,,,,$(call ^E,$5))))))),$(call `pt,$2,$`(call `ICall,^dv,$`(call ^d,$`(if $`(filter $(call ^E,$3),1),$`(call ^X,$`1,,,,,,,,,$(call ^E,$5)),!:IL5 word $`(call ^d,!:IL3 $`(call ^d,$(call ^E,$3))) $`(call ^d,$`(call ^X,$`1,,,,,,,,,$(call ^E,$5)))))))),$(if $(and $(filter ...,$1),$4),$(call `pt,$2,$`(call `il-nth-rest,$(call ^E,$3),$`(call ^X,$`1,,,,,,,,,$(call ^E,$5)))))),),$(call `pt-err,$1,3))
+`pt-dict = $(or $(foreach ;,$(call ^d,$(call ^dk,$1)),$(if $(filter !1:P2!0%,$;!0),$(if $(filter ... =%,$(call ^n,3,$(call ^u,$;))),$(filter %,$(foreach ;;,$(call `indices,$1),$(call `pt-pair,$(call ^dk,$(word $(call ^u,$(;;)),$1)),$(call ^dv,$(word $(call ^u,$(;;)),$1)),$(call ^u,$(;;)),$(filter $(call ^u,$(;;)),$(words $1)),$2)))),)),$(foreach ;,$1,$(or $(filter %,$(foreach ;;,$(foreach ;;,$(call ^d,$(call ^dk,$;)),$(if $(filter !1:P2!0% !1:P1!0%,$(;;)!0),$(call ^d,$(call ^n,3,$(call ^u,$(;;)))),)),$(call `pt,$(call ^dv,$;),$`(call `ICall,^dv,$`(call ^d,!:IL5 filter $`(call ^d,!:IL3 $`(call ^d,$`(subst %,!8,$`(call ^d,$`(call ^u,$(call ^E,$(;;)))))!=%)) $`(call ^d,$`(call ^X,$`1,,,,,,,,,$(call ^E,$2)))))))),$(call `pt-err,$(call ^dk,$;),4))))
+`pt-vec = $(filter %,$(foreach ;,$(call `indices,$1),$(or $(if $(filter $(call ^u,$;),$2),$(foreach ;;,$(call ^d,$(call ^n,$(call ^u,$;),$1)),$(if $(filter !1:P2!0%,$(;;)!0),$(if $(filter ...%,$(call ^n,3,$(call ^u,$(;;)))),$(call ^d,!:NX0 $(call ^d,$(or $(patsubst ...%,%,$(call ^n,3,$(call ^u,$(;;)))),$(call ^n,3,$(call ^u,$(;;))))) $(call ^d,$`(call `il-nth-rest,$`(words $(call ^E,$1)),$`(call ^X,$`1,,,,,,,,,$(call ^E,$3)))))),))),$(call `pt,$(call ^n,$(call ^u,$;),$1),$`(call `ICall,^n,$`(call ^d,!:IL3 $`(call ^d,$`(call ^u,$(call ^E,$;)))) $`(call ^d,$`(call ^X,$`1,,,,,,,,,$(call ^E,$3))))))))
 `pt = $(if $(filter !:P2,$(word 1,$1)),$(if $(filter ...% ?%,$1),$(call `pt-err,$1,1),$(call ^d,!:NX0 $(call ^d,$(call ^n,3,$1)) $(call ^d,$2))),$(if $(filter !:P9,$(word 1,$1)),$(call `pt-vec,$(call ^n,3,$1),$(words $(call ^n,3,$1)),$2),$(if $(filter !:P3,$(word 1,$1)),$(call `pt-dict,$(wordlist 3,99999999,$1),$2),$(call `pt-err,$1,5))))
-`bind-nxmap = $(filter %,$(foreach ;,$1,$(if $(filter !:NX0,$(word 1,$(call ^u,$;))),$(call ^k,$(call ^n,2,$(call ^u,$;)))!=$(call ^d,!:EDefn3 $2 $3 $(call ^Y,$4,,,,,,,,,$(call ^n,3,$(call ^u,$;)))),;!=$;)))
+`bind-nxmap = $(filter %,$(foreach ;,$1,$(if $(filter !:NX0,$(word 1,$(call ^u,$;))),$(call ^k,$(call ^n,2,$(call ^u,$;)))!=$(call ^d,!:EDefn3 $2 $3 $(call ^X,$4,,,,,,,,,$(call ^n,3,$(call ^u,$;)))),'!=$;)))
 `bind-target = $(call `bind-nxmap,$(call `parse-target,$1),$2,$3,$4)
 `base-env := $(foreach ;,abspath basename dir error firstword lastword notdir realpath shell sort suffix wildcard words native-eval native-flavor native-origin native-strip native-value native-var addprefix/2 addsuffix/2 filter/2 filter-out/2 findstring/2 join/2 word/2 patsubst/3 wordlist/3 and/0+ or/0+ native-call/1+ if/2/3,$(call ^k,$(word 1,$(subst /, ,$;)))!=$(call ^d,!:EDefn6 i $(subst native-,,$(word 1,$(subst /, ,$;))) $(call ^d,$(or $(wordlist 2,99999999,$(subst /, ,$;)),1))))
 `resolve = $(if $(filter !:P2,$(word 1,$1)),$(call ^dv,$(or $(filter $(subst !,!1,$(call ^n,3,$1))!=%,$2),$(filter $(subst !,!1,$(call ^n,3,$1))!=%,$(`base-env)))),-)
@@ -132,14 +135,17 @@ endef
 define [mod-core]
 # Requires: 
 # Exports: repeat-words@2'% intersperse@2'% foldr@3'% foldl@3'% index-of@2'% assoc#2'!|6'%-initial']|5]0subst]0]1|3]10&1]0]1|3]10&11]0]1|6]10^d]10&1|0&101&10.[]|0]02]0. assoc-vec#2'!|6'`assoc-initial']|6]0^d]0&|0&01&0.[]|0]02]0. assoc-initial@2'% sort-by@2'% memoize}1+}split@2'% uniq}see@2'% fexpect#2'!|6'`expect-x']|6]0`format]0&|0&01&0.[]|6]0`format]0&|0&02&0.[]|9]05079 assert#1'!|6'%-x']|0]01]0.[]|9]05031 expect#2'!|6'%-x']|0]01]0.[]|0]02]0.[]|9]04962 expect-x@3'% printf@1+'% sprintf@1+'% vsprintf@2'% vsprintfx@4'% format}format-add}dict-collate}dict-values}dict-keys}dict-compact@1[2'% dict-set@3'% dict-remove@2'% dict-get@2[3'% dict-find@2'% dict-value#1'!|6'^dv']|0]01]0. dict-key#1'!|6'^dk']|0]01]0. append@0+'% word-index?}numeric?}while@3'% reverse}indices}urange@2'% vec-subtract#2'!|6'`vec-filter']|3]0filter-out[]|0]02]0.[]|0]01]0. vec-intersect#2'!|6'`vec-filter']|3]0filter[]|0]02]0.[]|0]01]0. vec-or#1'!|6'^n']|3]01[]|5]0filter-out]0]1|3]10&1.]0]1|0]101]10. select-words@2'% select-vec@2'% butlast}filtersub@3'% strip#1'!|5'filter"3[!p"0[1[. last#1'!|6'^u']|5]0lastword]0]1|0]101]10. conj@2'% cons@2'% concat-vec@1[2'% xor@2'% identity#1'!|0'1'. eq?#2'!|5'findstring"5[subst[]|7]0]1|0]102]10.]0]1|3]100[]|3]01[]|7]0]1|0]101]10.]0]1|3]100"3[1
+`memoize' = $(call ^SF,$3,$`(call `mcache,$(call ^E,$2)$`(call `memoenc,$`1,$`2,$`3),$(call ^E,$1),$`1,$`2,$`3,$`(or $`4,$`5,$`6,$`7,$`8)),)
+`format-record' = $(and $1,$(findstring $(subst $(filter %,$(call `data-foreach,$`(if $`(findstring $`(subst $`20,1,S0),1),$`(call ^d,$`1),$`1),$(wordlist 2,99999999,$1),$2,$3))0,1,$(filter %,$4)0),1),($(call ^n,1,$1)$(if $(wordlist 2,99999999,$1), )$(call `data-foreach,$`(if $`(and $`(findstring $`(subst $`20,1,L0),1),$`(if $`1,,1)),[],$`(call `format,$`1)),$(wordlist 2,99999999,$1),$2,)))
+`while' = $(call ^n,2,$(call `while-N,$2,$3,$(call `while-0,$2,$3,$1,),1,ii))
 `xor = $(if $1,$(if $2,,$1),$2)
 `concat-vec = $(call ^u,$(subst $  ,$(call ^d,$2),$1))
 `cons = $(call ^d,$1)$(if $2, )$2
 `conj = $1$(if $1, )$(call ^d,$2)
 `filtersub = $(patsubst $1,$2,$(filter $1,$3))
 `butlast = $(wordlist 2,$(words $1),X $1)
-`select-vec = $(filter-out !,$(foreach ;,$2,$(if $(call ^Y,$(call ^u,$;),,,,,,,,,$1),$;,!)))
-`select-words = $(foreach ;,$(foreach ;,$2,$(if $(call ^Y,$;,,,,,,,,,$1),$;)),$;)
+`select-vec = $(filter-out !,$(foreach ;,$2,$(if $(call ^X,$(call ^u,$;),,,,,,,,,$1),$;,!)))
+`select-words = $(foreach ;,$(foreach ;,$2,$(if $(call ^X,$;,,,,,,,,,$1),$;)),$;)
 `vec-filter = $(if $(findstring %,$2),$(subst !P,%,$(call $1,$(subst %,!P,$2),$(subst %,!P,$3))),$(call $1,$2,$3))
 `rangeXN = $(if $(word $2,$1),$1,$(call `rangeXN,$(foreach ;,0 1 2 3 4 5 6 7 8 9,$(addprefix $;,$1)),$2))
 `urange = $(if $(subst 0,,$1),$(if $(subst 0,,$2),$(wordlist $1,$2,$(subst $  0, ,$(subst $  00, ,$(subst $  0000, , $(call `rangeXN,0 1 2 3 4 5 6 7 8 9,$2) $2))))),$(filter %,0 $(call `urange,1,$2)))
@@ -147,9 +153,9 @@ define [mod-core]
 `rev-by-10s = $(if $1,$(if $2,$(foreach ;,10 9 8 7 6 5 4 3 2 1,$(call `rev-by-10s,$(wordlist $(word $;,0 1 2 3 4 5 6 7 8 9)$(patsubst %0,%1,$2),$;$2,$1),$(patsubst 0%,%,$2))),$(foreach ;,10 9 8 7 6 5 4 3 2 1,$(word $;,$1))))
 `rev-zeroes = $(if $(word 1$21,$1),$(call `rev-zeroes,$1,0$2),$2)
 `reverse = $(wordlist 1,99999999,$(call `rev-by-10s,$1,$(call `rev-zeroes,$1,)))
-`while-0 = $(if $(filter iiiiiiiiiiiiiiiiiiii,$4),1 $(call ^d,$3),$(if $(call ^Y,$3,,,,,,,,,$1),$(call `while-0,$1,$2,$(call ^Y,$3,,,,,,,,,$2),i$4),0 $(call ^d,$3)))
+`while-0 = $(if $(filter iiiiiiiiiiiiiiiiiiii,$4),1 $(call ^d,$3),$(if $(call ^X,$3,,,,,,,,,$1),$(call `while-0,$1,$2,$(call ^X,$3,,,,,,,,,$2),i$4),0 $(call ^d,$3)))
 `while-N = $(if $(filter 0,$(word 1,$3)),$3,$(if $(filter iii,$5),$(if $(filter 1,$4),$(call `while-N,$1,$2,$3,$4 0,ii),$3),$(call `while-N,$1,$2,$(if $4,$(call `while-N,$1,$2,$3,$(wordlist 2,99999999,$4),),$(call `while-0,$1,$2,$(call ^n,2,$3),)),$4,i$5)))
-`while = $(if $(call ^Y,$3,,,,,,,,,$1),$(call ^Y,$(call ^Y,$3,,,,,,,,,$2),$1,$2,,,,,,,$`(call ^n,2,$`(call `while-N,$`2,$`3,$`(call `while-0,$`2,$`3,$`1,),1,ii))),$3)
+`while = $(if $(call ^X,$3,,,,,,,,,$1),$(call `while',$(call ^X,$3,,,,,,,,,$2),$1,$2),$3)
 `numeric? = $(if $(filter 0% 1% 2% 3% 4% 5% 6% 7% 8% 9%,$(subst -,,$1)),$(if $(patsubst .%,%,$(patsubst %e,%,$(subst 0,,$(patsubst -%,%,$(subst $  ,_,$(subst E0,e,$(subst E-,E,$(subst e,E,$(subst +,-,$(subst 9,0,$(subst 8,0,$(subst 7,0,$(subst 6,0,$(subst 5,0,$(subst 4,0,$(subst 3,0,$(subst 2,0,$(subst 1,0,$1)))))))))))))))))),,$1))
 `word-index? = $(if $(subst 9,,$(subst 8,,$(subst 7,,$(subst 6,,$(subst 5,,$(subst 4,,$(subst 3,,$(subst 2,,$(subst 1,,$(subst 0,,$1)))))))))),,$(subst 0,,$1))
 `append = $(filter %,$1 $2 $3 $4 $5 $6 $7 $8 $(if $9,$(call ^u,$9)))
@@ -166,17 +172,17 @@ $(and $(findstring $1,$(word 1,$1)),$(if $(or $(findstring
 ,$1),$(findstring $[,$1),$(findstring $],$1),$(findstring [,$1),$(findstring ],$1),$(findstring $(if ,,,),$1),$(findstring ;,$1),$(findstring :,$1),$(findstring ',$1),$(findstring `,$1),$(findstring ",$1),$(findstring !=,$1)),,1),$1)
 endef
 `format-dict = $(if $(findstring !=,$1),$(if $(findstring $(subst $(foreach ;,$1,$(call ^k,$(call ^dk,$;))!=$(call ^d,$(call ^dv,$;)))0,1,$10),1),{$(call `concat-vec,$(foreach ;,$1,$(call ^d,$(or $(call `symbol?,$(call ^dk,$;)),$(call `format,$(call ^dk,$;))): $(call `format,$(call ^dv,$;)))),$(if ,,, ))}))
-`data-foreach = $(if $2,$(call `data-foreach,$1,$(wordlist 2,99999999,$2),$(wordlist 2,99999999,$3),$4$(if $4, )$(call ^Y,$(if $(filter L,$(word 1,$2)),$3,$(if $(filter S,$(word 1,$2)),$(call ^n,1,$3),$(if $(filter W,$(word 1,$2)),$(word 1,$3),$(error bad encoding in ctor pattern)))),$(word 1,$2),,,,,,,,$1)),$4)
-`format-record = $(if $(filter !:%,$(word 1,$1)),$(call ^Y,$(call `dict-get,$(word 1,$1),$(^tags)),$(wordlist 2,99999999,$1),$(word 1,$1),$1,,,,,,$`(and $`1,$`(findstring $`(subst $`(filter %,$`(call `data-foreach,$``(if $``(findstring $``(subst $``20,1,S0),1),$``(call ^d,$``1),$``1),$`(wordlist 2,99999999,$`1),$`2,$`3))0,1,$`(filter %,$`4)0),1),($`(call ^n,1,$`1)$`(if $`(wordlist 2,99999999,$`1), )$`(call `data-foreach,$``(if $``(and $``(findstring $``(subst $``20,1,L0),1),$``(if $``1,,1)),[],$``(call `format,$``1)),$`(wordlist 2,99999999,$`1),$`2,)))))
+`data-foreach = $(if $2,$(call `data-foreach,$1,$(wordlist 2,99999999,$2),$(wordlist 2,99999999,$3),$4$(if $4, )$(call ^X,$(if $(filter L,$(word 1,$2)),$3,$(if $(filter S,$(word 1,$2)),$(call ^n,1,$3),$(if $(filter W,$(word 1,$2)),$(word 1,$3),$(error bad encoding in ctor pattern)))),$(word 1,$2),,,,,,,,$1)),$4)
+`format-record = $(if $(filter !:%,$(word 1,$1)),$(call `format-record',$(call `dict-get,$(word 1,$1),$(^tags)),$(wordlist 2,99999999,$1),$(word 1,$1),$1))
 `*format-funcs* := 
 `format-add = $(call ^S,`*format-funcs*,$(call `cons,$1,$(`*format-funcs*)))
-`format-custom = $(if $2,$(or $(call ^Y,$1,,,,,,,,,$(call ^n,1,$2)),$(call `format-custom,$1,$(wordlist 2,99999999,$2))))
+`format-custom = $(if $2,$(or $(call ^X,$1,,,,,,,,,$(call ^n,1,$2)),$(call `format-custom,$1,$(wordlist 2,99999999,$2))))
 define `format
 $(or $(call `format-custom,$1,$(`*format-funcs*)),$(if $(findstring !,$1),$(or $(call `format-dict,$1),$(call `format-record,$1))),$(if $(or $(findstring !,$1),$(and $(findstring $  ,$1),$(call `numeric?,$(subst $  ,,$1)))),$(if $(findstring $(subst $(foreach ;,$1,$(call ^d,$(call ^u,$;)))0,1,$10),1),[$(foreach ;,$1,$(call `format,$(call ^u,$;)))])),$(call `numeric?,$1),"$(subst ,\x0d,$(subst $ 	,\t,$(subst 
 ,\n,$(subst ",\",$(subst \,\\,$1)))))")
 endef
 `vsp-split = $(subst !%$(or $(word 1,$1),%),!:$(word 1,$1) ,$(subst !%$(or $(word 2,$1),%),!:$(word 2,$1) ,$(if $(word 3,$1),$(call `vsp-split,$(wordlist 3,99999999,$1),$2),$2)))
-`vsprintfx = $(call `concat-vec,$(foreach ;,$(join $(subst !%,%,$(call `vsp-split,$3,$(subst !%!%,%,$(subst %,!%,$(call ^d,$1))))),$(addprefix !:%,$2)),$(word 1,$(subst !:, !. ,$;))$(if $(findstring !:,$(subst !:%,,$;)),$(call ^Y,$(word 2,$(subst !:, ,x$;)),$(word 2,$(subst !:%, ,$;)),,,,,,,,$4))))
+`vsprintfx = $(call `concat-vec,$(foreach ;,$(join $(subst !%,%,$(call `vsp-split,$3,$(subst !%!%,%,$(subst %,!%,$(call ^d,$1))))),$(addprefix !:%,$2)),$(word 1,$(subst !:, !. ,$;))$(if $(findstring !:,$(subst !:%,,$;)),$(call ^X,$(word 2,$(subst !:, ,x$;)),$(word 2,$(subst !:%, ,$;)),,,,,,,,$4))))
 `vsprintf = $(call `vsprintfx,$1,$2,s q,$`(if $`(filter q,$`1),$`(call ^d,$`(call `format,$`(call ^u,$`2))),$`2))
 `sprintf = $(call `vsprintf,$1,$(foreach N,2,$(^v)))
 `printf = $(info $(call `vsprintf,$1,$(foreach N,2,$(^v))))
@@ -202,14 +208,14 @@ endef
 `uniq = $(subst ~1,~,$(subst ~p,%,$(filter %,$(call `uniq-x,$(subst %,~p,$(subst ~,~1,$1))))))
 `split = $(subst !x,,$(patsubst !x,!.,!x$(subst $ 	,!+,$(subst !!,!1,$(subst $  ! ,!0,$(subst $(subst $  , ! ,$(subst !,!!,$1)), !x,$(subst $  , ! ,$(subst !,!!,$2))))))))
 `1+ = $(if $(filter %1 %2 %3 %4,$1),$(subst 1~,2,$(subst 2~,3,$(subst 3~,4,$(subst 4~,5,$1~)))),$(if $(filter %5 %6 %7,$1),$(subst 5~,6,$(subst 6~,7,$(subst 7~,8,$1~))),$(if $(findstring 9~,$1~),$(call `1+,$(or $(subst 9~,,$1~),0))0,$(patsubst %0,%1,$(patsubst %8,%9,$1)))))
-`mcache = $(if $(if $6,$(info Warning: memoized function passed more than three arguments)),)$(if $(if $(if $(if $(filter-out u%,$(flavor $1)),1),,1),$(call ^S,$1,$(call ^Y,$3,$4,$5,,,,,,,$2),)),)$($1)
+`mcache = $(if $(if $6,$(info Warning: memoized function passed more than three arguments)),)$(if $(if $(if $(if $(filter-out u%,$(flavor $1)),1),,1),$(call ^S,$1,$(call ^X,$3,$4,$5,,,,,,,$2),)),)$($1)
 `memoenc = $(if $(or $1,$2,$3),~~$(subst ~,~0,$1)$(call `memoenc,$2,$3))
-`memoize = $(if $(if $(if $(filter-out u%,$(flavor $1)),1),,1),$(info Warning: [memoize-1] function '$1' not defined.),$(call ^Y,$(value $1),*memo$(call `memoenc,$1),$1,,,,,,,$`(call ^SF,$`3,$``(call `mcache,$`(call ^E,$`2)$``(call `memoenc,$``1,$``2,$``3),$`(call ^E,$`1),$``1,$``2,$``3,$``(or $``4,$``5,$``6,$``7,$``8)),)))
-`sort-by = $(filter-out %!!,$(subst !!,!! ,$(sort $(foreach ;,$2,$(call ^d,$(call ^Y,$(call ^u,$;),,,,,,,,,$1))!!$;))))
+`memoize = $(if $(if $(if $(filter-out u%,$(flavor $1)),1),,1),$(info Warning: [memoize-1] function '$1' not defined.),$(call `memoize',$(value $1),*memo$(call `memoenc,$1),$1))
+`sort-by = $(filter-out %!!,$(subst !!,!! ,$(sort $(foreach ;,$2,$(call ^d,$(call ^X,$(call ^u,$;),,,,,,,,,$1))!!$;))))
 `assoc-initial = $(call ^u,$(firstword $(if $(findstring %,$1),$(subst !8,$1,$(filter !8 !8!0%,$(subst $1,!8,$2))),$(filter $1 $1!0%,$2))))
 `index-of = $(words $(subst !_, ,$(filter %!|,$(subst !_$(call ^d,$2)!_,!_!| ,!_$(subst $  ,!_,$1)!_))))
-`foldl = $(if $(word 1,$3),$(call `foldl,$1,$(call ^Y,$2,$(call ^n,1,$3),,,,,,,,$1),$(wordlist 2,99999999,$3)),$2)
-`foldr = $(if $(word 1,$3),$(call ^Y,$(call ^n,1,$3),$(call `foldr,$1,$2,$(wordlist 2,99999999,$3)),,,,,,,,$1),$2)
+`foldl = $(if $(word 1,$3),$(call `foldl,$1,$(call ^X,$2,$(call ^n,1,$3),,,,,,,,$1),$(wordlist 2,99999999,$3)),$2)
+`foldr = $(if $(word 1,$3),$(call ^X,$(call ^n,1,$3),$(call `foldr,$1,$2,$(wordlist 2,99999999,$3)),,,,,,,,$1),$2)
 `intersperse = $(subst $  , $(call ^d,$1) ,$2)
 `repeat-words = $(if $(filter-out -% 0,$2),$(if $(word $2,$1 $1 $1),$(wordlist 1,$2,$1 $1 $1),$(call `repeat-words,$1 $1 $1,$2)))
 
@@ -217,9 +223,10 @@ endef
 
 define [mod-trace]
 # Requires: core
-# Exports: trace-expect#2'!|6'^Y']|6]0`untrace]0&|6&0`trace&0&11|3&110!p&0]10&|7&0&1|6&10^d&10&111|0&11101&1110.&10&0&1|3&10&110&0&1|6&10^d&10&111|0&11102&1110.&10]0"1[]|6]0`expect-x]0&|6&0^n&0&11|3&1101&10&11|0&1101&110.&0]10&|6&0^n&0&11|3&1102&10&11|0&1101&110.&0]10&|9&02674]0 tracing#2'!|6'`untrace']|6]0`trace]0&|0&01&0.[]|0]02]0. trace@1'%
+# Exports: trace-expect#2'!|6'^X']|6]0`untrace]0&|6&0`trace&0&11|3&110!p&0]10&|7&0&1|6&10^d&10&111|0&11101&1110.&10&0&1|3&10&110&0&1|6&10^d&10&111|0&11102&1110.&10]0"1[].[]:IL6[`expect-x[]1|6]10^n]10&1|3&101&0&1|0&101&10.]10]0]1|6]10^n]10&1|3&102&0&1|0&101&10.]10]0]1|9]102679[ tracing#2'!|6'`untrace']|6]0`trace]0&|0&01&0.[]|0]02]0. trace@1'%
+`untrace' = $(if $1,$(foreach ;,$1,$(call ^d,$(info scam: counts: $(call ^dk,$(call ^u,$;)) = $(call ^dv,$(call ^u,$;))))))
 $(if $(call ^R,core),)
-`trace-prefix = $(or $(filter `%,$1),$(if $(filter "%",$1),$(patsubst "%",%,$1),'$1))
+`trace-prefix = $(or $(filter `% '%,$1),$(if $(filter "%",$1),$(patsubst "%",%,$1),'$1))
 `trace-unprefix = $(or $(call `filtersub,'%,%,$1),$(filter `%,$1),"$1")
 `trace-is-func = $(if $(filter filerec%,$(origin $1)$(flavor $1)),$1)
 `TI := 
@@ -233,13 +240,13 @@ $(if $(call ^R,core),)
 `tf-args-initial = $(if $1, $1,$1)
 `tf-args = $(call `tf-args-initial,$(foreach ;,$(foreach N,1,$(^v)),$(call `format,$(call ^n,1,$;))))
 `tf-pv = $(info $2 $(call `format,$1))$1
-`trace-body = $(subst :D,$4,$(subst :C,$`(call [S-$3],$`1,$`2,$`3,$`4,$`5,$`6,$`7,$`8,$`9),$(subst :A,$`(`tf-args),$(subst :V,`tf-pv,$(subst :-,$`(`--TI),$(subst :+,$`(`TI++),$(subst :N,$(call `trace-unprefix,$2),$(if $(filter t,$1),$`(info :+--> (:N:A))$`(call :V,:C,:-<-- :N:),$(if $(filter f,$1),$`(info :+--> :N):C$`(info :-<-- :N),$(if $(filter c,$1),$(if $(or $(value [K-$3]),$(call ^S,[K-$3],$(or $(value [K-$3]),////////),)),)$`(eval [K-$3]:=$`(subst /1111111111,1/,$`([K-$(call ^E,$3)])1)):D,$(if $(filter x%,$1),$`(foreach ^X,1,:C)$`(if $`(^X),,$`(if $`(foreach ^X,$(patsubst %,1,$(call `urange,2,$(or $(patsubst x%,%,$1),11))),$`(if :C,)),)),$(if $(filter p%,$1),$(subst :,:$` ,$(call ^u,$(patsubst p%,%,$1))):D,$(error TRACE: Unknown mode: '$1')))))))))))))
+`trace-body = $(subst :D,$4,$(subst :C,$`(call [S-$3],$`1,$`2,$`3,$`4,$`5,$`6,$`7,$`8,$`9),$(subst :A,$`(`tf-args),$(subst :V,`tf-pv,$(subst :-,$`(`--TI),$(subst :+,$`(`TI++),$(subst :N,$(call `trace-unprefix,$2),$(if $(filter t,$1),$`(info :+--> (:N:A))$`(call :V,:C,:-<-- :N:),$(if $(filter f,$1),$`(info :+--> :N):C$`(info :-<-- :N),$(if $(filter c,$1),$(if $(or $(value [K-$3]),$(call ^S,[K-$3],$(or $(value [K-$3]),////////),)),)$`(eval [K-$3]:=$`(subst /1111111111,1/,$`([K-$(call ^E,$3)])1)):D,$(if $(filter x%,$1),$`(foreach ^x,1,:C)$`(if $`(^x),,$`(if $`(foreach ^x,$(patsubst %,1,$(call `urange,2,$(or $(patsubst x%,%,$1),11))),$`(if :C,)),)),$(if $(filter p%,$1),$(subst :,:$` ,$(call ^u,$(patsubst p%,%,$1))):D,$(error TRACE: Unknown mode: '$1')))))))))))))
 `trace-match = $(foreach ;,$(or $(call `trace-prefix,$1),!),$(if $(filter ! ',$;),$(info scam: trace: empty name in trace spec!),$(if $(findstring %,$1),$(foreach ;;,$(filter $;,$(.VARIABLES)),$(call `trace-is-func,$(;;))),$(call `trace-is-func,$;))))
 `*trace-reported* := 
 define `trace
 $(filter %,$(foreach ;,$(filter-out %:-,$1),$(foreach ;;,$(filter-out $(foreach ;;,$(call `filtersub,%:-,%,$1),$(call `trace-prefix,$(;;))),$(call `trace-match,$(filter-out :%,$(subst :, :,$;)))),$(if $(foreach ;;;,$(call `trace-id,$(;;),1),$(if $(if $(filter-out $(call `dict-get,$(;;;),$(`*trace-reported*)),$(or $(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),t)),$(info scam: tracing $(call `trace-unprefix,$(;;)) [mode=$(or $(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),t)] ...)$(call ^S,`*trace-reported*,$(`*trace-reported*) $(call ^k,$(;;;))!=$(call ^d,$(or $(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),t)))),)$(if $(if $(if $(filter-out u%,$(origin [S-$(;;;)])),,1),$(call ^SF,[S-$(;;;)],$(value $(;;)),)),)$(call ^SF,$(;;),$(call `trace-body,$(or $(or $(subst $  ,,$(wordlist 2,999,$(subst :,: ,$;))),t),t),$(subst #,$`",$(;;)),$(;;;),$(value [S-$(;;;)])),)),)$(;;))))
 endef
-`untrace = $(call ^S,`*trace-reported*,)$(if $(call ^Y,$(foreach ;,$1,$(foreach ;;,$(call `trace-id,$;),$(if $(filter-out u%,$(origin [S-$(;;)])),$(if $(call ^SF,$;,$(value [S-$(;;)]),),)$(foreach ;;;,$([K-$(;;)]),$(if $(call ^S,[K-$(;;)],,),)$(call ^k,$(call `trace-unprefix,$;))!=$(call ^d,$(call `tally-decimal,$(;;;))))))),,,,,,,,,$`(if $`1,$`(foreach ;,$`1,$`(call ^d,$`(info scam: counts: $`(call ^dk,$`(call ^u,$`;)) = $`(call ^dv,$`(call ^u,$`;))))))),)$2
+`untrace = $(call ^S,`*trace-reported*,)$(if $(call `untrace',$(foreach ;,$1,$(foreach ;;,$(call `trace-id,$;),$(if $(filter-out u%,$(origin [S-$(;;)])),$(if $(call ^SF,$;,$(value [S-$(;;)]),),)$(foreach ;;;,$([K-$(;;)]),$(if $(call ^S,[K-$(;;)],,),)$(call ^k,$(call `trace-unprefix,$;))!=$(call ^d,$(call `tally-decimal,$(;;;)))))))),)$2
 `trace-exit = $(call `untrace,$(call `dict-keys,$(`*trace-ids*)),)
 `trace-after-load = $(if $(SCAM_TRACE),$(call `trace,$(SCAM_TRACE)))
 $(if $(call ^AE,$`(call `trace-exit)),)
@@ -249,6 +256,9 @@ endef
 define [mod-io]
 # Requires: core string
 # Exports: get-tmp-dir@0[1'% unescape-path}escape-path}resolve-path@2'% clean-path}save-blob@2'% hash-output@1+'% hash-file}hash-files}file-exists?}cp-file-atomic@2[3'% cp-file@2[3'% mkdir-p}read-file}read-lines@1[2[3'% chmod-file@2'% getline}fprintf@2+'% vfprintf@3'% write-file-atomic@2'% mv-file@2'% write-file@2'% write@2'% pipe@2+'% shell-lines@1+'% shellf@1+'% io-sprintf@1+'% io-vsprintf@2'% quote-sh-file}quote-sh-arg}path-basename#1'!|6'^u']|5]0basename]0]1|6]10^d]10&1|0&101&10.]10 path-notdir#1'!|6'^u']|5]0notdir]0]1|6]10^d]10&1|0&101&10.]10 path-dir#1'!|6'^u']|5]0dir]0]1|6]10^d]10&1|0&101&10.]10
+`get-tmp-dir' = $(or $(if $(filter 0,$(call ^n,1,$1)),$(filter-out / //,$(call ^n,1,$(subst $',/ ,$(call ^d,$(call ^n,2,$1)))))),$(error get-tmp-dir failed: $(call ^n,2,$1)))
+`pipe' = $(foreach ;,1 2 3,$(or $(subst $  ,$',$(call `filtersub,$;%,%,$1)),!.))
+`shell-ok' = $(lastword $1) $(call `butlast,$1)
 $(if $(call ^R,core),)
 $(if $(call ^R,string),)
 `ioshell = $(if $(if $(filter S,$(SCAM_DEBUG)),$(call `printf,shell: %q,$1)),)$(shell $1)
@@ -259,11 +269,10 @@ $(if $(call ^R,string),)
 `shellf = $(call `ioshell,$(call `io-vsprintf,$1,$(foreach N,2,$(^v))))
 `shell-vwrap = $(subst !r,,$(call `ioshell,( $(call `io-vsprintf,$1,$2) ) | sed -e '$(if $3,$(if ,,$3,$4!d;))s/!/!1/g;s/ /!0/g;s/	/!+/g;s//!r/g;s/^$`/!./'))
 `shell-lines = $(call `shell-vwrap,$1 ; echo ,$(foreach N,2,$(^v)))
-`shell-ok = $(call ^Y,$(call `shell-vwrap,$1 2>&1 ; echo $`?,$(foreach N,2,$(^v))),,,,,,,,,$`(lastword $`1) $`(call `butlast,$`1))
+`shell-ok = $(call `shell-ok',$(call `shell-vwrap,$1 2>&1 ; echo $`?,$(foreach N,2,$(^v))))
 define `pipe
-$(call ^Y,$(subst !r,,$(call `ioshell,$(if $1,printf '%b' $(call `quote-sh-arg,$(subst 
-,\n,$(subst \,\\,$1))) | ,cat /dev/null | )( ( ( $(call `io-vsprintf,$2,$(foreach N,3,$(^v))) ; echo 1$`? >&3 ; echo ; echo >&2 ) | sed 's/^/2/;s/!/!1/g;s/ /!0/g;s/	/!+/g;s//!r/g' ) 3>&2 2>&1 1>&3 | sed 's/^/3/;s/!/!1/g;s/ /!0/g;s/	/!+/g;s//!r/g' ) 2>&1)),,,,,,,,,$`(foreach ;,1 2 3,$`(or $`(subst $`  ,
-,$`(call `filtersub,$`;%,%,$`1)),!.)))
+$(call `pipe',$(subst !r,,$(call `ioshell,$(if $1,printf '%b' $(call `quote-sh-arg,$(subst 
+,\n,$(subst \,\\,$1))) | ,cat /dev/null | )( ( ( $(call `io-vsprintf,$2,$(foreach N,3,$(^v))) ; echo 1$`? >&3 ; echo ; echo >&2 ) | sed 's/^/2/;s/!/!1/g;s/ /!0/g;s/	/!+/g;s//!r/g' ) 3>&2 2>&1 1>&3 | sed 's/^/3/;s/!/!1/g;s/ /!0/g;s/	/!+/g;s//!r/g' ) 2>&1)))
 endef
 `MAX-ARG-1 := 100000
 `MAX-ARG-REST := 100001
@@ -279,7 +288,7 @@ $(call `echo-bytes,$(subst ',' \ ' ',$(subst
 ,\ n,$(subst \,\ \,$(call `string-to-bytes,$2)))),2>&1 >%F,$1)
 endef
 `mv-file = $(call `shellf,mv -f %F %F 2>&1,$1,$2)
-`write-file-atomic = $(call ^Y,$(call `shell-ok,mktemp %F,$1.tmp.XXXX),,,,,,,,,$`(if $`(filter-out 0,$`(call ^n,1,$`1)),$`(call ^n,2,$`1),$`(or $`(call `write-file,$`(call ^n,2,$`1),$(call ^E,$2)),$`(call `mv-file,$`(call ^n,2,$`1),$(call ^E,$1)))))
+`write-file-atomic = $(call ^X,$(call `shell-ok,mktemp %F,$1.tmp.XXXX),,,,,,,,,$`(if $`(filter-out 0,$`(call ^n,1,$`1)),$`(call ^n,2,$`1),$`(or $`(call `write-file,$`(call ^n,2,$`1),$(call ^E,$2)),$`(call `mv-file,$`(call ^n,2,$`1),$(call ^E,$1)))))
 `vfprintf = $(call `write,$1,$(call `vsprintf,$2,$3))
 `fprintf = $(call `vfprintf,$1,$2,$(foreach N,3,$(^v)))
 define `getline
@@ -317,16 +326,14 @@ define `unescape-path
 $(subst +2,+,$(subst +0, ,$(subst +1,!,$(subst +H,#,$(subst +B,\,$(subst +D,$`,$(subst +C,:,$(subst +S,;,$(subst +E,=,$(subst +P,%,$(subst +T,~,$(subst +A,*,$(subst +Q,?,$(subst +V,|,$(subst +-,	,$(subst +_,
 ,$(subst +.,..,$(subst +@,/,$1))))))))))))))))))
 endef
-define `get-tmp-dir
-$(if $1,$(call ^Y,$(call `pipe,,mktemp -d %F,$(or $(SCAM_TMP),.scam/)$1),,,,,,,,,$`(or $`(if $`(filter 0,$`(call ^n,1,$`1)),$`(filter-out / //,$`(call ^n,1,$`(subst 
-,/ ,$`(call ^d,$`(call ^n,2,$`1)))))),$`(error get-tmp-dir failed: $`(call ^n,2,$`1)))),$(or $(SCAM_TMP),.scam/))
-endef
+`get-tmp-dir = $(if $1,$(call `get-tmp-dir',$(call `pipe,,mktemp -d %F,$(or $(SCAM_TMP),.scam/)$1)),$(or $(SCAM_TMP),.scam/))
 
 endef
 
 define [mod-math]
 # Requires: core math0 math1 math2
 # Exports: atan@1[2'% atan2@2[3'% get-pi@0[1'% cos#1[2'!|6'`xsin']|3]0]1.[]|0]01]0.[]|0]02]0. sin#1[2'!|6'`xsin']|3]01[]|0]01]0.[]|0]02]0. pow@2[3'% exp@1[2'% log@1[2[3'% num-sort}num-lex}format-fixed@1[2[3'% range@2'% frexp10}sum@0+'% min@2'% max@2'% abs#1'!|5'patsubst"3[-!p"3[!p"0[1[. 0-#1'!|5'subst"3[--"3[]."7[]|3]0-[]|0]01]0. <=#2'!|5'if"5[findstring[]|3]01[]|6]0`math-cmp]0&|0&01&0.]10&|0&02&0.]0"3[]."3[1 >=#2'!|5'if"5[findstring[]|3]01[]|6]0`math-cmp]0&|0&02&0.]10&|0&01&0.]0"3[]."3[1 =#2'!|5'if"6[`math-cmp[]1|0]101]10.]0]1|0]102]10."3[]."3[1 !1=#2'!|5'if"6[`math-cmp[]1|0]101]10.]0]1|0]102]10."3[1 <#2'!|5'findstring"3[1"6[`math-cmp[]1|0]102]10.]0]1|0]101]10.[ >#2'!|5'findstring"3[1"6[`math-cmp[]1|0]101]10.]0]1|0]102]10. round@1[2[3'% trunc#1'!|6'`raw-round']|0]01]0.[]|3]00[]|3]01 ceil#1'!|6'`raw-round']|0]01]0.[]|3]00[]|3]03 floor#1'!|6'`raw-round']|0]01]0.[]|3]00[]|3]09 mod#2'!|6'`binop']|3]0mod[]|0]01]0.[]|0]02]0. ^#2'!|6'`binop']|3]0pwr[]|0]01]0.[]|0]02]0. *~#2[3'!|6'`prec-op']|3]0mulp[]|0]01]0.[]|0]02]0.[]|0]03]0. /#2[3'!|6'`prec-op']|3]0div[]|0]01]0.[]|0]02]0.[]|0]03]0.[]|3]01 //#2'!|6'`binop']|3]0fdiv[]|0]01]0.[]|0]02]0. *#2'!|6'`binop']|3]0mul[]|0]01]0.[]|0]02]0. -#2'!|6'`binop']|3]0sub[]|0]01]0.[]|0]02]0. +#2'!|6'`binop']|3]0add[]|0]01]0.[]|0]02]0.
+`frexp10' = $(if $(word 3,$1),$(call `u2d,$(findstring -,$(word 2,$1))0.$(subst $  ,,$(wordlist 3,99999999,$1)) $(word 1,$1)),$(if $1,0 0))
 $(if $(call ^R,core),)
 $(if $(call ^R,math0),)
 $(if $(call ^R,math1),)
@@ -349,7 +356,7 @@ $(if $(call ^R,math2),)
 `fp-sum = $(if $(word 2,$1),$(call `fp-add,$(call ^n,1,$1),$(call `fp-sum,$(wordlist 2,99999999,$1))),$(call ^n,1,$1))
 `sum-vec = $(if $(findstring !,$1),$(if $(findstring !0,$(subst !1,!0,$1)),$(call `sum-vec,$(call ^u,$1))),$(call `u2d,$(call `fp2u,$(call `fp-sum,$(foreach ;,$(call `d2u,$1),$(call ^d,$(call `u2fp,$(call ^u,$;))))))))
 `sum = $(call `sum-vec,$(call ^u,$(foreach N,1,$(^v))))
-`frexp10 = $(call ^Y,$(subst ., ,$(filter-out %0,$(subst 0 ,0.,$(call `u2fp,$(call `d2u,$1))))),,,,,,,,,$`(if $`(word 3,$`1),$`(call `u2d,$`(findstring -,$`(word 2,$`1))0.$`(subst $`  ,,$`(wordlist 3,99999999,$`1)) $`(word 1,$`1)),$`(if $`1,0 0)))
+`frexp10 = $(call `frexp10',$(subst ., ,$(filter-out %0,$(subst 0 ,0.,$(call `u2fp,$(call `d2u,$1))))))
 `uv-trim = $(wordlist $(words $(subst 1,1 ,$(subst 0,,$1$21))),$(words $3),$(subst 1,1 ,$(subst 0,,$2)) $3)
 `uv-range = $(if $(findstring 1,$(call `u-cmp,$1,$2)),,$(call `uv-trim,$(lastword $1),$(subst $(lastword $2),0,0111111111),$(if $(if $(word 2,$1),,1),0 1 2 3 4 5 6 7 8 9 )$(foreach ;,$(call `uv-range,$(or $(filter-out %x,$1x),01),$(filter-out %x,$2x)),$;0 $;1 $;2 $;3 $;4 $;5 $;6 $;7 $;8 $;9 )))
 `uv-sign-range = $(if $3,$(addprefix -,$(call `reverse,$(call `uv-range,$(if $4,$2,1),$1))) )$(if $4,,$(call `uv-range,$(if $3,0,$1),$2))
@@ -374,27 +381,28 @@ endef
 define [mod-peg]
 # Requires: core string
 # Exports: peg-c@2'% peg-+}peg-at}peg-?}peg-not}peg-*}peg-and@0+'% peg-or@0+'% peg-p@1[2[3'% peg-empty@0[1'% un-lex}gen-lex}lex@2'%
+`gen-lex' = $`(filter %,$`(call ^X,$`1,,,,,,,,,$(call ^E,$1)))
 $(if $(call ^R,core),)
 $(if $(call ^R,string),)
 `spread-tokens = $(if $1,$(call `spread-tokens,$(wordlist 2,99999999,$1),$(subst $(word 1,$1), $(word 1,$1) ,$2)),$(filter %,$2))
 `lex = $(call `spread-tokens,$2,$(call ^d,$1))
-`gen-lex = $(call ^Y,$(call `gen-polysub,$(foreach ;,$1,$(call ^d,$;)),$(foreach ;,$1,$(call ^d, $; )),$`(call ^d,$`1)),,,,,,,,,$``(filter %,$``(call ^Y,$``1,,,,,,,,,$`(call ^E,$`1))))
+`gen-lex = $(call `gen-lex',$(call `gen-polysub,$(foreach ;,$1,$(call ^d,$;)),$(foreach ;,$1,$(call ^d, $; )),$`(call ^d,$`1)))
 `un-lex = $(call ^u,$(subst $  ,,$1))
 `peg-empty = $`(call `append,$`2,$(call ^E,$1))
 `peg-p = $(if $(and $2,$(findstring $(subst $10,1,%0),1)),$`(if $`(filter-out $(call ^E,$2),$`(word $`2,$`1)),$`(call `append,$`(call `1+,$`2),$(call ^E,$3))),$(if $2,$`(if $`(filter-out $(call ^E,$2),$`(filter $(call ^E,$1),$`(word $`2,$`1))),$`(call `append,$`(call `1+,$`2),$(call ^E,$3))),$`(if $`(filter $(call ^E,$1),$`(word $`2,$`1)),$`(call `append,$`(call `1+,$`2),$(call ^E,$3)))))
-`match-or = $(if $3,$(or $(call ^Y,$1,$2,,,,,,,,$(call ^n,1,$3)),$(call `match-or,$1,$2,$(wordlist 2,99999999,$3))))
+`match-or = $(if $3,$(or $(call ^X,$1,$2,,,,,,,,$(call ^n,1,$3)),$(call `match-or,$1,$2,$(wordlist 2,99999999,$3))))
 `peg-or-v = $`(call `match-or,$`1,$`2,$(call ^E,$1))
 `peg-or = $(call `peg-or-v,$(foreach N,1,$(^v)))
-`match-and = $(if $3,$(call ^Y,$(call ^Y,$1,$2,,,,,,,,$(call ^n,1,$3)),,,,,,,,,$`(if $`1,$`(call `match-and,$(call ^E,$1),$`(word 1,$`1),$`(wordlist 2,99999999,$(call ^E,$3)),$`(call `append,$(call ^E,$4),$`(wordlist 2,99999999,$`1))))),$(call `append,$2,$4))
+`match-and = $(if $3,$(call ^X,$(call ^X,$1,$2,,,,,,,,$(call ^n,1,$3)),,,,,,,,,$`(if $`1,$`(call `match-and,$(call ^E,$1),$`(word 1,$`1),$`(wordlist 2,99999999,$(call ^E,$3)),$`(call `append,$(call ^E,$4),$`(wordlist 2,99999999,$`1))))),$(call `append,$2,$4))
 `peg-and-v = $`(call `match-and,$`1,$`2,$(call ^E,$1),)
 `peg-and = $(call `peg-and-v,$(foreach N,1,$(^v)))
-`match* = $(call ^Y,$(call ^Y,$1,$2,,,,,,,,$3),,,,,,,,,$`(if $`1,$`(call `match*,$(call ^E,$1),$`(word 1,$`1),$(call ^E,$3),$`(call `append,$(call ^E,$4),$`(wordlist 2,99999999,$`1))),$`(call `append,$(call ^E,$2),$(call ^E,$4))))
+`match* = $(call ^X,$(call ^X,$1,$2,,,,,,,,$3),,,,,,,,,$`(if $`1,$`(call `match*,$(call ^E,$1),$`(word 1,$`1),$(call ^E,$3),$`(call `append,$(call ^E,$4),$`(wordlist 2,99999999,$`1))),$`(call `append,$(call ^E,$2),$(call ^E,$4))))
 `peg-* = $`(call `match*,$`1,$`2,$(call ^E,$1),)
-`peg-not = $`(if $`(call ^Y,$`1,$`2,,,,,,,,$(call ^E,$1)),,$`(call `append,$`2,))
+`peg-not = $`(if $`(call ^X,$`1,$`2,,,,,,,,$(call ^E,$1)),,$`(call `append,$`2,))
 `peg-? = $(call `peg-or,$1,$(call `peg-empty))
-`peg-at = $`(if $`(call ^Y,$`1,$`2,,,,,,,,$(call ^E,$1)),$`(call `append,$`2,))
+`peg-at = $`(if $`(call ^X,$`1,$`2,,,,,,,,$(call ^E,$1)),$`(call `append,$`2,))
 `peg-+ = $(call `peg-and,$1,$(call `peg-*,$1))
-`peg-c = $`(call ^Y,$`(call ^Y,$`1,$`2,,,,,,,,$(call ^E,$2)),,,,,,,,,$``(if $``1,$``(call `append,$``(word 1,$``1),$``(call `append,$``(wordlist 2,99999999,$``1),$``(call ^k,$(call ^E,$1,`))!=$``(call ^d,$``(wordlist $``(call `1+,$`(call ^E,$`2)),$``(word 1,$``1),. $`(call ^E,$`1)))))))
+`peg-c = $`(call ^X,$`(call ^X,$`1,$`2,,,,,,,,$(call ^E,$2)),,,,,,,,,$``(if $``1,$``(call `append,$``(word 1,$``1),$``(call `append,$``(wordlist 2,99999999,$``1),$``(call ^k,$(call ^E,$1,`))!=$``(call ^d,$``(wordlist $``(call `1+,$`(call ^E,$`2)),$``(word 1,$``1),. $`(call ^E,$`1)))))))
 
 endef
 
@@ -428,7 +436,7 @@ define [mod-utf8]
 # Exports: utf8-decode}utf8-encode@1'%
 $(if $(call ^R,core),)
 $(if $(call ^R,math),)
-`utf-seq = $(if $2,$(call ^Y,$(call `binop,fdiv,$1,64),$(wordlist 2,99999999,$2),$(word 1,$2),,,,,,,$`(call `append,$`(call `utf-seq,$`1,$`2),$`(call `binop,add,$`3,$`(call `binop,sub,$(call ^E,$1),$`(call `binop,mul,$`1,64))))))
+`utf-seq = $(if $2,$(call ^X,$(call `binop,fdiv,$1,64),$(wordlist 2,99999999,$2),$(word 1,$2),,,,,,,$`(call `append,$`(call `utf-seq,$`1,$`2),$`(call `binop,add,$`3,$`(call `binop,sub,$(call ^E,$1),$`(call `binop,mul,$`1,64))))))
 `utf8-encode = $(foreach ;,$1,$(if $(findstring 1,$(call `math-cmp,128,$;)),$;,$(if $(findstring 1,$(call `math-cmp,2048,$;)),$(call `utf-seq,$;,128 192),$(if $(findstring 1,$(call `math-cmp,65536,$;)),$(call `utf-seq,$;,128 128 224),$(if $(findstring 1,$(call `math-cmp,1114112,$;)),$(call `utf-seq,$;,128 128 128 240),?)))))
 `plex2 = $(foreach ;,$1,$(foreach ;;,$1,$;$(;;)))
 `byte-to-bin-a := $(wordlist 2,99999999,$(call `plex2,$(call `plex2,00 01 10 11)))
@@ -452,6 +460,10 @@ endef
 define [mod-memo]
 # Requires: core io string
 # Exports: memo-chmod-file@2'% memo-write-file@2'% memo-read-file}memo-hash-file}memo-on#2'!|6'`memo-minus']|5]0if]0]1|4]10`*memo-on*]0]1|3]10&.]0]1|8]10&|6&0`memo-start-session&0&11|0&1101&110.&0]10&|3&01[]|0]02]0. memo-blob-call@1+'% memo-call@1+'% memo-apply@2'% memo-io@1+'% memo-drop@0'%
+`memo-do-apply'' = $(call ^S,`*memo-cache*,$(call `append,$(call ^k,$2)!=$(call ^d,$1),$(`*memo-cache*)))$1
+`memo-do-apply' = $(if $1,$(call ^dv,$1),$(call `memo-do-apply'',$(foreach ;,$(call ^d,$(call `memo-playback,$2 $3)),$(if $(filter !1:PMDB0!0%,$;!0),$(call ^n,2,$(call ^u,$;)),$(call `memo-record,$2 $3,$2,$3))),$2 $3))
+`memo-record' = $(if $(if $(`*memo-key*),$(if $(call `memo-add-entry,!:PMDB0 $(call ^d,$1)),)$(call ^S,`*memo-db*,$(call `append,$(`*memo-db*),$(`*memo-log*)))),)$1
+`memo-playback' = $(if $(filter !:PMDB0,$(word 1,$1)),$1,$(if $(filter !:PMDB1,$(word 1,$1)),$(call `memo-playback,$(call ^d,$(call ^n,2,$1)) $(call ^d,$(if $(filter :%,$(call ^n,3,$1)),$(call `memo-do-apply,$(patsubst :%,%,$(call ^n,3,$1)),$(wordlist 4,99999999,$1)),$(call ^NA,$(call ^n,3,$1),$(wordlist 4,99999999,$1))))),))
 $(if $(call ^R,core),)
 $(if $(call ^R,io),)
 $(if $(call ^R,string),)
@@ -467,14 +479,14 @@ $(if $(call ^R,string),)
 `*memo-dir* := 
 `memo-dir = $(if $(if $(if $(findstring $(subst $(call ^u,$(dir $(call ^d,$(`*memo-db-file*))))0,1,$(`*memo-dir*)0),1),,1),$(call ^S,`*memo-dir*,$(call ^u,$(dir $(call ^d,$(`*memo-db-file*)))))$(call `mkdir-p,$(`*memo-dir*))),)$(`*memo-dir*)
 $(call ^at,!1:PMDB0!=Result!0S !1:PMDB1!=IO!0S!0S!0L)
-`memo-playback = $(call ^Y,$(call `dict-get,$1,$(`*memo-cache*) $(`*memo-db*)),,,,,,,,,$`(if $`(filter !:PMDB0,$`(word 1,$`1)),$`1,$`(if $`(filter !:PMDB1,$`(word 1,$`1)),$`(call `memo-playback,$`(call ^d,$`(call ^n,2,$`1)) $`(call ^d,$`(if $`(filter :%,$`(call ^n,3,$`1)),$`(call `memo-do-apply,$`(patsubst :%,%,$`(call ^n,3,$`1)),$`(wordlist 4,99999999,$`1)),$`(call ^NA,$`(call ^n,3,$`1),$`(wordlist 4,99999999,$`1))))),)))
+`memo-playback = $(call `memo-playback',$(call `dict-get,$1,$(`*memo-cache*) $(`*memo-db*)))
 `memo-add-entry = $(call ^S,`*memo-log*,$(call `append,$(`*memo-log*),$(call ^k,$(`*memo-key*))!=$(call ^d,$1)))
-`memo-record = $(call ^S,`*memo-key*,$(call ^S,`*memo-key*,$1,$(`*memo-key*)),$(call ^S,`*memo-log*,$(call ^S,`*memo-log*,,$(`*memo-log*)),$(call ^Y,$(call ^NA,$2,$3),$1,,,,,,,,$`(if $`(if $`(`*memo-key*),$`(if $`(call `memo-add-entry,!:PMDB0 $`(call ^d,$`1)),)$`(call ^S,`*memo-db*,$`(call `append,$`(`*memo-db*),$`(`*memo-log*)))),)$`1)))
+`memo-record = $(call ^S,`*memo-key*,$(call ^S,`*memo-key*,$1,$(`*memo-key*)),$(call ^S,`*memo-log*,$(call ^S,`*memo-log*,,$(`*memo-log*)),$(call `memo-record',$(call ^NA,$2,$3),$1)))
 `memo-drop = $(call ^S,`*memo-key*,)$(call `memo-save-session)
 `get-io-tag = $(if $1,$(if $(filter !:PMDB1,$(word 1,$1)),$(call ^n,2,$1),))
 `memo-log-io = $(if $(if $(`*memo-key*),$(call ^S,`*memo-key*,$(call ^d,$(or $(call `get-io-tag,$(call `dict-get,$(`*memo-key*),$(`*memo-db*)),$1,$2),$(if $(call `memo-add-entry,!:PMDB1 $(call ^d,$(`*memo-tag*)) $(call ^d,$1) $2),)$(call ^S,`*memo-tag*,$(call `1+,$(`*memo-tag*)),$(`*memo-tag*)))) $(call ^d,$3))),)$3
 `memo-io = $(call `memo-log-io,$1,$(foreach N,2,$(^v)),$(call ^NA,$1,$(foreach N,2,$(^v))))
-`memo-do-apply = $(call ^Y,$(call `dict-find,$1 $2,$(`*memo-cache*)),$1,$2,,,,,,,$`(if $`1,$`(call ^dv,$`1),$`(call ^Y,$`(foreach ;,$`(call ^d,$`(call `memo-playback,$`2 $`3)),$`(if $`(filter !1:PMDB0!0%,$`;!0),$`(call ^n,2,$`(call ^u,$`;)),$`(call `memo-record,$`2 $`3,$`2,$`3))),$`2 $`3,,,,,,,,$``(call ^S,`*memo-cache*,$``(call `append,$``(call ^k,$``2)!=$``(call ^d,$``1),$``(`*memo-cache*)))$``1)))
+`memo-do-apply = $(call `memo-do-apply',$(call `dict-find,$1 $2,$(`*memo-cache*)),$1,$2)
 `memo-apply = $(call `memo-log-io,:$1,$2,$(call `memo-do-apply,$1,$2))
 `memo-call = $(call `memo-apply,$1,$(foreach N,2,$(^v)))
 `blobify = $(call `save-blob,$(call `memo-dir),$(call ^NA,$1,$(foreach N,2,$(^v))))
@@ -499,14 +511,17 @@ endef
 `memo-hash-file = $(call `memo-io,`do-hash-file,$1)
 `memo-read-file = $(if $(call `memo-hash-file,$1),)$(call `read-file,$1)
 `do-write-blob = $(if $(if $(findstring $(subst $(call `dict-get,$1,$(`*memo-hashes*))0,1,$(call ^u,$(notdir $(call ^d,$2)))0),1),,1),$(call ^S,`*memo-hashes*,$(call `dict-remove,$1,$(`*memo-hashes*)))$(call `cp-file-atomic,$2,$1,1))
-`memo-write-file = $(if $(`*memo-on*),$(call ^Y,$(call `save-blob,$(call `memo-dir),$2),,,,,,,,,$`(call `memo-io,`do-write-blob,$(call ^E,$1),$`1)),$(call `write-file,$1,$2))
+`memo-write-file = $(if $(`*memo-on*),$(call ^X,$(call `save-blob,$(call `memo-dir),$2),,,,,,,,,$`(call `memo-io,`do-write-blob,$(call ^E,$1),$`1)),$(call `write-file,$1,$2))
 `memo-chmod-file = $(call `memo-io,`chmod-file,$1,$2)
 
 endef
 
 define [mod-compile]
-# Requires: core parse gen gen0 gen1 io memo escape string macros
+# Requires: core parse gen gen0 gen1 io memo escape string gen0b
 # Exports: compile-text@2[3[4[5'% run-program@2[3[4'% build-program@2[3[4'% ModSuccess{5'i'S[L']:Mod0 ModError{5'i'S']:Mod1
+`parse-and-gen' = $(call `gen1,$(wordlist 2,99999999,$1),$2) env!=$(call ^d,$(call ^n,1,$1))
+`get-module' = $(or $(if $(filter !:Mod0,$(word 1,$1)),$(if $(word 1,$(foreach ;,$(wordlist 3,99999999,$1),$(foreach ;;,$(call ^d,$(call ^dv,$;)),$(if $(filter !1:EDefn4!0%,$(;;)!0),1,)))),$(if $(`*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$(if $(call `memo-hash-file,$(if $(`*is-boot*),$(`*obj-dir*)$(call ^n,2,$1).o,$(call ^n,2,$1).o)),)$(call ^R,$(call ^n,2,$1)))),),$1)
+`modid-deps' = $(if $(call `assert-x,$1,compile.scm:352),)$(call ^u,$(call `filtersub,\#!0Requires:!0%,%,$1))
 $(if $(call ^R,core),)
 $(if $(call ^R,parse),)
 $(if $(call ^R,gen),)
@@ -516,7 +531,7 @@ $(if $(call ^R,io),)
 $(if $(call ^R,memo),)
 $(if $(call ^R,escape),)
 $(if $(call ^R,string),)
-$(if $(call ^R,macros),)
+$(if $(call ^R,gen0b),)
 `*compiling* := 
 define `build-message
 $(or $(`*is-quiet*),$(call `write,2,... $1 $2
@@ -526,7 +541,7 @@ define `bail-if
 $(if $1,$(if $(call `fprintf,2,scam: %s
 ,$1),)$(if $(call `memo-drop),)1,)
 endef
-`descendants = $(if $2,$(call `descendants,$1,$(call `append,$(wordlist 2,99999999,$2),$(call `vec-filter,filter-out,$2 $3,$(call ^Y,$(call ^n,1,$2),,,,,,,,,$1))),$(call `append,$3,$(word 1,$2))),$3)
+`descendants = $(if $2,$(call `descendants,$1,$(call `append,$(wordlist 2,99999999,$2),$(call `vec-filter,filter-out,$2 $3,$(call ^X,$(call ^n,1,$2),,,,,,,,,$1))),$(call `append,$3,$(word 1,$2))),$3)
 $(call ^SF,`env-cmp,$(call `gen-polysub,' [ ] | @ { } # " & !10 !110 !111 1:IL !1=!11:EDefn1'i' !1=!11:EDefn @1'%!0 {2'i'..' ']:IL ]11,!1A !1B !1C !1D !1E !1F !1G !1H !1I !1J ' [ ] | @ { } # " &))
 $(call ^SF,`env-exp,$(call `gen-polysub,& " # } { @ | ] [ ' !1J !1I !1H !1G !1F !1E !1D !1C !1B !1A,]11 ']:IL {2'i'..' @1'%!0 !1=!11:EDefn !1=!11:EDefn1'i' 1:IL !111 !110 !10 & " # } { @ | ] [ '))
 define `env-compress
@@ -545,7 +560,7 @@ $(if $(or $(filter %.scm,$(call ^d,$1)),$(`*is-boot*)),$(if $(call `memo-hash-fi
 endef
 `deps-min = $(filter-out $(subst $`,,$(filter %$`,$1)),$1)
 define `modid-deps
-$(call ^Y,$(call `modid-read-lines,$(subst $`,,$1),4),,,,,,,,,$`(if $`(call `assert-x,$`1,compile.scm:353),)$`(call ^u,$`(call `filtersub,#!0Requires:!0%,%,$`1)))
+$(call `modid-deps',$(call `modid-read-lines,$(subst $`,,$1),4))
 endef
 `modid-import = $(call `env-parse,$(call `modid-read-lines,$1,4),$2)
 `locate-source = $(call ^n,1,$(filter-out !.,$(foreach ;,$(foreach ;,$(call `cons,$1,$(addsuffix /,$(filter-out !.,$(call `split,:,$(SCAM_LIBPATH))))),$(call ^d,$(call `resolve-path,$(call ^u,$;),$2))),$(call ^d,$(if $(call `memo-hash-file,$(call ^u,$;)),$(call ^u,$;))))))
@@ -562,12 +577,12 @@ $ endef
 endef
 $(call ^at,!1:Mod0!=ModSuccess!0S!0L !1:Mod1!=ModError!0S)
 `get-source-module = $(or $(if $(if $3,,1),!:Mod1 $(call ^d,$(call `sprintf,cannot find `%s`,$1))),$(if $(call `memo-call,$(if $2,`compile-module,`compile-and-test-module),$3),!:Mod1 $(call ^d,$(call `sprintf,compilation of `%s` failed,$3))),!:Mod0 $(call ^d,$(call `modid-from-source,$3)) $(call `memo-blob-call,`modid-import,$(call `modid-from-source,$3),$2))
-`get-module = $(call ^Y,$(if $(filter %.scm,$(call ^d,$1)),$(call `get-source-module,$1,$3,$(call `locate-source,$(call ^u,$(dir $(call ^d,$2))),$1)),$(if $(if $(`*is-boot*),!:Mod1 standard!0modules!0not!0available!0with!0--boot),)$(if $(if $(filter-out u%,$(flavor [mod-$1])),1),!:Mod0 $(call ^d,$1) $(call `modid-import,$1,),!:Mod1 $(call ^d,$(call `sprintf,standard module `%s` not found,$1)))),,,,,,,,,$`(or $`(if $`(filter !:Mod0,$`(word 1,$`1)),$`(if $`(word 1,$`(foreach ;,$`(wordlist 3,99999999,$`1),$`(foreach ;;,$`(call ^d,$`(call ^dv,$`;)),$`(if $`(filter !1:EDefn4!0%,$`(;;)!0),1,)))),$`(if $`(`*is-boot*),!:Mod1 module!0has!0executable!0macros!0(boot=true),$`(if $`(call `memo-hash-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call ^n,2,$`1).o,$`(call ^n,2,$`1).o)),)$`(call ^R,$`(call ^n,2,$`1)))),),$`1))
+`get-module = $(call `get-module',$(if $(filter %.scm,$(call ^d,$1)),$(call `get-source-module,$1,$3,$(call `locate-source,$(call ^u,$(dir $(call ^d,$2))),$1)),$(if $(if $(`*is-boot*),!:Mod1 standard!0modules!0not!0available!0with!0--boot),)$(if $(if $(filter-out u%,$(flavor [mod-$1])),1),!:Mod0 $(call ^d,$1) $(call `modid-import,$1,),!:Mod1 $(call ^d,$(call `sprintf,standard module `%s` not found,$1)))))
 `M.require = $(or $(if $(call `skip-flags,$3),$(call `gen-error,$(call ^n,1,$(call `skip-flags,$3)),too many arguments to %s,$(call `symbol-name,$2))),$(if $(filter !:P1,$(word 1,$(call ^n,1,$3))),$(foreach ;,$(call ^d,$(call `get-module,$(call ^n,3,$(call ^n,1,$3)),$(`*compile-file*),$(filter &private,$(call `get-flags,$3)))),$(if $(filter !1:Mod1!0%,$;!0),$(call `gen-error,$(call ^n,1,$3),%s: %s,$(call `symbol-name,$2),$(call ^n,2,$(call ^u,$;))),$(if $(filter !1:Mod0!0%,$;!0),$(if $4,!:IL10 require $(call ^d,$(call ^n,2,$(call ^u,$;))$`$(if $(filter &private,$(call `get-flags,$3)),$`)),!:IL11 $(call ^d,$(wordlist 3,99999999,$(call ^u,$;))) !:IL7 $(call ^d,!:IL10 require $(call ^d,$(call ^n,2,$(call ^u,$;)))) $(call ^d,$(call `ICall,^R,$(call ^d,!:IL3 $(call ^d,$(call ^n,2,$(call ^u,$;))))))),))),$(call `err-expected,Q,$(call ^n,1,$3),$2,STRING,(%s STRING),$(call `symbol-name,$2))))
 `M.bundle = $(call `M.require,$1,$2,$3,1)
 `runtime-module-name = $(if $(`*is-boot*),$(filter-out $(subst -q.scm,.scm,$(call ^d,$1)),runtime.scm),runtime)
 `compile-prelude = $(foreach ;,$(call `runtime-module-name,$1),$(foreach ;;,$(call ^d,$(call `get-module,$;,.,)),$(if $(filter !1:Mod0!0%,$(;;)!0),$(wordlist 3,99999999,$(call ^u,$(;;))),$(if $(filter !1:Mod1!0%,$(;;)!0),$(error $(call ^n,2,$(call ^u,$(;;)))),))))
-`parse-and-gen = $(if $(if $1,,1),errors!=$(call ^d,$(call ^d,!:P8 0 File!0is!0empty!0or!0does!0not!0exist)),$(call ^S,`*compile-subject*,$(call ^S,`*compile-subject*,$(call `penc,$1),$(`*compile-subject*)),$(call ^S,`*compile-file*,$(call ^S,`*compile-file*,$3,$(`*compile-file*)),$(call ^Y,$(call `gen0,$(call `parse-subject,$(`*compile-subject*)),$2),$4,,,,,,,,$`(call `gen1,$`(wordlist 2,99999999,$`1),$`2) env!=$`(call ^d,$`(call ^n,1,$`1))))))
+`parse-and-gen = $(if $(if $1,,1),errors!=$(call ^d,$(call ^d,!:P8 0 File!0is!0empty!0or!0does!0not!0exist)),$(call ^S,`*compile-subject*,$(call ^S,`*compile-subject*,$(call `penc,$1),$(`*compile-subject*)),$(call ^S,`*compile-file*,$(call ^S,`*compile-file*,$3,$(`*compile-file*)),$(call `parse-and-gen',$(call `gen0,$(call `parse-subject,$(`*compile-subject*)),$2),$4))))
 define `trim-hashbang
 $(if $(filter #%,$(word 1,$1)),
 $(call `concat-vec,$(wordlist 2,99999999,$(call `split,
@@ -575,14 +590,14 @@ $(call `concat-vec,$(wordlist 2,99999999,$(call `split,
 ),$1)
 endef
 define `compile-module
-$(or $(if $(call `vec-filter,filter,$(call ^d,$1),$(`*compiling*)),$(call `bail-if,dependency loop: $(call `concat-vec,$(call `conj,$(`*compiling*),$1), -> ))),$(call ^S,`*compiling*,$(call ^S,`*compiling*,$(call `conj,$(`*compiling*),$1),$(`*compiling*)),$(if $(call `build-message,compile,$1),)$(call ^Y,$(call `parse-and-gen,$(call `trim-hashbang,$(call `memo-read-file,$1)),$(call `compile-prelude,$1),$1,1),$1,,,,,,,,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(if $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`(call `trim-hashbang,$`(call `memo-read-file,$(call ^E,$1))),$`2)))),)$`(if $`(call `memo-drop),)1,$`(if $`(call `bail-if,$`(call `memo-write-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call `modid-from-source,$`2).o,$`(call `modid-from-source,$`2).o),# Requires: $`(call `deps-min,$`(call ^dv,$`(filter require!=%,$`1)))
-$`(call ^Y,$`(filter p:% x:%,$`(foreach ;,$`(call `dict-compact,$`(call ^dv,$`(filter env!=%,$`1))),$`(word 2,$`(call ^dv,$`;)):$`(call ^k,$`(call ^dk,$`;))!=$`(call ^d,$`(word 1,$`(call ^dv,$`;)) i $`(wordlist 3,99999999,$`(call ^dv,$`;))))),,,,,,,,,# Exports: $``(call `env-compress,$``(call `filtersub,x:%,%,$``1))
+$(or $(if $(call `vec-filter,filter,$(call ^d,$1),$(`*compiling*)),$(call `bail-if,dependency loop: $(call `concat-vec,$(call `conj,$(`*compiling*),$1), -> ))),$(call ^S,`*compiling*,$(call ^S,`*compiling*,$(call `conj,$(`*compiling*),$1),$(`*compiling*)),$(if $(call `build-message,compile,$1),)$(call ^X,$(call `parse-and-gen,$(call `trim-hashbang,$(call `memo-read-file,$1)),$(call `compile-prelude,$1),$1,1),$1,,,,,,,,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(if $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`(call `trim-hashbang,$`(call `memo-read-file,$(call ^E,$1))),$`2)))),)$`(if $`(call `memo-drop),)1,$`(if $`(call `bail-if,$`(call `memo-write-file,$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call `modid-from-source,$`2).o,$`(call `modid-from-source,$`2).o),# Requires: $`(call `deps-min,$`(call ^dv,$`(filter require!=%,$`1)))
+$`(call ^X,$`(filter p:% x:%,$`(foreach ;,$`(call `dict-compact,$`(call ^dv,$`(filter env!=%,$`1))),$`(word 2,$`(call ^dv,$`;)):$`(call ^k,$`(call ^dk,$`;))!=$`(call ^d,$`(word 1,$`(call ^dv,$`;)) i $`(wordlist 3,99999999,$`(call ^dv,$`;))))),,,,,,,,,# Exports: $``(call `env-compress,$``(call `filtersub,x:%,%,$``1))
 # Private: $``(call `env-compress,$``(call `filtersub,p:%,%,$``1)) 
 )$`(call ^dv,$`(filter code!=%,$`1)))),)))))
 endef
 `modid-deps-all = $(call `deps-min,$(call `descendants,$(value `modid-deps),$(call `uniq,$(call `cons,$1,$(foreach ;,$(call `runtime-module-name,),$(if $;,$(call ^d,$(if $(filter %.scm,$;),$(call `modid-from-source,$;),$;)$`)))))))
 define `link
-$(if $(call `build-message,link,$1),)$(call `bail-if,$(or $(call `memo-write-file,$1,$(call ^Y,$(call `modid-deps-all,$2),,,,,,,,,#!/bin/bash
+$(if $(call `build-message,link,$1),)$(call `bail-if,$(or $(call `memo-write-file,$1,$(call ^X,$(call `modid-deps-all,$2),,,,,,,,,#!/bin/bash
 :; for v in "$``{@//!/!1}" ; do v=$``{v// /!0} ; v=$``{v//	/!+}; a[++n]=$``{v:-!.} ; done ; LC_ALL=C SCAM_ARGS=$``{a[*]} exec make -Rr --no-print-directory -f"$``0" 9>&1
 SCAM_MAIN := $`(call `protect-rhs,$`(call ^d,$(call ^E,$2)) $`(call `gen-native-name,main,))
 ^uid := $`(call `hash-output,cat -- %V,$`(filter-out !.,$`(foreach ;,$`(subst $``,,$`1),$`(call ^d,$`(if $`(or $`(filter %.scm,$`(call ^d,$`(call ^u,$`;))),$`(`*is-boot*)),$`(if $`(`*is-boot*),$`(`*obj-dir*)$`(call ^u,$`;).o,$`(call ^u,$`;).o))))))
@@ -597,13 +612,15 @@ $(call ^S,`*obj-dir*,$(call ^S,`*obj-dir*,$(if $3,$(patsubst %//,%/,$3/),.scam/)
 ,$1),)1,$(or $(call `memo-call,$(if ,`compile-module,`compile-and-test-module),$1),$(call `memo-call,`link,$2,$(call `modid-from-source,$1)))))))
 endef
 `run-program = $(call ^S,`*obj-dir*,$(call ^S,`*obj-dir*,$(if $3,$(patsubst %//,%/,$3/),.scam/)$(or $(`cache-instance),$(call ^S,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^S,`*is-quiet*,$(call ^S,`*is-quiet*,$4,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(if $(call `memo-start-session,$(`*obj-dir*)db),)1),$(or $(call `memo-call,$(if ,`compile-module,`compile-and-test-module),$1),$(call `run,$1,$2)))))
-`compile-text = $(if $(call `assert-x,$(if $(`*is-boot*),,1),compile.scm:846),)$(call ^S,`*obj-dir*,$(call ^S,`*obj-dir*,$(if $4,$(patsubst %//,%/,$4/),.scam/)$(or $(`cache-instance),$(call ^S,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^S,`*is-quiet*,$(call ^S,`*is-quiet*,$5,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(if $(call `memo-start-session,$(`*obj-dir*)db),)1),$(call `parse-and-gen,$1,$(or $3,$(call `compile-prelude,)),$2,))))
+`compile-text = $(if $(call `assert-x,$(if $(`*is-boot*),,1),compile.scm:845),)$(call ^S,`*obj-dir*,$(call ^S,`*obj-dir*,$(if $4,$(patsubst %//,%/,$4/),.scam/)$(or $(`cache-instance),$(call ^S,`cache-instance,$(call `hash-output,echo %s $`(pwd),$(^uid))),$(`cache-instance))/,$(`*obj-dir*)),$(call ^S,`*is-quiet*,$(call ^S,`*is-quiet*,$5,$(`*is-quiet*)),$(call `memo-minus,$(if $(`*memo-on*),,$(if $(call `memo-start-session,$(`*obj-dir*)db),)1),$(call `parse-and-gen,$1,$(or $3,$(call `compile-prelude,)),$2,))))
 
 endef
 
 define [mod-repl]
 # Requires: core io parse compile gen trace
 # Exports: repl-ep@1[2[3[4'% repl@0[1[2[3'%
+`load-env' = $(if $(call ^X,,,,,,,,,,$(call ^dv,$(filter code!=%,$1))),)$(call ^dv,$(filter env!=%,$1))
+`eval-and-print' = $(if $1,$(call ^S,*2,$(*1))$(call ^S,*1,$1)$(info $(call `format,$1)))
 $(if $(call ^R,core),)
 $(if $(call ^R,io),)
 $(if $(call ^R,parse),)
@@ -629,11 +646,11 @@ Global variables in REPL:
 ,$(`default-libs))
 endef
 `describe-binding = $(if $(or $3,$(if $(filter i%,$(word 2,$2)),,1)),$(if $(filter !:EDefn6,$(word 1,$2)),built-in function,$(if $(filter !:EDefn1,$(word 1,$2)),$(call `sprintf,function (%s),$(subst +, or more,$(subst $  , or ,$(call ^n,3,$2))) arguments),$(if $(filter !:EDefn2,$(word 1,$2)),$(call `sprintf,compound macro (%s),$(subst +, or more,$(subst $  , or ,$(call ^n,4,$2))) arguments),$(if $(filter !:EDefn0,$(word 1,$2)),variable,$(if $(filter !:EDefn3,$(word 1,$2)),symbol macro: $(call `format,$(wordlist 4,99999999,$2)),$(if $(filter !:EDefn4,$(word 1,$2)),executable macro,$(if $(filter !:EDefn5,$(word 1,$2)),constructor,))))))))
-`describe-env = $(foreach ;,$(call `reverse,$(call `dict-compact,$1)),$(call ^Y,$(call `describe-binding,$(call ^dk,$;),$(call ^dv,$;),$2),,,,,,,,,$`(if $`1,$`(call `printf,  %s : %s,$`(call ^dk,$(call ^E,$;)),$`1))))
+`describe-env = $(foreach ;,$(call `reverse,$(call `dict-compact,$1)),$(call ^X,$(call `describe-binding,$(call ^dk,$;),$(call ^dv,$;),$2),,,,,,,,,$`(if $`1,$`(call `printf,  %s : %s,$`(call ^dk,$(call ^E,$;)),$`1))))
 $(call ^at,!1:REPL0!=REPL!0S!0S!0S!0L)
-`eval-and-print = $(call ^Y,$(call `compile-text,$1,[stdin],$3,$(call ^n,2,$2),$(call ^n,3,$2)),$3,$1,,,,,,,$`(if $`(and $`(call ^n,1,$(call ^E,$2)),$`(filter $`[ [ {,$`(foreach ;,$`(call ^d,$`(call ^n,1,$`(call ^dv,$`(filter errors!=%,$`1)))),$`(if $`(filter !1:P8!0%,$`;!0),$`(word 1,$`(call ^n,3,$`(call ^u,$`;))),)))),!:REPL0 !. $`(call ^d,$`3) $`(call ^d,$(call ^E,$2)) $`2,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(if $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`3,[stdin])))),)!:REPL0 1 !. $`(call ^d,$(call ^E,$2)) $`2,$`(if $`(call ^Y,$`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1))),,,,,,,,,$``(if $``1,$``(call ^S,*2,$``(*1))$``(call ^S,*1,$``1)$``(info $``(call `format,$``1)))),)!:REPL0 !. !. $`(call ^d,$(call ^E,$2)) $`(call ^dv,$`(filter env!=%,$`1)))))
-`load-env = $(call ^Y,$(call `compile-text,$(foreach ;,$1,(require "$;"))(declare *1 &native)(declare *2 &native),[stdin],,,),,,,,,,,,$`(if $`(call ^Y,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1))),)$`(call ^dv,$`(filter env!=%,$`1)))
-`read-eval-print = $(if $(filter !:REPL0,$(word 1,$1)),$(call ^Y,$(call `getline,$(call ^n,$(if $(call ^n,3,$1),2,1),$(call ^n,1,$(call ^n,4,$1)))),$(wordlist 5,99999999,$1),$1,,,,,,,$`(if $`(findstring $`(subst ?0,1,$`(strip $`1)0),1),$`(if $`(call `help),)$`3,$`(if $`(findstring $`(subst :0,1,$`(strip $`1)0),1),!:REPL0 !. !. $`(call ^d,$`(call ^n,4,$(call ^E,$1))) $`2,$`(if $`(findstring $`(subst :q0,1,$`(strip $`1)0),1),,$`(if $`(findstring $`(subst 0,1,$`10),1),,$`(if $`(findstring $`(subst :e0,1,$`(strip $`1)0),1),$`(if $`(call `describe-env,$`2,),)$`3,$`(if $`(findstring $`(subst :E0,1,$`(strip $`1)0),1),$`(if $`(call `describe-env,$`2,1),)$`3,$`(if $`(findstring $`(subst $`(word 1,$`(strip $`1))0,1,:R0),1),!:REPL0 !. $`(call ^d,$`(call ^n,3,$(call ^E,$1))) $`(call ^d,$`(call ^n,4,$(call ^E,$1))) $`(call `load-env,$`(wordlist 2,99999999,$`(strip $`1))),$`(call `eval-and-print,$`(call ^n,3,$(call ^E,$1))$`1,$`(call ^n,4,$(call ^E,$1)),$`2))))))))),)
+`eval-and-print = $(call ^X,$(call `compile-text,$1,[stdin],$3,$(call ^n,2,$2),$(call ^n,3,$2)),$3,$1,,,,,,,$`(if $`(and $`(call ^n,1,$(call ^E,$2)),$`(filter $`[ [ {,$`(foreach ;,$`(call ^d,$`(call ^n,1,$`(call ^dv,$`(filter errors!=%,$`1)))),$`(if $`(filter !1:P8!0%,$`;!0),$`(word 1,$`(call ^n,3,$`(call ^u,$`;))),)))),!:REPL0 !. $`(call ^d,$`3) $`(call ^d,$(call ^E,$2)) $`2,$`(if $`(call ^dv,$`(filter errors!=%,$`1)),$`(if $`(foreach ;,$`(call ^dv,$`(filter errors!=%,$`1)),$`(call ^d,$`(info $`(call `describe-error,$`(call ^u,$`;),$`3,[stdin])))),)!:REPL0 1 !. $`(call ^d,$(call ^E,$2)) $`2,$`(if $`(call `eval-and-print',$`(call ^X,,,,,,,,,,$`(call ^dv,$`(filter code!=%,$`1)))),)!:REPL0 !. !. $`(call ^d,$(call ^E,$2)) $`(call ^dv,$`(filter env!=%,$`1)))))
+`load-env = $(call `load-env',$(call `compile-text,$(foreach ;,$1,(require "$;"))(declare *1 &native)(declare *2 &native),[stdin],,,))
+`read-eval-print = $(if $(filter !:REPL0,$(word 1,$1)),$(call ^X,$(call `getline,$(call ^n,$(if $(call ^n,3,$1),2,1),$(call ^n,1,$(call ^n,4,$1)))),$(wordlist 5,99999999,$1),$1,,,,,,,$`(if $`(findstring $`(subst ?0,1,$`(strip $`1)0),1),$`(if $`(call `help),)$`3,$`(if $`(findstring $`(subst :0,1,$`(strip $`1)0),1),!:REPL0 !. !. $`(call ^d,$`(call ^n,4,$(call ^E,$1))) $`2,$`(if $`(findstring $`(subst :q0,1,$`(strip $`1)0),1),,$`(if $`(findstring $`(subst 0,1,$`10),1),,$`(if $`(findstring $`(subst :e0,1,$`(strip $`1)0),1),$`(if $`(call `describe-env,$`2,),)$`3,$`(if $`(findstring $`(subst :E0,1,$`(strip $`1)0),1),$`(if $`(call `describe-env,$`2,1),)$`3,$`(if $`(findstring $`(subst $`(word 1,$`(strip $`1))0,1,:R0),1),!:REPL0 !. $`(call ^d,$`(call ^n,3,$(call ^E,$1))) $`(call ^d,$`(call ^n,4,$(call ^E,$1))) $`(call `load-env,$`(wordlist 2,99999999,$`(strip $`1))),$`(call `eval-and-print,$`(call ^n,3,$(call ^E,$1))$`1,$`(call ^n,4,$(call ^E,$1)),$`2))))))))),)
 `repl = $(if $(call `while,$`1,$(value `read-eval-print),!:REPL0 !. !. $(call ^d,$(call ^d,$(or $2,>!0 +!0)) $(call ^d,$1) !.) $(call `load-env,$(if $3,$(patsubst -,,$3),$(`default-libs)))),)$(info )
 `repl-ep = $(foreach ;,$(call ^d,$(call `eval-and-print,$1,!. $(call ^d,$2) $(call ^d,$3),$(call `load-env,$(if $4,$(patsubst -,,$4),$(`default-libs))))),$(if $(filter !1:REPL0!0%,$;!0),$(call ^n,2,$(call ^u,$;)),))
 
@@ -677,7 +694,7 @@ $(;;))))),$(call `parse-string,$1,$2,$(call `1+,$3),$4$(subst \x$(subst
 endef
 `parse-string = $(or $(foreach ;,$(word $3,$1),$(if $(filter ",$;),$3 !:P1 $2 $(or $(call `expand-spaces,$(subst !p,%,$(subst !b,\,$(subst !Q,",$(subst !.,,$4))))),!.),$(if $(filter \\%,$;),$(call `parse-string-bs,$1,$2,$3,$4,$;),$(call `parse-string,$1,$2,$(call `1+,$3),$4$;)))),$3 !:P8 $2 ")
 `parse-seq-err = $3 $(if $(filter .,$4),!:P8 $2 $(call ^d,$(subst ],[,$(subst $],$[,$1))),!:P8 $3 $(call ^d,$4 $1))
-`parse-seq = $(if $(filter !:P8,$(word 1,$(wordlist 2,99999999,$4))),$(if $(findstring $(subst $(call ^n,3,$(wordlist 2,99999999,$4))0,1,$20),1),$(word 1,$4) $(call ^Y,$3,$5,,,,,,,,$6),$(call `parse-seq-err,$2,$3,$(word 2,$(wordlist 2,99999999,$4)),$(call ^n,3,$(wordlist 2,99999999,$4)))),$(call `parse-seq,$1,$2,$3,$(call `parse-exp,$1,$(call `1+,$(word 1,$4))),$(call `conj,$5,$(wordlist 2,99999999,$4)),$6))
+`parse-seq = $(if $(filter !:P8,$(word 1,$(wordlist 2,99999999,$4))),$(if $(findstring $(subst $(call ^n,3,$(wordlist 2,99999999,$4))0,1,$20),1),$(word 1,$4) $(call ^X,$3,$5,,,,,,,,$6),$(call `parse-seq-err,$2,$3,$(word 2,$(wordlist 2,99999999,$4)),$(call ^n,3,$(wordlist 2,99999999,$4)))),$(call `parse-seq,$1,$2,$3,$(call `parse-exp,$1,$(call `1+,$(word 1,$4))),$(call `conj,$5,$(wordlist 2,99999999,$4)),$6))
 `parse-vector = $(call `parse-seq,$1,],$2,$(call `parse-exp,$1,$(call `1+,$2)),,!:P9 $`1 $`(call ^d,$`2))
 define `parse-skip
 $(if $(filter !0% !+% 
@@ -689,7 +706,7 @@ endef
 `parse-dict-2 = $(if $(filter :,$(word $5,$1)),$(call `parse-dict-3,$1,$2,$3,$4,$(call `parse-exp,$1,$(call `1+,$5))),$5 !:P8 $5 :?)
 `parse-dict-3 = $(or $(call `parse-dict-error,$5,},$2),$(if $(filter !:P8,$(word 1,$(wordlist 2,99999999,$5))),$(if $(findstring $(subst }0,1,$(call ^n,3,$(wordlist 2,99999999,$5))0),1),$(word 2,$(wordlist 2,99999999,$5)) !:P8 $(word 2,$(wordlist 2,99999999,$5)) v?),),$(call `parse-dict-4,$1,$2,$(call `append,$3,$(call ^k,$4)!=$(call ^d,$(wordlist 2,99999999,$5))),$(call `parse-skip,$1,$(call `1+,$(word 1,$5)))))
 `parse-dict-4 = $(call `parse-dict-1,$1,$2,$3,$(call `parse-exp,$1,$(if $(filter $(if ,,,),$(word $4,$1)),$(call `1+,$4),$4)))
-`parse-x2 = $(if $(filter !:P8,$(word 1,$(wordlist 2,99999999,$3))),$3,$(word 1,$3) $(call ^Y,$2,$(wordlist 2,99999999,$3),,,,,,,,$(if $(filter ',$1),!:P4 $`1 $`2,$(if $(filter `,$1),!:P5 $`1 $`2,$(if $(filter $(if ,,,),$1),!:P6 $`1 $`2,$(if $(filter $(if ,,,@),$1),!:P7 $`1 $`2,!:P8 $(call ^E,$2) $`(call ^d,internal:parse-x2:$(call ^E,$1))))))))
+`parse-x2 = $(if $(filter !:P8,$(word 1,$(wordlist 2,99999999,$3))),$3,$(word 1,$3) $(call ^X,$2,$(wordlist 2,99999999,$3),,,,,,,,$(if $(filter ',$1),!:P4 $`1 $`2,$(if $(filter `,$1),!:P5 $`1 $`2,$(if $(filter $(if ,,,),$1),!:P6 $`1 $`2,$(if $(filter $(if ,,,@),$1),!:P7 $`1 $`2,!:P8 $(call ^E,$2) $`(call ^d,internal:parse-x2:$(call ^E,$1))))))))
 define `parse-x
 $(if $(filter !0% !+% 
 % ;% (),$(or $(word $(call `1+,$3),$2),())),$3 !:P8 $3 $(call ^d,$1),$(call `parse-x2,$1,$3,$(call `parse-exp,$2,$(call `1+,$3))))
@@ -708,7 +725,7 @@ $(words $(filter
 endef
 `get-error-msg = $(if $(filter ` ',$(word 1,$1)),prefix "$(word 1,$1)" must immediately precede expression,$(if $(filter ( ) [ ] { },$(word 1,$1)),unmatched "$(word 1,$1)",$(if $(filter ",$(word 1,$1)),unterminated string,$(if $(filter $(if ,,: ,),$(word 1,$1)),saw ":" where not expected,$(if $(filter :?,$(word 1,$1)),expected ": VALUE" following dictionary key,$(if $(filter v?,$(word 1,$1)),expected value following dictionary "KEY:",$(if $(filter !B,$(word 1,$1)),invalid backslash sequence in string,$(if $(filter $(word 1,$1),$`),invalid symbol character "$(word 1,$1)",$1))))))))
 define `describe-error
-$(if $(filter !:P8,$(word 1,$1)),$(call ^Y,$(call ^Y,$(subst 
+$(if $(filter !:P8,$(word 1,$1)),$(call ^X,$(call ^X,$(subst 
 , 
 ,$(subst $  ,,$(wordlist 1,$(or $(word 2,$1),1),
  $(call `penc,$2)))),,,,,,,,,$`(words $`1):$`(call `string-len,$`(call `pdec,$`(lastword $`1)))),$2,$3,$(call `get-error-msg,$(call ^n,3,$1)),,,,,,$`(if $`(call `word-index?,$`(word 2,$(call ^E,$1))),$`(call `sprintf,%s:%s: %s
@@ -784,6 +801,8 @@ endef
 
 define [mod-math1]
 # Requires: core math0
+`fp-mag-ceiling' = $(if $(findstring 1,$(subst $1,,$2)),$(call `make-fp<<1,$(word 1,$1),$(word 2,$1),$(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,0 $(wordlist 3,99999999,$1)1)),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;))))),$1)
+`fp-mod' = $(if $(findstring 1,$(wordlist 3,99999999,$1)),$(call `fp-add,$2,$1),$1)
 $(if $(call ^R,core),)
 $(if $(call ^R,math0),)
 `fp-norm = $(if $(filter 0,$(word 3,$1)),$(foreach ;,$(word 1,$(subst 001,0 01,$(subst $  ,,$(wordlist 3,99999999,$1)))),$(call `u-add,$(word 1,$1),$(subst --,,-$(call `u-add-ones,0,$(subst 0,1,$;)))) $(word 2,$1)$(or $(subst 9$(subst 0, 0,$;),,9 $(wordlist 3,99999999,$1)),$(if ,, 0))),$1)
@@ -800,10 +819,10 @@ $(if $(call ^R,math0),)
 `fp-mulp = $(if $(and $3,$1,$2),$(foreach ;,$(call `u-add,$(word 1,$1),$(word 1,$2)),$(foreach ;;,$(if $(filter 0% -0%,$3),$(call `u2d,$(call `u-add,$;,$3)),$3),$(if $(filter -% 0,$(;;)),0 + 0,$(call `fp-mulp-x,$;,$(if $(findstring $(word 2,$1),$(word 2,$2)),+,-),$(call `uf-mul,$(word 3,$1)$(if $(word 4,$1), $(wordlist 1,$(;;),$(wordlist 4,99999999,$1))),$(word 3,$2)$(if $(word 4,$2), $(wordlist 1,$(;;),$(wordlist 4,99999999,$2)))),$3,$(;;))))))
 `fp-div-x = $(foreach ;,$(if $(filter 0% -0%,$6),$(call `u2d,$(call `u-add,$1,$6)),$6),$(if $(filter -%,$;),$(if $(filter 3,$(if $5,2,$(if $(filter +,$2),1,3))),$(call `u-add,01,$(subst --,,-$6)) $2 01,0 + 0),$(call `make-fp<<1,$1,$2,$(call `uf-div,$3,$4,$;,$(if $5,2,$(if $(filter +,$2),1,3))))))
 `fp-div = $(if $(if $(findstring 101,$(word 3,$1)$(word 3,$2)),,1),$(if $(findstring 1,$(wordlist 3,99999999,$2)),$(if $(findstring 1,$(wordlist 3,99999999,$1)),$(call `fp-div,$(call `fp-norm,$1),$(call `fp-norm,$2),$3,$4),$(if $1,0 + 0,)),),$(if $3,$(if $(findstring 1,$(call `uf-cmp,$(wordlist 3,99999999,$2),$(wordlist 3,99999999,$1))),$(call `fp-div-x,$(call `u-add,$(word 1,$1),$(subst --,,-$(word 1,$2))),$(if $(findstring $(word 2,$1),$(word 2,$2)),+,-),$(wordlist 3,99999999,$1),$(wordlist 3,99999999,$2),$4,$3),$(call `fp-div-x,$(call `u-add,$(or $(filter-out -% %1111111111,$(word 1,$1)1),$(call `u-add,$(word 1,$1),01)),$(subst --,,-$(word 1,$2))),$(if $(findstring $(word 2,$1),$(word 2,$2)),+,-),0 $(wordlist 3,99999999,$1),$(wordlist 3,99999999,$2),$4,$3))))
-`fp-mod = $(if $(if $(findstring 101,$(word 3,$1)$(word 3,$2)),,1),$(if $(findstring 1,$(wordlist 3,99999999,$2)),$(if $(findstring 1,$(wordlist 3,99999999,$1)),$(call `fp-mod,$(call `fp-norm,$1),$(call `fp-norm,$2)),$(if $1,0 + 0,)),),$(if $(if $(findstring $(word 2,$1),$(word 2,$2)),,1),$(call ^Y,$(call `fp-mod,$1,$(subst !,-,$(subst $  -, +,$(subst $  +, !,$2)))),$2,,,,,,,,$`(if $`(findstring 1,$`(wordlist 3,99999999,$`1)),$`(call `fp-add,$`2,$`1),$`1)),$(if $(findstring 1,$(call `u-cmp,$(word 1,$2),$(word 1,$1))),$1,$(word 1,$2) $(word 2,$1) $(call `uf-div,0 $(wordlist 3,99999999,$1),$(wordlist 3,99999999,$2),$(call `u2d,$(call `u-add,$(or $(filter-out -% %1111111111,$(word 1,$1)1),$(call `u-add,$(word 1,$1),01)),$(subst --,,-$(word 1,$2)))),4))))
+`fp-mod = $(if $(if $(findstring 101,$(word 3,$1)$(word 3,$2)),,1),$(if $(findstring 1,$(wordlist 3,99999999,$2)),$(if $(findstring 1,$(wordlist 3,99999999,$1)),$(call `fp-mod,$(call `fp-norm,$1),$(call `fp-norm,$2)),$(if $1,0 + 0,)),),$(if $(if $(findstring $(word 2,$1),$(word 2,$2)),,1),$(call `fp-mod',$(call `fp-mod,$1,$(subst !,-,$(subst $  -, +,$(subst $  +, !,$2)))),$2),$(if $(findstring 1,$(call `u-cmp,$(word 1,$2),$(word 1,$1))),$1,$(word 1,$2) $(word 2,$1) $(call `uf-div,0 $(wordlist 3,99999999,$1),$(wordlist 3,99999999,$2),$(call `u2d,$(call `u-add,$(or $(filter-out -% %1111111111,$(word 1,$1)1),$(call `u-add,$(word 1,$1),01)),$(subst --,,-$(word 1,$2)))),4))))
 `fp-round = $(if $(findstring 1,$(word 3,$1)),$(foreach ;,$(if $(filter 0% -0%,$2),$(call `u2d,$(call `u-add,$(word 1,$1),$2)),$2),$(if $(filter -%,$;),$(if $(filter 3,$(or $(filter 2 1,$3),$(if $(findstring $(word 2,$1),$(if $(filter 3,$3),+,-)),3,1))),$(call `u-add,01,$(subst --,,-$2)) $(word 2,$1) 01,0 + 0),$(call `make-fp<<1,$(word 1,$1),$(word 2,$1),$(if $(filter 0,$;),$(wordlist 2,99999999,$(call `uf-round,1,$(or $(filter 2 1,$3),$(if $(findstring $(word 2,$1),$(if $(filter 3,$3),+,-)),3,1)),0 $(wordlist 3,99999999,$1))),$(call `uf-round,$;,$(or $(filter 2 1,$3),$(if $(findstring $(word 2,$1),$(if $(filter 3,$3),+,-)),3,1)),$(wordlist 3,99999999,$1)))))),$(if $(findstring 1,$(wordlist 3,99999999,$1)),$(call `fp-round,$(call `fp-norm,$1),$2,$3),$(if $1,0 + 0)))
 `fp-trunc = $(if $(subst 0,,$(filter-out -%,$(word 1,$1))),$(if $(word 9,$(subst 0, 0,$(word 1,$1))),$1,$(wordlist 1,$(call `u2d,$(call `u-add-ones,$(word 1,$1),11)),$1)),$(if $1,0 + 0))
-`fp-mag-ceiling = $(if $(subst 0,,$(filter-out -%,$(word 1,$1))),$(call ^Y,$(call `fp-trunc,$1),$1,,,,,,,,$`(if $`(findstring 1,$`(subst $`1,,$`2)),$`(call `make-fp<<1,$`(word 1,$`1),$`(word 2,$`1),$`(filter 0%,$`(subst 0, 0,$`(foreach ;,$`(subst 01111111111,10,$`(subst $`  ,,0 $`(wordlist 3,99999999,$`1)1)),$`(if $`(findstring 01111111111,$`;),$`(call `u-carry-fn,$`;,0111111111,0),$`;))))),$`1)),$(if $(findstring 1,$(wordlist 3,99999999,$1)),01 $(word 2,$1) 01,$(if $1,0 + 0)))
+`fp-mag-ceiling = $(if $(subst 0,,$(filter-out -%,$(word 1,$1))),$(call `fp-mag-ceiling',$(call `fp-trunc,$1),$1),$(if $(findstring 1,$(wordlist 3,99999999,$1)),01 $(word 2,$1) 01,$(if $1,0 + 0)))
 `fp-floor = $(if $(findstring $  -,$1),$(call `fp-mag-ceiling,$1),$(if $1,$(call `fp-trunc,$1)))
 `fp-ceil = $(if $(findstring $  +,$1),$(call `fp-mag-ceiling,$1),$(if $1,$(call `fp-trunc,$1)))
 `fp-cmp = $(if $(findstring $(findstring + 01,$1),$2),$(or $(call `u-cmp,$(word 1,$1),$(word 1,$2)),$(call `uf-cmp,$(wordlist 3,99999999,$1),$(wordlist 3,99999999,$2))),$(if $(if $(and $1,$2),,1),$(if $1,1,$(if $2,~)),$(if $(if $(findstring 1,$(word 3,$1)),,1),$(if $(findstring 1,$(word 3,$2)),$(if $(filter -,$(word 2,$2)),1,~),),$(if $(if $(findstring 1,$(word 3,$2)),,1),$(if $(filter -,$(word 2,$1)),~,1),$(if $(findstring - 01,$(filter-out 0,.$1)),$(if $(findstring - 01,$(filter-out 0,.$2)),$(call `fp-cmp,$(subst !,-,$(subst $  -, +,$(subst $  +, !,$2))),$(subst !,-,$(subst $  -, +,$(subst $  +, !,$1)))),~),1)))))
@@ -818,6 +837,7 @@ endef
 
 define [mod-math2]
 # Requires: core math0 math1
+`uf-atan' = $(if $2,$(strip $1 $(call `uf-atan-loop,$2,$(call `uf-get-lz,$3),$(call `uf-trim-lz,$3),-,01,$(wordlist $(words 0 $1),99999999,$4))),0)
 $(if $(call ^R,core),)
 $(if $(call ^R,math0),)
 $(if $(call ^R,math1),)
@@ -841,7 +861,7 @@ $(if $(call ^R,math1),)
 `fp-log2 = $(if $(findstring 1,$(call `uf-cmp,$2,01 0 011)),$(call `fp-add,$(if $(findstring 1,$1),$(call `fp-mul,01 + $(call `get-uf-const,`log-10,$3 0 0 $(subst 0, 0,$(patsubst -%,%,$1))),$(call `u2fp,$1)),0 + 0),01 - $(call `uf-log-fr,$2,$3)),$(call `fp-add,$(call `fp-mul,01 + $(call `get-uf-const,`log-10,$3 0 0 $(subst 0, 0,$(patsubst -%,%,$1))),$(call `u2fp,$(call `u-add,$1,$(subst --,,-01)))),0 + $(call `uf-log,$(wordlist 2,99999999,$2),011 $(wordlist 2,99999999,$2),0 $3)))
 `adjust-digit-count = $(if $(filter -%,$2),$1$(subst 1, 1,$(subst -0,,$2)),$(wordlist $(words $(subst 1, 1,$2)),99999999,$1))
 `fp-log = $(and $(findstring + 01,$(filter-out 0,.$1)),$2,$(call `fp-round,$(call `fp-log2,$(word 1,$1),$(wordlist 3,99999999,$1),$(if $(filter 0% -0%,$2),$(call `u-zeros,$2),$(call `adjust-digit-count,$(call `extend-fn,0,$2, 0 0 0 0),$(call `log-size-x,$(word 1,$1),$(wordlist 3,99999999,$1))))),$(or $(`result-pod),$2),2))
-`fp-log-x-b = $(and $3,$(findstring + 01,$(filter-out 0,.$1)),$(findstring + 01,$(filter-out 0,.$2)),$(foreach ;,$(call `log-size-x,$(word 1,$1),$(wordlist 3,99999999,$1)),$(foreach ;;,$(call `log-size-x,$(word 1,$2),$(wordlist 3,99999999,$2)),$(call ^Y,$(if $(filter 0% -0%,$3),$(call `adjust-digit-count,$(call `adjust-digit-count,0 0 $(call `u-zeros,$3),$(subst --,,-$;)),$(;;)),0  $(call `extend-fn,0,$3, 0 0 0 0)),$1,$2,$3,,,,,,$`(call `fp-div,$`(call `fp-log2,$`(word 1,$`2),$`(wordlist 3,99999999,$`2),$`(call `adjust-digit-count,$`1,$(call ^E,$;))),$`(call `fp-log2,$`(word 1,$`3),$`(wordlist 3,99999999,$`3),$`(call `adjust-digit-count,$`1,$(call ^E,$(;;)))),$`(or $`(`result-pod),$`4),1)))))
+`fp-log-x-b = $(and $3,$(findstring + 01,$(filter-out 0,.$1)),$(findstring + 01,$(filter-out 0,.$2)),$(foreach ;,$(call `log-size-x,$(word 1,$1),$(wordlist 3,99999999,$1)),$(foreach ;;,$(call `log-size-x,$(word 1,$2),$(wordlist 3,99999999,$2)),$(call ^X,$(if $(filter 0% -0%,$3),$(call `adjust-digit-count,$(call `adjust-digit-count,0 0 $(call `u-zeros,$3),$(subst --,,-$;)),$(;;)),0  $(call `extend-fn,0,$3, 0 0 0 0)),$1,$2,$3,,,,,,$`(call `fp-div,$`(call `fp-log2,$`(word 1,$`2),$`(wordlist 3,99999999,$`2),$`(call `adjust-digit-count,$`1,$(call ^E,$;))),$`(call `fp-log2,$`(word 1,$`3),$`(wordlist 3,99999999,$`3),$`(call `adjust-digit-count,$`1,$(call ^E,$(;;)))),$`(or $`(`result-pod),$`4),1)))))
 `uf-exp-loop = $(if $4,$(if $(findstring 1,$(word 1,$1)),$(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $(foreach ;,$(words $4),$(if $(filter-out 0,$;),$(call `uf-exp-loop,$(wordlist 3,99999999,$(subst 0,0 ,$(subst 1,,$3))$(call `uf-div,0 $(wordlist 1,$;,$(call `uf-mul,$(or $(wordlist 1,$;,$2),0),$(or $(wordlist 1,$;,$1),0))),$(strip $(subst 0, 0,$3)),$;,2)),$2,$(call `u-add-ones,$3,1),$4))),0 $1))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;)))),$(if $(filter 0,$(word 2,$1)),0 0 $(call `uf-exp-loop,$(wordlist 3,99999999,$1),$2,$3,$(wordlist 3,99999999,$4)),0 $(call `uf-exp-loop,$(wordlist 2,99999999,$1),$2,$3,$(wordlist 2,99999999,$4)))))
 `uf-exp-small = $(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join 01,$(call `uf-exp-loop,$1,$1,011,$2)))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;))))
 `uf-exp-med-2 = $(foreach ;,$(patsubst 0:%,%,$(patsubst 0:0:%,%,$(subst $  ,:,$(call `uf-div,0 $1,$(wordlist 2,99999999,$3),3,1)))),$(if $(findstring 1,$;),$(foreach ;;,$(word $(call `u2d,$(subst :,,$;)),$(or $(`m-powers),$(call `calc-m-powers,0 01 0 011,))),$(call `uf-mul,$(call `uf-exp-small,$(wordlist 2,99999999,$(filter 0%,$(subst 0, 0,$(foreach ;;;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $1,$(subst 101,0,$(subst 11011,0,$(subst 1110111,0,$(patsubst 0%,%0111111111,$(patsubst 0111111%,%101111,$(wordlist $(words $(subst :, ,$;)),99999999,$(call `uf-mul,$3,$(subst :, ,$;))))))))1))))),$(if $(findstring 01111111111,$(;;;)),$(call `u-carry-fn,$(;;;),0111111111,0),$(;;;)))))),$2$(if $(filter 0111%,$(;;)), 0)),$(wordlist 1,$(words 0 $2),$(subst 0, 0,$(;;))))),0 $(call `uf-exp-small,$(wordlist 2,99999999,$1),$2)))
@@ -852,11 +872,11 @@ $(if $(call ^R,math1),)
 `exp-2 = $(if $2,$(call `exp-3,$1,$2,01 + $(call `get-uf-const,`log-10,$2 0 0 $(call `u-zeros,$(word 1,$1)))),0 + 0)
 `fp-exp = $(and $1,$2,$(call `fp-round,$(call `exp-2,$1,$(if $(filter 0% -0%,$2),0 $(call `u-zeros,$(call `u-add,$2,$(call `fp2su,$(call `fp-div,$1,01 + 011 0111,0,)))),$(call `extend-fn,0,$2, 0 0 0 0))),$(or $(`result-pod),$2),2))
 `fp-pow = $(and $1,$2,$3,$(if $(findstring 101,$(word 3,$1)$(word 3,$2)),$(foreach ;,$(if $(filter 0% -0%,$3),$(call `u-add,$(or $(filter-out -% %1111111111,$31),$(call `u-add,$3,01)),$(call `fp2su,$(call `fp-mul,$2,$(call `u2fp,$(or $(filter-out -% %1111111111,$(word 1,$1)1),$(call `u-add,$(word 1,$1),01)))))),$(call `d2u,$3)),$(if $(filter -% 0,$;),0 + 0,$(call `fp-exp,$(call `fp-mul,$2,$(call ^S,`result-pod,$(call ^S,`result-pod,,$(`result-pod)),$(call `fp-log,$1,$(call `u2d,$(call `u-add,$;,$(call `u-add,$(call `u-carry-all,$(call `log-size-x,$(word 1,$1),$(wordlist 3,99999999,$1))),$(word 1,$2))))))),$3))),$(if $(findstring 1,$(word 3,$1)),01 + 01,$(if $(findstring 1,$(word 3,$2)),0 + 0))))
-`uf-atan = $(call ^Y,$(call `uf-get-lz,$1),$(call `uf-trim-lz,$1),$(call `uf-mul,$1,$1),$2,,,,,,$`(if $`2,$`(strip $`1 $`(call `uf-atan-loop,$`2,$`(call `uf-get-lz,$`3),$`(call `uf-trim-lz,$`3),-,01,$`(wordlist $`(words 0 $`1),99999999,$`4))),0))
+`uf-atan = $(call `uf-atan',$(call `uf-get-lz,$1),$(call `uf-trim-lz,$1),$(call `uf-mul,$1,$1),$2)
 `uf-pi = $(subst x,11,$(subst $  0xxxxx,1 0,$(subst 1,xx,$(subst $  011111,x 0,0 $(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $(subst x,11,$(subst $  0xxxxx,1 0,$(subst 1,xx,$(subst $  011111,x 0,$(call `uf-atan,011,$1))))),$(subst 101,0,$(subst 11011,0,$(subst 1110111,0,$(patsubst 0%,%0111111111,$(patsubst 0111111%,%101111,$(call `uf-atan,$(call `repeat-words, 0 0 01111 01 011111111 01111 01,$(words $1)),$1))))))1))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;))))))))
 `uf-sin-loop = $(if $(findstring 1,$(word 1,$2)),$(filter 0%,$(subst 0, 0,$(foreach ;,$(subst 01111111111,10,$(subst $  ,,$(subst 00,0,$(subst 10,1,$(join $2,$(subst 101,0,$(subst 11011,0,$(subst 1110111,0,$(patsubst 0%,%0111111111,$(patsubst 0111111%,%101111,$(call `uf-sin-loop,$(call `u-add-ones,$1,11),$(foreach ;,$(words 0 $4),$(wordlist 3,99999999,$(subst 0,0 ,$(subst 1,,$(call `u-add-ones,$1,1)))$(call `uf-div,0 $(wordlist 3,99999999,$(subst 0,0 ,$(subst 1,,$1))$(call `uf-div,0 $(call `uf-mul,$2,$3),$(strip $(subst 0, 0,$1)),$;,2)),$(strip $(subst 0, 0,$(call `u-add-ones,$1,1))),$;,2))),$3,$4))))))1))))),$(if $(findstring 01111111111,$;),$(call `u-carry-fn,$;,0111111111,0),$;)))),$(if $4,0 $(call `uf-sin-loop,$1,$(wordlist 2,99999999,$2),$3,$(wordlist 2,99999999,$4))))
 `xsin-reduce = $(if $(findstring $  -,$1),$(call `xsin-reduce,$(subst $  -, +,$1),$2,$(call `xor,$2,$3),$4,$5,$6,$7,$8),$(if $(findstring 1,$(call `fp-cmp,0 + 011111111,$1)),$(call $5,$1,$2,$3,$4,$6,$7,$8),$(if $(findstring 1,$(call `fp-cmp,01 + 011 0111 0111111,$1)),$(call `xsin-reduce,$(call `fp-add,01 + $(subst 2,1,$(subst 1 0, 011111,$(subst 11,2,$(call `get-uf-const,`uf-pi,0 $4) 0))),$(subst !,-,$(subst $  -, +,$(subst $  +, !,$1)))),$(if $2,,1),$3,$4,$5,$6,$7,$8),$(if $(findstring 1,$(call `fp-cmp,01 + 011111 011111,$1)),$(call `xsin-reduce,$(call `fp-add,$1,$(subst !,-,$(subst $  -, +,$(subst $  +, !,01 + $(call `get-uf-const,`uf-pi,0 $4))))),$2,$(if $3,,1),$4,$5,$6,$7,$8),$(call `xsin-reduce,$(call `fp-norm,$(call `fp-add,$(call `fp-mod,$(call `fp-add,0 + 011111111,$1),01 + $(subst $  01111111111,1 0,$(subst 1,11,$(call `get-uf-const,`uf-pi,$(call `u-zeros,$(word 1,$1)) 0 $4)))),$(subst !,-,$(subst $  -, +,$(subst $  +, !,0 + 011111111))))),$2,$3,$4,$5,$6,$7,$8)))))
-`xsin-small = $(or $(and $7,$2,$(if $(findstring 1,$(wordlist 1,$(words $(wordlist 2,99999999,$(wordlist $7,99999999,$4))),$(call `fp2uf,$1,0))),,1),$(call `xsin-reduce,$5,$6,,$(if $(findstring 1,$(wordlist 3,99999999,$1)),$4,$(call `uf-get-lz,$(call `fp2uf,$1,0))) 0 $(wordlist 1,$7,$4),`xsin-small,$5,$6,$7)),01 $(if $3,-,+) $(if $2,0 $(call `uf-sin-loop,011,$(call `fp2uf,$1,0),$(foreach ;,$(words $4),$(wordlist 1,$;,$(call `uf-mul,$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0),$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0)))),$4),$(call ^Y,$(foreach ;,$(words $4),$(wordlist 1,$;,$(call `uf-mul,$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0),$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0)))),,,,,,,,,$`(filter 0%,$`(subst 0, 0,$`(foreach ;,$`(subst 01111111111,10,$`(subst $`  ,,$`(subst 00,0,$`(subst 10,1,$`(join 01,$`(subst 101,0,$`(subst 11011,0,$`(subst 1110111,0,$`(patsubst 0%,%0111111111,$`(patsubst 0111111%,%101111,0 $`(call `uf-sin-loop,0111,$`(subst 2,1,$`(subst 1 0, 011111,$`(subst 11,2,$`1 0))),$`1,$(call ^E,$4)))))))1))))),$`(if $`(findstring 01111111111,$`;),$`(call `u-carry-fn,$`;,0111111111,0),$`;)))))))
+`xsin-small = $(or $(and $7,$2,$(if $(findstring 1,$(wordlist 1,$(words $(wordlist 2,99999999,$(wordlist $7,99999999,$4))),$(call `fp2uf,$1,0))),,1),$(call `xsin-reduce,$5,$6,,$(if $(findstring 1,$(wordlist 3,99999999,$1)),$4,$(call `uf-get-lz,$(call `fp2uf,$1,0))) 0 $(wordlist 1,$7,$4),`xsin-small,$5,$6,$7)),01 $(if $3,-,+) $(if $2,0 $(call `uf-sin-loop,011,$(call `fp2uf,$1,0),$(foreach ;,$(words $4),$(wordlist 1,$;,$(call `uf-mul,$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0),$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0)))),$4),$(call ^X,$(foreach ;,$(words $4),$(wordlist 1,$;,$(call `uf-mul,$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0),$(or $(wordlist 1,$;,$(call `fp2uf,$1,0)),0)))),,,,,,,,,$`(filter 0%,$`(subst 0, 0,$`(foreach ;,$`(subst 01111111111,10,$`(subst $`  ,,$`(subst 00,0,$`(subst 10,1,$`(join 01,$`(subst 101,0,$`(subst 11011,0,$`(subst 1110111,0,$`(patsubst 0%,%0111111111,$`(patsubst 0111111%,%101111,0 $`(call `uf-sin-loop,0111,$`(subst 2,1,$`(subst 1 0, 011111,$`(subst 11,2,$`1 0))),$`1,$(call ^E,$4)))))))1))))),$`(if $`(findstring 01111111111,$`;),$`(call `u-carry-fn,$`;,0111111111,0),$`;)))))))
 `fp-xsin = $(and $2,$3,$(call `fp-round,$(if $(findstring 1,$(wordlist 3,99999999,$2)),$(call `xsin-reduce,$2,$1,,0 $(if $(filter 0% -0%,$3),$(call `u-zeros,$3),$(call `extend-fn,0,$3, 0 0 0 0)),`xsin-small,$2,$1,$(filter-out 0% -0%,$3)),$(if $1,0 + 0,01 + 01)),$(or $(`result-pod),$3),2))
 `xsin = $(call `u2d,$(call `fp2u,$(call `fp-xsin,$1,$(call `u2fp,$(call `d2u,$2)),$(call `prec-to-pod,$3))))
 `fp-atan-unflip = $(if $2,$(call `fp-add,$(if $(filter | /,$2),$(subst $  +, -,$1),$1),01 + $(if $(filter |,$2),$(call `get-uf-const,`uf-pi,$3 $(if $4,$(call `uf-get-lz,$(call `fp2uf,$1,0)))),$(subst 2,1,$(subst 1 0, 011111,$(subst 11,2,$(call `get-uf-const,`uf-pi,$3 $(if $4,$(call `uf-get-lz,$(call `fp2uf,$1,0)))) 0))))),$1)
@@ -867,43 +887,44 @@ $(if $(call ^R,math1),)
 endef
 
 define [mod-gen0]
-# Requires: core parse escape gen
+# Requires: core parse gen
+`c0-def-compound2' = $(or $(call `il-error-node,$1),!:IL11 $(call ^d,$(call ^k,$6)!=$(call ^d,$(if $3,!:EDefn1 $5 $(call ^d,$4) $7,!:EDefn2 $5 $2 $(call ^d,$4) $(if $(filter !:IL1,$(word 1,$1)),$(wordlist 3,99999999,$1),)))) $(and $(filter def%,$3),$(call `ICall,^SF,$(call ^d,!:IL3 $(call ^d,$7)) $(call ^d,$1))))
+`il-error-node' = $(if $(word 2,$1),!:IL8 $1,$(call ^n,1,$1))
 $(if $(call ^R,core),)
 $(if $(call ^R,parse),)
-$(if $(call ^R,escape),)
 $(if $(call ^R,gen),)
 `scan-flags = $(or $(if $(filter !:P2,$(word 1,$(call ^n,$2,$1))),$(if $(filter &private &public &native,$(call ^n,3,$(call ^n,$2,$1))),$(call `scan-flags,$1,$(call `1+,$2),$2)),),$3)
 `get-flags = $(filter %,$(foreach ;,$(wordlist 2,$(call `scan-flags,$1,2,1),$1),$(if $(filter !:P2,$(word 1,$(call ^u,$;))),$(call ^n,3,$(call ^u,$;)),)))
 `skip-flags = $(wordlist $(call `1+,$(call `scan-flags,$1,2,1)),99999999,$1)
 `get-arity = $(if $(filter ...% ?%,$(lastword $1)),$(if $(filter ...%,$(lastword $1)),$(words $(filter-out ...% ?%,$1))+,$(call `get-arity,$(call `butlast,$1)) $(words $1)),$(words $1))
-`xlat = $(if $(filter !:IL3,$(word 1,$1)),$1,$(if $(filter !:IL5,$(word 1,$1)),!:IL5 $(word 2,$1) $(foreach ;,$(wordlist 3,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL6,$(word 1,$1)),!:IL6 $(word 2,$1) $(call ^d,$(foreach ;,$(call ^n,3,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8)))) $(foreach ;,$(wordlist 4,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL0,$(word 1,$1)),$(if $(and $(filter $2,$(word 3,$1)),$6,$(filter-out ;%,$(word 2,$1))),$(call `xlat,$(if $(findstring +,$(word 2,$1)),$(call `il-vector,$(wordlist $(subst +,,$(word 2,$1)),99999999,$6)),$(call ^n,$(word 2,$1),$6)),.,$3,$5,$3,,$(word 3,$1),$8),$(if $(and $(filter $2,$(word 3,$1)),$(findstring $4;,$(word 2,$1))),!:IL0 $(patsubst $4%,%,$(word 2,$1)$5) $(word 3,$1),$(if $(findstring $2,$(word 3,$1)),!:IL0 $(word 2,$1) $(patsubst .%,%,$(word 3,$1)$7),$1))),$(if $(filter !:IL7,$(word 1,$1)),!:IL7 $(foreach ;,$(wordlist 2,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL8,$(word 1,$1)),!:IL8 $(foreach ;,$(wordlist 2,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL2,$(word 1,$1)),!:IL2 $(if $(filter .,$2),$(patsubst $4%,%,$(word 2,$1)$5),$(word 2,$1)) $(call ^d,$(call `xlat,$(call ^n,3,$1),$2,$3,$4,$5,$6,$7,$8)) $(call `xlat,$(wordlist 4,99999999,$1),$2,$3;,$4,$5,$6,$7,$8),$(if $(filter !:IL1,$(word 1,$1)),!:IL1 $(call ^d,$(call `xlat,$(call ^n,2,$1),.$2,,$4,$5,$6,$7,$8)),$(if $(filter !:IL9,$(word 1,$1)),$(if $(word 2,$1),!:IL9 $8,$1),$1)))))))))
+`xlat = $(if $(filter !:IL3,$(word 1,$1)),$1,$(if $(filter !:IL5,$(word 1,$1)),!:IL5 $(word 2,$1) $(foreach ;,$(wordlist 3,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL6,$(word 1,$1)),!:IL6 $(word 2,$1) $(call ^d,$(foreach ;,$(call ^n,3,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8)))) $(foreach ;,$(wordlist 4,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL0,$(word 1,$1)),$(if $(and $(filter $2,$(word 3,$1)),$6,$(filter-out ;%,$(word 2,$1))),$(call `xlat,$(if $(findstring +,$(word 2,$1)),$(call `il-vector,$(wordlist $(subst +,,$(word 2,$1)),99999999,$6)),$(call ^n,$(word 2,$1),$6)),.,$3,$5,$3,,$(word 3,$1),$8),$(if $(and $(filter $2,$(word 3,$1)),$(findstring $4;,$(word 2,$1))),!:IL0 $(patsubst $4%,%,$(word 2,$1)$5) $(word 3,$1),$(if $(findstring $2,$(word 3,$1)),!:IL0 $(word 2,$1) $(patsubst .%,%,$(word 3,$1)$7),$1))),$(if $(filter !:IL7,$(word 1,$1)),!:IL7 $(foreach ;,$(wordlist 2,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL8,$(word 1,$1)),!:IL8 $(foreach ;,$(wordlist 2,99999999,$1),$(call ^d,$(call `xlat,$(call ^u,$;),$2,$3,$4,$5,$6,$7,$8))),$(if $(filter !:IL2,$(word 1,$1)),!:IL2 $(if $(filter .,$2),$(patsubst $4%,%,$(word 2,$1)$5),$(word 2,$1)) $(call ^d,$(call `xlat,$(call ^n,3,$1),$2,$3,$4,$5,$6,$7,$8)) $(call `xlat,$(wordlist 4,99999999,$1),$2,$3;,$4,$5,$6,$7,$8),$(if $(filter !:IL1,$(word 1,$1)),!:IL1 $(call ^d,$(call ^n,2,$1)) $(call `xlat,$(wordlist 3,99999999,$1),.$2,,$4,$5,$6,$7,$8),$(if $(filter !:IL9,$(word 1,$1)),$(if $(word 2,$1),!:IL9 $8,$1),$1)))))))))
 `IWhere-sig := $(word 1,$(subst !,,!:IL9 ))
 `translate = $(if $(or $4,$(if $(findstring $(subst $30,1,$20),1),,1),$(findstring $(`IWhere-sig),$1)),$(call `xlat,$1,.,$(subst .,,$3),$(subst .,,$2),$(subst .,,$3),$4,$(patsubst $(subst ;,,$2)%,%,$(subst ;,,$3).),$5),$1)
 `c0-error = $(if $(filter !:P8,$(word 1,$1)),$1,$(call `gen-error,$1,$(if $(filter !:P6,$(word 1,$1)),unquote (,) outside of a quasiquoted (`) form,$(if $(filter !:P7,$(word 1,$1)),splice (,@) outside of a quasiquoted (`) form,bad AST node: %q)),$1))
 `c0 = $(if $(filter !:P0,$(word 1,$1)),$(call `c0-L,$2,$(word 2,$1),$(call ^n,1,$(wordlist 3,99999999,$1)),$(wordlist 2,99999999,$(wordlist 3,99999999,$1)),$(call `resolve,$(call ^n,1,$(wordlist 3,99999999,$1)),$2)),$(if $(filter !:P1,$(word 1,$1)),!:IL3 $(call ^d,$(call ^n,3,$1)),$(if $(filter !:P2,$(word 1,$1)),$(call `c0-S,$2,$1,$(call ^n,3,$1),$(call `resolve,$1,$2)),$(if $(filter !:P3,$(word 1,$1)),$(call `c0-D,$2,$(word 2,$1),$(wordlist 3,99999999,$1)),$(if $(filter !:P9,$(word 1,$1)),$(call `il-vector,$(foreach ;,$(call ^n,3,$1),$(call ^d,$(call `c0,$(call ^u,$;),$2)))),$(if $(filter !:P4,$(word 1,$1)),!:IL3 $(call ^d,$(wordlist 3,99999999,$1)),$(if $(filter !:P5,$(word 1,$1)),$(call `c0-qq,$2,$(wordlist 3,99999999,$1)),$(call `c0-error,$1))))))))
-`c0-macro = $(call `translate,!:IL1 $(call ^d,$2),$(patsubst .%,%,$1),$(call `current-depth,$3),,$(call `form-index,$4))
-`c0-builtin = $(if $(or $(filter %+,$3),$(findstring $(subst $20,1,if0),1)),$(call `gen-error,$1,builtin `%s` does not have a value,$2),!:IL1 $(call ^d,!:IL5 $2 $(foreach ;,$(wordlist 1,$3,1 2 3),$(call ^d,!:IL0 $(call ^u,$;) .))))
+`c0-macro = $(call `translate,!:IL1 !. $2,$(patsubst .%,%,$1),$(call `current-depth,$3),,$(call `form-index,$4))
+`c0-builtin = $(if $(or $(filter %+,$3),$(findstring $(subst $20,1,if0),1)),$(call `gen-error,$1,builtin `%s` does not have a value,$2),!:IL1 !. !:IL5 $2 $(foreach ;,$(wordlist 1,$3,1 2 3),$(call ^d,!:IL0 $(call ^u,$;) .)))
 `c0-S-error = $(if $2,$(call `gen-error,$1,internal: %s binds to %q,$1,$2),$(call `gen-error,$1,undefined variable: `%s`,$(call `symbol-name,$1)))
 `c0-S = $(if $(filter !:EDefn3,$(word 1,$4)),$(call `translate,$(wordlist 4,99999999,$4),$(word 3,$4),$(call `current-depth,$1),,$(call `form-index,$2)),$(if $(filter !:EDefn0,$(word 1,$4)),!:IL4 $(word 3,$4),$(if $(filter !:EDefn2,$(word 1,$4)),$(call `c0-macro,$(word 3,$4),$(wordlist 5,99999999,$4),$1,$2),$(if $(filter !:EDefn1,$(word 1,$4)),!:IL5 value $(call ^d,!:IL3 $(call ^d,$(word 4,$4))),$(if $(filter !:EDefn5,$(word 1,$4)),$(call `c0-ctor,$1,$2,$(call ^n,3,$4)),$(if $(filter !:EDefn6,$(word 1,$4)),$(call `c0-builtin,$2,$(word 3,$4),$(call ^n,4,$4)),$(call `c0-S-error,$2,$4)))))))
 `c0-dict-key = $(foreach ;,$(call ^d,$(call `il-demote,$(call `c0,$1,$2))),$(if $(filter !1:IL6!0%,$;!0),$(if $(findstring $(subst ^d0,1,$(word 2,$(call ^u,$;))0),1),$(call `ICall,^k,$(call ^n,3,$(call ^u,$;))),$(call `ICall,$(word 2,$(call ^u,$;)),$(call ^n,3,$(call ^u,$;)))),$(call `subst-in-il,%,!8,$(call ^u,$;))))
 `c0-D = $(call `il-concat,$(call `intersperse,!:IL3 !0,$(foreach ;,$3,$(call ^d,$(call `il-concat,$(call ^d,$(foreach ;;,$(call ^d,$(call ^dk,$;)),$(if $(filter !1:P2!0%,$(;;)!0),$(if $(filter =%,$(call ^n,3,$(call ^u,$(;;)))),$(call `c0-dict-key,!:P2 $(word 2,$(call ^u,$(;;))) $(call ^d,$(patsubst =%,%,$(call ^n,3,$(call ^u,$(;;))))),$1),!:IL3 $(call ^d,$(call ^d,$(call ^n,3,$(call ^u,$(;;)))))),$(call `c0-dict-key,$(call ^dk,$;),$1)))) $(call ^d,!:IL3 !1=) $(call ^d,$(call `il-demote,$(call `c0,$(call ^dv,$;),$1))))))))
 `c0-record = $(or $(call `check-arity,$(words $4),$3,$2),!:IL7 $(call `cons,!:IL3 $(call ^d,$5),$(foreach ;,$(call `indices,$4),$(call `append,$(call ^d,!:IL3 !0),$(call ^d,$(if $(filter S,$(word $;,$4)),$(call `il-demote,$(call `c0,$(call ^n,$;,$3),$1)),$(call `c0,$(call ^n,$;,$3),$1)))))))
-`c0-block-cc = $(if $(filter !:IL11,$(word 1,$5)),$(call `c0-block-cc,$(call `append,$(call ^n,2,$5),$1),$2,$3,$4,$(wordlist 3,99999999,$5)),$(if $2,$(call `c0-block-cc,$1,$(wordlist 2,99999999,$2),$3,$4 $(call ^d,$5),$(call `c0,$(call ^n,1,$2),$1)),$(call ^Y,$1,$(filter-out !.,$4 $(call ^d,$5)),,,,,,,,$3)))
+`c0-block-cc = $(if $(filter !:IL11,$(word 1,$5)),$(call `c0-block-cc,$(call `append,$(call ^n,2,$5),$1),$2,$3,$4,$(wordlist 3,99999999,$5)),$(if $2,$(call `c0-block-cc,$1,$(wordlist 2,99999999,$2),$3,$4 $(call ^d,$5),$(call `c0,$(call ^n,1,$2),$1)),$(call ^X,$1,$(filter-out !.,$4 $(call ^d,$5)),,,,,,,,$3)))
 `c0-block = $(call `c0-block-cc,$2,$1,$`(if $`(word 2,$`2),!:IL8 $`2,$`(call ^n,1,$`2)))
-`c0-L = $(if $(filter !:EDefn1,$(word 1,$5)),$(or $(call `check-arity,$(call ^n,3,$5),$4,$3),$(call `ICall,$(word 4,$5),$(foreach ;,$4,$(call ^d,$(call `c0,$(call ^u,$;),$1))))),$(if $(filter !:EDefn2,$(word 1,$5)),$(or $(call `check-arity,$(call ^n,4,$5),$4,$3),$(call `translate,$(wordlist 5,99999999,$5),$(word 3,$5),$(call `current-depth,$1),$(or $(foreach ;,$4,$(call ^d,$(call `c0,$(call ^u,$;),$1))),$(call ^d,!:IL3 !.)),$(call `form-index,$3))),$(if $(filter !:EDefn6,$(word 1,$5)),$(or $(call `check-arity,$(call ^n,4,$5),$4,$3),!:IL5 $(word 3,$5) $(foreach ;,$4,$(call ^d,$(call `c0,$(call ^u,$;),$1)))),$(if $(filter !:EDefn4,$(word 1,$5)),$(if $(findstring $(subst x0,1,$(word 2,$5)0),1),$(call `gen-error,$3,cannot use xmacro in its own file),$(call `c0,$(call $(word 3,$5),$4,$2),$1)),$(if $(filter !:EDefn5,$(word 1,$5)),$(call `c0-record,$1,$3,$4,$(call ^n,3,$5),$(call ^n,4,$5)),$(if $(if $3,,1),$(call `gen-error,$2,missing function/macro name),$(if $5,$(call `IFuncall,$(foreach ;,$(call `cons,$3,$4),$(call ^d,$(call `c0,$(call ^u,$;),$1)))),$(if $(if $(filter-out u%,$(flavor `M.$(call `symbol-name,$3))),1),$(call `M.$(call `symbol-name,$3),$1,$3,$4),$(call `gen-error,$3,undefined symbol: `%s`,$(call `symbol-name,$3))))))))))
+`c0-L = $(if $(filter !:EDefn1,$(word 1,$5)),$(or $(call `check-arity,$(call ^n,3,$5),$4,$3),$(call `ICall,$(word 4,$5),$(foreach ;,$4,$(call ^d,$(call `c0,$(call ^u,$;),$1))))),$(if $(filter !:EDefn2,$(word 1,$5)),$(or $(call `check-arity,$(call ^n,4,$5),$4,$3),$(call `translate,$(wordlist 5,99999999,$5),$(word 3,$5),$(call `current-depth,$1),$(or $(foreach ;,$4,$(call ^d,$(call `c0,$(call ^u,$;),$1))),$(call ^d,!:IL3 !.)),$(call `form-index,$3))),$(if $(filter !:EDefn6,$(word 1,$5)),$(or $(call `check-arity,$(call ^n,4,$5),$4,$3),!:IL5 $(word 3,$5) $(foreach ;,$4,$(call ^d,$(call `c0,$(call ^u,$;),$1)))),$(if $(filter !:EDefn4,$(word 1,$5)),$(if $(findstring $(subst x0,1,$(word 2,$5)0),1),$(call `gen-error,$3,cannot use xmacro in its own file),$(call `c0,$(call $(word 3,$5),$4,$2),$1)),$(if $(filter !:EDefn5,$(word 1,$5)),$(call `c0-record,$1,$3,$4,$(call ^n,3,$5),$(call ^n,4,$5)),$(if $(if $3,,1),$(call `gen-error,$2,missing function/macro name),$(if $5,$(call `IFuncall,$(call `c0,$3,$1),$(foreach ;,$4,$(call ^d,$(call `c0,$(call ^u,$;),$1)))),$(if $(if $(filter-out u%,$(flavor `M.$(call `symbol-name,$3))),1),$(call `M.$(call `symbol-name,$3),$1,$3,$4),$(call `gen-error,$3,undefined symbol: `%s`,$(call `symbol-name,$3))))))))))
 `bind-params = $(if $2,$(or $(foreach ;,$(lastword $2),$(if $(filter !1:P2!0%,$;!0),$(foreach ;;,$(filter $(if $3,?%,...% ?%),$(call ^n,3,$(call ^u,$;))),$(call `append,$(call `bind-params,$1,$(call `butlast,$2),1),$(call ^k,$(or $(patsubst $(if $(filter ?%,$(;;)),?%,...%),%,$(;;)),$(;;)))!=$(call ^d,!:EDefn3 p $1 !:IL0 $(words $2)$(if $(filter ...%,$(;;)),+) .))),)),$(foreach ;,$(call `indices,$2),$(call `bind-target,$(call ^n,$;,$2),p,$1,!:IL0 $; .))))
-`c0-lambda = $(foreach ;,$(subst ;,,.$(call `current-depth,$1)),$(call ^Y,$(call `bind-params,$;,$2),$1,$3,,,,,,,$`(or $`(call `dict-get,;,$`1),!:IL1 $`(call ^d,$`(call `c0-block,$`3,$`(call `append,:!=$`(call ^d,!:EDefn7 $(call ^E,$;)),$`1,$`2))))))
+`c0-lambda = $(foreach ;,$(call `depth-down,$1),$(call ^X,$(call `bind-params,$;,$2),$;,$1,$3,,,,,,$`(or $`(call `dict-get,',$`1),!:IL1 $`(call ^d,$(call ^E,$4)) $`(call `c0-block,$`4,$`(call `append,:!=$`(call ^d,$`2),$`1,$`3)))))
 `M.lambda = $(if $(filter !:P0,$(word 1,$(call ^n,1,$3))),$(call `c0-lambda,$1,$(wordlist 3,99999999,$(call ^n,1,$3)),$(wordlist 2,99999999,$3)),$(call `err-expected,L,$(call ^n,1,$3),$2,(ARGNAME...),(lambda (ARGNAME...) BODY)))
-`c0-check-body = $(if $3,$(if $(if $2,,1),$(call `gen-error,$1,no BODY supplied to (define TARGET BODY))),$(if $2,$(call `gen-error,$2,too many arguments to (declare ...))))
-`il-errors = $(if $(filter !:P8,$(word 1,$1)),$(call ^d,$1),$(if $(filter !:IL5,$(word 1,$1)),$(filter %,$(foreach ;,$(wordlist 3,99999999,$1),$(call `il-errors,$(call ^u,$;)))),$(if $(filter !:IL6,$(word 1,$1)),$(call `append,$(filter %,$(foreach ;,$(call ^n,3,$1),$(call `il-errors,$(call ^u,$;)))),$(filter %,$(foreach ;,$(wordlist 4,99999999,$1),$(call `il-errors,$(call ^u,$;))))),$(if $(filter !:IL2,$(word 1,$1)),$(call `append,$(call `il-errors,$(call ^n,3,$1)),$(call `il-errors,$(wordlist 4,99999999,$1))),$(if $(filter !:IL7 !:IL8,$(word 1,$1)),$(filter %,$(foreach ;,$(wordlist 2,99999999,$1),$(call `il-errors,$(call ^u,$;)))),$(if $(filter !:IL1,$(word 1,$1)),$(call `il-errors,$(call ^n,2,$1)),))))))
-`il-error-node = $(if $(findstring $(subst !,,$(word 1,!:P8  !.)),$1),$(call ^Y,$(call `il-errors,$1),,,,,,,,,$`(if $`(word 2,$`1),!:IL8 $`1,$`(call ^n,1,$`1))))
-`assign-nx = $(if $(filter !:NX0,$(word 1,$1)),$(call `ICall,^S,$(call ^d,!:IL3 $(call ^d,$(call `gen-native-name,$(call ^n,2,$1),$2))) $(call ^d,$(call ^Y,$3,,,,,,,,,$(call ^n,3,$1)))),)
-`c0-def-target-2 = $(or $(call `first-perror,$2),$(call `il-error-node,$4),$(if $6,!:IL11 $(call ^d,$(call `bind-nxmap,$2,$7,$(call `current-depth,$1),$4)) ,!:IL11 $(call ^d,$(filter %,$(foreach ;,$2,$(if $(filter !:NX0,$(word 1,$(call ^u,$;))),$(call ^k,$(call ^n,2,$(call ^u,$;)))!=$(call ^d,!:EDefn0 $7 $(call `gen-native-name,$(call ^n,2,$(call ^u,$;)),$3)),)))) $(if $5,$(if $(word 2,$2),$(call `IFuncall,$(call ^d,!:IL1 $(call ^d,!:IL8 $(foreach ;,$2,$(call ^d,$(call `assign-nx,$(call ^u,$;),$3,!:IL0 1 .))))) $(call ^d,$4)),$(call `assign-nx,$(call ^n,1,$2),$3,$4)))))
-`c0-def-target = $(or $(call `c0-check-body,$(call `form-index,$2),$(call ^n,1,$4),$5),$(call `c0-def-target-2,$1,$(call `parse-target,$2),$3,$(call `c0-block,$4,$1),$5,$6,$(if $(filter &public,$3),x,p)))
-`c0-def-compound = $(or $(call `c0-check-body,$2,$(call ^n,1,$6),$7),$(call ^Y,$(call `c0-lambda,$(if $8,$1,$(call `append,$(call ^k,$3)!=$(call ^d,!:EDefn1 $(if $(filter &public,$5),x,p) $(call ^d,$(call `get-arity,$(foreach ;,$4,$(call ^d,$(call `symbol-name,$(call ^u,$;)))))) $(call `gen-native-name,$3,$5)),$1)),$4,$6),$(subst ;,,.$(call `current-depth,$1)),$7,$8,$(call `get-arity,$(foreach ;,$4,$(call ^d,$(call `symbol-name,$(call ^u,$;))))),$(if $(filter &public,$5),x,p),$3,$(call `gen-native-name,$3,$5),,$`(or $`(call `il-error-node,$`1),!:IL11 $`(call ^d,$`(call ^k,$`7)!=$`(call ^d,$`(if $`4,!:EDefn2 $`6 $`2 $`(call ^d,$`5) $`(if $`(filter !:IL1,$`(word 1,$`1)),$`(call ^n,2,$`1),),!:EDefn1 $`6 $`(call ^d,$`5) $`8))) $`(and $`3,$`(if $`4,,1),$`(call `ICall,^SF,$`(call ^d,!:IL3 $`(call ^d,$`8)) $`(call ^d,$`1))))))
-`c0-def2 = $(or $(if $(if $7,,1),$(if $(filter !:P5,$(word 1,$3)),$(call `c0-def2,$1,$(word 2,$3),$(wordlist 3,99999999,$3),$4,$5,$6,1),)),$(if $(filter !:P0,$(word 1,$3)),$(foreach ;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$3))),$(if $(filter !1:P2!0%,$;!0),$(call `c0-def-compound,$1,$(word 2,$3),$(call ^n,3,$(call ^u,$;)),$(wordlist 2,99999999,$(wordlist 3,99999999,$3)),$4,$5,$6,$7),$(call `err-expected,S,$(call ^u,$;),$3,NAME,(%s %s(NAME...)),$(if $6,define,declare),$(if $7,`)))),$(if $3,$(call `c0-def-target,$1,$3,$4,$5,$6,$7),$(call `err-expected,L P,$3,$2,FORM,(%s %sFORM ...),$(if $6,define,declare),$(if $7,`)))))
-`M.define = $(call `c0-def2,$1,$(call `form-index,$2),$(call ^n,1,$3),$(call `get-flags,$3),$(call `skip-flags,$3),1,)
-`M.declare = $(call `c0-def2,$1,$(call `form-index,$2),$(call ^n,1,$3),$(call `get-flags,$3),$(call `skip-flags,$3),,)
+`c0-check-body = $(if $(filter dec%,$3),$(if $2,$(call `gen-error,$2,too many arguments to (declare ...))),$(if $(if $2,,1),$(call `gen-error,$1,no BODY supplied to (define TARGET BODY))))
+`il-errors = $(if $(filter !:P8,$(word 1,$1)),$(call ^d,$1),$(if $(filter !:IL5,$(word 1,$1)),$(filter %,$(foreach ;,$(wordlist 3,99999999,$1),$(call `il-errors,$(call ^u,$;)))),$(if $(filter !:IL6,$(word 1,$1)),$(call `append,$(filter %,$(foreach ;,$(call ^n,3,$1),$(call `il-errors,$(call ^u,$;)))),$(filter %,$(foreach ;,$(wordlist 4,99999999,$1),$(call `il-errors,$(call ^u,$;))))),$(if $(filter !:IL2,$(word 1,$1)),$(call `append,$(call `il-errors,$(call ^n,3,$1)),$(call `il-errors,$(wordlist 4,99999999,$1))),$(if $(filter !:IL7 !:IL8,$(word 1,$1)),$(filter %,$(foreach ;,$(wordlist 2,99999999,$1),$(call `il-errors,$(call ^u,$;)))),$(if $(filter !:IL1,$(word 1,$1)),$(call `il-errors,$(wordlist 3,99999999,$1)),))))))
+`il-error-node = $(if $(findstring $(subst !,,$(word 1,!:P8  !.)),$1),$(call `il-error-node',$(call `il-errors,$1)))
+`assign-nx = $(if $(filter !:NX0,$(word 1,$1)),$(call `ICall,^S,$(call ^d,!:IL3 $(call ^d,$(call `gen-native-name,$(call ^n,2,$1),$2))) $(call ^d,$(call ^X,$3,,,,,,,,,$(call ^n,3,$1)))),)
+`c0-def-target-2 = $(or $(call `first-perror,$2),$(call `il-error-node,$4),$(if $6,!:IL11 $(call ^d,$(filter %,$(foreach ;,$2,$(if $(filter !:NX0,$(word 1,$(call ^u,$;))),$(call ^k,$(call ^n,2,$(call ^u,$;)))!=$(call ^d,!:EDefn0 $5 $(call `gen-native-name,$(call ^n,2,$(call ^u,$;)),$3)),)))) $(if $(filter def%,$6),$(if $(word 2,$2),$(call `IFuncall,!:IL1 !. !:IL8 $(foreach ;,$2,$(call ^d,$(call `assign-nx,$(call ^u,$;),$3,!:IL0 1 .))),$(call ^d,$4)),$(call `assign-nx,$(call ^n,1,$2),$3,$4))),!:IL11 $(call ^d,$(call `bind-nxmap,$2,$5,$(call `current-depth,$1),$4)) ))
+`c0-def-target = $(or $(call `c0-check-body,$(call `form-index,$2),$(call ^n,1,$4),$5),$(call `c0-def-target-2,$1,$(call `parse-target,$2),$3,$(call `c0-block,$4,$1),$(if $(filter &public,$3),x,p),$5))
+`c0-def-compound2 = $(or $(call `c0-check-body,$2,$(call ^n,1,$5),$7),$(call `c0-def-compound2',$(call `c0-lambda,$(if $7,$(call `append,$(call ^k,$3)!=$(call ^d,!:EDefn1 $8 $(call ^d,$(call ^n,1,$9)) $6),;!=$(call ^d,$6),$1),$1),$4,$5),$(call `depth-down,$1),$7,$(call ^n,1,$9),$8,$3,$6))
+`c0-def2 = $(or $(if $(filter def%,$6),$(if $(filter !:P5,$(word 1,$3)),$(call `c0-def2,$1,$(word 2,$3),$(wordlist 3,99999999,$3),$4,$5,),)),$(if $(filter !:P0,$(word 1,$3)),$(foreach ;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$3))),$(if $(filter !1:P2!0%,$;!0),$(call `c0-def-compound2,$1,$(word 2,$3),$(call ^n,3,$(call ^u,$;)),$(wordlist 2,99999999,$(wordlist 3,99999999,$3)),$5,$(call `gen-native-name,$(call ^n,3,$(call ^u,$;)),$4),$6,$(if $(filter &public,$4),x,p),$(call ^d,$(call `get-arity,$(foreach ;;,$(wordlist 2,99999999,$(wordlist 3,99999999,$3)),$(call ^d,$(call `symbol-name,$(call ^u,$(;;)))))))),$(call `err-expected,S,$(call ^u,$;),$3,NAME,(%s(NAME...)),$(if $6,$6 ,define `)))),$(if $3,$(call `c0-def-target,$1,$3,$4,$5,$6),$(call `err-expected,L P,$3,$2,FORM,(%sFORM ...),$(if $6,$6 ,define `)))))
+`M.define = $(call `c0-def2,$1,$(call `form-index,$2),$(call ^n,1,$3),$(call `get-flags,$3),$(call `skip-flags,$3),define)
+`M.declare = $(call `c0-def2,$1,$(call `form-index,$2),$(call ^n,1,$3),$(call `get-flags,$3),$(call `skip-flags,$3),declare)
 `c0-ctor = $(call `c0-lambda,$1,$(foreach ;,$(call `indices,$3),$(call ^d,!:P2 0 $(call ^d,a$(call ^u,$;)))),$(call ^d,!:P0 0 $(call `cons,$2,$(foreach ;,$(call `indices,$3),$(call ^d,!:P2 0 $(call ^d,a$(call ^u,$;)))))))
 `M.begin = $(call `c0-block,$3,$1)
 `c0-qq-form = $(if $(findstring *!*,$1),$(call `il-concat,$(call `intersperse,$2,$(foreach ;,$(call `split,*!*,$1),$(call ^d,!:IL3 $;)))),$(if $(findstring *!1*,$1),$(call `il-concat,$(call `intersperse,$(call `il-demote,$2),$(foreach ;,$(call `split,*!1*,$1),$(call ^d,!:IL3 $;)))),!:P8 0 $(call ^d,c0-qq-form: template='$1')))
@@ -919,7 +940,7 @@ $(if $(call ^R,escape),)
 $(if $(call ^R,parse),)
 $(if $(call ^R,gen),)
 `c1-Where = $(subst $`,$``,$(`*compile-file*)$(if $1,:$(call `get-subject-line,$1,$(`*compile-subject*))))
-`c1-Lambda = $(subst $``.,$`.,$(subst $``-,$`,$(subst $`,$``,$1)))
+`c1-Lambda = $(subst $``.,$`.,$(subst $``-,$`,$(subst $`,$``,$(call `c1,$1))))
 define `crumb
 $`.{$(subst 
 ,~N,$(subst $`,~S,$(subst $],~R,$(subst $(if ,,,),~C,$(subst $[,~L,$(subst ~,~1,$(call ^k,$1)!=$(call ^d,$2)))))))$`.}
@@ -934,12 +955,13 @@ endef
 `c1-args9 = $(if $(word 9,$1),$(if ,,$(call `c1-vec,$(wordlist 1,8,$1),$(if ,,,),`c1-arg),$(call `protect-arg,$(call `c1,$(call `il-vector,$(wordlist 9,99999999,$1))))),$(call `c1-vec,$1,$(if ,,,),`c1-arg))
 `i-8 = $(words $(wordlist 9,99999999,$(call `repeat-words,. . . .,$1)))
 `c1-ugly-arg = $(subst $`,$`$(subst .,-,$(subst <.,,<$2)),$(subst %,$(if $(filter $1,1 2 3 4 5 6 7 8 ;),$`$1,$(if $(filter ;%,$1),$`($1),$(if $(findstring +,$1),$(if $(filter $1,1+ 2+ 3+ 4+ 5+ 6+ 7+ 8+),$`(foreach N,$(subst +,,$1),$`(^v)),$(if $(filter 9+,$1),$`9,$`(wordlist $(call `i-8,$(subst +,,$1)),99999999,$`9))),$`(call ^n,$(call `i-8,$1),$`9)))),$(if $(filter .,$2),%,$`(call ^E,%$(filter %`,$(if ,,,$(subst .,`,$(subst <..,,<$2))))))))
-`c1-CallX = $`(call $(call `protect-ltrim,$(subst $`,$``,$1))$(if $2,$(if ,,,$(call `c1-args9,$2)))$(if $3,$(subst $  ,,$(if ,,,$(wordlist $(words x $2),9,$(if ,,, , , , , , , , ,))))$(call `c1-args9,$3)))
+`c1-let = $(if $(findstring $`-,$2),,$`(call $(call `crumb,fn,$(call ^d,$1) $(call ^d,$2))$(if $3,$(if ,,,$(call `c1-args9,$3)))))
+`c1-CallX = $(or $(if $(filter ^X,$1),$(if $(filter !:IL1,$(word 1,$(call ^n,1,$3))),$(if $(call ^n,2,$(call ^n,1,$3)),$(call `c1-let,$(call ^n,2,$(call ^n,1,$3)),$(call `c1,$(wordlist 3,99999999,$(call ^n,1,$3))),$2)),)),$`(call $(call `protect-ltrim,$(subst $`,$``,$1))$(if $2,$(if ,,,$(call `c1-args9,$2)))$(if $3,$(subst $  ,,$(if ,,,$(wordlist $(words x $2),9,$(if ,,, , , , , , , , ,))))$(call `c1-args9,$3))))
 `c1-Block = $(subst |~,,$(subst |~ ,,$(foreach ;,$(call `butlast,$1),$(subst |~,||~~,$(call `c1-void,$(call ^u,$;)))|~)))$(call `c1,$(call ^u,$(lastword $1)))
-`c1 = $(if $(filter !:IL3,$(word 1,$1)),$(subst $`,$``,$(call ^n,2,$1)),$(if $(filter !:IL0,$(word 1,$1)),$(or $(if $(filter .,$(word 3,$1)),$(addprefix $`,$(filter $(word 2,$1),1 2 3 4 5 6 7 8 ;))),$(call `c1-ugly-arg,$(word 2,$1),$(word 3,$1))),$(if $(filter !:IL4,$(word 1,$1)),$(call `c1-Var,$(word 2,$1)),$(if $(filter !:IL7,$(word 1,$1)),$(call `c1-vec,$(wordlist 2,99999999,$1),,`c1),$(if $(filter !:IL1,$(word 1,$1)),$(call `c1-Lambda,$(call `c1,$(call ^n,2,$1))),$(if $(filter !:IL8,$(word 1,$1)),$(call `c1-Block,$(wordlist 2,99999999,$1)),$(if $(filter !:IL6,$(word 1,$1)),$(call `c1-CallX,$(word 2,$1),$(call ^n,3,$1),$(wordlist 4,99999999,$1)),$(if $(filter !:IL5,$(word 1,$1)),$(call `c1-Builtin,$(word 2,$1),$(wordlist 3,99999999,$1)),$(if $(filter !:IL2,$(word 1,$1)),$(call `c1-Builtin,foreach,$(call ^d,!:IL3 $(call ^d,$(word 2,$1))) $(call ^d,$(call ^n,3,$1)) $(call ^d,$(wordlist 4,99999999,$1))),$(if $(filter !:IL9,$(word 1,$1)),$(call `c1-Where,$(word 2,$1)),$(if $(filter !:IL10,$(word 1,$1)),$(call `crumb,$(word 2,$1),$(call ^n,3,$1)),$(if $(filter !:IL11,$(word 1,$1)),$(call `c1,$(wordlist 3,99999999,$1)),$(if $1,$(call `c1-Error,$1))))))))))))))
+`c1 = $(if $(filter !:IL3,$(word 1,$1)),$(subst $`,$``,$(call ^n,2,$1)),$(if $(filter !:IL0,$(word 1,$1)),$(or $(if $(filter .,$(word 3,$1)),$(addprefix $`,$(filter $(word 2,$1),1 2 3 4 5 6 7 8 ;))),$(call `c1-ugly-arg,$(word 2,$1),$(word 3,$1))),$(if $(filter !:IL4,$(word 1,$1)),$(call `c1-Var,$(word 2,$1)),$(if $(filter !:IL7,$(word 1,$1)),$(call `c1-vec,$(wordlist 2,99999999,$1),,`c1),$(if $(filter !:IL1,$(word 1,$1)),$(call `c1-Lambda,$(wordlist 3,99999999,$1)),$(if $(filter !:IL8,$(word 1,$1)),$(call `c1-Block,$(wordlist 2,99999999,$1)),$(if $(filter !:IL6,$(word 1,$1)),$(call `c1-CallX,$(word 2,$1),$(call ^n,3,$1),$(wordlist 4,99999999,$1)),$(if $(filter !:IL5,$(word 1,$1)),$(call `c1-Builtin,$(word 2,$1),$(wordlist 3,99999999,$1)),$(if $(filter !:IL2,$(word 1,$1)),$(call `c1-Builtin,foreach,$(call ^d,!:IL3 $(call ^d,$(word 2,$1))) $(call ^d,$(call ^n,3,$1)) $(call ^d,$(wordlist 4,99999999,$1))),$(if $(filter !:IL9,$(word 1,$1)),$(call `c1-Where,$(word 2,$1)),$(if $(filter !:IL10,$(word 1,$1)),$(call `crumb,$(word 2,$1),$(call ^n,3,$1)),$(if $(filter !:IL11,$(word 1,$1)),$(call `c1,$(wordlist 3,99999999,$1)),$(if $1,$(call `c1-Error,$1))))))))))))))
 define `c1-file-set
 $(if $3,$(call `protect-lhs,$1) := $(call `protect-rhs,$2)
-,$(if $(or $(findstring $`,$(subst $``,,$2)),$(findstring $``.,$2)),$(subst 
+,$(if $(or $(findstring $`,$(subst $`.,,$(subst $``,,$2))),$(findstring $``.,$2)),$(subst 
 ,$`',$`(call ^SF,$(call `protect-arg,$1),$(call `protect-arg,$2)))
 ,$(if $(or $(findstring #,$2),$(findstring 
 ,$2),$(filter ~%,$(subst $  ,~,$(subst $ 	,~,$2)))),define $(call `protect-lhs,$1)
@@ -954,10 +976,16 @@ $(or $(if $(filter !:IL5,$(word 1,$1)),$(foreach ;,$(call ^d,$(call ^n,1,$(wordl
 ,$`',$(call `c1-void,$1))
 ))
 endef
-define `gen1
-$(call ^Y,$(subst $`.}, ,$(subst $`.{, $`.{,$(call ^d,$(if $2,$(subst |~,,$(subst |~ ,,$(foreach ;,$1,$(subst |~,||~~,$(call `c1-file,$(call ^u,$;)))|~))),$(call `c1,!:IL8 $1))))),,,,,,,,,$`(call `append,code!=$`(call ^d,$`(call `concat-vec,$`(filter-out $``.{%,$`1))),$`(call `dict-collate,$`(foreach ;,$`(call `filtersub,$``.{%,%,$`1),$`(subst ~1,~,$`(subst ~L,$`[,$`(subst ~C,$`(if ,,,),$`(subst ~R,$`],$`(subst ~S,$``,$`(subst ~N,
-,$`(call ^u,$`;)))))))))))
+`split-crumbs = $(subst $`.}, ,$(subst $`.{, $`.{,$(call ^d,$1)))
+define `c1-set-fn
+$(if $3,$(call `protect-lhs,$1) = $(call `protect-rhs,$2)
+,$`(call ^SF,$(call `protect-arg,$1),$(call `protect-arg,$(subst $`,$``,$2))))
 endef
+define `decrumb-loop
+$(if $1,$(if $(filter $`.{%,$(word 1,$1)),$(foreach ;,$(subst ~1,~,$(subst ~L,$[,$(subst ~C,$(if ,,,),$(subst ~R,$],$(subst ~S,$`,$(subst ~N,
+,$(call ^u,$(subst $`.{,,$(word 1,$1))))))))),$(if $(findstring $(subst fn0,1,$(call ^dk,$;)0),1),$(or $(foreach ;;,$(call `dict-get,$(call ^n,2,$(call ^dv,$;)),$2),$(call `decrumb-loop,$(wordlist 2,99999999,$1),$2,$3$(call ^d,$(;;)),$4,$5)),$(foreach ;;,$(or $(call ^n,1,$(filter $(call ^d,$(call ^n,1,$(call ^dv,$;)))'%,$(call `dict-values,$2))),$(call ^n,1,$(call ^dv,$;)))',$(call `decrumb-loop,$(call `split-crumbs,$(call `c1-set-fn,$(;;),$(call ^n,2,$(call ^dv,$;)),$5))$3$(call ^d,$(;;)) $(wordlist 2,99999999,$1),$(call ^k,$(call ^n,2,$(call ^dv,$;)))!=$(call ^d,$(;;)) $2,,$4,$5))),$(call `decrumb-loop,$(wordlist 2,99999999,$1),$2,$3,$4 $;,$5))),$(call `decrumb-loop,$(wordlist 2,99999999,$1),$2,$3$(word 1,$1),$4,$5)),$(call `append,code!=$(call ^d,$(call `concat-vec,$3)),$(call `dict-collate,$4)))
+endef
+`gen1 = $(call `decrumb-loop,$(call `split-crumbs,$(if $2,$(subst |~,,$(subst |~ ,,$(foreach ;,$1,$(subst |~,||~~,$(call `c1-file,$(call ^u,$;)))|~))),$(call `c1,!:IL8 $1))),,,,$2)
 
 endef
 
@@ -991,8 +1019,10 @@ endef
 
 endef
 
-define [mod-macros]
+define [mod-gen0b]
 # Requires: core parse gen gen0
+`M.data' = $(or $(if $(filter !:P8,$(word 1,$1)),$1,),!:IL11 $(call ^d,$(filter %,$(foreach ;,$1,$(if $(filter !:Data0,$(word 1,$(call ^u,$;))),$(call ^k,$(word 3,$(call ^u,$;)))!=$(call ^d,!:EDefn5 $2 $(call ^d,$(call ^n,4,$(call ^u,$;))) $(call ^d,$(word 2,$(call ^u,$;)))),)))) $(call `ICall,^at,$(call ^d,!:IL3 $(call ^d,$(filter %,$(foreach ;,$1,$(if $(filter !:Data0,$(word 1,$(call ^u,$;))),$(call ^k,$(word 2,$(call ^u,$;)))!=$(call ^d,$(call `append,$(word 3,$(call ^u,$;)),$(call ^n,4,$(call ^u,$;)))),)))))))
+`M.let&' = $(or $(call `dict-get,',$1),$(call `c0-block,$2,$(call `append,$1,$3)))
 $(if $(call ^R,core),)
 $(if $(call ^R,parse),)
 $(if $(call ^R,gen),)
@@ -1010,22 +1040,22 @@ $(if $(call ^R,gen0),)
 `c0-set = $(if $(filter !:P2,$(word 1,$2)),$(foreach ;,$(call ^d,$(call `resolve,$2,$1)),$(if $(filter !1:EDefn0!0%,$;!0),$(call `ICall,^S,$(call `append,$(call ^d,!:IL3 $(call ^d,$(word 3,$(call ^u,$;)))) $(call ^d,$3),$(if $4,$(call ^d,$4)))),$(if $(filter !1:EDefn1!0%,$;!0),$(call `ICall,^SF,$(call `append,$(call ^d,!:IL3 $(call ^d,$(word 4,$(call ^u,$;)))) $(call ^d,$3),$(if $4,$(call ^d,$4)))),$(call `gen-error,$2,`%s` is not a global variable,$(call `symbol-name,$2))))),$(call `err-expected,S,$2,,$5,$6))
 `M.set = $(or $(call `check-arity,2 3,$3,$2),$(call `c0-set,$1,$(call ^n,1,$3),$(call `c0,$(call ^n,2,$3),$1),$(if $(call ^n,3,$3),$(call `c0,$(call ^n,3,$3),$1)),NAME,(set NAME VALUE [RETVAL])))
 `ITrace = !:IL6 ^t $(call ^d,$(foreach ;,$3,$(call ^d,$(call `c0,$(call ^u,$;),$4)))) $(call ^d,$(if $5,$(call `c0,$5,$4),!:IL3 !.)) $(call ^d,!:IL3 $(call ^d,$(call `symbol-name,$1))) $(call ^d,!:IL3 $(call ^d,$2))
-`M.? = $(foreach ;,$(call ^d,$(call `resolve,$(call ^n,1,$3),$1)),$(if $(filter !1:EDefn1!0%,$;!0),$(call `ITrace,$(call ^n,1,$3),$(word 4,$(call ^u,$;)),$(wordlist 2,99999999,$3),$1),$(if $(filter !1:EDefn6!0%,$;!0),$(call `ITrace,$(call ^n,1,$3),$(word 3,$(call ^u,$;)),$(wordlist 2,99999999,$3),$1),$(if $(filter !1:EDefn2!0%,$;!0),$(call `ITrace,$(call ^n,1,$3),^Y,$(wordlist 2,99999999,$3),$1,$(call ^n,1,$3)),$(if $(findstring $(subst $(call ^u,$;)0,1,-0),1),$(call `err-expected,S,$(call ^n,1,$3),$2,FUNC,(? FUNC ARGS...)),$(if $(call ^u,$;),$(call `gen-error,$(call ^n,1,$3),FUNC in (? FUNC ...) is not traceable),$(call `gen-error,$(call ^n,1,$3),undefined variable: `%s`,$(call `symbol-name,$2))))))))
+`M.? = $(foreach ;,$(call ^d,$(call `resolve,$(call ^n,1,$3),$1)),$(if $(filter !1:EDefn1!0%,$;!0),$(call `ITrace,$(call ^n,1,$3),$(word 4,$(call ^u,$;)),$(wordlist 2,99999999,$3),$1),$(if $(filter !1:EDefn6!0%,$;!0),$(call `ITrace,$(call ^n,1,$3),$(word 3,$(call ^u,$;)),$(wordlist 2,99999999,$3),$1),$(if $(filter !1:EDefn2!0%,$;!0),$(call `ITrace,$(call ^n,1,$3),^X,$(wordlist 2,99999999,$3),$1,$(call ^n,1,$3)),$(if $(findstring $(subst $(call ^u,$;)0,1,-0),1),$(call `err-expected,S,$(call ^n,1,$3),$2,FUNC,(? FUNC ARGS...)),$(if $(call ^u,$;),$(call `gen-error,$(call ^n,1,$3),FUNC in (? FUNC ...) is not traceable),$(call `gen-error,$(call ^n,1,$3),undefined variable: `%s`,$(call `symbol-name,$2))))))))
 `let-err = $(call `gen-error,$1,$(call ^n,$2,extra!0form!0after!0VALUE missing!0VALUE missing!0TARGET expected!0(TARGET!0VALUE) missing!0((TARGET!0VALUE)...) expected!0((TARGET!0VALUE)...) empty!0((TARGET!0VALUE)...) '?NAME'!0and!0'...NAME'!0cannot!0be!0used!0as!0TARGET) in %s,$3)
 `parse-pairs = $(if $(filter !:P0,$(word 1,$1)),$(or $(foreach ;,$(wordlist 3,99999999,$1),$(call ^d,$(if $(filter !:P0,$(word 1,$(call ^u,$;))),$(if $(filter-out 2,$(words $(wordlist 3,99999999,$(call ^u,$;)))),$(if $(call ^n,3,$(wordlist 3,99999999,$(call ^u,$;))),$(call `let-err,$(call ^n,3,$(wordlist 3,99999999,$(call ^u,$;))),1,$3),$(call `let-err,$(call ^u,$;),$(if $(wordlist 3,99999999,$(call ^u,$;)),2,3),$3)),$(if $(foreach ;;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$(call ^u,$;)))),$(if $(filter !1:P2!0%,$(;;)!0),$(filter ?% ...%,$(call ^n,3,$(call ^u,$(;;)))),)),$(call `let-err,$(call ^n,1,$(wordlist 3,99999999,$(call ^u,$;))),8,$3),$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$(call ^u,$;)))) $(call ^d,$(call ^n,2,$(wordlist 3,99999999,$(call ^u,$;)))))),$(call `let-err,$(call ^u,$;),4,$3)))),$(call ^d,$(call `let-err,$1,7,$3))),$(call ^d,$(call `let-err,$(or $1,$2),$(if $1,6,5),$3)))
-`c0-let = $(or $(call `first-perror,$3),$(call `IFuncall,$(call `cons,$(call `c0-lambda,$1,$(foreach ;,$3,$(call ^d,$(call ^n,1,$(call ^u,$;)))),$2),$(foreach ;,$(foreach ;,$3,$(call ^d,$(call ^n,2,$(call ^u,$;)))),$(call ^d,$(call `c0,$(call ^u,$;),$1))))))
+`c0-let = $(or $(call `first-perror,$3),$(call `IFuncall,$(call `c0-lambda,$1,$(foreach ;,$3,$(call ^d,$(call ^n,1,$(call ^u,$;)))),$2,$(call `dict-get,;,$1)),$(foreach ;,$(foreach ;,$3,$(call ^d,$(call ^n,2,$(call ^u,$;)))),$(call ^d,$(call `c0,$(call ^u,$;),$1)))))
 `M.let = $(call `c0-let,$1,$(wordlist 2,99999999,$3),$(call `parse-pairs,$(call ^n,1,$3),$2,(let ((TARGET VALUE)...) BODY)))
 `letg-where := (let-global ((TARGET VALUE)...) BODY)
 `letting = $(call `c0-set,$1,$2,$(call `c0-set,$1,$2,$3,$(call `c0,$2,$1),,),$4,,)
-`lg*2 = $(or $(call `first-perror,$4),$(if $(word 2,$4),$(call `IFuncall,$(call ^d,!:IL1 $(call ^d,$(call `lg*,$(call `append,:!=$(call ^d,!:EDefn7 .$(call `current-depth,$1)),$1),$2,$3,$4,!:IL0 1 .,$6))) $(call ^d,$5)),$(call `lg*,$1,$2,$3,$4,$5,$6)))
-`lg* = $(if $4,$(if $(filter !:NX0,$(word 1,$(call ^n,1,$4))),$(call `letting,$1,!:P2 $6 $(call ^d,$(call ^n,2,$(call ^n,1,$4))),$(call ^Y,$5,,,,,,,,,$(call ^n,3,$(call ^n,1,$4))),$(call `lg*,$1,$2,$3,$(wordlist 2,99999999,$4),$5,$6)),$(call ^n,1,$4)),$(if $3,$(or $(call `first-perror,$3),$(call `lg*2,$1,$2,$(wordlist 2,99999999,$3),$(call `parse-target,$(call ^n,1,$(call ^n,1,$3))),$(call `c0,$(call ^n,2,$(call ^n,1,$3)),$1),$(call `form-index,$(call ^n,1,$(call ^n,1,$3))))),$(call `c0-block,$2,$1)))
+`lg*2 = $(or $(call `first-perror,$4),$(if $(word 2,$4),$(call `IFuncall,!:IL1 !. $(call `lg*,$(call `append,:!=$(call ^d,$(call `depth-down,$1)),$1),$2,$3,$4,!:IL0 1 .,$6),$(call ^d,$5)),$(call `lg*,$1,$2,$3,$4,$5,$6)))
+`lg* = $(if $4,$(if $(filter !:NX0,$(word 1,$(call ^n,1,$4))),$(call `letting,$1,!:P2 $6 $(call ^d,$(call ^n,2,$(call ^n,1,$4))),$(call ^X,$5,,,,,,,,,$(call ^n,3,$(call ^n,1,$4))),$(call `lg*,$1,$2,$3,$(wordlist 2,99999999,$4),$5,$6)),$(call ^n,1,$4)),$(if $3,$(or $(call `first-perror,$3),$(call `lg*2,$1,$2,$(wordlist 2,99999999,$3),$(call `parse-target,$(call ^n,1,$(call ^n,1,$3))),$(call `c0,$(call ^n,2,$(call ^n,1,$3)),$1),$(call `form-index,$(call ^n,1,$(call ^n,1,$3))))),$(call `c0-block,$2,$1)))
 `M.let-global = $(call `lg*,$1,$(wordlist 2,99999999,$3),$(call `parse-pairs,$(call ^n,1,$3),$2,$(`letg-where)),,,)
 `let&-where := (let& ((TARGET VALUE)...) BODY)
-`let&-bindings = $(if $(call ^n,1,$1),$(if $(filter !:P8,$(word 1,$(call ^n,1,$1))),;!=$(call ^d,$(call ^n,1,$1)),$(call `let&-bindings,$(wordlist 2,99999999,$1),$2,$3,$(call `append,$(call `bind-target,$(call ^n,1,$(call ^n,1,$1)),p,$2,$(call `c0,$(call ^n,2,$(call ^n,1,$1)),$4 $3)),$4))),$4)
-`M.let& = $(call ^Y,$(call `let&-bindings,$(call `parse-pairs,$(call ^n,1,$3),$2,$(`let&-where)),$(call `current-depth,$1),$1),$(wordlist 2,99999999,$3),$1,,,,,,,$`(or $`(call `dict-get,;,$`1),$`(call `c0-block,$`2,$`(call `append,$`1,$`3))))
-`c0-for3 = $(or $(call `dict-get,;,$2),!:IL2 $(subst .,,$3) $(call ^d,$(call `c0,$4,$1)) $(call ^Y,$(call `c0-block,$5,$2 $(call `append,:!=$(call ^d,!:EDefn7 $3),$1)),,,,,,,,,$6))
+`let&-bindings = $(if $(call ^n,1,$1),$(if $(filter !:P8,$(word 1,$(call ^n,1,$1))),'!=$(call ^d,$(call ^n,1,$1)),$(call `let&-bindings,$(wordlist 2,99999999,$1),$2,$3,$(call `append,$(call `bind-target,$(call ^n,1,$(call ^n,1,$1)),p,$2,$(call `c0,$(call ^n,2,$(call ^n,1,$1)),$4 $3)),$4))),$4)
+`M.let& = $(call `M.let&',$(call `let&-bindings,$(call `parse-pairs,$(call ^n,1,$3),$2,$(`let&-where)),$(call `current-depth,$1),$1),$(wordlist 2,99999999,$3),$1)
+`c0-for3 = $(or $(call `dict-get,',$2),!:IL2 $(subst .,,$3) $(call ^d,$(call `c0,$4,$1)) $(call ^X,$(call `c0-block,$5,$2 $(call `append,:!=$(call ^d,$3),$1)),,,,,,,,,$6))
 `c0-for-d = $(if $(filter-out $(call ^d,!:IL3 !0),$(call ^d,$7)),$(call `subst-in-il,|~,,$(call `il-subst,!:IL3 |~!0,$(call `subst-in-il,|~,||~~,$7),$(call `c0-for2,$1,$2,$3,$4,!:IL7 $`(call ^d,$`(call `subst-in-il,|~,||~~,$`1)) $`(call ^d,!:IL3 |~),$5,$6))),$(call `c0-for2,$1,$2,$3,$4,$`1,$5,$6))
-`c0-for2 = $(if $(if $7,,1),$(call `err-expected,P,,$2,TARGET,$6),$(if $(if $(word 2,$7),,1),$(call `err-expected,%,,$2,$(filter VEC LIST,$6),$6),$(if $(if $(word 2,$3),,1),$(call `err-expected,%,,$2,BODY,$6),$(if $(word 3,$7),$(if $(findstring DELIM,$6),$(call `c0-for-d,$1,$2,$3,$4,$6,$(wordlist 1,2,$7),$(call `c0,$(call ^n,3,$7),$1)),$(call `gen-error,$(call ^n,3,$7),extra form after VEC in %s,$6)),$(foreach ;,$(call `current-depth,$1);,$(call `c0-for3,$1,$(call `bind-target,$(call ^n,1,$7),p,$;,$(call ^Y,!:IL0 $(subst .,,$;) .,,,,,,,,,$4)),$;,$(call ^n,2,$7),$(wordlist 2,99999999,$3),$5,$6))))))
+`c0-for2 = $(if $(if $7,,1),$(call `err-expected,P,,$2,TARGET,$6),$(if $(if $(word 2,$7),,1),$(call `err-expected,%,,$2,$(filter VEC LIST,$6),$6),$(if $(if $(word 2,$3),,1),$(call `err-expected,%,,$2,BODY,$6),$(if $(word 3,$7),$(if $(findstring DELIM,$6),$(call `c0-for-d,$1,$2,$3,$4,$6,$(wordlist 1,2,$7),$(call `c0,$(call ^n,3,$7),$1)),$(call `gen-error,$(call ^n,3,$7),extra form after VEC in %s,$6)),$(foreach ;,$(call `current-depth,$1);,$(call `c0-for3,$1,$(call `bind-target,$(call ^n,1,$7),p,$;,$(call ^X,!:IL0 $(subst .,,$;) .,,,,,,,,,$4)),$;,$(call ^n,2,$7),$(wordlist 2,99999999,$3),$5,$6))))))
 `c0-for = $(if $(filter !:P0,$(word 1,$(call ^n,1,$3))),$(call `c0-for2,$1,$2,$3,$4,$5,$6,$(wordlist 3,99999999,$(call ^n,1,$3))),$(call `err-expected,L,$(call ^n,1,$3),$2,(TARGET ...),$6))
 `M.for = $(call `c0-for,$1,$2,$3,$(value `il-promote),$(value `il-demote),(for (TARGET VEC) BODY))
 `M.append-for = !:IL5 filter $(call ^d,!:IL3 %) $(call ^d,$(call `c0-for,$1,$2,$3,$(value `il-promote),$`1,(append-for (TARGET VEC) BODY)))
@@ -1036,7 +1066,7 @@ $(if $(call ^R,gen0),)
 `cond-wrap = $(if $(filter !:P0,$(word 1,$1)),$(if $(wordlist 2,99999999,$(wordlist 3,99999999,$1)),$(if $(foreach ;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$1))),$(if $(filter !1:P2!0%,$;!0),$(findstring $(subst else0,1,$(call ^n,3,$(call ^u,$;))0),1),)),$(if $(if $2,,1),$(call `begin-block,$(wordlist 2,99999999,$(wordlist 3,99999999,$1))),$(call `gen-error,$(call ^n,1,$(wordlist 3,99999999,$1)),(else ...) is followed by additional clauses)),!:P0 0 $(call `append,$(call ^d,!:P2 0 if) $(call ^d,$(call ^n,1,$(wordlist 3,99999999,$1))) $(call ^d,$(call `begin-block,$(wordlist 2,99999999,$(wordlist 3,99999999,$1)))),$(if $2,$(call ^d,$2)))),$(if $(call ^n,1,$(wordlist 3,99999999,$1)),$(call `err-expected,,,$1,BODY,$(`cond-where)),$(call `err-expected,,,$1,TEST,$(`cond-where)))),$(call `err-expected,L,$1,,(TEST BODY),$(`cond-where)))
 `M.cond = $(call `c0,$(call `foldr,$(value `cond-wrap),,$3),$1)
 `defn-native-name = $(if $(filter !:EDefn1,$(word 1,$1)),$(word 4,$1),$(if $(filter !:EDefn0 !:EDefn6,$(word 1,$1)),$(word 3,$1),))
-`M.native-name = $(or $(call `check-arity,1,$3,$2),$(if $(filter !:P2,$(word 1,$(call ^n,1,$3))),$(call ^Y,$(call `defn-native-name,$(call `resolve,$(call ^n,1,$3),$1)),$(call ^n,3,$(call ^n,1,$3)),,,,,,,,$`(if $`1,!:IL3 $`(call ^d,$`1),$`(call `gen-error,$`(call ^n,1,$(call ^E,$3)),`%s` is not a global variable,$`2))),$(call `err-expected,S,$(call ^n,1,$3),$2,NAME,(native-name NAME))))
+`M.native-name = $(or $(call `check-arity,1,$3,$2),$(if $(filter !:P2,$(word 1,$(call ^n,1,$3))),$(call ^X,$(call `defn-native-name,$(call `resolve,$(call ^n,1,$3),$1)),$(call ^n,3,$(call ^n,1,$3)),,,,,,,,$`(if $`1,!:IL3 $`(call ^d,$`1),$`(call `gen-error,$`(call ^n,1,$(call ^E,$3)),`%s` is not a global variable,$`2))),$(call `err-expected,S,$(call ^n,1,$3),$2,NAME,(native-name NAME))))
 `defmacro-where := (defmacro (NAME ARGS [POS]) BODY)
 `M.defmacro = $(if $(filter !:P0,$(word 1,$(call ^n,1,$3))),$(foreach ;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$(call ^n,1,$3)))),$(if $(filter !1:P2!0%,$;!0),!:IL11 $(call ^d,$(call ^k,$(call ^n,3,$(call ^u,$;)))!=$(call ^d,!:EDefn4 x $(call `gen-native-name,$(call ^n,3,$(call ^u,$;)),$1))) $(foreach ;;,$(call ^d,$(call `c0,!:P0 0 $(call `cons,!:P2 0 define,$3),$1)),$(if $(filter !1:IL11!0%,$(;;)!0),$(wordlist 3,99999999,$(call ^u,$(;;))),$(call ^u,$(;;)))),$(call `err-expected,S,$(call ^n,1,$(wordlist 3,99999999,$(call ^n,1,$3))),$2,NAME,$(`defmacro-where)))),$(call `err-expected,L,$(call ^n,1,$3),$2,(NAME ARG...),$(`defmacro-where)))
 $(call ^at,!1:Data0!=DataType!0W!0W!0S!0L)
@@ -1044,7 +1074,7 @@ $(call ^at,!1:Data0!=DataType!0W!0W!0S!0L)
 `read-type-r = $(or $(if $(if $1,,1),$(if $6,$(call `gen-error,$2,no argument following last flag: %s,$6),!:Data0 $3 $(call ^n,1,$4) $(call ^d,$(wordlist 2,99999999,$4)) $5)),$(if $(filter !:P2,$(word 1,$(call ^n,1,$1))),$(or $(if $(if $(filter &%,$(call ^n,3,$(call ^n,1,$1))),,1),$(call `read-type-r,$(wordlist 2,99999999,$1),$2,$3,$4 $(if $(findstring $(subst $60,1,&word0),1),W,$(if $(and $(findstring $(subst $60,1,&list0),1),$(if $(word 2,$1),,1)),L,S)),$(call `conj,$5,$(call ^n,3,$(call ^n,1,$1))),)),$(if $6,$(call `gen-error,$(call ^n,1,$1),two type flags supplied for one argument)),$(if $(filter &list &word,$(call ^n,3,$(call ^n,1,$1))),$(call `read-type-r,$(wordlist 2,99999999,$1),$2,$3,$4,$5,$(call ^n,3,$(call ^n,1,$1)))),$(call `gen-error,$(call ^n,1,$1),$(if ,,unknown flag [supported: &list, &word]))),$(call `err-expected,S,$(call ^n,1,$1),$2,ARG,$(`data-where))))
 `read-type = $(if $(filter !:P0,$(word 1,$1)),$(foreach ;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$1))),$(if $(filter !1:P2!0%,$;!0),$(foreach ;;,$(call ^d,$(call ^n,2,$(wordlist 3,99999999,$1))),$(if $(filter !1:P1!0%,$(;;)!0),$(call `read-type-r,$(wordlist 3,99999999,$(wordlist 3,99999999,$1)),$1,$(call ^n,3,$(call ^u,$(;;))),$(call ^n,3,$(call ^u,$;)),,),$(call `read-type-r,$(wordlist 2,99999999,$(wordlist 3,99999999,$1)),$1,$2,$(call ^n,3,$(call ^u,$;)),,))),$(call `err-expected,S,$(call ^n,1,$(wordlist 3,99999999,$1)),$3,CTOR,$(`data-where)))),$(call `err-expected,L,$1,$3,(CTOR ...),$(`data-where)))
 `read-types = $(if $(filter !:P8,$(word 1,$5)),$5,$(if $(if $3,,1),$(call `append,$6,$(if $5,$(call ^d,$5))),$(call `read-types,$1,$2,$(wordlist 2,99999999,$3),$(call `append,$4,1),$(call `read-type,$(call ^n,1,$3),$2$(words $4),$1),$(call `append,$6,$(if $5,$(call ^d,$5))))))
-`M.data = $(call ^Y,$(if $(filter !:P2,$(word 1,$(call ^n,1,$3))),$(call `read-types,$2,!:$(call ^n,3,$(call ^n,1,$3)),$(call `skip-flags,$3)),$(call `err-expected,S,$(call ^n,1,$3),$2,NAME,$(`data-where))),$(if $(filter &public,$(call `get-flags,$3)),x,p),,,,,,,,$`(or $`(if $`(filter !:P8,$`(word 1,$`1)),$`1,),!:IL11 $`(call ^d,$`(filter %,$`(foreach ;,$`1,$`(if $`(filter !:Data0,$`(word 1,$`(call ^u,$`;))),$`(call ^k,$`(word 3,$`(call ^u,$`;)))!=$`(call ^d,!:EDefn5 $`2 $`(call ^d,$`(call ^n,4,$`(call ^u,$`;))) $`(call ^d,$`(word 2,$`(call ^u,$`;)))),)))) $`(call `ICall,^at,$`(call ^d,!:IL3 $`(call ^d,$`(filter %,$`(foreach ;,$`1,$`(if $`(filter !:Data0,$`(word 1,$`(call ^u,$`;))),$`(call ^k,$`(word 2,$`(call ^u,$`;)))!=$`(call ^d,$`(call `append,$`(word 3,$`(call ^u,$`;)),$`(call ^n,4,$`(call ^u,$`;)))),))))))))
+`M.data = $(call `M.data',$(if $(filter !:P2,$(word 1,$(call ^n,1,$3))),$(call `read-types,$2,!:$(call ^n,3,$(call ^n,1,$3)),$(call `skip-flags,$3)),$(call `err-expected,S,$(call ^n,1,$3),$2,NAME,$(`data-where))),$(if $(filter &public,$(call `get-flags,$3)),x,p))
 `case-where := (case VALUE (PATTERN BODY)...)
 $(call ^at,!1:Case0!=Clause!0S!0S!0L)
 `clause-or-error = $(or $(call `first-perror,$2),!:Case0 $(call ^d,$1) $(call ^d,$2) $3)
@@ -1053,8 +1083,8 @@ $(call ^at,!1:Case0!=Clause!0S!0S!0L)
 `case-parse = $(foreach ;,$1,$(call ^d,$(if $(filter !:P0,$(word 1,$(call ^u,$;))),$(if $(word 2,$(wordlist 3,99999999,$(call ^u,$;))),$(foreach ;;,$(call ^d,$(call ^n,1,$(wordlist 3,99999999,$(call ^u,$;)))),$(if $(filter !1:P0!0%,$(;;)!0),$(foreach ;;;,$(call ^d,$(call `resolve,$(call ^n,1,$(wordlist 3,99999999,$(call ^u,$(;;)))),$2)),$(if $(filter !1:EDefn5!0%,$(;;;)!0),$(or $(call `check-arity,$(words $(call ^n,3,$(call ^u,$(;;;)))),$(wordlist 2,99999999,$(wordlist 3,99999999,$(call ^u,$(;;)))),$(call ^n,1,$(wordlist 3,99999999,$(call ^u,$(;;))))),$(call `clause-or-error,$(call ^n,4,$(call ^u,$(;;;))),$(call `record-nxmap,$(wordlist 2,99999999,$(wordlist 3,99999999,$(call ^u,$(;;)))),$(call ^n,3,$(call ^u,$(;;;)))),$(wordlist 2,99999999,$(wordlist 3,99999999,$(call ^u,$;))))),$(call `gen-error,$(call ^n,1,$(wordlist 3,99999999,$(call ^u,$(;;)))),expected a record constructor name))),$(call `clause-or-error,,$(call `parse-target,$(call ^u,$(;;))),$(wordlist 2,99999999,$(wordlist 3,99999999,$(call ^u,$;)))))),$(call `err-expected,,,$(call ^u,$;),$(if $(wordlist 3,99999999,$(call ^u,$;)),BODY,PATTERN),$(`case-where))),$(call `err-expected,L,$(call ^u,$;),,(PATTERN BODY),$(`case-where)))))
 `case-cb = $(foreach ;,$1,$(call ^d,$(if $(filter !:Case0,$(word 1,$(call ^u,$;))),$(call ^d,$(call ^n,2,$(call ^u,$;))) $(call ^d,$(call `c0-block,$(wordlist 4,99999999,$(call ^u,$;)),$(call `append,$(call `bind-nxmap,$(call ^n,3,$(call ^u,$;)),p,$4,$2),$3))),!. $;)))
 `case-merge = $(if $(word 2,$1),$(if $(findstring $(subst $(call ^n,2,$(call ^n,2,$1))0,1,$(call ^n,2,$(call ^n,1,$1))0),1),$(call `case-merge,$(call `cons,$(call ^d,$(addprefix $(call ^n,1,$(call ^n,1,$1)) ,$(call ^n,1,$(call ^n,2,$1)))) $(call ^d,$(call ^n,2,$(call ^n,1,$1))),$(wordlist 3,99999999,$1))),$(call `append,$(word 1,$1),$(call `case-merge,$(wordlist 2,99999999,$1)))),$1)
-`case-fold = $(if $(or $(call ^n,1,$(call ^n,1,$1)),$(wordlist 2,99999999,$1)),!:IL5 if $(call ^d,$(if $(call ^n,1,$(call ^n,1,$1)),!:IL5 filter $(call ^Y,$(call ^n,1,$(call ^n,1,$1)),,,,,,,,,$2),!:IL3 1)) $(call ^d,$(call ^n,2,$(call ^n,1,$1))) $(call ^d,$(call `case-fold,$(wordlist 2,99999999,$1),$2)),$(or $(call ^n,2,$(call ^n,1,$1)),!:IL3 !.))
-`c0-case = $(if $(and $(if $5,,1),$(if $(filter !:IL0 !:IL4 !:IL3,$(word 1,$4)),,$(if $(filter !:IL5,$(word 1,$4)),$(or $(filter-out ^u ^n wordlist,$(word 2,$4)),$(word 1,$(foreach ;,$(wordlist 3,99999999,$4),$(if $(filter !:IL0 !:IL4 !:IL3,$(word 1,$(call ^u,$;))),,1)))),$(if $(filter !:IL6,$(word 1,$4)),$(or $(filter-out ^u ^n wordlist,$(word 2,$4)),$(word 1,$(foreach ;,$(call ^n,3,$4),$(if $(filter !:IL0 !:IL4 !:IL3,$(word 1,$(call ^u,$;))),,1)))),1)))),!:IL2 $(subst .,,$3;) $(call ^d,$(call `il-demote,$4)) $(call `c0-case,$(call `append,:!=$(call ^d,!:EDefn7 $3;),$1),$2,$3;,$(call `il-promote,!:IL0 $(subst .,,$3;) .),$`(call ^d,!:IL3 $`(call ^d,$`(subst !0,!0% ,$`(call ^d,$`1))!0%)) $`(call ^d,!:IL7 $`(call ^d,!:IL0 $`(subst .,,$(call ^E,$3);) .) $`(call ^d,!:IL3 !10))),$(call `case-fold,$(call `case-merge,$(call `case-cb,$(call `case-parse,$2,$1),$4,$1,$3)),$(or $5,$`(call ^d,!:IL3 $`(call ^d,$`1)) $`(call ^d,!:IL5 word $`(call ^d,!:IL3 1) $`(call ^d,$(call ^E,$4))))))
+`case-fold = $(if $(or $(call ^n,1,$(call ^n,1,$1)),$(wordlist 2,99999999,$1)),!:IL5 if $(call ^d,$(if $(call ^n,1,$(call ^n,1,$1)),!:IL5 filter $(call ^X,$(call ^n,1,$(call ^n,1,$1)),,,,,,,,,$2),!:IL3 1)) $(call ^d,$(call ^n,2,$(call ^n,1,$1))) $(call ^d,$(call `case-fold,$(wordlist 2,99999999,$1),$2)),$(or $(call ^n,2,$(call ^n,1,$1)),!:IL3 !.))
+`c0-case = $(if $(and $(if $5,,1),$(if $(filter !:IL0 !:IL4 !:IL3,$(word 1,$4)),,$(if $(filter !:IL5,$(word 1,$4)),$(or $(filter-out ^u ^n wordlist,$(word 2,$4)),$(word 1,$(foreach ;,$(wordlist 3,99999999,$4),$(if $(filter !:IL0 !:IL4 !:IL3,$(word 1,$(call ^u,$;))),,1)))),$(if $(filter !:IL6,$(word 1,$4)),$(or $(filter-out ^u ^n wordlist,$(word 2,$4)),$(word 1,$(foreach ;,$(call ^n,3,$4),$(if $(filter !:IL0 !:IL4 !:IL3,$(word 1,$(call ^u,$;))),,1)))),1)))),!:IL2 $(subst .,,$3;) $(call ^d,$(call `il-demote,$4)) $(call `c0-case,$(call `append,:!=$(call ^d,$3;),$1),$2,$3;,$(call `il-promote,!:IL0 $(subst .,,$3;) .),$`(call ^d,!:IL3 $`(call ^d,$`(subst !0,!0% ,$`(call ^d,$`1))!0%)) $`(call ^d,!:IL7 $`(call ^d,!:IL0 $`(subst .,,$(call ^E,$3);) .) $`(call ^d,!:IL3 !10))),$(call `case-fold,$(call `case-merge,$(call `case-cb,$(call `case-parse,$2,$1),$4,$1,$3)),$(or $5,$`(call ^d,!:IL3 $`(call ^d,$`1)) $`(call ^d,!:IL5 word $`(call ^d,!:IL3 1) $`(call ^d,$(call ^E,$4))))))
 `M.case = $(if $3,$(call `c0-case,$1,$(wordlist 2,99999999,$3),$(call `current-depth,$1),$(call `c0,$(call ^n,1,$3),$1)),$(call `err-expected,,,$2,VALUE,$(`case-where)))
 
 endef

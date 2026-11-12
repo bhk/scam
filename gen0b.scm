@@ -226,9 +226,11 @@
     (for ([p v] pmap) p))
   (define `values
     (c0-vec (for ([p v] pmap) v) env))
+  (define `stem
+    (dict-get EnvFuncKey env))
 
   (or (first-perror pmap)
-      (IFuncall (cons (c0-lambda env params body) values))))
+      (IFuncall (c0-lambda env params body stem) values)))
 
 
 (define (M.let env sym [pairs ...body])
@@ -272,7 +274,7 @@
            (append (depth-marker (depth-down env)) env))
          (define `inner
            (lg* inner-env body tvmap nxmap (IArg 1 ".") pos))
-         (IFuncall [(ILambda inner) value]))
+         (IFuncall (ILambda nil inner) [value]))
        ;; single
        (lg* env body tvmap nxmap value pos))))
 
