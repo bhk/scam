@@ -275,8 +275,7 @@
 (define (write-file-atomic file-name data)
   &public
   (let (([code tmp-name] (shell-ok "mktemp %F" (.. file-name ".tmp.XXXX")))
-        (file-name file-name)
-        (data data))
+        (file-name file-name) (data data))
     (if (filter-out 0 code)
         tmp-name
         (or (write-file tmp-name data)

@@ -141,22 +141,6 @@
           (uf-addsub x/b remainder is-sub))))
 
 
-(define (uf-atanh-3 xnz alz anz count)
-  ;; We handle the first iteration of the loop here, mostly to improve
-  ;; accuracy (no truncation in the initial X/1 term).
-  (uf-add (._. alz (uf-atan-loop (uf-mulp xnz anz (words count))
-                                 alz anz nil U3
-                                 (wsub count alz)))
-          xnz))
-
-
-(define (uf-atanh-2 xlz xnz x² count)
-  (if xnz
-      (native-strip (._. xlz (uf-atanh-3 xnz (uf-get-lz x²) (uf-trim-lz x²)
-                                   (wsub count xlz))))
-      0))
-
-
 ;; Compute arctanh(X).
 ;;
 ;; X must be less than (e²-1)/(e²+1) ≈ ~0.761594 or else the result will
@@ -172,7 +156,25 @@
 ;;            = ∑ [n ≥ 0] x * x²ⁿ / (2n+1)
 ;;
 (define (uf-atanh x count)
-  (uf-atanh-2 (uf-get-lz x) (uf-trim-lz x) (uf-mul x x) count))
+  (let ((xlz (uf-get-lz x))
+        (xnz (uf-trim-lz x))
+        (x² (uf-mul x x))
+        (count count))
+    (if xnz
+        (begin
+          (define `nz-out
+            (let ((alz (uf-get-lz x²))
+                  (anz (uf-trim-lz x²))
+                  (count (wsub count xlz))
+                  (xnz xnz))
+              ;; Handle the first iteration of the loop here, mostly to
+              ;; improve accuracy (no truncation in the initial X/1 term).
+              (uf-add (._. alz (uf-atan-loop (uf-mulp xnz anz (words count))
+                                             alz anz nil U3
+                                             (wsub count alz)))
+                      xnz)))
+          (native-strip (._. xlz nz-out)))
+        0)))
 
 
 ;; Compute log(X) using:
@@ -281,22 +283,6 @@
             (psrch ux (wordlist 2 ndx (.. "0 " values)) valuesgt)))))
 
 
-(define (uf-log-fr2 a p digit-zeros)
-  (define `a-mod-1 (rest a))
-  (define `p-len (words p))
-  (define `m-digit-words (._. digit-zeros 0 p))
-
-  (define `p*logm/10
-    (nth-rest p-len (uf-mul (const-log-M m-digit-words) p)))
-
-  (define `count
-    (.. digit-zeros " 0 " (word 75 digit-zeros)))
-
-  (if (filter "01%" (word 1 a))  ;; a>=1
-      (uf-sub p*logm/10 (>>1 (uf-log-pos a-mod-1 count)))
-      (uf-add p*logm/10 (>>1 (uf-log-neg a-mod-1 count)))))
-
-
 ;; Calculate logarithm for 0.1 ≤ X < 1.
 ;;
 ;; X is UF-encoded.
@@ -316,12 +302,25 @@
     (define `Mᵖ
       (u2uv (word dp cached-m-powers)))
 
-    (define `a
-      (if (filter 0 dp)
-          (>>1 x)
-          (uf-mulp Mᵖ x (words (._. "0 0" digit-zeros)))))
+    (let ((a (if (filter 0 dp)
+                 (>>1 x)
+                 (uf-mulp Mᵖ x (words (._. "0 0" digit-zeros)))))
+          (p (u2uv (d2u dp)))
+          (digit-zeros digit-zeros))
 
-    (uf-log-fr2 a (u2uv (d2u dp)) digit-zeros)))
+      (define `a-mod-1 (rest a))
+      (define `p-len (words p))
+      (define `m-digit-words (._. digit-zeros 0 p))
+
+      (define `p*logm/10
+        (nth-rest p-len (uf-mul (const-log-M m-digit-words) p)))
+
+      (define `count
+        (.. digit-zeros " 0 " (word 75 digit-zeros)))
+
+      (if (filter "01%" (word 1 a))  ;; a>=1
+          (uf-sub p*logm/10 (>>1 (uf-log-pos a-mod-1 count)))
+          (uf-add p*logm/10 (>>1 (uf-log-neg a-mod-1 count)))))))
 
 
 (define (log-10 count)
@@ -471,11 +470,7 @@
     (foreach (x-size (log-size-x (fp.xpo fx) (fp.uf fx)))
       (foreach (b-size (log-size-x (fp.xpo fb) (fp.uf fb)))
         (let ((count-pre (div-count x-size b-size))
-              (fx fx)
-              (fb fb)
-              (pod pod)
-              (x-size x-size)
-              (b-size b-size))
+              (fx fx) (fb fb) (pod pod) (x-size x-size) (b-size b-size))
 
           (fp-div (fp-log2 (fp.xpo fx) (fp.uf fx)
                            (adjust-digit-count count-pre x-size))
@@ -654,37 +649,6 @@
    0))
 
 
-;; FI = floor(X/log(10))
-;;
-(define (exp-4 fx count fL10 fi)
-  (define `exp
-    (u-add-ones (fp2su fi) 11))
-  (define `ua
-    (fp2uf (fp-sub fx (fp-mul fi fL10)) "01"))
-
-  ;; The largest result we expect from uf-exp-med is ~10.  The exact value
-  ;; should always be less than 10, but rounding of the result and
-  ;; imprecision in A could yield 10 or greater.
-  (make-fp exp "+" (uf-exp-med ua (>>1 count))))
-
-
-(define (exp-3 fx count fL10)
-  ;; Compute i = x // log(10))
-  (exp-4 fx count fL10 (fp-div fx fL10 "0" nil)))
-
-
-;; COUNT = list of N words
-;;
-(define (exp-2 fx count)
-  ;; number of digits needed for log(10)
-  (define `KL
-    (._. count "0 0" (u-zeros (fp.xpo fx))))
-
-  (if count
-      (exp-3 fx count (make-fp "01" "+" (const-log-10 KL)))
-      FP0))
-
-
 ;; POD = place (0N, -0N) or digits (U)
 ;;
 (define (fp-exp fx pod)
@@ -693,16 +657,37 @@
   (define `fia
     (fp-div fx "01 + 011 0111" 0 nil))
 
-  (define `count
-    (if (pod-is-place? pod)
-        ;; U place (negated)
-        (>>1 (u-zeros (u-add pod (fp2su fia))))
-        ;; decimal number of digits
-        (nzeros pod)))
+  (define `out
+    (let ((count  (if (pod-is-place? pod)
+                      ;; U place (negated)
+                      (>>1 (u-zeros (u-add pod (fp2su fia))))
+                      ;; decimal number of digits
+                      (nzeros pod)))
+          (uz (._. "0 0" u-zeros (fp.xpo fx)))
+          (fx fx))
+      (define `KL (._. count "0 0" (u-zeros (fp.xpo fx))))
+
+      (if count
+          ;; Compute i = x // log(10))
+          (let ((fL10 (make-fp "01" "+" (const-log-10 KL)))
+                (fx fx) (count count))
+            (let ((fi (fp-div fx fL10 "0" nil))
+                  (fx fx) (count count) (fL10 fL10))
+              ;; FI = floor(X/log(10))
+              (define `exp
+                (u-add-ones (fp2su fi) 11))
+              (define `ua
+                (fp2uf (fp-sub fx (fp-mul fi fL10)) "01"))
+
+              ;; The largest result we expect from uf-exp-med is ~10.  The
+              ;; exact value should always be less than 10, but rounding of
+              ;; the result and imprecision in A could yield 10 or greater.
+              (make-fp exp "+" (uf-exp-med ua (>>1 count)))))
+          FP0)))
 
   (and fx
        pod
-       (fp-round (exp-2 fx count) (or result-pod pod) DIV-NEAREST)))
+       (fp-round out (or result-pod pod) DIV-NEAREST)))
 
 
 ;;----------------------------------------------------------------

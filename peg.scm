@@ -169,10 +169,7 @@
 
 (define (match* subj pos pf caps)
   (let ((m (pf subj pos))
-        (subj subj)
-        (pos pos)
-        (pf pf)
-        (caps caps))
+        (subj subj) (pos pos) (pf pf) (caps caps))
     (define `pm (word 1 m))
     (define `cm (rest m))
     (if m
@@ -259,11 +256,8 @@
   &public
   (lambda (subj pos)
     (let ((m (pf subj pos))
-          (name name)
-          (subj subj)
-          (pos pos))
-      (define `pm (word 1 m))
-      (define `cm (rest m))
+          (name name) (subj subj) (pos pos))
+      (define `[pm ...cm] m)
       (if m
           (Yes pm (append cm {=name: (wordlist (1+ pos) pm
                                                (._. "." subj))}))))))

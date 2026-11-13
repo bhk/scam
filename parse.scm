@@ -410,25 +410,24 @@
 ;;   POS = position of W
 ;;   OUT = result of parsing expression following W
 ;;
-(define (parse-x2 w pos out)
-  (define `form-ctor
-    (cond ((filter "'" w)  PQuote)
-          ((filter "`" w)  PQQuote)
-          ((filter "," w)  PUnquote)
-          ((filter ",@" w) PSplice)
-          (else (lambda () (PError pos (.. "internal:parse-x2:" w))))))
-
-  (case (POut-form out)
-    ((PError n desc) out)
-    (else (POut (POut-pos out)
-                (form-ctor pos (POut-form out))))))
-
-
 (define (parse-x w subj pos)
   (if (filter "!0% !+% \n% ;% ()" (or (word (1+ pos) subj) "()"))
       ;; quoting tokens must immediately precede an expression
       (POut pos (PError pos w))
-    (parse-x2 w pos (parse-exp subj (1+ pos)))))
+      (let ((out (parse-exp subj (1+ pos)))
+            (w w) (pos pos))
+
+        (define `form-ctor
+          (cond ((filter "'" w)  PQuote)
+                ((filter "`" w)  PQQuote)
+                ((filter "," w)  PUnquote)
+                ((filter ",@" w) PSplice)
+                (else (lambda () (PError pos (.. "internal:parse-x:" w))))))
+
+        (case (POut-form out)
+          ((PError n desc) out)
+          (else (POut (POut-pos out)
+                      (form-ctor pos (POut-form out))))))))
 
 
 ;; parse-exp:  Parse one expression; return "POS NODE"
@@ -534,10 +533,7 @@
   (case form
     ((PError pos desc)
      (let ((lc (get-subject-line-col pos (penc text)))
-           (text text)
-           (filename filename)
-           (pos pos)
-           (desc desc))
+           (text text) (filename filename) (pos pos) (desc desc))
        (define `lnum (word 1 (subst ":" " " lc)))
        (define `col (word 2 (subst ":" " " lc)))
        (define `line-text (nth lnum (split "\n" text)))

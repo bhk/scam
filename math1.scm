@@ -327,43 +327,42 @@
 
 
 ;; fp-mulp: Compute X*Y to the precision given by POD (see fp-div).
+;; Called via (prec-op "mulp" ...)
 ;;
 ;; X & Y must be normalized (no leading zeros in UF).
 ;;
-(define (fp-mulp-x exp sgn uf pod num-digits)
-  ;; If pod is given in terms of *significant* digits and the first result
-  ;; digit is zero, use NUM-DIGITS digits *after* the first digit.
-  (define `skip-zero
-    (and (filter-out "-0% 0%" pod)
-         (filter 0 (word 1 uf))))
-
-  (make-fp exp sgn
-           (.. (wordlist 1 num-digits uf)
-               (if skip-zero
-                   (addprefix " " (word 2 (nth-rest num-digits uf)))))))
-
-
 (define (fp-mulp x y pod)
-  (if (and pod x y)
-      (foreach (exp (u-add (fp.xpo x) (fp.xpo y)))
-        (foreach (num-digits (if (pod-is-place? pod)
-                                 (u2d (u-add exp pod))
-                                 pod))
-          ;; get up to NUM_DIGITS+1 digits of A
-          (define `(in-digits a)
-            (.. (word 3 a)
-                (if (word 4 a)
-                    (.. " " (wordlist 1 num-digits (nth-rest 4 a))))))
+  (and
+   pod x y
+   (foreach (exp (u-add (fp.xpo x) (fp.xpo y)))
+     (foreach (num-digits (if (pod-is-place? pod)
+                              (u2d (u-add exp pod))
+                              pod))
+       ;; get up to NUM_DIGITS+1 digits of A
+       (define `(in-digits a)
+         (.. (word 3 a)
+             (if (word 4 a)
+                 (.. " " (wordlist 1 num-digits (nth-rest 4 a))))))
 
-          (if (filter "-% 0" num-digits)
-              ;; Rounding place is to the left of EXP => 0
-              FP0
-              ;; Non-zero num-digits
-              (fp-mulp-x exp
-                         (sign-mul (fp.sign x) (fp.sign y))
-                         (uf-mul (in-digits x) (in-digits y))
-                         pod
-                         num-digits))))))
+       (if (filter "-% 0" num-digits)
+           ;; Rounding place is to the left of EXP => 0
+           FP0
+           ;; Non-zero num-digits
+           (let ((exp exp)
+                 (sgn (sign-mul (fp.sign x) (fp.sign y)))
+                 (uf (uf-mul (in-digits x) (in-digits y)))
+                 (pod pod)
+                 (num-digits num-digits))
+
+             ;; If pod is given in terms of *significant* digits and the first result
+             ;; digit is zero, use NUM-DIGITS digits *after* the first digit.
+             (define `skip-zero
+               (and (filter-out "-0% 0%" pod)
+                    (filter 0 (word 1 uf))
+                    (addprefix " " (word 2 (nth-rest num-digits uf)))))
+
+             (make-fp exp sgn
+                      (.. (wordlist 1 num-digits uf) skip-zero))))))))
 
 
 ;; Divide X by Y.

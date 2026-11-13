@@ -203,14 +203,10 @@
   (if (or (findstring "define" str)
           (findstring "endef" str)
           (findstring "\\" str))
-      (begin
-        (define `(protect-line line)
-          (.. (if (filter "define endef" (word 1 line))
-                  "$ ")
-              line
-              (if (filter "%\\" [line])
-                  "$ ")))
-
-        (concat-for (w (split "\n" str) "\n")
-          (protect-line w)))
+      (concat-for (line (split "\n" str) "\n")
+        (.. (if (filter "define endef" (word 1 line))
+                "$ ")
+            line
+            (if (filter "%\\" [line])
+                "$ ")))
       str))

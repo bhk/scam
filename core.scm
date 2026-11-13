@@ -279,8 +279,7 @@
   (define (while pred op initial)
     (if (pred initial)
         (let ((new-value (op initial))
-              (pred pred)
-              (op op))
+              (pred pred) (op op))
           (nth 2 (while-N pred op (while-0 pred op new-value nil) 1 "ii")))
         initial)))
 
@@ -462,8 +461,7 @@
   (if (filter "!:%" tag)
       (let ((pattern (dict-get tag ^tags))
             (values (rest record))
-            (tag tag)
-            (record record))
+            (tag tag) (record record))
         (define `ctor-name (nth 1 pattern))
         (define `encodings (rest pattern))
         (define `reconstructed

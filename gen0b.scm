@@ -374,15 +374,6 @@
   (append (depth-marker new-depth) env))
 
 
-(define (c0-for3 env bindings depth list body out-x where)
-  (define `env-in
-    (._. bindings
-         (for-env depth env)))
-
-  (or (dict-get EnvErrorKey bindings)
-      (for-node depth (c0 list env) (out-x (c0-block body env-in)))))
-
-
 (declare (c0-for2 env sym args in-x out-x where tmpl))
 
 
@@ -444,9 +435,14 @@
 
    (else
     (foreach (depth (.. (current-depth env) ";"))
-      (define `bindings
-        (bind-target target "p" depth (in-x (for-arg depth))))
-      (c0-for3 env bindings depth list body out-x where)))))
+      (let ((bindings (bind-target target "p" depth (in-x (for-arg depth))))
+            (env env) (depth depth) (list list) (body body) (out-x out-x))
+        (define `env-in
+          (._. bindings
+               (for-env depth env)))
+
+        (or (dict-get EnvErrorKey bindings)
+            (for-node depth (c0 list env) (out-x (c0-block body env-in)))))))))
 
 
 ;; Compile to IFor.
@@ -557,8 +553,7 @@
       (case var
         ((PSymbol _ name)
          (let ((global-name (defn-native-name (resolve var env)))
-               (name name)
-               (var var))
+               (name name) (var var))
            (if global-name
                (IString global-name)
                (gen-error var "`%s` is not a global variable" name))))

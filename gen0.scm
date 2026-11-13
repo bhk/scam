@@ -486,10 +486,7 @@
   &public
   (foreach (depth (depth-down env))
     (let ((bindings (bind-params depth params))
-          (depth depth)
-          (env env)
-          (body body)
-          (stem stem))
+          (depth depth) (env env) (body body) (stem stem))
 
       (define `body-env
         (append (depth-marker depth) bindings env))
@@ -568,44 +565,39 @@
 
 ;; DEF-MODE = "define", "declare", or nil (macro)
 ;;
-(define (c0-def-target-2 env nxmap flags value scope def-mode)
-  ;; Bindings for global variables (names mentioned in target)
-  (define `bindings
-    (append-for (nx nxmap)
-      (case nx
-        ((Bind name xtor)
-         {=name: (EVar scope (gen-native-name name flags))}))))
-
-  (define `set-nodes
-    (for (nx nxmap)
-      (assign-nx nx flags (IArg 1 "."))))
-
-  (define `assignment-code
-    (if (word 2 nxmap)
-        ;; Mutiple vars => (let ((v VALUE)) (^S NAME1 (XTOR1 v)) ...)
-        (IFuncall (ILambda nil (IBlock set-nodes)) [value])
-        ;; Single var => (^S NAME (XTOR v))))
-        (assign-nx (first nxmap) flags value)))
-
-  (or (first-perror nxmap)
-
-      (il-error-node value)
-
-      (if def-mode
-          (IEnv bindings
-                (if (filter "def%" def-mode)
-                    assignment-code))
-          (IEnv (bind-nxmap nxmap scope (current-depth env) value) nil))))
-
-
 (define (c0-def-target env target flags body def-mode)
   (or (c0-check-body (form-index target) (first body) def-mode)
-      (c0-def-target-2 env
-                       (parse-target target)
-                       flags
-                       (c0-block body env)
-                       (if (filter "&public" flags) "x" "p")
-                       def-mode)))
+      (let ((nxmap (parse-target target))
+            (value (c0-block body env))
+            (scope (if (filter "&public" flags) "x" "p"))
+            (env env) (flags flags) (def-mode def-mode))
+        ;; Bindings for global variables (names mentioned in target)
+        (define `bindings
+          (append-for (nx nxmap)
+            (case nx
+              ((Bind name xtor)
+               {=name: (EVar scope (gen-native-name name flags))}))))
+
+        (define `set-nodes
+          (for (nx nxmap)
+            (assign-nx nx flags (IArg 1 "."))))
+
+        (define `assignment-code
+          (if (word 2 nxmap)
+              ;; Mutiple vars => (let ((v VALUE)) (^S NAME1 (XTOR1 v)) ...)
+              (IFuncall (ILambda nil (IBlock set-nodes)) [value])
+              ;; Single var => (^S NAME (XTOR v))))
+              (assign-nx (first nxmap) flags value)))
+
+        (or (first-perror nxmap)
+
+            (il-error-node value)
+
+            (if def-mode
+                (IEnv bindings
+                      (if (filter "def%" def-mode)
+                          assignment-code))
+                (IEnv (bind-nxmap nxmap scope (current-depth env) value) nil))))))
 
 
 ;;--------------------------------
@@ -628,10 +620,7 @@
       ;; compile function/macro body
       (let ((body-il (c0-lambda body-env args body))
             (body-depth (depth-down env))
-            (def-mode def-mode)
-            (arity arity)
-            (scope scope)
-            (name name)
+            (def-mode def-mode) (arity arity) (scope scope) (name name)
             (gname gname))
 
         (define `defn
@@ -660,7 +649,7 @@
 
 ;; Dispatch to c0-def-symbol or c0-def-compound
 ;;
-(define (c0-def2 env pos what flags body def-mode)
+(define (c0-def env pos what flags body def-mode)
   (define `syntax
     (if def-mode
         (.. def-mode " ")
@@ -671,7 +660,7 @@
    (if (filter "def%" def-mode)
        (case what
          ((PQQuote n subform)
-          (c0-def2 env n subform flags body nil))))
+          (c0-def env n subform flags body nil))))
 
    ;; get NAME, PARAMS
    (case what
@@ -694,16 +683,13 @@
 
 ;; Return IL for a `define` or `declare` form.
 ;;
-(define `(c0-def env sym args def-mode)
-  (c0-def2 env (form-index sym) (first args)
-           (get-flags args) (skip-flags args)
-           def-mode))
-
 (define (M.define env sym args)
-  (c0-def env sym args "define"))
+  (c0-def env (form-index sym) (first args)
+          (get-flags args) (skip-flags args)
+          (symbol-name sym)))
 
 (define (M.declare env sym args)
-  (c0-def env sym args "declare"))
+  (M.define env sym args))
 
 
 ;;--------------------------------

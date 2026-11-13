@@ -86,10 +86,7 @@
     cfg)
 
   (let ((o (compile-text text "[stdin]" env build-dir is-quiet))
-        (text text)
-        (cfg cfg)
-        (env env)
-        (prompts prompts))
+        (text text) (cfg cfg) (env env) (prompts prompts))
     (define `{errors: errors, code: exe, env: newenv} o)
 
     (cond
@@ -146,10 +143,7 @@
     ((REPL _ text cfg env)
      (define `[prompts build-dir is-quiet] cfg)
      (let ((line (getline (nth (if text 2 1) prompts)))
-           (state state)
-           (text text)
-           (cfg cfg)
-           (env env))
+           (state state) (text text) (cfg cfg) (env env))
        (define `(saw str)
          (eq? (native-strip line) str))
 
