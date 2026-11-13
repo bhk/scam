@@ -63,7 +63,8 @@
 ;;
 (define (describe-env env all)
   (foreach ({=name: value} (reverse (dict-compact env)))
-    (let ((desc (describe-binding name value all)))
+    (let ((desc (describe-binding name value all))
+          (name name))
       (if desc
           (printf "  %s : %s" name desc)))))
 
@@ -85,8 +86,10 @@
     cfg)
 
   (let ((o (compile-text text "[stdin]" env build-dir is-quiet))
+        (text text)
+        (cfg cfg)
         (env env)
-        (text text))
+        (prompts prompts))
     (define `{errors: errors, code: exe, env: newenv} o)
 
     (cond
@@ -143,8 +146,10 @@
     ((REPL _ text cfg env)
      (define `[prompts build-dir is-quiet] cfg)
      (let ((line (getline (nth (if text 2 1) prompts)))
-           (env env)
-           (state state))
+           (state state)
+           (text text)
+           (cfg cfg)
+           (env env))
        (define `(saw str)
          (eq? (native-strip line) str))
 

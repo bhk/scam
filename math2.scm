@@ -473,7 +473,9 @@
         (let ((count-pre (div-count x-size b-size))
               (fx fx)
               (fb fb)
-              (pod pod))
+              (pod pod)
+              (x-size x-size)
+              (b-size b-size))
 
           (fp-div (fp-log2 (fp.xpo fx) (fp.uf fx)
                            (adjust-digit-count count-pre x-size))

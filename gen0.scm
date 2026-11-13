@@ -488,7 +488,8 @@
     (let ((bindings (bind-params depth params))
           (depth depth)
           (env env)
-          (body body))
+          (body body)
+          (stem stem))
 
       (define `body-env
         (append (depth-marker depth) bindings env))

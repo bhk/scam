@@ -10,7 +10,8 @@
   (if offsets
       (let ((q (// code 64))
             (ro (rest offsets))
-            (o1 (word 1 offsets)))
+            (o1 (word 1 offsets))
+            (code code))
         (define `rem (- code (* q 64)))
         (append (utf-seq q ro)
                 (+ o1 rem)))))

@@ -641,7 +641,8 @@
 
      (let (({errors: errors, code: exe, env: env-out, require: reqs}
             (parse-and-gen text imports file 1))
-           (file file))
+           (file file)
+           (text text))
        (define `outfile (modid-object (modid-from-source file)))
        (define `content
          (.. "# Requires: " (deps-min reqs) "\n"
@@ -686,7 +687,9 @@
   (build-message "link" exe-file)
 
   (define `exe-code
-    (let ((mod-deps (modid-deps-all main-id)))
+    (let ((mod-deps (modid-deps-all main-id))
+          (exe-file exe-file)
+          (main-id main-id))
       (define `bundles
         (concat-for (dep mod-deps "")
           (construct-bundle (dep-ids dep)

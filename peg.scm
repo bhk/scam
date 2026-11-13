@@ -135,7 +135,10 @@
 
 (define (match-and subj pos pfs caps)
   (if pfs
-      (let ((m ((first pfs) subj pos)))
+      (let ((m ((first pfs) subj pos))
+            (subj subj)
+            (pfs pfs)
+            (caps caps))
         (define `pm (word 1 m))
         (define `cm (rest m))
         (if m
@@ -165,7 +168,11 @@
 
 
 (define (match* subj pos pf caps)
-  (let ((m (pf subj pos)))
+  (let ((m (pf subj pos))
+        (subj subj)
+        (pos pos)
+        (pf pf)
+        (caps caps))
     (define `pm (word 1 m))
     (define `cm (rest m))
     (if m
@@ -251,7 +258,10 @@
 (define (peg-c name pf)
   &public
   (lambda (subj pos)
-    (let ((m (pf subj pos)))
+    (let ((m (pf subj pos))
+          (name name)
+          (subj subj)
+          (pos pos))
       (define `pm (word 1 m))
       (define `cm (rest m))
       (if m

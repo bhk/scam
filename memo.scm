@@ -364,7 +364,8 @@
 (define (memo-write-file filename data)
   &public
   (if *memo-on*
-      (let ((blob (save-blob (memo-dir) data)))
+      (let ((blob (save-blob (memo-dir) data))
+            (filename filename))
         (memo-io (native-name do-write-blob) filename blob))
       ;; not in a memo session
       (write-file filename data)))

@@ -13,7 +13,9 @@
 ;; the last digit in REF.
 ;;
 (define (uf-match ref plus-or-minus out)
-  (let ((delta (uf-carry (._. (patsubst "%" 0 ref) plus-or-minus))))
+  (let ((delta (uf-carry (._. (patsubst "%" 0 ref) plus-or-minus)))
+        (ref ref)
+        (out out))
     (if (or (uf-lt? (uf-add ref delta) out)
             (uf-lt? out (uf-sub ref delta)))
         (begin

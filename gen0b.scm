@@ -557,7 +557,8 @@
       (case var
         ((PSymbol _ name)
          (let ((global-name (defn-native-name (resolve var env)))
-               (name name))
+               (name name)
+               (var var))
            (if global-name
                (IString global-name)
                (gen-error var "`%s` is not a global variable" name))))
