@@ -112,23 +112,13 @@
 
 (expect (UV 8765432109) (uv-complement-digits (UV 1234567890)))
 
-;; u-sub-unsigned
-
-(expect (U 13) (u-sub-unsigned (U 995) (U 982)))
-(expect (U -13) (u-sub-unsigned (U 982) (U 995)))
-(expect (U 0) (u-sub-unsigned (U 99) (U 99)))
-
-;; u-add-unsigned
-
-(expect (U 123) (u-add-unsigned (U 110) (U 13)))
-(expect (U 0) (u-add-unsigned (U 0) (U 0)))
-(expect (U 123) (u-add-unsigned (U 20) (U 00103)))
-
 ;; u-add
 
 (expect (U -23) (u-add (U -20) (U -3)))
 (expect (U 10) (u-add (U -20) (U 30)))
 (expect (U 17) (u-add (U 20) (U -3)))
+(expect (U 0) (u-add (U -0) (U 0)))
+(expect (U 0) (u-add (U 0) (U -0)))
 (expect (U 0) (u-add (U -0) (U -0)))
 (expect (U 5) (u-add (U 2) (U 3)))
 

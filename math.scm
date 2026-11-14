@@ -108,7 +108,7 @@
       (if (non-integers? a b)
           (fp2u (fp-sub (u2fp a) (u2fp b)))
           (u-sub a b))
-      (u-sub-unsigned a b)))
+      (u-add a (.. "-" b))))
 
 
 (define `(u-mul-uns a b)
@@ -518,23 +518,21 @@
 
 ;; Convert X to a fixed-point representation.
 ;;
-;; MIN-WIDTH = if non-nil, minimum field width.  Padding with spaces on the
-;;    left will be added as necessary.\
-;; DECIMALS = if non-nil, number of digits to the right of the decimal.
+;; MIN-WIDTH = Minimum field width (nil => 0).  Padding with spaces on the
+;;     left will be added as necessary.\
+;; DECIMALS = Number of digits to the right of the decimal; nil => 0.  If
+;;     less than or equal to zero, no decimal point is included,.
 ;;
 (define (format-fixed x ?min-width ?decimals)
   &public
-  (foreach (p (if decimals (d2u decimals) "?"))
-
-    (if (non-naturals? (if decimals p)
-                       (if min-width (d2u min-width)))
-        (if (and decimals (non-digit? p))
-            "[invalid_DECIMALS]"
-            "[invalid_MIN-WIDTH]")
-        (fp-fix (fp-round (d2fp x) (if decimals p 0) DIV-NEAREST)
+  (foreach (fmt (d2u (.. (or min-width 0) ":" (or decimals 0))))
+    (define `udec (word 2 (subst ":" " " fmt)))
+    (if (filter ":" (subst 0 nil 1 nil fmt))
+        (fp-fix (fp-round (d2fp x) udec DIV-NEAREST)
                 min-width
                 decimals
-                p))))
+                udec)
+        "[INVALID_FORMAT]")))
 
 
 ;;--------------------------------

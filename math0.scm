@@ -215,44 +215,26 @@
   (borrow-n (neg-rreduce (subst "0~" "~0111111111" u)) "0"))
 
 
-(define (u-sub-unsigned a b)
-  &public
+;; Return abs(A) - abs(B).  Might return "-0" or leading zeros.
+;;
+(define (u-sub-abs a b)
   ;; add "unary negative" B to A
   (define `x
-    (subst "10" "1" "00" 0
-           (join (lzpad a b)
-                 (lzpad (neg-digits b) a))))
+    (subst "-" nil "10" "1" "00" 0
+           ;; prepend "-" so the joined lists have the same length
+           (join (.. "-" (lzpad a b))
+                 (.. "-" (lzpad (neg-digits b) a)))))
 
   ;; Normalize but retain "-" if present as initial word.
-  (define `(u-norm-x u)
-    (patsubst "-0" 0 (smash (patsubst "0%" 0 (subst "01" "0 1" u)))))
-
   (foreach (u (smash (neg-rreduce x)))
     (if (findstring "~" u)
-        (u-norm-x
-         (borrow-macro
-          (if (filter "~%" (subst 0 nil u))
-              ;; negative
-              (.. "- " (neg-swap u))
-              ;; positive
-              u)))
-        (u-norm-uns u))))
-
-
-;; A and B must be non-negative, unsigned integers.
-;;
-;; A, B, and result are U strings containing only digits.
-;;
-(define `(u-add-unsigned a b)
-  (u-norm-uns
-   (u-carry
-    (smash
-     (subst "10" "1" "00" "0"
-            (join (lzpad b a) (lzpad a b)))))))
-
-
-(define (u-add-unsigned-fn a b)
-  (u-add-unsigned a b))
+        (borrow-macro
+         (if (filter "~%" (subst 0 nil u))
+             ;; negative
+             (.. "- " (neg-swap u))
+             ;; positive
+             u))
+        u)))
 
 
 ;; Add two U-values, returning a normalized U-value (no extraneous leading
@@ -260,22 +242,24 @@
 ;;
 (define (u-add a b)
   &public
-  (define `ua (subst "-" nil a))
-  (define `ub (subst "-" nil b))
 
-  (if (findstring "-" (.. a b))
-      (if (findstring 1 (.. a b))
-          (if (findstring "-" a)
-              ;; a is negative
-              (if (findstring "-" b)
-                  ;; both negative
-                  (.. "-" (u-add-unsigned-fn ua ub))
-                  ;; b non-negative
-                  (u-sub-unsigned b ua))
-              ;; a non-negative
-              (u-sub-unsigned a ub))
-          0)
-      (u-add-unsigned a b)))
+  ;; Eliminate redundant leading zeros and signs, perserving sign.
+  (define `(u-norm u)
+    (patsubst "-0" 0 (smash (patsubst "0%" 0 (subst "--" nil "01" "0 1"
+                                                    "-" "- " u)))))
+
+  ;; Note: Assumes both A and B have the same sign
+  (define `(u-add-abs a b)
+    (u-carry
+     (smash
+      (subst "-" nil "10" "1" "00" "0"
+             (join (lzpad b a) (lzpad a b))))))
+
+  (u-norm
+    (.. (findstring "-" a)
+        (if (filter "-0%" (.. (findstring "-" a) b))
+            (u-sub-abs a b)
+            (u-add-abs a b)))))
 
 
 (define `(u-sub a b)
