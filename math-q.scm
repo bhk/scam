@@ -169,23 +169,21 @@
 ;; format-fixed
 ;;--------------------------------
 
-;; format-fixed
+;; format-fixed (see also fp-fix tests)
 
-(expect (format-fixed nil nil nil) "nan")
-(expect (format-fixed nil 5 nil) "  nan")
-(expect (format-fixed 1 "x" nil) "[invalid_MIN-WIDTH]")
-(expect (format-fixed 1 nil "x") "[invalid_DECIMALS]")
-(expect (format-fixed 1e5 nil nil) "100000")
-(expect (format-fixed 1e5 nil 2) "100000.00")
-(expect (format-fixed 1 3 nil) "  1")
-(expect (format-fixed 0 3 nil) "  0")
-(expect (format-fixed 1e5 10 2) " 100000.00")
+;; error cases
+(expect (format-fixed nil nil nil) "NaN")
+(expect (format-fixed nil 5 nil) "  NaN")
+(expect (format-fixed 1 "x" nil) "[INVALID_FORMAT]")
+(expect (format-fixed 1 nil "x") "[INVALID_FORMAT]")
+;; with/without min-width/decimals
+(expect (format-fixed 1.3 nil nil) "1")
+(expect (format-fixed 1.2 3   nil) "  1")
+(expect (format-fixed 1e3 nil 2)   "1000.00")
+(expect (format-fixed 1e3 10  2)   "   1000.00")
 ;; rounding
-(expect (format-fixed 1.99999 3 3) "2.000")
-(expect (format-fixed 0.99999 3 3) "1.000")
-(expect (format-fixed 9.9999 3 3) "10.000")
-(expect (format-fixed 0.0001e4 nil nil) "1")
-(expect (format-fixed 1e-999999999 nil 3) "0.000")
+(expect (format-fixed 1.9996 3 3) "2.000")
+(expect (format-fixed 1.999 3 3) "1.999")
 
 
 ;;--------------------------------

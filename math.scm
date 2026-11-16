@@ -673,7 +673,7 @@
         (define `count
           (if (pod-is-place? pod)
               (u-zeros (u-add-ones pod 1))
-              (nzeros pod)))
+              (repeat-words 0 pod)))
 
         (or (patsubst "31%" "3.1%"
                       (u2d (smash (uf-trim-tz (const-pi count)))))

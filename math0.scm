@@ -36,9 +36,9 @@
   (subst 0 " 0" u))
 
 
-(define `(smash uv)
+(define `(smash uf)
   &public
-  (subst " " nil uv))
+  (subst " " nil uf))
 
 
 (define `(u2uv u)
@@ -171,24 +171,19 @@
          u))
 
 
-;; Return the 9's-complement of UV value.
-;;
-(define `(uv-complement-digits uv)
-  (subst "1110111" 0
-         "11011" 0
-         "101" 0
-         (patsubst "0%" "%0111111111"
-                   (patsubst "0111111%" "%101111"
-                             uv))))
-
-
-;; Return 10's complement of UF.  The result is possibly not well-formed
+;; Return 10's complement of UV.  The result is possibly not well-formed
 ;; (it may contain a digit with value 10).  The result is equivalent
 ;; to (1 - UF) mod 1.
 ;;
-(define `(uf-complement uf)
+(define `(uv-complement uv)
   &public
-  (.. (uv-complement-digits uf) 1))
+  (.. (subst "1110111" 0
+             "11011" 0
+             "101" 0
+             (patsubst "0%" "%0111111111"
+                       (patsubst "0111111%" "%101111"
+                                 uv)))
+      1))
 
 
 ;; Assert: at most one "~" in each digit
@@ -273,7 +268,7 @@
 (define `(uf-sub a b)
   &public
   ;; Assert: A and B are normalized numbers
-  (uf-add a (uf-complement b)))
+  (uf-add a (uv-complement b)))
 
 
 ;; Combine 1's with ~'s after a join.  For performance, we minimize the
@@ -294,7 +289,7 @@
   (word 1 (cmp-reduce (join (lzpad a b) (lzpad (neg-digits b) a)))))
 
 
-;; Compare A to B.  A and B can be U-numbers *or* UV-numbers.
+;; Compare A to B.  A and B can be U-numbers *or* UV/UF-numbers.
 ;;
 ;;   If A>B, return "1..."  (word consisting of 1's)
 ;;   If A=B, return nil
@@ -435,16 +430,16 @@
 
 (define `(>>1 uf)
   &public
-  (.. "0 " uf))
+  (._. "0" uf))
 
 (define `(j>>1 a b)
-  (join a (.. "0 " b)))
+  (join a (._. "0" b)))
 
 (define `(j>>2 a b)
-  (join a (.. "0 0 " b)))
+  (join a (._. "0 0" b)))
 
 (define `(j>>4 a b)
-  (join a (.. "0 0 0 0 " b)))
+  (join a (._. "0 0 0 0" b)))
 
 
 ;; Add two values without performing a carry operation (leaving large digit
@@ -500,9 +495,9 @@
          "x" "11" u))
 
 
-(define `(uf*0.1 u)  (.. "0 " u))
-(define `(uf*0.2 u)  (uf*2 (.. "0 " u)))
-(define `(uf*0.4 u)  (uf*4 (.. "0 " u)))
+(define `(uf*0.1 u)  (>>1 u))
+(define `(uf*0.2 u)  (uf*2 (>>1 u)))
+(define `(uf*0.4 u)  (uf*4 (>>1 u)))
 (define `(uf*0.5 a) &public (subst "11" "2" "1 0" " 011111" "2" 1 (.. a " 0")))
 
 (define `(uf*0.3_10 u) (uf-carry_27_10 (>>1 (subst 1 111 u))))
@@ -950,7 +945,7 @@
 
 
 (define (recip-div2 x y n r)
-  (rest (rdiv x y n (.. "0 " (patsubst "%" 0 r)) (uf-mul x r))))
+  (rest (rdiv x y n (._. "0" (patsubst "%" 0 r)) (uf-mul x r))))
 
 
 (define (uf-div2 x y n mode)

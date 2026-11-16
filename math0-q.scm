@@ -108,9 +108,9 @@
 (expect (U 1)      (u-norm-uns (U 01)))
 (expect (U 100300) (u-norm-uns (U 00100300)))
 
-;; uv-complement-digits
+;; uv-complement
 
-(expect (UV 8765432109) (uv-complement-digits (UV 1234567890)))
+(expect (UV 8765432191) (uv-complement (UV 1234567809)))
 
 ;; u-add
 

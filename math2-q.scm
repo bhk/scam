@@ -47,13 +47,6 @@
 (expect "2 3 4" (wsub "1 2 3 4" "a"))
 (expect nil (wsub "1 2 3 4" "1 2 3 4"))
 
-;; u-zeros
-
-(expect " 0 0 0" (u-zeros "0111"))
-(expect " 0" (u-zeros "0001"))
-(expect nil (u-zeros "-0001"))
-(expect " 0 0 0 0 0 0 0 0 0 0" (u-zeros "010"))
-
 ;; round-uf-const
 
 (define `K2 "0 0")

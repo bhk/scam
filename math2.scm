@@ -18,15 +18,8 @@
   (nth-rest (words (>>1 b)) a))
 
 
-;; Return a list with UX words, all "0".  UX may have digits larger than 9.
-;;
-(define (u-zeros ux)
-  &public
-  (if (filter-out "-%" ux)
-      (subst 1 " 0"
-             (if (findstring "10" ux)
-                 (tally (subst "0" " 0" ux))
-                 (subst 0 nil ux)))))
+(define `(nzeros len)
+  (repeat-words 0 len))
 
 
 ;; Return first N digits of C, rounded to NEAREST unit in the last digit, or
@@ -95,7 +88,7 @@
 ;;
 (define (uf-addsub a b is-sub?)
   (if b
-      (uf-add a (if is-sub? (uf-complement b) b))
+      (uf-add a (if is-sub? (uv-complement b) b))
       a))
 
 
@@ -207,7 +200,7 @@
 ;;
 (define `(uf-log-neg x digit-zeros)
   (define `(uf-invert x)
-    (uf-carry (uf-complement x)))
+    (uf-carry (uv-complement x)))
 
   (uf-log (uf-invert x)  ;; 1-x       < 0.18
           (._. "01" x)   ;; (1+x)/10  > 0.182
@@ -642,7 +635,7 @@
          ;; (word 1 LIST) == (word 4294967297 LIST) in some `make` builds
          (if (word 9 (spread pos))
              nil
-             (nth-rest (u2d pos) (nth-rest 4 fx)))
+             (nth-rest (u2d pos) (fp.uf<<1 fx)))
          (native-strip (._. (if (findstring 1 pos)
                                 (u-zeros (abs pos)))
                             (fp.uf fx)))))

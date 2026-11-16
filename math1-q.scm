@@ -111,6 +111,24 @@
 (expect 0 (fp2d "-011 + 0 0 0 0"))
 (expect 0 (fp2d "-011 - 0 0 0 0"))
 
+
+;;--------------------------------
+;; tally
+;;--------------------------------
+
+
+(expect "111" (tally (UV 3)))
+(expect T10 (tally (UV 10)))
+(expect 123 (words (subst 1 " 1" (tally (UV 123)))))
+
+
+;; u-zeros
+
+(expect " 0 0 0" (u-zeros "0111"))
+(expect " 0" (u-zeros "0001"))
+(expect nil (u-zeros "-0001"))
+(expect " 0 0 0 0 0 0 0 0 0 0" (u-zeros "010"))
+
 ;;--------------------------------
 ;; PREC and POD
 ;;--------------------------------
@@ -333,35 +351,25 @@
 (expect nil (uf-fix (UV 123) 0))
 (expect nil (uf-fix (UV 123) nil))
 
-;; zero-pad
-
-(expect (UV 00123) (zero-pad (UV 123) 5))
-(expect (UV 123) (zero-pad (UV 123) 3))
-(expect (UV 123) (zero-pad (UV 123) 2))
-(expect (UV 123) (zero-pad (UV 123) 0))
-(expect (UV 123) (zero-pad (UV 123) nil))
-
-;; ltrimz
-
-(expect (U "  123") (ltrimz (U "00123")))
-(expect (U " nan") (ltrimz (U "0nan")))
-(expect (U " -1") (ltrimz (U "0-1")))
-(expect (U "  0") (ltrimz (U "000")))
-
 ;; fp-fix
 
 (define (ff xd wd pd)
   (fp-fix (FP xd) wd pd (d2u pd)))
 
+
 ;; left of decimal: exp>0
 (expect (ff 123.45 nil nil) "123")        ;; wordlist
 (expect (ff 1e2 nil nil)    "100")        ;; rpad left of decimal
+(expect (ff 123.45 nil 0) "123")        ;; wordlist
 ;; left of decimal: exp<=0
 (expect (ff 1.23e-2 nil nil) "0")
+(expect (ff 123e-1 nil nil)  "12")
 ;; right of decimal: exp>0
 (expect (ff 1e2 nil 2)      "100.00")     ;; padding to right
 (expect (ff 123.456 nil 2)  "123.45")     ;; trim digits to right
 (expect (ff 1e-99999999 nil 2)  "0.00")   ;; big -E
+(expect (ff 1e-4 nil 4)  "0.0001")
+(expect (ff 1e-3 nil 4)  "0.0010")
 ;; right of decimal: exp<=0
 (expect (ff 1.23e-2 nil nil) "0")
 (expect (ff 1.23e-2 nil 3)   "0.012")
@@ -373,5 +381,5 @@
 ;; w>len
 (expect (ff 1.23 5 2)     " 1.23")
 (expect (ff 1.23 5 nil)   "    1")
-;; extra zeros
+;; extraneous zeros
 (expect (ff "0001" nil nil)   "1")

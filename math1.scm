@@ -13,9 +13,11 @@
   (._. exp sgn frac))
 
 
-(define `(fp.xpo n) &public (word 1 n))
-(define `(fp.sign n) &public (word 2 n))
-(define `(fp.uf n) &public (nth-rest 3 n))
+(define `(fp.xpo n) &public (word 1 n))        ;; exponent (U-encoded)
+(define `(fp.sign n) &public (word 2 n))       ;; sign
+(define `(fp.uf n) &public (nth-rest 3 n))     ;; fraction (UF-encoded)
+(define `(fp.msd n) &public (word 3 n))        ;; most significant digit of UF
+(define `(fp.uf<<1 n) &public (nth-rest 4 n))  ;; remainder of digits of UF
 
 
 (define `NaN &public "NaN")
@@ -51,7 +53,7 @@
 ;;
 (define (fp-norm x)
   &public
-  (if (filter 0 (word 3 x))
+  (if (filter 0 (fp.msd x))
       (foreach (zeros (word 1 (subst "001" "0 01" (smash (fp.uf x)))))
         (define `zeros-tally
           (subst 0 1 zeros))
@@ -124,11 +126,11 @@
 ;;
 (define (fp2u fp)
   &public
-  (define `exp (word 1 fp))
-  (define `sgn (word 2 fp))
-  (define `frac (nth-rest 3 fp))
-  (define `frac-msd (word 3 fp))
-  (define `frac*10 (nth-rest 4 fp))
+  (define `exp (fp.xpo fp))
+  (define `sgn (fp.sign fp))
+  (define `frac (fp.uf fp))
+  (define `frac-msd (fp.msd fp))
+  (define `frac*10 (fp.uf<<1 fp))
 
   (cond
    ((findstring 1 frac-msd)
@@ -224,12 +226,12 @@
 
 (define `(fp>0? fx)
   &public
-  (findstring "+ 01" (filter-out 0 (.. "." fx))))
+  (findstring "+ 01" (filter-out 0 fx)))
 
 
 (define `(fp<0? fx)
   &public
-  (findstring "- 01" (filter-out 0 (.. "." fx))))
+  (findstring "- 01" (filter-out 0 fx)))
 
 
 (define `(fp!=0? fx)
@@ -263,11 +265,22 @@
 ;; Convert a multi-digit UV number to a single string of 1's where the count
 ;; of 1's equals the value of the multi-digit number.
 ;;
-(define (tally w)
+(define (tally uv)
   &public
-  (if (word 2 w)
-      (tally (.. (subst 1 T10 (word 1 w)) (rest w)))
-      (subst 0 nil w)))
+  (if (word 2 uv)
+      (tally (.. (subst 1 T10 (word 1 uv)) (rest uv)))
+      (subst 0 nil uv)))
+
+
+;; Return a list with U words, all "0".  UX may have digits larger than 9.
+;;
+(define (u-zeros u)
+  &public
+  (if (filter-out "-%" u)
+      (subst 1 " 0"
+             (if (findstring "10" u)
+                 (tally (subst "0" " 0" u))
+                 (subst 0 nil u)))))
 
 
 (define `(pad ui)
@@ -424,7 +437,7 @@
 
   (cond
    ;; Normalized and non-zero?
-   ((not (findstring 101 (.. (word 3 x) (word 3 y))))
+   ((not (findstring 101 (.. (fp.msd x) (fp.msd y))))
     (if (findstring 1 y.uf)
         (if (findstring 1 x.uf)
             (fp-div (fp-norm x) (fp-norm y) pod round)
@@ -458,7 +471,7 @@
   &public
   (cond
    ;; Normalized and non-zero?
-   ((not (findstring 101 (.. (word 3 a) (word 3 b))))
+   ((not (findstring 101 (.. (fp.msd a) (fp.msd b))))
     (if (findstring 1 (fp.uf b))
         (if (findstring 1 (fp.uf a))
             (fp-mod (fp-norm a) (fp-norm b))
@@ -498,7 +511,7 @@
             DIV-TRUNCATE)))
 
   (cond
-   ((findstring 1 (word 3 x))
+   ((findstring 1 (fp.msd x))
     ;; return NIL if POD is NIL
     (foreach (num-digits (if (pod-is-place? pod)
                              (u2d (u-add (fp.xpo x) pod))
@@ -580,15 +593,17 @@
    ((not (and a b))
     (if a 1 (if b "~")))
 
-   ;; A=0 ?
-   ((not (findstring 1 (word 3 a)))
-    (if (findstring 1 (word 3 b))
-        (if (filter "-" (fp.sign b)) 1 "~")
-        nil))
-
-   ;; B=0 ?
-   ((not (findstring 1 (word 3 b)))
-    (if (filter "-" (fp.sign a)) "~" 1))
+   ;; A=0 or B=0 ?
+   ((findstring "00" (.. (fp.msd a) (fp.msd b) 0))
+    (cond
+     ;; A!=0, B=0
+     ((findstring 1 (fp.msd a))
+      (if (filter "-" (fp.sign a)) "~" 1))
+     ;; A=0, B!=0
+     ((findstring 1 (fp.msd b))
+      (if (filter "-" (fp.sign b)) 1 "~"))
+     ;; A=B=0
+     (else nil)))
 
    ((fp<0? a)
     (if (fp<0? b)
@@ -632,74 +647,54 @@
 ;;--------------------------------
 
 
-(define (extend-fn lst len zs)
-  (if (subst 0 nil len)
-      (if (word len (.. lst zs))
-          (wordlist 1 len (.. lst zs))
-          (extend-fn (.. lst zs zs) len (.. zs zs)))))
-
-
-(define `(nzeros len)
+;; Return LEN digits of UF, extending with zeros on the right as necessary.
+;; LEN is a non-negative decimal integer.  If LEN=0 or nil, empty string is
+;; returned.
+;;
+(define (uf-fix uf len)
   &public
-  (extend-fn 0 len " 0 0 0 0"))
+  (if (n>0? len)
+      (wordlist 1 len
+                (._. uf (if (word len uf) nil (repeat-words 0 len))))))
 
 
-;; Return a list LEN words long by trimming words from the end of LST or
-;; appending zeros.  LEN is a non-negative decimal integer.  If LEN=0 or
-;; nil, empty string is returned.
+;; Pad LST on left with repetitions of W until length is LEN or greater.
 ;;
-(define `(uf-fix lst len)
-  &public
-  (extend-fn lst len " 0 0 0 0"))
-
-
-;; Pad with zeros on left until LST is at least LEN words long.  LEN is
-;; non-negative decimal integer.  If LEN=0 or nil, no padding is added.
-;;
-(define (zero-pad lst len)
-  (strip
-   (._. (if len
-            (nth-rest (words (.. lst " 0")) (nzeros len)))
-        lst)))
-
-
-;; Trim extraneous leading zeros from a fixed-point number.
-;;
-(define (ltrimz u)
-  (if (filter "00% 0n% 0-%" u)
-      (foreach (lz (word 1 (subst "01" " " "0." " " "0n" "0 " "0-" "0 "
-                                  (patsubst "%0" "% 0" u))))
-        (subst (.. "<" lz) (subst 0 " " lz) (.. "<" u)))
-      u))
+(define (lpad lst w len)
+  (._. (nth-rest (words (._. lst 0)) (repeat-words w len))
+      lst))
 
 
 ;; X = number to format as fixed-point
-;; WD = minimum width of field [decimal]
-;; PD = number of digits after the decimal point [decimal]
-;; PU = (d2u PD)
+;; DW = minimum width of field [decimal]
+;; DP = number of digits after the decimal point [decimal]
+;; UP = (d2u DP)
 ;;
-(define (fp-fix x wd pd pu)
+(define (fp-fix x dw dp up)
   &public
   (define `uf (fp.uf x))
-  (define `uf<<1 (nth-rest 4 x))
+  (define `ue (fp.xpo x))
 
   (define `digits
-    (foreach (e (u2d (fp.xpo x)))
+    (foreach (de (u2d ue))
+      (define `(umin ua ub)
+        (if (u-lt? ua ub) ua ub))
 
+      ;; FRAC = digits to the right of the decimal point
       (define `frac
-        (if (n>0? e)
-            ;; Skip digits left of the decimal point
-            (nth-rest e uf<<1)
+        (if (n>0? de)
+            (nth-rest de (fp.uf<<1 x))
             ;; Pad with -E zeros on left... but watch out for VERY big -E.
-            (if (u-lt? (abs (fp.xpo e)) pu)
-                (._. (nzeros (abs e)) uf))))
+            (._. (u-zeros (umin (abs ue) up))
+                 uf)))
 
-      (.. (if (n>0? e) (uf-fix uf e) 0)            ; left of decimal
-          (if pd (.. " . " (uf-fix frac pd))))))   ; right of decimal
+      (.. (or (uf-fix uf de) 0)                    ; left of decimal
+          (if (n>0? dp)
+              (.. " . " (uf-fix frac dp))))))      ; right of decimal
 
   (define `text
     (if x
         (._. (filter "-" x) digits)
-        "n a n"))
+        "N a N"))
 
-  (u2d (ltrimz (smash (zero-pad text wd)))))
+  (u2d (concat-vec (lpad text [" "] dw))))
