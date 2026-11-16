@@ -53,20 +53,19 @@
 ;;
 (define (gen-polysub froms tos ?input)
   &public
-  (define `arg
+  (define `source
     (or input (lambda (s) s)))
 
-  (define `(enc w)
-    (.. (if (filter "!0% !+%" w) "$ ")
-        (subst "$" "$$" "(" "$[" ")" "$]" "," "$&" (promote w))))
+  (define `(enc-first list)
+    (.. (if (filter "!0% !+%" (word 1 list)) "$ ")
+        (subst "$" "$$" "(" "$[" ")" "$]" "," "$&" (nth 1 list))))
 
-  (define `(gen-subst wfrom wto expr)
-    (.. "$(subst " (enc wfrom) "," (enc wto) "," expr ")"))
+  (define `subst-first
+    (.. "$(subst " (enc-first froms) "," (enc-first tos) "," source ")" ))
 
   (if froms
-      (gen-polysub (rest froms) (rest tos)
-                   (gen-subst (word 1 froms) (word 1 tos) arg))
-      arg))
+      (gen-polysub (rest froms) (rest tos) subst-first)
+      source))
 
 
 ;; Demote all elements in a vector.  This is faster than `(for i VEC [i])`.
