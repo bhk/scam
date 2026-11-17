@@ -14,8 +14,6 @@ Language Enhancements
 
  * "spread" with "..." syntax.
 
- * Vararg macros
-
  * Forbid shadowing of variables
     - allow `(let ((x x)) ...)` or `&override` exceptions
     - validate `define` against prior `declare`
@@ -59,7 +57,7 @@ Language Enhancements
 
  * num: accept E-notation for integers in: range, ^
 
- * num: multi-arg + and * (with vararg macros)
+ * num: multi-arg + and *
 
  * &native=XXX would improve runtime.scm & enable builtins as declarations.
 

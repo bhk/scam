@@ -221,7 +221,7 @@
 (define (il-demote node)
   &public
   (or (case node
-        ((IString value) (IString (word 2 node)))
+        ((IString value) (IString [value]))
         ((ICallX name args _)
          (if (filter "^u ^n" name)
              (if (filter "^u" name)
