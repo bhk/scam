@@ -279,8 +279,8 @@ $(if ,, ) :=")
 ;; A list of modules that have been loaded
 (declare *RM*)
 
-;; overridden by trace.scm
-(declare (trace-after-load id))
+;; load notification hook
+(declare ^LH &native)
 
 ;; Load the module identified by ID.
 ;;
@@ -302,7 +302,7 @@ $(if ,, ) :=")
   (if skipped
       nil
       (begin
-        (trace-after-load id)
+        (foreach (hook ^LH) (native-call hook id))
         1)))
 
 

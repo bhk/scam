@@ -407,10 +407,13 @@
 ;;------------------------------------------------------------------------
 
 (declare SCAM_TRACE &native)
+(declare ^LH &native)
 
 ;; should be called immediately after this module exist
-(define (trace-after-load)
+(define (trace-hook)
   (if SCAM_TRACE
       (trace SCAM_TRACE)))
+
+(set ^LH (._. ^LH (native-name trace-hook)))
 
 (at-exit (lambda () (trace-exit)))
