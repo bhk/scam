@@ -40,6 +40,9 @@
         (IString ["a b"]))
 (expect (il-demote (ICall "^u" [ (IVar "V") ]))
         (IVar "V"))
+(expect (il-demote (ICall "^n" [ (IString 2) (IVar "V") ]))
+        (IBuiltin "or" [ (IBuiltin "word" [ (IString 2) (IVar "V") ])
+                         (IString "!.") ]))
 
 
 ;;

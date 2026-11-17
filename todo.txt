@@ -14,9 +14,7 @@ Language Enhancements
 
  * "spread" with "..." syntax.
 
- * Enhance call-site tracing to support lambdas and macros/builtins
-     (? lambda ...)  -->  (native-call "^tv" "any" (any ...))
-     or:  (native-call "^yt" "any" (lambda (args) (any args)) ...)
+ * Vararg macros
 
  * Forbid shadowing of variables
     - allow `(let ((x x)) ...)` or `&override` exceptions
@@ -61,7 +59,7 @@ Language Enhancements
 
  * num: accept E-notation for integers in: range, ^
 
- * num: multi-arg + and *
+ * num: multi-arg + and * (with vararg macros)
 
  * &native=XXX would improve runtime.scm & enable builtins as declarations.
 
@@ -82,15 +80,10 @@ Language Enhancements
 Optimizations for Generated Code
 ----
 
- * Recover crafted optimizations:
-     (demote (promote x))  -->  x
-     (nth N (rest x))  -->  (nth N+1 x)
-     (rest (rest x))   -->  (nth-rest ...)
-     (demote NUMBER)   -->  number
-     (if (filter "!:x" (word 1 (first vec))) ...)
-       -->  (if (filter "!1:x!0% !1:x" (word 1 vec)) ...)
+ * (^n X (^n Y ...))  -->  (^nn X Y ...)
+   (^n X (^u ...))  -->  (^nn X 1 ...)
 
-     Number-ness validated by ... `cond` test,  `foreach` variable, ...
+   Reduce number of function calls, save 10 bytes x 92 occurrences in scam.
 
  * Constant propagation:  (ICall PURE CONST...) -->   (Const (PURE CONST...))
 
@@ -144,19 +137,6 @@ Optimizations for Generated Code
 
      This can be applied recursively to break apart complex commonality.
      Not good when A or B are constants and `f` is evaluatable.
-
- * wordlist inside nth/word/wordlist
-    (word C1 (wordlist C2 99999999 ...))
-    (nth C1 (wordlist C2 99999999 ...))
-    (wordlist C1 999999999 (wordlist C2 99999999 ...))
-    (if (wordlist N 99999999 ...) ...)
-   Counts:
-    (word 1 (nth-rest 3 ...))       42
-    (word 2 (nth-rest 2 ...))        6
-    (word 3 (nth-rest 3 ...))        1
-    (nth N (nth-rest 3 ...))        10
-    (nth-rest N (nth-rest 3 ...))   11  (mostly N=2)
-
 
  * Misc...
 

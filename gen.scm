@@ -222,7 +222,11 @@
   &public
   (or (case node
         ((IString value) (IString (word 2 node)))
-        ((ICallX name [arg] _) (if (eq? name "^u") arg)))
+        ((ICallX name args _)
+         (if (filter "^u ^n" name)
+             (if (filter "^u" name)
+                 (first args)
+                 (IBuiltin "or" [ (IBuiltin "word" args) (IString "!.") ])))))
       (ICall "^d" [node])))
 
 

@@ -718,6 +718,7 @@
            (else
             (err-expected "S" type sym "NAME" data-where))))
         (scope (if (filter "&public" flags) "x" "p")))
+
     ;; list of tag definitions:  tagname!=CtorName!01W!0L ...
     (define `tag-defs
       (append-for (ty types)
@@ -888,6 +889,7 @@
                     ((IVar _) nil)
                     ((IString _) nil)
                     (else 1))))))
+
   (case node
     ((IArg _ _) nil)
     ((IVar _) nil)
@@ -897,8 +899,6 @@
     (else 1)))
 
 
-;; (TEST-CTOR tag) => expression that tests value for TAG
-;;
 (define (c0-case env cases depth value ?filter-args-ovr)
   (cond
    ((and (not filter-args-ovr)
@@ -912,7 +912,6 @@
     (define `(f-filter-args tags)
       [ (IString (.. (subst "!0" "!0% " [tags]) "!0%"))
         (IConcat [f-arg (IString "!0")]) ])
-
 
     (for-node f-depth (il-demote value)
               (c0-case f-env cases f-depth f-value f-filter-args)))
