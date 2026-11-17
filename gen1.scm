@@ -318,7 +318,12 @@
                    (c1-let stem (c1 body) args))))
             ;; ^n
             (if (findstring "99999999" args)
-                (c1-xwordlist ICall name (first args) (nth 2 args) nil)))))
+                (c1-xwordlist ICall name (first args) (nth 2 args) nil)))
+        ;; $(call F,$1) -> $(F)
+        ;; F must accept only one argument and must not be recursive.
+        (and (filter "^d ^u ^k ^dk ^dv" name)
+             (findstring args [(IArg 1 ".")])
+             (.. "$(" name ")"))))
 
   (or optimized
       (.. "$(call " ename

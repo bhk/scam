@@ -111,6 +111,12 @@
         (c1 (ICallX "^X" [ (IString "a") ]
                   [ (ILambda "f1" (IArg 1 ".")) ])))
 
+;; Function call -> variable reference
+
+(expect "$(^d)"
+        (c1 (ICallX "^d" [ (IArg 1 ".") ] nil)))
+
+
 ;; Fold (wordlist K,99999999,LIST)...
 
 (define wl3

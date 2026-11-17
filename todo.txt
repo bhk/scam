@@ -141,12 +141,6 @@ Optimizations for Generated Code
  * Misc...
 
      (demote WORD)          -->  (subst "!" "!1" WORD)  [when word is not nil]
-     (demote PLAIN)         -->  PLAIN
-     (promote PLAIN)        -->  PLAIN
-
-     (subst PURE PURE nil)  -->  nil
-     (word PURE nil)        -->  nil
-
      (eq? A B) ==
        (findstring A (findstring B A))  -->  (filter A B)
          When: A and B are words, and A does not contain "%" (e.g. $(words))
