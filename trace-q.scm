@@ -39,7 +39,7 @@
 (expect "\"abc\"" (trace-unprefix "abc"))
 
 
-;;-------- E?, R?
+;;-------- TI++
 
 (expect "" (TI++))
 (expect " " (TI++))
@@ -49,14 +49,14 @@
 (expect "" (--TI))
 
 
-;;-------- E?, R?
+;;-------- ^E?, ^R?
 
 ;; In order to run in .out/a/scam, we do not make assumptions about the
 ;; runtime we are running under... so we use this simulation of the runtime
 ;; that will be used in the completed compiler.
 (declare (_t args1...9 arg10 name fn) &native)
-(set _t (.. "$(" (native-name E?) ")"
-            "$(call " (native-name R?) ",$(11),"
+(set _t (.. "$(" (native-name ^E?) ")"
+            "$(call " (native-name ^R?) ",$(11),"
             "$(call $(12),$1,$2,$3,$4,$5,$6,$7,$8,$9,$(10)))"))
 
 ;; Call (^t name args2...9 arg10 fn arg1) with non-SCAM arguments (10, 11, 12)
@@ -68,10 +68,10 @@
            ",$(wordlist 9,99,$3),$4,$1,$2)")))
 
 
-(declare (E? ...))
-(declare (R? ...))
-(set E? (hijack-info E?))
-(set R? (hijack-info R?))
+(declare (^E? ...) &native)
+(declare (^R? ...) &native)
+(set ^E? (hijack-info ^E?))
+(set ^R? (hijack-info ^R?))
 
 (let-global ((*log* nil))
   (define (test-? a b c d e f g h i j) j)

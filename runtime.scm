@@ -317,20 +317,22 @@ $(if ,, ) :=")
 
 
 ;; Display function/args on entry to traced call
-(define (E?)
+(define (^E?)
+  &native
   (print "--> (" (native-var 11) "...)"))
 
 
 ;; Display function and return value on exit from traced call
-(define (R? fname value)
+(define (^R? fname value)
+  &native
   (.. (print "<-- " fname ": " value)
       value))
 
 
 ;; Call site tracing (minimal version independent of trace module)
 (declare (^t args1...9 arg10 name fn) &native)
-(set ^t (.. "$(" (native-name E?) ")"
-            "$(call " (native-name R?) ",$(11),"
+(set ^t (.. "$(" (native-name ^E?) ")"
+            "$(call " (native-name ^R?) ",$(11),"
             "$(call $(12),$1,$2,$3,$4,$5,$6,$7,$8,$9,$(10)))"))
 
 

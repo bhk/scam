@@ -137,16 +137,18 @@
 
 
 ;;------------------------------------------------------------------------
-;; `?` macro support:  override E? and R?
+;; `?` macro support:  override ^E? and ^R?
 ;;------------------------------------------------------------------------
 
-(define (E? ...args)
+(define (^E? ...args)
+  &native
   (define `fname (native-var 11))
   (print (native-var (native-name TI++)) "--> (" fname " "
          (foreach ([a] args) (format a)) ")"))
 
 
-(define (R? fname value)
+(define (^R? fname value)
+  &native
   (print (native-var (native-name --TI)) "<-- " fname ": " (format value))
   value)
 
@@ -352,6 +354,7 @@
 ;; currently instrumented for counting, report those counts and clear them.
 ;;
 (define (untrace vars retval)
+  &public
   (set *trace-reported* nil)
   (define `count-map
     (foreach (var vars)

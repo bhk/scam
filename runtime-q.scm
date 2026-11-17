@@ -159,8 +159,8 @@
   (set *log* (.. *log* str "\n")))
 (define (hijack-info fnbody)
   (subst "(info " (.. "(call " (native-name logln) ",") fnbody))
-(set E? (hijack-info E?))
-(set R? (hijack-info R?))
+(set ^E? (hijack-info ^E?))
+(set ^R? (hijack-info ^R?))
 
 (define (f ...args)
   args)
