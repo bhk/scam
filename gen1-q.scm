@@ -46,7 +46,7 @@
 (expect (escape "$")
         (c1 (IString "$")))
 
-(expect "$(info $(if ,,,))"
+(expect "$(info $&)"
         (c1 (IBuiltin "info" [(IString ",")])))
 
 ;; IConcat: concatenate values
@@ -69,6 +69,45 @@
 
 (expect "$(info a)"
         (c1 (IBuiltin "info" [ (IString "a") ])))
+
+;; "var" pseudo-builtin, for (native-var EXPR)
+
+(expect "$1"
+        (c1 (IBuiltin "var" [ (IString "1") ])))
+
+;; Optimize (if CONST ...)
+
+(expect "$1"
+        (c1 (IBuiltin "if" [ (IString " ") (IArg 1 ".") (IArg 2 ".") ])))
+(expect "$2"
+        (c1 (IBuiltin "if" [ (IString "") (IArg 1 ".") (IArg 2 ".") ])))
+(expect ""
+        (c1 (IBuiltin "if" [ (IString "1") (IString "") (IArg 2 ".") ])))
+(expect ""
+        (c1 (IBuiltin "if" [ (IString "") (IArg 1 ".") ])))
+
+;; Optimize (if (not COND) ...)
+
+(define `ifnot
+   (IBuiltin "if" [ (IVar "v") (IString nil) (IString 1) ]))
+
+(expect "$(if $v,$2,$1)"
+        (c1 (IBuiltin "if" [ ifnot (IArg 1 ".") (IArg 2 ".") ])))
+
+(expect "$(if $v,,$1)"
+        (c1 (IBuiltin "if" [ ifnot (IArg 1 ".") ])))
+
+;; Retain error crumbs
+(expect (crumb "errors" (PError 1 "E"))
+        (c1 (IBuiltin "if" [ (IString "")
+                             (IConcat [ (PError 1 "E") (ICrumb "x" "y") ]) ])))
+
+;; nested reductions
+(expect "$2"
+        (c1 (IBuiltin "if"
+                      [ (IBuiltin "if" [ (IString "") (IArg 1 ".") ])
+                        (IArg 1 ".")
+                        (IArg 2 ".") ])))
 
 ;; IFor
 

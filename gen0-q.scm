@@ -114,6 +114,10 @@
 ;; compound macro with argument
 (expect (translate (IArg 2 ".") ".." "..." [(IString "a") (IString "b")] 9)
         (IString "b"))
+;; compound macro with argument in IConcat
+(expect (translate (IConcat [ (IArg 2 ".") (IString "c") ])
+                   ".." "..." [(IString "a") (IString "b")] 9)
+        (IString "bc"))
 
 ;; compound macro with "rest" argument
 (expect (translate (IArg "1+" ".") ".." "..." [(IString "a") (IString "b")] 9)
@@ -427,6 +431,14 @@
 
 
 ;; PList = (record ...)
+
+
+(expect (c0-record nil
+                   (PSymbol 0 "CA")
+                   [ _1 _2 ]
+                   "S L"
+                   "!:D0")
+        (IString "!:D0 1 2"))
 
 (expect (il-ser (c0-record nil
                            (PSymbol 0 "CA")

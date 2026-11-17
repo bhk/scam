@@ -214,7 +214,8 @@
   (let ((nodes-out (il-merge-strings (il-flatten nodes) "")))
     (if (word 2 nodes-out)
         (IConcat nodes-out)
-        (first nodes-out))))
+        (or (first nodes-out)
+            (IString "")))))
 
 
 ;; Demote in IL domain

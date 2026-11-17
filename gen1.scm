@@ -101,6 +101,17 @@
   (.. "$.{" (crumb-encode {=key: value}) "$.}"))
 
 
+;; Split code at crumb boundaries.
+;;
+(define (split-crumbs code)
+  (subst "$.{" " $.{" "$.}" "$.} " [code]))
+
+
+(define `(get-error-crumbs code)
+  (if (findstring "$.{errors!" code)
+      (concat-vec (filter "$.{errors!%" (split-crumbs code)))))
+
+
 ;; Construct a node that expands NODE but returns nil.
 ;;
 (define (c1-void node)
@@ -138,7 +149,7 @@
       (protect-arg (c1 node))))
 
 
-;; protect an expression from having leading/trailing whitespace trimmed (as
+;; Protect an expression from having leading/trailing whitespace trimmed (as
 ;; in `and` and `or` expressions)
 ;;
 (define (c1-arg-trim node)
@@ -148,9 +159,20 @@
 
 
 ;; c1-vec: compile multiple expressions
+;;
 (define (c1-vec args delim quotefn)
   (concat-for (a args delim)
     (native-call quotefn a)))
+
+
+;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
+;;
+(define (c1-args9 nodes)
+  (define `arg-nodes
+    (if (word 9 nodes)
+        (conj (wordlist 1 8 nodes) (il-vector (nth-rest 9 nodes)))
+        nodes))
+  (c1-vec arg-nodes "," (native-name c1-arg)))
 
 
 (define `one-char-names
@@ -159,17 +181,10 @@
        "1 2 3 4 5 6 7 8 9 0"))
 
 
-(define (c1-Var name)
+(define (c1-var name)
   ;; don't treat names with with spaces or % as one-char
   (.. "$" (or (findstring name (filter (native-strip name) one-char-names))
-              (.. "(" (escape name) ")"))))
-
-
-(define (c1-Error node)
-  (crumb "errors"
-         (case node
-           ((PError pos msg) node)
-           (else (PError 0 (.. "internal:bad IL: " node))))))
+              (.. "(" name ")"))))
 
 
 ;; Fold an `nth-rest` call with a containing word/wordlist/^n call.
@@ -202,39 +217,62 @@
                     (c1 (ctor name args-out)))))))))))
 
 
+;; Optimize if CA1 is const.  We could be more thorough and treat more
+;; uses of `$` as const, but it's probably not worth it.
+;;
+;; CA1 = (c1-arg (first args))
+;;
+(define (c1-if ca1 args)
+  (cond
+   ;; (if CONST A B)  -->  either A or B
+   ((not (findstring "$" (subst "$`" nil ca1)))
+    (.. (c1 (nth (if ca1 2 3) args))
+        (get-error-crumbs (.. ca1 (c1 (nth (if ca1 3 2) args))))))
+
+   ;; (if (not COND) A B)  -->  (if COND B A)
+   ((and (filter "%,,1)" (lastword ca1))
+         (filter [(IBuiltin "if" "%")] (word 1 args)))
+    (case (first args)
+      ((IBuiltin _ not-args)
+       (c1-if (c1-arg (first not-args))
+          (._. (word 1 not-args)
+               (or (word 3 args)
+                   [(IString nil)])
+               (word 2 args))))
+      (else (error "c1-if"))))
+
+   (else
+    (.. "$(if " (protect-ltrim ca1) "," (c1-args9 (rest args)) ")"))))
+
+
 ;; Call built-in function
 (define (c1-Builtin name args)
-  ;; (demote <builtin>) == <builtin> for all builtins
+  (define `default
+     (.. "$(" name
+         " " ;; this space is necessary even when there are no arguments
+         (protect-ltrim (c1-vec args ","
+                                (if (filter "and or" name)
+                                    (native-name c1-arg-trim)
+                                    (native-name c1-arg))))
+         ")"))
 
-  (or
-   (if (filter "var" name)
-       ;; special case for `(native-var ...)`
-       (case (first args)
-         ((IString name) (c1-Var name)) ;; handles one-char names
-         (arg (.. "$(" (c1 arg) ")"))))
+  ;; nil when does not match (support `native-var`)
+  (define `var-ref
+    (if (filter "var" name)
+        (c1-var (c1-arg (first args)))))
 
+  ;; nil when does not match (optimize nested wordlist)
+  (define `wordlist-fold
    (and (filter "wordlist word" name)
         (findstring "99999999" args)
         (c1-xwordlist IBuiltin name (first args) (last args)
-                      (if (filter "wordlist" name) (nth 2 args))))
+                      (if (filter "wordlist" name) (nth 2 args)))))
 
-   ;; builtin functions
-   (.. "$(" name
-       " " ;; this space is necessary even when there are no arguments
-       (protect-ltrim (c1-vec args ","
-                              (if (filter "and or" name)
-                                  (native-name c1-arg-trim)
-                                  (native-name c1-arg))))
-       ")")))
-
-
-;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
-;;
-(define (c1-args9 nodes)
-  (if (word 9 nodes)
-      (.. (c1-vec (wordlist 1 8 nodes) "," (native-name c1-arg))
-          "," (protect-arg (c1 (il-vector (nth-rest 9 nodes)))))
-      (c1-vec nodes "," (native-name c1-arg))))
+  (if (filter "if" name)
+      (c1-if (c1-arg (first args)) args)
+      (or var-ref
+          wordlist-fold
+          default)))
 
 
 (define (i-8 n)
@@ -305,8 +343,8 @@
     (protect-ltrim (escape name)))
 
   (define `commas
-    (subst " " "" (.. "," (wordlist (words (.. "x " args)) 9
-                                    ", , , , , , , , ,"))))
+    (subst " ." ","
+           (.. " " (filter "." (._. "." (join ". . . . . . . . ." args))))))
 
   (define `optimized
     (if (filter "^X ^n" name)
@@ -343,7 +381,7 @@
   (case node
     ((IString value) (escape value))
     ((IArg ndx ups) (c1-IArg ndx ups))
-    ((IVar name) (c1-Var name))
+    ((IVar name) (c1-var (escape name)))
     ((IConcat nodes) (c1-vec nodes "" (native-name c1)))
     ((ILambda _ body) (c1-Lambda body))
     ((IBlock nodes) (c1-Block nodes))
@@ -353,9 +391,10 @@
     ((IWhere pos) (c1-Where pos))
     ((ICrumb key value) (crumb key value))
     ((IEnv _ node) (c1 node))
+    ((PError _ _) (crumb "errors" node))
     (else
      (if node
-         (c1-Error node)))))
+         (error (.. "c1: " node))))))
 
 
 ;;--------------------------------------------------------------
@@ -371,8 +410,9 @@
 
 ;; Embed a function-syntax expression in file syntax
 ;;
-(define `(c1-file-expr expr)
-  (.. (protect-expr expr) "\n"))
+(define (c1-file-expr expr)
+  (if expr
+      (.. (protect-expr expr) "\n")))
 
 
 ;; Construct a file-syntax assignment.
@@ -444,10 +484,6 @@
    (c1-file-expr (c1-void node))))
 
 
-(define (split-crumbs code)
-  (subst "$.{" " $.{" "$.}" " " [code]))
-
-
 ;; NAME = function name
 ;; BODY = function body (as a *literal*, not code that evals to the body)
 ;;
@@ -470,7 +506,7 @@
   ;; Handle a hoisted function crumb
   (define `hoist-recur
     ;; dictionary pairs are single words
-    (foreach (binding (crumb-decode (promote (subst "$.{" nil w))))
+    (foreach (binding (crumb-decode (promote (patsubst "$.{%$.}" "%" w))))
       (define `{=key: [stem body]}
         binding)
       (define `conflict

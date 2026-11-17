@@ -126,7 +126,7 @@
     ((IBuiltin name args) (IBuiltin name (x* args)))
     ((ICallX name args xv) (ICallX name (x* args) (x* xv)))
     ((IArg n ups) (xarg n ups node))
-    ((IConcat nodes) (IConcat (x* nodes)))
+    ((IConcat nodes) (il-concat (x* nodes)))
     ((IBlock nodes) (IBlock (x* nodes)))
     ((IFor name list body) (xfor name list body))
     ((ILambda stem body) (ILambda stem (recur body (.. "." top) nil)))
@@ -312,7 +312,7 @@
   (or
    (check-arity (words encodings) args sym)
 
-   (IConcat
+   (il-concat
     (cons
      (IString tag)
      (foreach (n (indices encodings))

@@ -91,10 +91,8 @@
       obj))
 
 
-(define (protect-comma str)
-  (if (findstring "!@," str)
-      (.. "$(if ,," (subst "!@" "" str) ")")
-      str))
+(define `(protect-comma str)
+  (subst "!@," "$&" str))
 
 
 ;; Escape "(", ",", and ")" outside of balanced parentheses.
