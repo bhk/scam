@@ -172,24 +172,60 @@
            (else (PError 0 (.. "internal:bad IL: " node))))))
 
 
+;; Fold an `nth-rest` call with a containing word/wordlist/^n call.
+;; Indices for inner and outer calls must all be constant.
+;;
+(define (c1-xwordlist ctor name index-node list-node end-node)
+  (define `(node-is-9s node)
+    (filter "99999999" (case node ((IString n) n))))
+
+  (define `(fold-indices a b)
+    (words (.. (repeat-words 1 a) (repeat-words 1 b))))
+
+  ;; validate outer call
+  (case index-node
+    ((IString outer-n)
+     (if (or (filter-out "wordlist" name)
+             (node-is-9s end-node))
+         ;; validate inner expression
+         (case list-node
+           ((IBuiltin inner-name args)
+            (and (filter "wordlist" inner-name)
+                 (node-is-9s (nth 2 args))
+                 (case (nth 1 args)
+                   ((IString inner-n)
+                    ;; construct folded expression
+                    (define `args-out
+                      (append [ (IString (fold-indices outer-n inner-n)) ]
+                              (nth-rest (if (filter "wordlist" name) 2 3)
+                                        args)))
+                    (c1 (ctor name args-out)))))))))))
+
+
 ;; Call built-in function
 (define (c1-Builtin name args)
   ;; (demote <builtin>) == <builtin> for all builtins
 
-  (if (filter "var" name)
-      ;; special case for `(native-var ...)`
-      (case (first args)
-        ((IString name) (c1-Var name)) ;; handles one-char names
-        (arg (.. "$(" (c1 arg) ")")))
+  (or
+   (if (filter "var" name)
+       ;; special case for `(native-var ...)`
+       (case (first args)
+         ((IString name) (c1-Var name)) ;; handles one-char names
+         (arg (.. "$(" (c1 arg) ")"))))
 
-      ;; builtin functions
-      (.. "$(" name
-          " " ;; this space is necessary even when there are no arguments
-          (protect-ltrim (c1-vec args ","
-                                 (if (filter "and or" name)
-                                     (native-name c1-arg-trim)
-                                     (native-name c1-arg))))
-          ")")))
+   (and (filter "wordlist word" name)
+        (findstring "99999999" args)
+        (c1-xwordlist IBuiltin name (first args) (last args)
+                      (if (filter "wordlist" name) (nth 2 args))))
+
+   ;; builtin functions
+   (.. "$(" name
+       " " ;; this space is necessary even when there are no arguments
+       (protect-ltrim (c1-vec args ","
+                              (if (filter "and or" name)
+                                  (native-name c1-arg-trim)
+                                  (native-name c1-arg))))
+       ")")))
 
 
 ;; Compile an array of arguments (IL nodes) into at most 9 positional arguments
@@ -272,19 +308,23 @@
     (subst " " "" (.. "," (wordlist (words (.. "x " args)) 9
                                     ", , , , , , , , ,"))))
 
-  (define `hoisted
-    (if (filter "^X" name)
-        (case (first xv)
-          ((ILambda stem body)
-           (if stem
-               (c1-let stem (c1 body) args))))))
+  (define `optimized
+    (if (filter "^X ^n" name)
+        (if (filter "^X" name)
+            ;; hoist lambda to named function
+            (case (first xv)
+              ((ILambda stem body)
+               (if stem
+                   (c1-let stem (c1 body) args))))
+            ;; ^n
+            (if (findstring "99999999" args)
+                (c1-xwordlist ICall name (first args) (nth 2 args) nil)))))
 
-  (or
-   hoisted
-   (.. "$(call " ename
-       (if args (.. "," (c1-args9 args)))
-       (if xv (.. commas (c1-args9 xv)))
-       ")")))
+  (or optimized
+      (.. "$(call " ename
+          (if args (.. "," (c1-args9 args)))
+          (if xv (.. commas (c1-args9 xv)))
+          ")")))
 
 
 ;; Block: evaluate all nodes and return value of last node

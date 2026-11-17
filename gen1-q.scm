@@ -111,6 +111,20 @@
         (c1 (ICallX "^X" [ (IString "a") ]
                   [ (ILambda "f1" (IArg 1 ".")) ])))
 
+;; Fold (wordlist K,99999999,LIST)...
+
+(define wl3
+  (IBuiltin "wordlist" [ (IString 3) (IString 99999999) (IVar "foo") ]))
+
+(expect "$(wordlist 4,99999999,$(foo))"
+        (c1 (IBuiltin "wordlist" [ (IString 2) (IString 99999999) wl3 ])))
+
+(expect "$(word 5,$(foo))"
+        (c1 (IBuiltin "word" [ (IString 3) wl3 ])))
+
+(expect "$(call ^n,6,$(foo))"
+        (c1 (ICall "^n" [ (IString 4) wl3 ])))
+
 
 ;; ICall: call user-defined SCAM function
 
