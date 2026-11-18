@@ -24,8 +24,10 @@
 (define (get-fibs a b min)
   (if (> a min)
       [a b]
-      (foreach (b^2 (* b b))
-        (get-fibs (+ (^ a 2) b^2) (+ (* 2 (* a b)) b^2) min))))
+      (foreach (b² (* b b))
+        (get-fibs (+ (^ a 2) b²)
+                  (+ (* 2 (* a b)) b²)
+                  min))))
 
 
 (define (calc-phi digits)

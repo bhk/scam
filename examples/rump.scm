@@ -5,7 +5,7 @@
 ;;
 ;;   ƒ = 333.75b⁶ + a²(11a²b² − b⁶ − 121b⁴ − 2) + 5.5b⁸ + a/(2b)
 ;;
-;; with a = 77617 and b = 33096. On an IBM S/370 main frame he computed ƒ
+;; with a = 77617 and b = 33096. On an IBM S/370 mainframe he computed ƒ
 ;; using single, double, and extended-precision arithmetic, to produce the
 ;; results:
 ;;
@@ -51,10 +51,10 @@
 (require "math")
 
 (define (f a b digits)
-  (sum (* (- 333.75 (^ a 2)) (^ b 6))
-       (* (^ a 2) (- (- (* 11 (* (^ a 2) (^ b 2))) (* 121 (^ b 4))) 2))
-       (* 5.5 (^ b 8))
-       (/ a (* 2 b) digits)))
+  (+ (* (- 333.75 (^ a 2)) (^ b 6))
+     (* (^ a 2) (- (- (* 11 (* (^ a 2) (^ b 2))) (* 121 (^ b 4))) 2))
+     (* 5.5 (^ b 8))
+     (/ a (* 2 b) digits)))
 
 
 (define (main [digits ...other-args])

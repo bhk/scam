@@ -178,7 +178,6 @@
 ;;       If A > B, a word consisting of one or more "1" characters.
 ;;       If A < B, a word consisting no "1" characters.
 ;;
-;;
 (define (raw-cmp a b)
   (if (non-digit? (.. a b))
       (fp-cmp (u2fp a) (u2fp b))
@@ -215,15 +214,63 @@
                  arg4))))
 
 
+(define (vec-loop v opfn)
+  (if (word 2 v)
+      (native-call opfn (first v) (vec-loop (rest v) opfn))
+      (first v)))
+
+
+(define (u-mul x y)
+  (u-mul-uns x y))
+
+
+;; Use `fp-MODE` or `u-MODE` to add/multiply numbers in a vector.
+;;
+(define (vecop mode uv ident)
+  (declare (u-))
+  (declare (fp-))
+  (define `fpvec
+    (foreach (u uv)
+      [ (u2fp u) ]))
+
+  (if uv
+      (u2d
+       (if (non-digit? (smash uv))
+           (fp2u (vec-loop fpvec (.. (native-name fp-) mode)))
+           (vec-loop uv (.. (native-name u-) mode))))
+      ident))
+
+
+(define `(addv uv)
+  (vecop "add" uv 0))
+
+
+(define `(mulv uv)
+  (vecop "mul" uv 1))
+
+
+(define (sum-vec v ?prev)
+  (if (findstring "!" v)
+      (if (findstring prev v)
+          "NaN"
+          (sum-vec (strip (promote v)) v))
+      (if v
+          (addv (d2u v))
+          0)))
+
+
 ;;--------------------------------
 ;; Exports
 ;;--------------------------------
 
-;; Return X + Y.
+
+;; Return the sum of all arguments.
 ;;
-(define `(+ x y)
+(define `(+ x y ...others)
   &public
-  (binop "add" x y))
+  (if others
+      (addv (d2u (._. x y others)))
+      (binop "add" x y)))
 
 
 ;; Return X - Y.
@@ -233,11 +280,13 @@
   (binop "sub" x y))
 
 
-;; Return X * Y.
+;; Return the product of all arguments.
 ;;
-(define `(* x y)
+(define `(* x y ...others)
   &public
-  (binop "mul" x y))
+  (if others
+      (mulv (d2u (._. x y others)))
+      (binop "mul" x y)))
 
 
 ;; Return floor(X / Y): the largest integer less than or equal to X/Y.
@@ -358,9 +407,12 @@
   (not (> x y)))
 
 
-;;--------------------------------
-;; Misc.
-;;--------------------------------
+;; Sum all numbers in ARGS.  Each argument may be a number, or a vector of
+;; numbers, or a vector of vectors of numbers, and so on.
+;;
+(define (sum ...args)
+  &public
+  (sum-vec args))
 
 
 ;; Negate a number.  This function assumes that X is a valid number; it does
@@ -395,28 +447,6 @@
   (if (> x y)
       y
       x))
-
-
-(define (fp-sum v)
-  (if (word 2 v)
-      (fp-add (first v) (fp-sum (rest v)))
-      (first v)))
-
-
-(define (sum-vec nums)
-  (if (findstring "!" nums)
-      ;; vectors...
-      (if (findstring "!0" (subst "!1" "!0" nums))
-          (sum-vec (promote nums)))
-      (fp2d (fp-sum (for (u (d2u nums)) (u2fp u))))))
-
-
-;; Sum all numbers in ARGS.  Each argument may be a number, or a vector of
-;; numbers, or a vector of vectors of numbers, and so on.
-;;
-(define (sum ...args)
-  &public
-  (sum-vec (promote args)))
 
 
 ;; Return the fraction and exponent portions of X.

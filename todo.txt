@@ -55,9 +55,7 @@ Language Enhancements
        (c <- fn2 a b)
        (return c))
 
- * num: accept E-notation for integers in: range, ^
-
- * num: multi-arg + and *
+ * math: accept E-notation for integers in: range, ^
 
  * &native=XXX would improve runtime.scm & enable builtins as declarations.
 

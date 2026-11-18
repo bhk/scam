@@ -118,9 +118,10 @@
 
 ;; sum
 
+(expect 0 (sum))
 (expect 1 (sum 1.0))
 (expect 3.1 (sum 1 2.1))
-(expect 7.1 (sum [ [1 2.1] ] 4))
+(expect 7.1 (sum [ [1 2.1] [] ] 4))
 
 ;; frexp10
 
@@ -264,8 +265,12 @@
 
 
 (expect 5 (+ 3 2))
+(expect 102 (+ 1e2 2))
+(expect 9 (+ 3 2 4))
 (expect 4 (- 13 9))
 (expect 6 (* 3 2))
+(expect 600 (* 3e2 2))
+(expect 30 (* 3 2 5))
 (expect 4 (// 9 2))
 (expect 2 (mod 29 9))
 (expect 9.261 (^ 2.1 3))
