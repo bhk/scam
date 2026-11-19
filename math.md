@@ -18,15 +18,19 @@ There are a few variations on the unary formats:
   digits appear in plain integers.  Math operations therefore convert to
   unary even before parsing and validation.
 
-  Arithmetic operations on "U" numbers assume plain integers, with no
-  non-digit characters in the number except a leading `-` in the case of
-  negative values.  The rightmost digit is in the 1's position.
+  Artihmetic operations on U values assume they contain no non-digit
+  characters except a leading `-` in the case of negative values.  The
+  rightmost digit is in the 1's position.
 
   For example `u-mul` and `u-add` accept two U-encoded integers and return a
   U-encoded integer.
 
-* "UF" and "UV" encoding: These are both vector forms, with one unary digit
-  per word.  They differ in how the numeric value is interpreted.
+  Invalid U values are represented by `NaN`, which survives the `u2d`
+  conversion back to decimal unchanged.
+
+* "UF" and "UV" encoding: These are both vector forms, with a space
+  character between each unary digit, and unsigned.  They differ in how the
+  numeric value is interpreted.
 
   "UF" means the vector represents a fraction x, 0 <= x < 1.  The digits
   fall just to the right of the decimal point, in big-endian format: the
@@ -37,8 +41,9 @@ There are a few variations on the unary formats:
 
   Some examples:
 
-  * `uf-add` differs from `u-add` in that the UF digits are left-aligned,
-    whereas the digits are right-aligned in U encoding.
+  * `uf-add` differs from `u+` in that the UF digits are left-aligned,
+    whereas the digits are right-aligned in U encoding.  Overflow (into the
+    1's position) is dropped.
 
   * `uv-complement` returns the 10s complement of a UV integer (modulo the
     digit position to the left of the first digit), or of a UF fraction
@@ -58,3 +63,6 @@ There are a few variations on the unary formats:
   SIGN is either "+" or "-", representing 1 or -1.
 
   EXP is U-encoded.
+
+  Invalid FP values are represented by nil, which will be converted to `NaN`
+  by `fp2u` or `fp2d`.

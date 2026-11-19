@@ -140,6 +140,8 @@
 (expect "011" (prec-to-pod "-2"))
 (expect "-011" (prec-to-pod "+2"))
 (expect "-0" (prec-to-pod "+0"))
+(expect nil (prec-to-pod "0+"))
+(expect nil (prec-to-pod "0-"))
 (expect nil (prec-to-pod " -1"))
 (expect nil (prec-to-pod "-1-"))
 (expect (U "-91") (prec-to-pod "+91"))
@@ -185,24 +187,24 @@
 (expect "01 + 0" (fp-negate "01 - 0"))
 (expect "-01 + 0" (fp-negate "-01 - 0"))
 
-;; fp-add
+;; f+
 
 ;; same sign; pad empty
-(expect (FP 3) (fp-norm (fp-add (FP 1) (FP 2))))
+(expect (FP 3) (fp-norm (f+ (FP 1) (FP 2))))
 ;; same sign; pad non-empty
-(expect (FP 12) (fp-norm (fp-add (FP 10) (FP 2))))
-(expect (FP 10.21) (fp-norm (fp-add (FP 10) (FP 0.21))))
+(expect (FP 12) (fp-norm (f+ (FP 10) (FP 2))))
+(expect (FP 10.21) (fp-norm (f+ (FP 10) (FP 0.21))))
 ;; different sign; pad non-empty
-(expect (FP -7) (fp-norm (fp-add (FP -10) (FP 3))))
-(expect nil (fp-add (FP 1) nil))
-(expect nil (fp-add nil (FP 1)))
+(expect (FP -7) (fp-norm (f+ (FP -10) (FP 3))))
+(expect nil (f+ (FP 1) nil))
+(expect nil (f+ nil (FP 1)))
 
-;; fp-sub
+;; f-
 
-(expect (DFP 2 08) (fp-sub (FP 10) (FP 2)))
-(expect (FP 12) (fp-norm (fp-sub (FP 10) (FP -2))))
-(expect nil (fp-sub (FP 1) nil))
-(expect nil (fp-sub nil (FP 1)))
+(expect (DFP 2 08) (f- (FP 10) (FP 2)))
+(expect (FP 12) (fp-norm (f- (FP 10) (FP -2))))
+(expect nil (f- (FP 1) nil))
+(expect nil (f- nil (FP 1)))
 
 ;; sign-mul
 
@@ -211,95 +213,104 @@
 (expect "+" (sign-mul "+" "+"))
 (expect "+" (sign-mul "-" "-"))
 
-;; fp-mul
+;; f*
 
-(expect (FP -124) (fp-mul (FP 31) (FP -4)))
-(expect nil (fp-mul nil (FP 4)))
-(expect nil (fp-mul (FP 4) nil))
+(expect (FP -124) (f* (FP 31) (FP -4)))
+(expect nil (f* nil (FP 4)))
+(expect nil (f* (FP 4) nil))
 
-;; fp-div
+;; f/
 
-(define `NEAR 1)
-(define `DOWN nil)
-(define (fp-div-N a b p r)
-  (fp-norm (fp-div a b p r)))
+(define (df/ a b p)
+  (fp2d (f/ (d2fp a) (d2fp b) (prec-to-pod p) nil)))
 
-(define (fp-div-d a b p r)
-  (fp2d (fp-norm (fp-div a b p r))))
+(define (df/down a b p)
+  (fp2d (f/ (d2fp a) (d2fp b) (prec-to-pod p) 1)))
 
 ;; cond: (not "AF and BF begin with non-zero digit")
 ;; B nil
-(expect nil (fp-div (FP 1) nil 8 NEAR))
-(expect nil (fp-div (FP 0) nil 8 NEAR))
+(expect nil (f/ 1 nil 8))
+(expect nil (f/ 0 nil 8))
 ;; B zero
-(expect nil (fp-div (FP 1) "011 + 0" 4 NEAR))
+(expect nil (f/ (FP 1) "011 + 0" 4))
+(expect nil (f/ (FP 1) "011 + 0" 4))
 ;; B non-normalized
-(expect 2 (fp-div-d (FP 4) "011 + 0 011" 4 NEAR))
+(expect 2 (fp2d (f/ (FP 4) "011 + 0 011" 4)))
 ;; A nil
-(expect nil (fp-div nil (FP 1) 8 NEAR))
+(expect "NaN" (df/ nil 1 8))
 ;; A zero
-(expect "0 + 0" (fp-div "011 + 0" (FP 1) 4 NEAR))
+(expect 0 (df/ 0 1 4))
 ;; A non-normalized
-(expect 2 (fp-div-d "011 + 0 011" (FP 1) 4 NEAR))
+(expect 2 (fp2d (f/ "011 + 0 011" (FP 1) 4)))
+;; signs
+(expect 6.67   (df/ 20 3 3))
+(expect -6.67  (df/ 20 -3 3))
+(expect 6.67   (df/ -20 -3 3))
+(expect 6.7    (df/  20 3 -1))
 ;; cond: prec
 ;; af<bf vs. af>=bf
-(expect (FP 0.4) (fp-div (FP 2) (FP 5) 1 NEAR))
-(expect (FP 1.2) (fp-div (FP 6) (FP 5) 2 NEAR))
+(expect 0.4 (df/ 2 5 1))
+(expect 1.2 (df/ 6 5 2))
 ;; prec: PLACE vs. DIGITS
-;; mode: NEAREST vs. TRUNCATE vs. CEILING
-(expect 6      (fp-div-d (FP 20)  (FP 3) 1      DOWN))
-(expect 6.66   (fp-div-d (FP 20)  (FP 3) 3      DOWN))
-(expect 6.67   (fp-div-d (FP 20)  (FP 3) 3      NEAR))
-(expect 6.66   (fp-div-d (FP 20)  (FP 3) (U 2)  DOWN))
-(expect 6.6    (fp-div-d (FP 20)  (FP 3) (U 1)  DOWN))
-(expect 7      (fp-div-d (FP 20)  (FP 3) (U 0)  NEAR))
-(expect 10     (fp-div-d (FP 20)  (FP 3) (U -1) NEAR))
-(expect 0      (fp-div-d (FP 20)  (FP 3) (U -1) DOWN))
-(expect "0 + 0"  (fp-div (FP 20)  (FP 3) (U -2) DOWN))
-(expect -100   (fp-div-d (FP -20) (FP 3) (U -2) DOWN))  ;; CEILING
-(expect -1000  (fp-div-d (FP -20) (FP 3) (U -3) DOWN))  ;; CEILING
+(expect 6.67   (df/ 20 3 3))
+(expect 6.67   (df/ 20 3 -2))
+(expect 7      (df/ 20 3 -0))
+(expect 10     (df/ 20 3 "+1"))
+(expect 6.66   (df/down 20 3 -2))
+(expect 6      (df/down 20 3 -0))
+(expect -6.67  (df/down 20 -3 -2))
+(expect 0      (df/down 20 3 "+1"))
+(expect -100   (df/down 20 -3 "+2"))
 ;; round(AF/BF) == 1
-(expect 100    (fp-div-d (FP 199) (FP 2) 2      NEAR))
+(expect 100    (df/ 199 2 2))
 ;; cond: [else]
-(expect nil    (fp-div (FP 3) (FP 2) nil DOWN))
+(expect nil    (f/ (FP 3) (FP 2) nil 1))
 
-;; fp-mod
+;; f//
 
-(expect nil (fp-mod nil (FP 1)))
-(expect nil (fp-mod (FP 1) nil))
-(expect nil (fp-mod (FP 1) "01 + 0"))
+(expect (FP 7) (f// (FP 23) (FP 3)))
+
+;; u//
+
+(expect (U 7) (u// (U 23) U3))
+
+;; f-mod
+
+(expect nil (f-mod nil (FP 1)))
+(expect nil (f-mod (FP 1) nil))
+(expect nil (f-mod (FP 1) "01 + 0"))
 ;; normalization
-(expect (FP 2) (fp-mod (FP 8) "011 + 0 0111"))
-(expect (FP 2) (fp-mod "011 + 0 011111111" "01 + 0111"))
+(expect (FP 2) (f-mod (FP 8) "011 + 0 0111"))
+(expect (FP 2) (f-mod "011 + 0 011111111" "01 + 0111"))
 ;; signs differ
-(expect (FP 2) (fp-mod (FP 5) (FP 3)))
-(expect (FP -1) (fp-mod (FP 5) (FP -3)))
-(expect (FP -2) (fp-mod (FP -5) (FP -3)))
-(expect (FP 1) (fp-mod (FP -5) (FP 3)))
+(expect (FP 2) (f-mod (FP 5) (FP 3)))
+(expect (FP -1) (f-mod (FP 5) (FP -3)))
+(expect (FP -2) (f-mod (FP -5) (FP -3)))
+(expect (FP 1) (f-mod (FP -5) (FP 3)))
 ;; ae < be
-(expect (FP 3) (fp-mod (FP 23) (FP 4)))
+(expect (FP 3) (f-mod (FP 23) (FP 4)))
 ;; else
-(expect 0.72 (fp2d (fp-mod (FP 45) (FP 1.23))))
-(expect 2.88 (fp2d (fp-mod (FP 12) (FP 4.56))))
+(expect 0.72 (fp2d (f-mod (FP 45) (FP 1.23))))
+(expect 2.88 (fp2d (f-mod (FP 12) (FP 4.56))))
 
 ;; fp-round
 
 ;; significant digits
-(expect (FP 12e1) (fp-round "0111 + 01 011 0111" 2 DIV-NEAREST))
-(expect (FP 0.0012) (fp-round "-011 + 01 011 0111" 2 DIV-NEAREST))
+(expect (FP 12e1) (fp-round "0111 + 01 011 0111" 2 ROUND-NEAR))
+(expect (FP 0.0012) (fp-round "-011 + 01 011 0111" 2 ROUND-NEAR))
 ;; decimal place
-(expect (FP 123) (fp-round "0111 + 01 011 0111 01111 0111 01" 0 DIV-NEAREST))
-(expect (FP 12e1) (fp-round "0111 + 01 011 0111 01111 0111 01" -01 DIV-NEAREST))
-(expect (FP 123.4) (fp-round "0111 + 01 011 0111 01111 0111 01" 01 DIV-NEAREST))
+(expect (FP 123) (fp-round "0111 + 01 011 0111 01111 0111 01" 0 ROUND-NEAR))
+(expect (FP 12e1) (fp-round "0111 + 01 011 0111 01111 0111 01" -01 ROUND-NEAR))
+(expect (FP 123.4) (fp-round "0111 + 01 011 0111 01111 0111 01" 01 ROUND-NEAR))
 ;; not normalized
-(expect (FP 12e1) (fp-round "01111 + 0 01 011 0111" 2 DIV-NEAREST))
-(expect "0 + 0" (fp-round "01111 + 0" 2 DIV-NEAREST))
+(expect (FP 12e1) (fp-round "01111 + 0 01 011 0111" 2 ROUND-NEAR))
+(expect "0 + 0" (fp-round "01111 + 0" 2 ROUND-NEAR))
 ;; exponent with large magnitude
-(expect "0 + 0" (fp-round (FP 1e-999999999) 0111 DIV-NEAREST))
+(expect "0 + 0" (fp-round (FP 1e-999999999) 0111 ROUND-NEAR))
 
-;; fp-cmp
+;; f-cmp
 
-(define (fp-cmp-rubric ret)
+(define (f-cmp-rubric ret)
   (cond
    ((not ret) "=")
    ((findstring "1" ret) ">")
@@ -307,37 +318,37 @@
 
 
 ;; positive
-(expect ">" (fp-cmp-rubric (fp-cmp (FP 20) (FP 5))))
-(expect "<" (fp-cmp-rubric (fp-cmp (FP 20) (FP 50))))
-(expect "=" (fp-cmp-rubric (fp-cmp (FP 20) (FP 20))))
+(expect ">" (f-cmp-rubric (f-cmp (FP 20) (FP 5))))
+(expect "<" (f-cmp-rubric (f-cmp (FP 20) (FP 50))))
+(expect "=" (f-cmp-rubric (f-cmp (FP 20) (FP 20))))
 ;; nil/NaN
-(expect ">" (fp-cmp-rubric (fp-cmp (FP -1) nil)))
-(expect "<" (fp-cmp-rubric (fp-cmp nil (FP -1))))
-(expect "=" (fp-cmp-rubric (fp-cmp nil nil)))
+(expect ">" (f-cmp-rubric (f-cmp (FP -1) nil)))
+(expect "<" (f-cmp-rubric (f-cmp nil (FP -1))))
+(expect "=" (f-cmp-rubric (f-cmp nil nil)))
 ;; A=0
-(expect "<" (fp-cmp-rubric (fp-cmp (FP 0) (FP 1))))
-(expect "=" (fp-cmp-rubric (fp-cmp (FP 0) (FP -0))))
-(expect ">" (fp-cmp-rubric (fp-cmp (FP 0) (FP -1))))
+(expect "<" (f-cmp-rubric (f-cmp (FP 0) (FP 1))))
+(expect "=" (f-cmp-rubric (f-cmp (FP 0) (FP -0))))
+(expect ">" (f-cmp-rubric (f-cmp (FP 0) (FP -1))))
 ;; B=0
-(expect ">" (fp-cmp-rubric (fp-cmp (FP 1) (FP 0))))
-(expect "<" (fp-cmp-rubric (fp-cmp (FP -1) (FP 0))))
+(expect ">" (f-cmp-rubric (f-cmp (FP 1) (FP 0))))
+(expect "<" (f-cmp-rubric (f-cmp (FP -1) (FP 0))))
 ;; A<0
-(expect "<" (fp-cmp-rubric (fp-cmp (FP -1) (FP 0))))
-(expect ">" (fp-cmp-rubric (fp-cmp (FP -1) (FP -2))))
+(expect "<" (f-cmp-rubric (f-cmp (FP -1) (FP 0))))
+(expect ">" (f-cmp-rubric (f-cmp (FP -1) (FP -2))))
 ;; else
-(expect ">" (fp-cmp-rubric (fp-cmp (FP 1) (FP -2))))
+(expect ">" (f-cmp-rubric (f-cmp (FP 1) (FP -2))))
 
 ;; fp-sq
 
 (expect 400 (fp2d (fp-sq (FP 20))))
 
-;; fp-pwr
+;; fp-u-pwr
 
-(expect 1     (fp2d (fp-pwr (FP 2) (U 0))))
-(expect 1     (fp2d (fp-pwr (FP -2) (U 0))))
-(expect 2     (fp2d (fp-pwr (FP 2) (U 1))))
-(expect 4     (fp2d (fp-pwr (FP -2) (U 2))))
-(expect -2048 (fp2d (fp-pwr (FP -2) (U 11))))
+(expect 1     (fp2d (fp-u-pwr (FP 2) (U 0))))
+(expect 1     (fp2d (fp-u-pwr (FP -2) (U 0))))
+(expect 2     (fp2d (fp-u-pwr (FP 2) (U 1))))
+(expect 4     (fp2d (fp-u-pwr (FP -2) (U 2))))
+(expect -2048 (fp2d (fp-u-pwr (FP -2) (U 11))))
 
 ;;--------------------------------
 ;; fp-fix

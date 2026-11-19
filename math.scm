@@ -62,19 +62,8 @@
 (require "math2.scm")
 
 
-;;--------------------------------
-;; Operators
-;;--------------------------------
-
-;; RAW values are strings from the client in which decimal digits have been
-;; converted to unary digits (0, 01, 011, ...), and nil values have been
-;; replaced by "?".
-
-
-;; Functions beginning "raw-" generally accept RAW values and return
-;; U-numbers or "NaN".
-;;
-(declare (raw-))
+(define (ln x ?p)
+  (fp2d (fp-ln (d2fp x) (prec-to-pod p))))
 
 
 ;; Return non-nil if either A or B are not simple integers: "-"? DIGIT+
@@ -84,81 +73,11 @@
   (subst "9-0" nil 9 nil 1 nil 0 nil (.. 9 a 9 b)))
 
 
-;; Return non-nil if A or B are not simple non-negative integers: DIGIT+
-;;
-(define `(non-naturals? a b)
-  (non-digit? (.. a b)))
-
-
-;; Add B to A.
-;;
-(define (raw-add a b)
-  (if (non-integers? a b)
-      (fp2u (fp-add (u2fp a) (u2fp b)))
-      (u-add a b)))
-
-
-;; Subtract B from A.
-;;
-;; For subtraction, this more complicated (than raw-add) is 10% faster on
-;; average.
-;;
-(define (raw-sub a b)
-  (if (non-digit? (.. a b))
-      (if (non-integers? a b)
-          (fp2u (fp-sub (u2fp a) (u2fp b)))
-          (u-sub a b))
-      (u-add a (.. "-" b))))
-
-
-(define `(u-mul-uns a b)
-  (u-norm-uns (smash (uf-mul (u2uv a) (u2uv b)))))
-
-
-(define (raw-mul-s a b)
-  (if (non-integers? a b)
-      (fp2u (fp-mul (u2fp a) (u2fp b)))
-      (patsubst
-       "-0" 0
-       (.. (filter "-" (.. (findstring "-" a) (findstring "-" b)))
-           (u-mul-uns (subst "-" nil a) (subst "-" nil b))))))
-
-
-;; Multiply A by B.
-;;
-;; A & B are "raw U" strings: all decimal digits have been converted to
-;; unary (0, 01, 011, ...); other characters remain as-is; empty string
-;; has been replaced with "?".
-;;
-(define (raw-mul a b)
-  (if (non-naturals? a b)
-      (raw-mul-s a b)
-      (u-mul-uns a b)))
-
-
-;; Divide A by B, rounding down to the nearest integer (flooring).
-;;
-(define (raw-fdiv a b)
-  (if (non-digit? (.. a b))
-      (fp2u (fp-div (u2fp a) (u2fp b) "0" nil))
-      (or (u-fdiv a b DIV-TRUNCATE)
-          NaN)))
-
-
-;; Return A modulo B -- the remainder after (fdiv A B).
-;;
-(define (raw-mod a b)
-  (if (non-digit? (.. a b))
-      (fp2u (fp-mod (u2fp a) (u2fp b)))
-      (or (u-fdiv a b DIV-REMAINDER)
-          NaN)))
-
-
 ;; Round X
 ;;
 ;; X is decimal (raw input from client).
 ;; POD is in internal format (0% => place, else decimal)
-;; DIR = one of {DIV-TRUNCATE, -FLOOR, -NEAREST, -CEILING}
+;; DIR = one of {ROUND-TRUNC, -FLOOR, -NEAR, -CEIL}
 ;;
 ;; Result is decimal.
 ;;
@@ -166,67 +85,123 @@
   (fp2d (fp-round (d2fp x) pod dir)))
 
 
+;;--------------------------------
+;; Operators
+;;--------------------------------
+
+;; `op` dispatches to computed function names after validating the
+;; input numbers.
+;;     (uMODE UX UY ?POD) --> U  : valid U integers (no "." or "E...")
+;;     (fMODE FX FY ?POD) --> F  : valid FP values
+
+
+(define (u-mod x y)
+  (if (findstring "-" (.. x y))
+      (fp2u (f-mod (u2fp x) (u2fp y)))
+      (or (u-divx x y ROUND-REMAINDER)
+          NaN)))
+
+
+(define (f-atan2 y x pod)
+  (fp-round (fp-atan2 y x pod) pod ROUND-NEAR))
+
+
+(define `(fp>=0? x)
+  (or (findstring "+" x)
+      (not (findstring 1 (fp.uf x)))))
+
+
+;; currently defined only for non-negative integer y
+(define (f^ x y)
+  (if (fp>=0? y)
+      (let ((yuf (fp.uf y))
+            (len (u2d (fp.xpo y)))
+            (x x))
+        (and (n>0? len)
+             (not (findstring 1 (rest (nth-rest len yuf))))
+             (fp-u-pwr x (uf-fix yuf len))))))
+
+
+(define (u^ x y)
+  (fp2u (fp-u-pwr (u2fp x) y)))
+
+
+;; forward u->f
+(define (u-pow x y pod)   (fp2u (f-pow (u2fp x) (u2fp y) pod)))
+(define (u*~ x y pod)     (fp2u (f*~ (u2fp x) (u2fp y) pod)))
+(define (u/ x y pod)      (fp2u (f/ (u2fp x) (u2fp y) pod)))
+(define (u-log x b pod)   (fp2u (f-log (u2fp x) (u2fp b) pod)))
+(define (u-atan2 y x pod) (fp2u (f-atan2 (u2fp y) (u2fp x) pod)))
+
+
+;; NAME = suffix for constructing `uNAME` and `fNAME` functions
+;; X, Y = decimal numbers
+;; POD = (prec-to-pod ...) output
+;; IS-CMP => pass nil values to f<NAME>, do not call convert result to decimal.
+;;
+(define `(op-macro name x y pod is-cmp)
+  (declare (u x y))
+  (declare (f x y))
+  (define `ufn (.. (native-name u) name))
+  (define `ffn (.. (native-name f) name))
+  (define `(d2u-macro d)
+    (subst 1 "01" 2 "011" 4 "31" 5 "311"
+           7 "61" 9 "81" 8 "611" 6 "3111" 3 "0111" d))
+
+  (define `uresult
+   (foreach (pair (d2u-macro (subst " " "?" (.. x ":" y))))
+     (define `ux (filter-out ":%" (subst ":" " :" pair)))
+     (define `uy (word 2 (subst ":" ": " pair)))
+     ;; At least one digit, and no non-digit characters except leading "-"?
+     (if (filter 99 (subst ":-" ":" ":0" 9 1 nil 0 nil (.. ":" pair)))
+         ;; unsigned integer
+         (native-call ufn ux uy pod)
+         ;; not simple unsigned integers
+         (if is-cmp
+             (native-call ffn (u2fp ux) (u2fp uy) pod)
+             (fp2u
+              (let ((fx (u2fp ux))
+                    (fy (u2fp uy))
+                    (ffn ffn)
+                    (pod pod))
+                (if (and fx fy)
+                   (native-call ffn fx fy pod))))))))
+  (if is-cmp
+      uresult
+      (u2d uresult)))
+
+
+;; The compiler optimizes this function body for the non-cmp case.
+(define (op name x y ?pod)
+  (op-macro name x y pod nil))
+
+(define `(op-cmp name x y pod)
+  (op-macro name x y pod 1))
+
+
 (define `(check-dir dir)
   (or (if dir
-          (filter [DIV-FLOOR DIV-CEILING DIV-TRUNCATE]
-                  (subst "-" DIV-FLOOR "+" DIV-CEILING "|" DIV-TRUNCATE dir)))
-      DIV-NEAREST))
+          (filter [ROUND-FLOOR ROUND-CEIL ROUND-TRUNC]
+                  (subst "-" ROUND-FLOOR "+" ROUND-CEIL "|" ROUND-TRUNC dir)))
+      ROUND-NEAR))
 
 
-;; Compare A to B.
-;; Out:  If A = B, nil.
-;;       If A > B, a word consisting of one or more "1" characters.
-;;       If A < B, a word consisting no "1" characters.
-;;
-(define (raw-cmp a b)
-  (if (non-digit? (.. a b))
-      (fp-cmp (u2fp a) (u2fp b))
-      (u-cmp-unsigned a b)))
-
-
-(define (math-cmp a b)
-  (raw-cmp (d2u-macro a) (d2u-macro b)))
-
-
-(define (raw-pwr a b)
-  (if (non-digit? b)
-      ;; B must be non-negative integer
-      NaN
-      ;;
-      (fp2u (fp-pwr (u2fp a) b))))
-
-
-(define (binop name a b)
-  (u2d-macro
-   (native-call (.. (native-name raw-) name)
-                (d2u-macro a)
-                (d2u-macro b))))
-
-
-(define (prec-op name x y p ?arg4)
-  (declare (fp-))
-  (u2d-macro
-   (fp2u
-    (native-call (.. (native-name fp-) name)
-                 (u2fp (d2u-macro x))
-                 (u2fp (d2u-macro y))
-                 (prec-to-pod p)
-                 arg4))))
-
-
-(define (vec-loop v opfn)
+(define (reduce opfn v)
   (if (word 2 v)
-      (native-call opfn (first v) (vec-loop (rest v) opfn))
+      (native-call opfn (first v) (reduce opfn (rest v)))
       (first v)))
 
 
-(define (u-mul x y)
-  (u-mul-uns x y))
+(define (u-mul x y) (u* x y))
+(define (u-add x y) (u+ x y))
+(define (fp-add x y) (f+ x y))
+(define (fp-mul x y) (f* x y))
+(define (fp-mulp x y p) (f*~ x y p))
 
 
-;; Use `fp-MODE` or `u-MODE` to add/multiply numbers in a vector.
+;; Use `fp-NAME` or `u-NAME` to add/multiply numbers in a vector.
 ;;
-(define (vecop mode uv ident)
+(define (vecop name uv ident)
   (declare (u-))
   (declare (fp-))
   (define `fpvec
@@ -236,8 +211,8 @@
   (if uv
       (u2d
        (if (non-digit? (smash uv))
-           (fp2u (vec-loop fpvec (.. (native-name fp-) mode)))
-           (vec-loop uv (.. (native-name u-) mode))))
+           (fp2u (reduce (.. (native-name fp-) name) fpvec))
+           (reduce (.. (native-name u-) name) uv)))
       ident))
 
 
@@ -259,6 +234,10 @@
           0)))
 
 
+(define (cmp x y)
+  (op-cmp "-cmp" x y nil))
+
+
 ;;--------------------------------
 ;; Exports
 ;;--------------------------------
@@ -270,14 +249,14 @@
   &public
   (if others
       (addv (d2u (._. x y others)))
-      (binop "add" x y)))
+      (op "+" x y)))
 
 
 ;; Return X - Y.
 ;;
 (define `(- x y)
   &public
-  (binop "sub" x y))
+  (op "-" x y))
 
 
 ;; Return the product of all arguments.
@@ -286,14 +265,14 @@
   &public
   (if others
       (mulv (d2u (._. x y others)))
-      (binop "mul" x y)))
+      (op "*" x y)))
 
 
 ;; Return floor(X / Y): the largest integer less than or equal to X/Y.
 ;;
 (define `(// x y)
   &public
-  (binop "fdiv" x y))
+  (op "//" x y))
 
 
 ;; Return X / Y to the [precision specified by P](#precision).  The answer
@@ -301,7 +280,7 @@
 ;;
 (define `(/ x y ?p)
   &public
-  (prec-op "div" x y p 1))
+  (op "/" x y (prec-to-pod p)))
 
 
 ;; Compute X*Y to the [precision specified by P](#precision).  The result
@@ -309,7 +288,7 @@
 ;;
 (define `(*~ x y ?p)
   &public
-  (prec-op "mulp" x y p))
+  (op "*~" x y (prec-to-pod p)))
 
 
 ;; Raise X to the power of Y.  Y must be an non-negative integer in "simple"
@@ -317,7 +296,7 @@
 ;;
 (define `(^ x y)
   &public
-  (binop "pwr" x y))
+  (op "^" x y))
 
 
 ;; Return the remainder of floor(X/Y).
@@ -326,28 +305,71 @@
 ;;
 (define `(mod x y)
   &public
-  (binop "mod" x y))
+  (op "-mod" x y))
+
+
+;; Calculate the logarithm of X to the [precision given by P](#precision).
+;;
+;; B, if given, is the base; if nil, the natural logarithm of X will be
+;; returned.
+;;
+;; X and B must be be greater than 0.
+;;
+(define (log x ?b ?p)
+  &public
+  (if b
+      (op "-log" x b (prec-to-pod p))
+      (ln x p)))
+
+
+;; Calculate eˣ to the [precision given by P](#precision).
+;;
+(define (exp x ?p)
+  &public
+  (u2d (fp2u (fp-exp (u2fp (d2u x)) (prec-to-pod p)))))
+
+
+;; Compute xʸ to the [precision given by P](#precision).
+;;
+;; X must be non-negative.
+;;
+(define (pow x y ?p)
+  &public
+  (op "-pow" x y (prec-to-pod p)))
+
+
+;; Return the angle between the X axis and the line from the origin to the
+;; point (X,Y).  (**Note** that Y is the first argument and X is the
+;; second.)
+;;
+;; The result is in the range (-π,π).
+;;
+;; The [precision is given by P](#precision).
+;;
+(define (atan2 y x ?p)
+  &public
+  (op "-atan2" y x (prec-to-pod p)))
 
 
 ;; Return the greatest integer less than or equal to X.
 ;;
 (define `(floor x)
   &public
-  (raw-round x 0 DIV-FLOOR))
+  (raw-round x 0 ROUND-FLOOR))
 
 
 ;; Return the smallest integer greater than or equal to X.
 ;;
 (define `(ceil x)
   &public
-  (raw-round x 0 DIV-CEILING))
+  (raw-round x 0 ROUND-CEIL))
 
 
 ;; Return the integer portion of X (rounding towards zero).
 ;;
 (define `(trunc x)
   &public
-  (raw-round x 0 DIV-TRUNCATE))
+  (raw-round x 0 ROUND-TRUNC))
 
 
 ;; Round X to the [precision given by P](#precision).
@@ -369,7 +391,7 @@
 ;;
 (define `(> x y)
   &public
-  (findstring 1 (math-cmp x y)))
+  (findstring 1 (cmp x y)))
 
 
 ;; Return 1 if X < Y, nil otherwise.
@@ -383,14 +405,15 @@
 ;;
 (define `(!= x y)
   &public
-  (if (math-cmp x y) 1))
+  (if (cmp x y) 1))
 
 
 ;; Return 1 if X = Y, nil otherwise.
 ;;
-(define `(= x y)
+(define (= x y)
   &public
-  (if (math-cmp x y) nil 1))
+  (or (eq? x y)
+      (not (cmp x y))))
 
 
 ;; Return 1 if X >= Y, nil otherwise.
@@ -447,6 +470,62 @@
   (if (> x y)
       y
       x))
+
+
+;; Compute the sine of X to the [precision given by P](#precision).
+;;
+(define `(sin x ?p)
+  &public
+  (xsin 1 x p))
+
+
+;; Compute the cosine of X to the [precision given by P](#precision).
+;;
+(define `(cos x ?p)
+  &public
+  (xsin nil x p))
+
+
+;; Compute π to the [precision given by P](#precision).
+;;
+(define (get-pi ?p)
+  &public
+  (or (foreach (pod (prec-to-pod p))
+        (define `count
+          (if (pod-is-place? pod)
+              (u-zeros (u-add-ones pod 1))
+              (repeat-words 0 pod)))
+
+        (or (patsubst "31%" "3.1%"
+                      (u2d (smash (uf-trim-tz (const-pi count)))))
+            0))
+
+      "NaN:P"))
+
+
+;; Return the angle between the X axis and the line from the origin to the
+;; point (X,Y).  (**Note** that Y is the first argument and X is the
+;; second.)
+;;
+;; The result is in the range (-π,π).
+;;
+;; The [precision is given by P](#precision).
+;;
+(define (atan2 y x ?p)
+  &public
+  (or (foreach (pod (prec-to-pod p))
+        (fp2d (fp-round (fp-atan2 (d2fp y) (d2fp x) pod)
+                        (or result-pod pod) ROUND-NEAR)))
+      "NaN:P"))
+
+
+;; Return the arctangent of M to the [precision given by P](#precision).
+;;
+;; The result is in the range (-π/2,π/2).
+;;
+(define (atan m ?p)
+  &public
+  (atan2 m 1 p))
 
 
 ;; Return the fraction and exponent portions of X.
@@ -558,7 +637,7 @@
   (foreach (fmt (d2u (.. (or min-width 0) ":" (or decimals 0))))
     (define `udec (word 2 (subst ":" " " fmt)))
     (if (filter ":" (subst 0 nil 1 nil fmt))
-        (fp-fix (fp-round (d2fp x) udec DIV-NEAREST)
+        (fp-fix (fp-round (d2fp x) udec ROUND-NEAR)
                 min-width
                 decimals
                 udec)
@@ -644,94 +723,3 @@
           "!#"
           elem)))
   (filter-out "%!#" (subst "!#" "!# " (sort prefixed-v))))
-
-
-;;--------------------------------
-;; Transcendentals
-;;--------------------------------
-
-
-;; Calculate the logarithm of X to the [precision given by P](#precision).
-;;
-;; B, if given, is the base; if nil, the natural logarithm of X will be
-;; returned.
-;;
-;; X and B must be be greater than 0.
-;;
-(define (log x ?b ?p)
-  &public
-  (fp2d
-   (if b
-      (fp-log-x-b (d2fp x) (d2fp b) (prec-to-pod p))
-      (fp-log (d2fp x) (prec-to-pod p)))))
-
-
-;; Calculate eˣ to the [precision given by P](#precision).
-;;
-(define (exp x ?p)
-  &public
-  (u2d (fp2u (fp-exp (u2fp (d2u x)) (prec-to-pod p)))))
-
-
-;; Compute xʸ to the [precision given by P](#precision).
-;;
-;; X must be non-negative.
-;;
-(define (pow x y ?p)
-  &public
-  (fp2d (fp-pow (d2fp x) (d2fp y) (prec-to-pod p))))
-
-;; Compute the sine of X to the [precision given by P](#precision).
-;;
-(define `(sin x ?p)
-  &public
-  (xsin 1 x p))
-
-
-;; Compute the cosine of X to the [precision given by P](#precision).
-;;
-(define `(cos x ?p)
-  &public
-  (xsin nil x p))
-
-
-;; Compute π to the [precision given by P](#precision).
-;;
-(define (get-pi ?p)
-  &public
-  (or (foreach (pod (prec-to-pod p))
-        (define `count
-          (if (pod-is-place? pod)
-              (u-zeros (u-add-ones pod 1))
-              (repeat-words 0 pod)))
-
-        (or (patsubst "31%" "3.1%"
-                      (u2d (smash (uf-trim-tz (const-pi count)))))
-            0))
-
-      "NaN:P"))
-
-
-;; Return the angle between the X axis and the line from the origin to the
-;; point (X,Y).  (**Note** that Y is the first argument and X is the
-;; second.)
-;;
-;; The result is in the range (-π,π).
-;;
-;; The [precision is given by P](#precision).
-;;
-(define (atan2 y x ?p)
-  &public
-  (or (foreach (pod (prec-to-pod p))
-        (fp2d (fp-round (fp-atan2 (d2fp y) (d2fp x) pod)
-                        (or result-pod pod) DIV-NEAREST)))
-      "NaN:P"))
-
-
-;; Return the arctangent of M to the [precision given by P](#precision).
-;;
-;; The result is in the range (-π/2,π/2).
-;;
-(define (atan m ?p)
-  &public
-  (atan2 m 1 p))

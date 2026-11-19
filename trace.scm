@@ -113,7 +113,8 @@
 ;; Get user-facing function name for VAR.
 ;;
 (define (trace-unprefix var)
-  (or (filtersub "'%" "%" var)
+  ;; avoid calling filtersub function
+  (or (patsubst "'%" "%" (filter "'%" var))
       (filter "`%" var)
       (.. "\"" var "\"")))
 

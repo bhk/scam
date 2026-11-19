@@ -5,19 +5,6 @@
 (require "math0-q.scm" &private)  ;; for (U ...)
 (require "math.scm" &private)
 
-;;--------------------------------
-;; Operators
-;;--------------------------------
-
-;; Ensure spaces are treated as invalid characters in a binop
-;;
-(define `(check-binop-spaces fn)
-  (expect NaN (fn "01" " 01"))
-  (expect NaN (fn "01" "01 "))
-  (expect NaN (fn "01" "- 01"))
-  (expect NaN (fn " 01" "01"))
-  (expect NaN (fn "01 " "01"))
-  (expect NaN (fn "- 01" "01")))
 
 ;; non-integers?
 
@@ -26,73 +13,11 @@
   (assert (non-integers? "01" n)))
 (assert (not (non-integers? "-0" "01")))
 
-;; non-naturals?
-
-(assert (non-naturals? (U 1) (U -1)))
-(assert (not (non-naturals? (U 1) (U 2))))
-
-;; raw-add
-
-(expect (U 3.2) (raw-add (U 1.2) (U 2)))
-(expect (U 3) (raw-add (U 1) (U 2)))
-(expect (U 0) (raw-add (U -1) (U 1)))
-(check-binop-spaces raw-add)
-
-;; raw-sub
-
-(expect (U -0.8) (raw-sub (U 1.2) (U 2)))
-(expect (U 0) (raw-sub (U -1) (U -1)))
-(expect (U -1) (raw-sub (U 1) (U 2)))
-(check-binop-spaces raw-sub)
-
-;; raw-mul
-
-(expect (U 2.4) (raw-mul (U 1.2) (U 2)))
-(expect (U 63)  (raw-mul (U -21) (U -3)))
-(expect (U -63) (raw-mul (U 21) (U -3)))
-(expect (U -63) (raw-mul (U -21) (U 3)))
-(expect (U 0)   (raw-mul (U -21) (U 0)))
-(expect (U 63)  (raw-mul (U 21) (U 3)))
-(check-binop-spaces raw-mul)
-
-;; raw-fdiv
-
-(expect (U 1) (raw-fdiv (U 3.71) (U 3)))
-(expect (U 4) (raw-fdiv (U 14) (U 3)))
-(expect NaN (raw-fdiv (U 1) 0))
-(check-binop-spaces raw-fdiv)
-
-;; raw-mod
-
-(expect (U 0.71) (raw-mod (U 3.71) (U 3)))
-(expect (U 7.1) (raw-mod (U 37.1) (U 30)))
-(expect (U 2) (raw-mod (U 14) (U 3)))
-(expect NaN (raw-mod (U 1) 0))
-(check-binop-spaces raw-mod)
-
 ;; raw-round
 
-(expect "NaN" (raw-round nil 0 DIV-NEAREST))
-(expect 120 (raw-round 123 -01 DIV-NEAREST))
-(expect 130 (raw-round 123 -01 DIV-CEILING))
-
-;; raw-cmp & math-cmp
-
-(assert (findstring 1 (math-cmp 12.3 1.32)))
-(assert (findstring 1 (math-cmp 2 -3)))
-(assert (findstring 1 (math-cmp 2 1)))
-
-;; raw-pwr
-
-(expect NaN (raw-pwr (U 2) nil))
-(expect NaN (raw-pwr (U 2) (U -2)))
-(expect (U 1) (raw-pwr (U 1e3) (U 0)))
-(expect (U 1) (raw-pwr (U -1e3) (U 0)))
-(expect (U 4294967296) (raw-pwr (U 2) (U 32)))
-
-;;--------------------------------
-;; Misc.
-;;--------------------------------
+(expect "NaN" (raw-round nil 0 ROUND-NEAR))
+(expect 120 (raw-round 123 -01 ROUND-NEAR))
+(expect 130 (raw-round 123 -01 ROUND-CEIL))
 
 ;; 0-
 
@@ -104,17 +29,216 @@
 (expect 1.0 (abs -1.0))
 (expect 1.0 (abs 1.0))
 
-;; max
 
-(expect 3.0 (max 1.0 3.0))
-(expect 3.0 (max 3.0 nil))
-(expect 3.0 (max 3.0 "NaN"))
+;;--------------------------------
+;; Binary Operators
+;;--------------------------------
+
+;; `op` error cases
+
+(define (u-ec x y) "011")
+(define (f-ec x y) "0 + 011")
+(define (ec x y) (op "-ec" x y))
+
+(expect NaN (ec NaN 1))
+(expect NaN (ec nil 1))
+(expect NaN (ec 1 nil))
+(expect NaN (ec "-" 1))
+(expect NaN (ec "--" 1))
+(expect NaN (ec "- 0" 1))
+(expect NaN (ec "1 " 1))
+(expect NaN (ec "01" " 01"))
+(expect NaN (ec "01" "01 "))
+(expect NaN (ec "01" "- 01"))
+(expect NaN (ec " 01" "01"))
+(expect NaN (ec "01 " "01"))
+(expect NaN (ec "- 01" "01"))
+
+;; verify computed function names
+
+(foreach (type "u f")
+  (foreach (mode "+ - * ^ // *~ / -cmp -mod -pow -log -atan2")
+    (define `name (.. (subst "op" type (native-name op)) mode))
+    (expect name (if (native-bound? name) name))))
+
+
+;; +
+
+(expect 3 (+ 1 2))
+(expect -1 (+ 1 -2))
+(expect 4 (+ 1.9 2.1))
+
+;; -
+
+(expect 3 (- 5 2))
+(expect 7 (- 5 -2))
+(expect 3.01 (- 5.01 2))
+
+;; *
+
+(expect 6 (* 2 3))
+(expect -6 (* 2 -3))
+(expect 6.02 (* 2 3.01))
+
+;; //
+
+(expect 3 (// 7 2))
+(expect -4 (// 7 -2))
+(expect 333 (// 1e3 3))
+
+;; mod
+
+(expect 5 (mod 103 7))
+(expect 1 (mod -7 2))
+(expect -1 (mod 7 -2))
+(expect 5.1 (mod 103.1 7))
+
+;; ^
+
+(expect 128 (^ 2 7))
+(expect 10000 (^ 1e2 2))
+(expect 9.261 (^ 2.1 3))
+
+;; *~
+
+(expect 12220 (*~ 1111 11 4))
+(expect 12220 (*~ 111.1 110 4))
+
+;; /
+
+(expect 0.1429 (/ 1 7 4))
+(expect -0.1429 (/ 1 -7 4))
+(expect 0.1429 (/ 1.0 7 4))
+(expect NaN (/ 1.2 3 "x"))
+(expect 0.1428571428571429 (/ 1 7))
+
+;; pow
+
+(expect 8 (pow 2 3))
+(expect 8 (pow 2.0 3))
+
+;; log
+
+(expect 3.3 (log 10 2 2))
+(expect 3.3 (log 1e1 2 2))
+(expect 2.3 (log 10 nil 2))
+
+;; atan2
+
+(expect 1.57 (atan2 1 0 3))
+(expect 1.57 (atan2 1.0 0 3))
+
+;; cmp
+
+(expect 1 (cmp 1 0))
+(expect 1 (cmp 1 -1))
+(expect "~" (cmp -1 1))
+(expect "~" (cmp 0 1))
+(expect 1 (cmp 1.0 0))
+(assert (findstring 1 (cmp 12.3 1.32)))
+(assert (findstring 1 (cmp 2 -3)))
+(assert (findstring 1 (cmp 2 1)))
+(expect 1 (cmp 1 nil))
+(expect "~" (cmp nil 1))
+
+;;--------------------------------
+;; relational operators, min, max
+;; <, >, =, !=, <=, >=
+;;--------------------------------
+
+(expect 1   (< 1 2))
+(expect nil (< 2 2))
+(expect nil (< 3 2))
+
+(expect nil (> 1 2))
+(expect nil (> 2 2))
+(expect 1   (> 3 2))
+
+(expect nil (= 1 2))
+(expect 1   (= 2 2))
+(expect nil (= 3 2))
+
+(expect 1   (!= 1 2))
+(expect nil (!= 2 2))
+(expect 1   (!= 3 2))
+
+(expect 1   (<= 1 2))
+(expect 1   (<= 2 2))
+(expect nil (<= 3 2))
+
+(expect nil (>= 1 2))
+(expect 1   (>= 2 2))
+(expect 1   (>= 3 2))
 
 ;; min
 
 (expect 1.0 (min 1.0 3.0))
 (expect nil (min 3.0 nil))
 (expect "NaN" (min 3.0 "NaN"))
+
+;; max
+
+(expect 3.0 (max 1.0 3.0))
+(expect 3.0 (max 3.0 nil))
+(expect 3.0 (max 3.0 "NaN"))
+
+
+;;--------------------------------
+;; operations on a single number
+;;--------------------------------
+
+(expect "NaN" (round "x"))
+(expect "NaN" (exp nil 1))
+(expect "NaN" (exp "X" 1))
+
+;; floor
+
+(expect 3 (floor 3.001))
+(expect -4 (floor -3.001))
+
+;; ceil
+
+(expect 4 (ceil 3.001))
+(expect -3 (ceil -3.001))
+
+;; trunc
+
+(expect 3 (trunc 3.001))
+(expect -3 (trunc -3.001))
+
+;; round
+
+(expect 120 (round 123 2))
+(expect 123 (round 123.456))
+(expect 123.46 (round 123.456 -2))
+(expect 123.45 (round 123.456 -2 "-"))
+(expect 123.45 (round 123.456 -2 "|"))
+(expect 123.46 (round 123.451 -2 "+"))
+(expect -123.46 (round -123.456 -2 "-"))
+(expect -123.45 (round -123.456 -2 "|"))
+(expect -123.45 (round -123.456 -2 "+"))
+
+;; exp
+
+(expect 2.718281828459045 (exp 1))
+(expect 0.36788 (exp -1 5))
+(expect 1.1051709 (exp 0.1 8))
+
+;; sin, cos, atan
+
+(expect 0.8414709848078965 (sin 1))
+(expect -0.841 (sin -1.0 3))
+(expect 0.5403 (cos 1 -4))
+(expect 0.7853981633974483 (atan 1))
+(expect -0.7854 (atan -1.0 4))
+
+
+;;--------------------------------
+;; vec-op: sum & multi-arg +, *
+;;--------------------------------
+
+(expect 9 (+ 3 2 4))
+(expect 24 (* 3 2 4))
 
 ;; sum
 
@@ -129,6 +253,7 @@
 (expect [0 0] (frexp10 0.00e10))
 (expect [0.1 1013] (frexp10 1.00e1012))
 (expect [-0.123 -1] (frexp10 -1.23e-2))
+
 
 ;;--------------------------------
 ;; range
@@ -164,7 +289,8 @@
 (expect nil (range "NaN" 100))
 (expect nil (range nil 100))
 (expect nil (range 1.0 2.0))  ;; not yet supported
-(expect nil (range 1 1e2))  ;; not yet supported
+(expect nil (range 1 1e2))    ;; not yet supported
+
 
 ;;--------------------------------
 ;; format-fixed
@@ -226,19 +352,13 @@
   { -2: "a", -0.91: "b", -0.01: "c", 0.9: "d", 2: "e", 10: "f"})
 (expect sort-test-vec (num-sort (sort sort-test-vec)))
 
-;; /
 
-(expect 1.2 (/ 3.6 3 4))
-(expect NaN (/ 1.2 3 "x"))
-(expect 6.67 (/ 20 3 3))
-(expect 6.6667 (/ 20 3 "-4"))
+;;--------------------------------
+;; Stress Tests
+;;--------------------------------
 
 ;; *~
 
-;; not (prec and x and y)
-(expect NaN (*~ 1212 1001 "x"))
-(expect NaN (*~ "x" 1001 2))
-(expect NaN (*~ 1001 "x" 2))
 ;; PREC=digits, most-significant-digit>0
 (expect 147000 (*~ 333 444 3))
 ;; PREC=digits, most-significant-digit==0
@@ -252,88 +372,6 @@
 (expect 70000 (*~ 333 222 "+4"))
 (expect 73926 (*~ 333 222 -1))
 
-;; `binop` functions
-
-(foreach (op [+ - * // mod])
-  (expect NaN (+ NaN 1))
-  (expect NaN (+ nil 1))
-  (expect NaN (+ 1 nil))
-  (expect NaN (+ "-" 1))
-  (expect NaN (+ "--" 1))
-  (expect NaN (+ "- 0" 1))
-  (expect NaN (+ "1 " 1)))
-
-
-(expect 5 (+ 3 2))
-(expect 102 (+ 1e2 2))
-(expect 9 (+ 3 2 4))
-(expect 4 (- 13 9))
-(expect 6 (* 3 2))
-(expect 600 (* 3e2 2))
-(expect 30 (* 3 2 5))
-(expect 4 (// 9 2))
-(expect 2 (mod 29 9))
-(expect 9.261 (^ 2.1 3))
-
-;; floor
-
-(expect 3 (floor 3.001))
-(expect -4 (floor -3.001))
-
-;; ceil
-
-(expect 4 (ceil 3.001))
-(expect -3 (ceil -3.001))
-
-;; trunc
-
-(expect 3 (trunc 3.001))
-(expect -3 (trunc -3.001))
-
-;; round
-
-(expect "NaN" (round "x"))
-(expect 120 (round 123 2))
-(expect 123 (round 123.456))
-(expect 123.46 (round 123.456 -2))
-(expect 123.45 (round 123.456 -2 "-"))
-(expect 123.45 (round 123.456 -2 "|"))
-(expect 123.46 (round 123.451 -2 "+"))
-(expect -123.46 (round -123.456 -2 "-"))
-(expect -123.45 (round -123.456 -2 "|"))
-(expect -123.45 (round -123.456 -2 "+"))
-
-;; relational operators
-;; <, >, =, !=, <=, >=
-
-(expect 1   (< 1 2))
-(expect nil (< 2 2))
-(expect nil (< 3 2))
-
-(expect nil (> 1 2))
-(expect nil (> 2 2))
-(expect 1   (> 3 2))
-
-(expect nil (= 1 2))
-(expect 1   (= 2 2))
-(expect nil (= 3 2))
-
-(expect 1   (!= 1 2))
-(expect nil (!= 2 2))
-(expect 1   (!= 3 2))
-
-(expect 1   (<= 1 2))
-(expect 1   (<= 2 2))
-(expect nil (<= 3 2))
-
-(expect nil (>= 1 2))
-(expect 1   (>= 2 2))
-(expect 1   (>= 3 2))
-
-
-;;--------------------------------
-;; Stress Tests
-;;--------------------------------
 
 (define naturals
   [ 1 2 3 9 10 23 99 199 299 10000001 99999999
@@ -388,10 +426,9 @@
   nil)
 
 
-;;--------------------------------
-;; Transcendentals
-;;--------------------------------
-
+;;----------------------------------------------------------------
+;; Accuracy
+;;----------------------------------------------------------------
 
 ;; Increase/decrease precision PREC by N positions
 (define `(prec+ prec n)
@@ -418,7 +455,7 @@
             (print "delta: " Δ " > " max-delta)
             (expect a b))))))
 
-;; (log X)  [and fp-log indirectly]
+;; (log X)  [and f-log indirectly]
 
 (expect "NaN" (log nil))
 (expect "NaN" (log 0))
@@ -486,13 +523,9 @@
 
 ;; exp
 
-(expect "NaN" (exp nil 1))
-(expect "NaN" (exp "X" 1))
-
 (expect 3 (exp 1 1))
 (expect 2.7 (exp 1 2))
 (expect 2.718 (exp 1 4))
-
 (expect 0 (exp 1 "+1"))
 (expect 3 (exp 1 "+0"))
 (expect 3 (exp 1 "-0"))

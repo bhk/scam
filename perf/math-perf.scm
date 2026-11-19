@@ -95,9 +95,14 @@
   (clk-show "word 1 " (word 1 v))
   (clk-show "w1subst" (word 1 (subst ":" " " v)))
   (clk-show "foreach" (foreach (p v) p))
+  (clk-show "call(1)" (let ((a 1)) a))
+  (clk-show "call(2)" (let ((a 1) (b 2)) (.. a b)))
+  (clk-show "call(3)" (let ((a 1) (b 2) (c 3)) (.. a b c)))
   (clk-show "first  " (first v))
   (clk-show "u2d    " (u2d v))
-  (clk-show "d2u    " (d2u v)))
+  (clk-show "d2u    " (d2u v))
+  (clk-show "int+   " (+ 1 2))
+  (clk-show "fp+    " (+ 1.0 2e2)))
 
 
 ;;----------------------------------------------------------------
@@ -116,15 +121,25 @@
   nil)
 
 
+(define (f+ x y) (+ x y))
+(define (f- x y) (- x y))
+(define (f* x y) (* x y))
+(define (f/ x y) (/ x y))
+(define (f< x y) (< x y))
+(define (f^ x y) (^ x y))
+
+
 (define d100 1.234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890e-9)
 
 (define (main argv)
   ;;(run-primitives)
-  (clk-show "largeint" (^ 1234657809 20))
+  ;;(clk-show "largeint" (^ 1234657809 20))
 
+  (clk-show "sin" (sin 0.1))
+  (clk-show "atan" (atan 0.1))
   ;;(time-fp "lrg" [d100 d100 d100])
   ;;(time-fp "0.x" [0.1234 0.01234 0.0001234])
   ;;(time-fp "1.x" [1.1234 1.01234 1.0001234])
   ;;(time-fp "int" [11234 101234 10001234])
-  (run-composite "math    " + - * / < ^)
+  (run-composite "math    " f+ f- f* f/ f< f^)
   nil)

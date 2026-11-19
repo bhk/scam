@@ -235,7 +235,7 @@
 ;; Add two U-values, returning a normalized U-value (no extraneous leading
 ;; zeros, and no "-0" value).
 ;;
-(define (u-add a b)
+(define (u+ a b)
   &public
 
   ;; Eliminate redundant leading zeros and signs, perserving sign.
@@ -257,9 +257,14 @@
             (u-add-abs a b)))))
 
 
-(define `(u-sub a b)
+(define `(u-sub-m a b)
   &public
-  (u-add a (0- b)))
+  (u+ a (0- b)))
+
+
+(define (u- a b)
+  &public
+  (u-sub-m a b))
 
 
 ;; Subtract B from A.  Result is modulo 1.
@@ -373,7 +378,7 @@
 (define (u-add-ones e ones)
   &public
   (or (filter-out "-% %1111111111" (.. e ones))
-      (u-add e (u-carry-all (.. "0" ones)))))
+      (u+ e (u-carry-all (.. "0" ones)))))
 
 
 ;; Subtract 1 from a U-value (possibly include a "-" sign).
@@ -382,13 +387,13 @@
   &public
   (or (patsubst "%1" "%" (filter-out "-% %0" e))
       (filter-out "0% %1111111111" (.. e 1))
-      (u-add e "-01")))
+      (u+ e "-01")))
 
 
 (define `(u+1 u)
   &public
   (or (filter-out "-% %1111111111" (.. u 1))
-      (u-add u "01")))
+      (u+ u "01")))
 
 
 ;;--------------------------------
@@ -559,7 +564,7 @@
 (declare (vmul a b))
 
 
-;; (uf-mul A B) must produce len(A)+len(B) digits.  vmul does that only when
+;; (uv-mul A B) must produce len(A)+len(B) digits.  vmul does that only when
 ;; B ends in a non-zero digit, so we strip trailing zeros before calling it.
 ;;
 (define (vmul-0 a b)
@@ -576,7 +581,7 @@
 
 
 ;;----------------------------------------------------------------
-;; uf-mul-fixed
+;; uv-mul-fixed
 ;;
 ;; These functions are tailored to the size of the multiplier.  Each returns
 ;; numbers with maximum digit values of 27.
@@ -584,7 +589,7 @@
 
 ;; Multiply A by B if B has 1..8 digits.  Return nil otherwise.
 ;;
-(define `(uf-mul-fixed a b)
+(define `(uv-mul-fixed a b)
   (declare (uf*b a b))
   (native-var (.. (native-name uf*b) (words b))))
 
@@ -626,13 +631,22 @@
 ;; Multiply two UF values.  The result will have exactly (words A) + (words
 ;; B) digits.
 ;;
-(define (uf-mul a b)
+(define (uv-mul a b)
   &public
   (if (longer? b a)
-      (uf-mul b a)
+      (uv-mul b a)
       (uf-carry
-       (or (uf-mul-fixed a b)
+       (or (uv-mul-fixed a b)
            (vmul a b)))))
+
+
+;; Multiply X and Y.  Inputs and outputs are signed U-encoded numbers.
+;;
+(define (u* x y)
+  &public
+  (.. (filter "-" (.. (findstring "-" x) (findstring "-" y)))
+      (u-norm-uns (smash (uv-mul (filter "0%" (spread x))
+                                 (filter "0%" (spread y)))))))
 
 
 ;;--------------------------------
@@ -640,14 +654,17 @@
 ;;--------------------------------
 
 
-(define `(merge2 w1 w2)
-  (.. (subst 1 T10 w1) w2))
+(define `(x10+ digit ?extra)
+  (.. (subst 1 T10 digit) extra))
 
+;; Tally (unary 1's without leading 0) of first two digits in UF
+(define `(tally2 uf)
+  (subst 0 "" (x10+ (word 1 uf) (word 2 uf))))
 
-;; Compute second argument for `guess-digit`.
-;;
-(define `(tally2 u)
-  (subst 0 "" (merge2 (word 1 u) (word 2 u))))
+;; Tally of first three digits
+(define `(tally3 uf)
+  (subst 0 nil (x10+ (x10+ (word 1 uf) (word 2 uf))
+                     (word 3 uf))))
 
 
 ;; Guess the first digit of A/B using the first 3 digits of A and the
@@ -661,47 +678,54 @@
 ;;     BHI = (tally2 B)
 ;;
 (define `(guess-digit a bhi)
-  (define `ahi (subst 0 nil (merge2 (merge2 (word 1 a) (word 2 a)) (word 3 a))))
+  (define `ahi (tally3 a))
   ;; min(floor(ahi/bhi),9)
   (define `q (subst bhi "x" 1 nil "x" 1 ahi))
   (.. 0 (subst T10 T9 q)))
 
 
-(define `DIV-TRUNCATE  &public 1)
-(define `DIV-NEAREST   &public 2)
-(define `DIV-CEILING   &public 3)
-(define `DIV-REMAINDER &public 4)
-(define `DIV-FLOOR     &public 9)  ;; only for signed values
+(define `ROUND-NEAR   &public 1)  ;; ordinary rounding
+(define `ROUND-TRUNC  &public 2)  ;; toward zero
+(define `ROUND-AWAY   &public 3)  ;; away from zero
+(define `ROUND-CEIL   &public 4)  ;; up (+AWAY, -TRUNC)   only fp-round
+(define `ROUND-FLOOR  &public 5)  ;; down (+TRUNC, -AWAY) only fp-round
+
+(define `ROUND-REMAINDER &public 9)  ;; only uf-div/dix
 
 
-;; (div-post POST Q REM B) : Called with results of (uf-div a b num-digits).
+
+;; Perform rounding of division result.  At this point, after dividing A/B,
+;; A = B*Q + REM*10^(-N), where N is (words Q/10)-1.
 ;;
-;;    Q/10 = the first N digits of A/B, prefixed with "0 "
-;;    REM = remainder (always less than B)
-;;    A = B*IQ + REM*10^(-N)
+;; MODE = one of ROUND-NEAR, ... (see above)
+;; Q/10 = UF initial digits of A/B, prefixed with "0 "
+;; REM = UF remainder (always less than B)
+;; B = divisor
 ;;
-(define (div-post mode q/10 rem b)
+(define (div-round mode q/10 rem b)
   ;; Round last digit up when REM>B/2 or REM==B/2 and last digit is odd
   (define `round-up
-    (if (filter [DIV-NEAREST DIV-CEILING] mode)
-        (findstring 1 (if (filter DIV-CEILING mode)
+    (if (filter [ROUND-NEAR ROUND-CEIL] mode)
+        (findstring 1 (if (filter ROUND-CEIL mode)
                           rem
                           (or (uf-cmp rem (uf*0.5 b))
                               (subst "11" nil (lastword q/10)))))))
 
   (if round-up
       (uf-carry (.. q/10 1))
-      (if (filter DIV-REMAINDER mode)
+      (if (filter ROUND-REMAINDER mode)
           rem
           ;; TRUNCATE or round down
           q/10)))
 
 
-;; In: ZA = [Z ...A]  (Z is first digit, A is in remaining digits)
-;;     A, B are UF-encoded
-;;     B >= 0.1
-;;     A < B
-;;     Z is 0 unless previous subtraction overflowed
+;; Compute A/B
+;;
+;; ZA = A/10, UF-encoded
+;; B = divisor, UF-encoded, 0.1...1.0, B > A
+;; BHI = (tally2 B)
+;; NUM-DIGITS = required precision
+;; MODE = rounding mode
 ;;
 ;; We choose a guess for the next digit, D, using the initial
 ;; digits of A and B:
@@ -720,23 +744,24 @@
 (define (div-loop za b bhi num-digits mode digits)
   (define `a (rest za))
   (define `z (word 1 za))
+  (define `(uf-carry uf)
+    (spread (u-carry (smash uf))))
 
   (cond
    ;; Z is non-zero only when the previous quotient digit was too large by
    ;; one; we adjust for this and continue...  [4% of the time]
    ((findstring "1" z)
     ;; Assert: Z == U9
-    (div-loop (>>1 (uf-add a b))
+    (div-loop (uf-add za (>>1 b))
               b bhi num-digits mode
               (subst "1x" "" (.. digits "x"))))
 
    ;; done?
    ((word num-digits digits)
-    (div-post mode (>>1 digits) a b))
+    (div-round mode (>>1 digits) a b))
 
    ;; calculate next digit
    (else
-    ;; 'foreach' is a fast 'let' when the value is exactly one word
     (foreach (d (guess-digit a bhi))
       ;; initial digit of 10*A-D*B is 0 if no overflow, 9 otherwise
       (define `next-za
@@ -855,9 +880,9 @@
                            U6))))
 
   (define `round-up?
-    (if (filter DIV-NEAREST mode)
+    (if (filter ROUND-NEAR mode)
         nearest-up?
-        (if (filter DIV-CEILING mode)
+        (if (filter ROUND-CEIL mode)
             ;; Find any non-zero digit following the last digit.
             (findstring " 01" (nth-rest n u)))))
 
@@ -886,7 +911,7 @@
 ;;
 (define (uf-div1 a b n mode)
   (define `(uf*1.42857 x)
-    (rest (uf-mul x [U1 U4 U2 U8 U5 U7])))
+    (rest (uv-mul x [U1 U4 U2 U8 U5 U7])))
 
   (define `product
     (cond
@@ -945,7 +970,7 @@
 
 
 (define (recip-div2 x y n r)
-  (rest (rdiv x y n (._. "0" (patsubst "%" 0 r)) (uf-mul x r))))
+  (rest (rdiv x y n (._. "0" (patsubst "%" 0 r)) (uv-mul x r))))
 
 
 (define (uf-div2 x y n mode)
@@ -984,7 +1009,7 @@
 ;;   X = remaining UF digits in dividend (0 <= X < 1)
 ;;   Q = quotient digits computed so far
 ;;   N = number of digits required on return
-;;   MODE = DIV-NEAREST/CEILING/TRUNCATE
+;;   MODE = ROUND-NEAR/CEILING/TRUNCATE
 ;;
 ;; sdiv-loop uses an unusual representation for its results.  Digits have no
 ;; "0" prefix; exactly one space delimits each digit; both 0's and 1's
@@ -1008,11 +1033,6 @@
                     yt (subst yt 0 xstep) (rest x) n (.. zeros " 0"))))
 
 
-(define `(tally3 x)
-  (subst 0 nil (merge2 (merge2 (word 1 x) (word 2 x))
-                       (word 3 x))))
-
-
 (define (uf-div3 x y n mode)
   (define `raw
     (sdiv-loop (tally3 y) (tally3 x) (nth-rest 4 x) n))
@@ -1023,13 +1043,13 @@
 (declare (uf-div a b n mode))
 
 
-;; Compute remainder using DIV-TRUNCATE and subtraction.
+;; Compute remainder using ROUND-TRUNC and subtraction.
 ;;
 (define (uf-remainder a b n)
   (define `(<<n u)
     (or (rest (nth-rest n u)) 0))
 
-  (<<n (uf-sub a (uf-mul b (rest (uf-div a b n DIV-TRUNCATE))))))
+  (<<n (uf-sub a (uv-mul b (rest (uf-div a b n ROUND-TRUNC))))))
 
 
 ;; Divide A by B
@@ -1040,12 +1060,12 @@
 ;;      N = number of digits of quotient to compute (in *DECIMAL*)
 ;;      MODE = [see out, below]
 ;;
-;; Out: The returned value (always UF-encoded) depends on MODE:
+;; Out: The returned value (UF-encoded) depends on MODE:
 ;;
-;;     DIV-TRUNCATE  =>  Qt/10
-;;     DIV-NEAREST   =>  Qn/10   [round to nearest, ties to even]
-;;     DIV-CEILING   =>  Qc/10
-;;     DIV-REMAINDER =>  REM
+;;     ROUND-TRUNC  =>  Qt/10
+;;     ROUND-NEAR   =>  Qn/10   [round to nearest, ties to even]
+;;     ROUND-CEIL   =>  Qc/10
+;;     ROUND-REMAINDER =>  REM
 ;;
 ;;   where Qt, Qn, Qc, and REM are defined as:
 ;;
@@ -1067,7 +1087,7 @@
     (uf-div a (uf-trim-tz b) n mode))
 
    ((filter "0 -%" n)
-    (div-post mode 0 a b))
+    (div-round mode 0 a b))
 
    ((not (findstring 1 a))
     0)
@@ -1075,7 +1095,7 @@
    ((word 4 b)
     (uf-div-long a b n mode))
 
-   ((filter DIV-REMAINDER mode)
+   ((filter ROUND-REMAINDER mode)
     (uf-remainder a b n))
 
    (else
@@ -1088,15 +1108,15 @@
 ;;
 ;; UA, UB, and the result are (non-negative) U-strings.
 ;;
-;; MODE = DIV-TRUNCATE => quotient (truncated)
-;;        DIV-REMAINDER => remainder
+;; MODE = ROUND-TRUNC => quotient (truncated)
+;;        ROUND-REMAINDER => remainder
 ;;
-(define (u-fdiv ua ub mode)
+(define (u-divx ua ub mode)
   &public
   (cond
    ;; extraneous leading zeros
    ((filter "00%" (._. ua ub))
-    (u-fdiv (patsubst "00%" "0%" ua) (patsubst "00%" "0%" ub) mode))
+    (u-divx (patsubst "00%" "0%" ua) (patsubst "00%" "0%" ub) mode))
 
    ((and ua (findstring 1 ub))
     (define `_a (spread ua))  ;; has initial extraneous space
@@ -1106,7 +1126,7 @@
       (foreach (num-digits (words (nth-rest (words _b) _a)))
         (if (filter 0 num-digits)
             ;; B is longer than A
-            (if (filter DIV-REMAINDER mode)
+            (if (filter ROUND-REMAINDER mode)
                 ua
                 0)
             (uf-div (.. "0" _a) (native-strip _b) num-digits mode))))

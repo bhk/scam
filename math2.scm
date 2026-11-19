@@ -57,7 +57,7 @@
   (define `value-var (.. fname "/v"))
   (define `count-var (.. fname "/c"))
   (define `(compute-value nw)
-    (rest (uf-round (words nw) DIV-NEAREST (native-call fname nw))))
+    (rest (uf-round (words nw) ROUND-NEAR (native-call fname nw))))
 
   (or (round-uf-const (native-var value-var) count)
       (if (word 1 count)
@@ -73,7 +73,7 @@
 ;; May recalculate N.
 ;;
 (define `(uf-mulp-raw a b n)
-  (wordlist 1 n (uf-mul (or (wordlist 1 n a) 0)
+  (wordlist 1 n (uv-mul (or (wordlist 1 n a) 0)
                         (or (wordlist 1 n b) 0))))
 
 
@@ -97,7 +97,7 @@
 (define `(uf-divu uf u n)
   ;; (uf-div A B) requires A < B.
   (define `q
-    (uf-div (>>1 uf) (u2uv u) n DIV-NEAREST))
+    (uf-div (>>1 uf) (u2uv u) n ROUND-NEAR))
   (nth-rest 3 (.. (subst 1 nil 0 "0 " u) q)))
 
 
@@ -151,7 +151,7 @@
 (define (uf-atanh x count)
   (let ((xlz (uf-get-lz x))
         (xnz (uf-trim-lz x))
-        (x² (uf-mul x x))
+        (x² (uv-mul x x))
         (count count))
     (if xnz
         (begin
@@ -180,7 +180,7 @@
 ;;
 (define (uf-log a b digit-zeros)
   ;;(assert (uf-lt? a b))
-  (uf*2 (uf-atanh (uf-div (or a 0) b (words digit-zeros) DIV-NEAREST)
+  (uf*2 (uf-atanh (uf-div (or a 0) b (words digit-zeros) ROUND-NEAR)
                   digit-zeros)))
 
 
@@ -230,7 +230,7 @@
 (define (calc-m-powers x/100 v)
   (if (findstring 1 (word 1 x/100))
       (set m-powers v v)
-      (calc-m-powers (rest (uf-mul x/100 um/10))
+      (calc-m-powers (rest (uv-mul x/100 um/10))
                      (.. v (if v " ")
                          (patsubst "00%" "0%" (smash x/100))))))
 
@@ -249,7 +249,7 @@
         (foreach (u cached-m-powers)
           (smash (uf-div um-top/10
                          (wordlist 1 6 (spread u))
-                         4 DIV-NEAREST)))))
+                         4 ROUND-NEAR)))))
   m-powers-r)
 
 
@@ -306,7 +306,7 @@
       (define `m-digit-words (._. digit-zeros 0 p))
 
       (define `p*logm/10
-        (nth-rest p-len (uf-mul (const-log-M m-digit-words) p)))
+        (nth-rest p-len (uv-mul (const-log-M m-digit-words) p)))
 
       (define `count
         (.. digit-zeros " 0 " (word 75 digit-zeros)))
@@ -399,15 +399,15 @@
 
   (if (uf-lt? um/10 uf)
       ;; 0.102 < X < 1
-      (fp-add (if (findstring 1 exp)
-                  (fp-mul (.. "01 + " log-10*0.1)
-                          (u2fp exp))
-                  FP0)
-              (.. "01 - " log-frac*0.1))
+      (f+ (if (findstring 1 exp)
+              (f* (.. "01 + " log-10*0.1)
+                  (u2fp exp))
+              FP0)
+          (.. "01 - " log-frac*0.1))
       ;; 0.1 <= X <= 0.102
-      (fp-add (fp-mul (.. "01 + " log-10*0.1)
-                      (u2fp (u-sub exp "01")))
-              (.. "0 + " (uf-log-pos (rest uf) (>>1 count))))))
+      (f+ (f* (.. "01 + " log-10*0.1)
+              (u2fp (u-sub-m exp "01")))
+          (.. "0 + " (uf-log-pos (rest uf) (>>1 count))))))
 
 
 ;; Count digits to the right of the decimal point, given a starting place
@@ -425,9 +425,9 @@
       (nth-rest (words (subst 1 " 1" place)) count)))
 
 
-;; Compute log(FX).
+;; Compute natural logatirhm of FX.
 ;;
-(define (fp-log fx pod)
+(define (fp-ln fx pod)
   &public
   (define `count
     (if (pod-is-place? pod)
@@ -439,14 +439,14 @@
   (and (fp>0? fx)
        pod
        (fp-round (fp-log2 (fp.xpo fx) (fp.uf fx) count)
-                 (or result-pod pod) DIV-NEAREST)))
+                 (or result-pod pod) ROUND-NEAR)))
 
 
 ;; Compute the logarithm of FX in base FB.
 ;;
-(define (fp-log-x-b fx fb pod)
+(define (f-log fx fb pod)
   &public
-  ;; DIV-COUNT is a count (word list) representing the number of significant
+  ;; ROUND-COUNT is a count (word list) representing the number of significant
   ;; digits needed for the arguments to fp-div in order to obtain a result
   ;; with precision as given by POD.  A-PLACE and B-PLACE given the place of
   ;; the most significant digit in A and B.
@@ -465,12 +465,12 @@
         (let ((count-pre (div-count x-size b-size))
               (fx fx) (fb fb) (pod pod) (x-size x-size) (b-size b-size))
 
-          (fp-div (fp-log2 (fp.xpo fx) (fp.uf fx)
-                           (adjust-digit-count count-pre x-size))
-                  (fp-log2 (fp.xpo fb) (fp.uf fb)
-                           (adjust-digit-count count-pre b-size))
-                  (or result-pod pod)
-                  1)))))
+          (f/ (fp-log2 (fp.xpo fx) (fp.uf fx)
+                       (adjust-digit-count count-pre x-size))
+              (fp-log2 (fp.xpo fb) (fp.uf fb)
+                       (adjust-digit-count count-pre b-size))
+              (or result-pod pod)
+              nil)))))
 
   (and pod
        (fp>0? fx)
@@ -525,7 +525,7 @@
 
   ;; assume LM < 0.1    ==>  EXPM <= 1.1
   ;; assume U/100 < LM  ==>  EXPM > ~1.024
-  (foreach (wp (uv-to-word (uf-div (>>1 u) (rest lm) 3 DIV-TRUNCATE)))
+  (foreach (wp (uv-to-word (uf-div (>>1 u) (rest lm) 3 ROUND-TRUNC)))
       (define `p (subst ":" " " wp))
 
       (if (findstring 1 wp)
@@ -533,11 +533,11 @@
             (define `mᵖ/10
               (wordlist 1 (words (>>1 count)) (spread wm)))
             (define `a
-              (uf-sub u (nth-rest (words p) (uf-mul lm p))))
+              (uf-sub u (nth-rest (words p) (uv-mul lm p))))
             (define `a-count
               (.. count (if (filter "0111%" wm) " 0")))
 
-            (uf-mul (uf-exp-small (rest a) a-count)
+            (uv-mul (uf-exp-small (rest a) a-count)
                     mᵖ/10))
 
           ;; U*10 < LM
@@ -628,7 +628,7 @@
   (or
    (foreach (pos (if (filter 0 e)
                      (fp.xpo fx)
-                     (u-sub (fp.xpo fx) e)))
+                     (u-sub-m (fp.xpo fx) e)))
 
      (if (n>0? pos)
          ;; Avoid using POS as word index if it's too large
@@ -648,12 +648,12 @@
   &public
   ;; Approximation FIA of I=floor(X/10); FIA >= I
   (define `fia
-    (fp-div fx "01 + 011 0111" 0 nil))
+    (f/ fx "01 + 011 0111" 0 1))
 
   (define `out
     (let ((count  (if (pod-is-place? pod)
                       ;; U place (negated)
-                      (>>1 (u-zeros (u-add pod (fp2su fia))))
+                      (>>1 (u-zeros (u+ pod (fp2su fia))))
                       ;; decimal number of digits
                       (nzeros pod)))
           (uz (._. "0 0" u-zeros (fp.xpo fx)))
@@ -664,13 +664,13 @@
           ;; Compute i = x // log(10))
           (let ((fL10 (make-fp "01" "+" (const-log-10 KL)))
                 (fx fx) (count count))
-            (let ((fi (fp-div fx fL10 "0" nil))
+            (let ((fi (f/ fx fL10 "0" 1))
                   (fx fx) (count count) (fL10 fL10))
               ;; FI = floor(X/log(10))
               (define `exp
                 (u-add-ones (fp2su fi) 11))
               (define `ua
-                (fp2uf (fp-sub fx (fp-mul fi fL10)) "01"))
+                (fp2uf (fp-sub-m fx (f* fi fL10)) "01"))
 
               ;; The largest result we expect from uf-exp-med is ~10.  The
               ;; exact value should always be less than 10, but rounding of
@@ -680,7 +680,7 @@
 
   (and fx
        pod
-       (fp-round out (or result-pod pod) DIV-NEAREST)))
+       (fp-round out (or result-pod pod) ROUND-NEAR)))
 
 
 ;;----------------------------------------------------------------
@@ -714,7 +714,7 @@
 
 ;; Compute xʸ, defined as exp(y * log(x)).
 ;;
-(define (fp-pow fx fy pod)
+(define (f-pow fx fy pod)
   &public
   ;; Note: this assumes normalized numbers (as returned by u2fp)
   (define `(fp!=0? f)
@@ -724,23 +724,23 @@
   (define `u-digits
     (if (pod-is-place? pod)
         ;; POD = place as U-value (positive = right of decimal)
-        (u-add (u+1 pod) (fp2su (fp-mul fy (u2fp (u+1 (fp.xpo fx))))))
+        (u+ (u+1 pod) (fp2su (f* fy (u2fp (u+1 (fp.xpo fx))))))
         ;; POD = number of digits (decimal)
         (d2u pod)))
 
   (define `(compute udigits)
     ;; ZPOD = precision needed for (log FX)
     (define `zpod
-      (u2d (u-add udigits
-                  (u-add (log-size fx) (fp.xpo fy)))))
+      (u2d (u+ udigits
+               (u+ (log-size fx) (fp.xpo fy)))))
 
     (define `fz
       (let-global ((result-pod nil))
-        (fp-log fx zpod)))
+        (fp-ln fx zpod)))
 
     (if (filter "-% 0" udigits)
         FP0
-        (fp-exp (fp-mul fy fz) pod)))
+        (fp-exp (f* fy fz) pod)))
 
   (define `x-and-y-non-zero?
     (findstring 101 (.. (word 3 fx) (word 3 fy))))
@@ -769,7 +769,7 @@
 (define (uf-atan x count)
   (let ((xlz (uf-get-lz x))
         (xnz (uf-trim-lz x))
-        (x² (uf-mul x x))
+        (x² (uv-mul x x))
         (count count))
     (if xnz
         (native-strip (._. xlz (uf-atan-loop xnz (uf-get-lz x²) (uf-trim-lz x²)
@@ -808,7 +808,7 @@
 (define (uf-sin-loop k x m count)
   (define `x*m/k/k+1
     (foreach (n (words (._. "0" count)))
-      (uf-divu (uf-divu (uf-mul x m) k n) (u-add-ones k 1) n)))
+      (uf-divu (uf-divu (uv-mul x m) k n) (u-add-ones k 1) n)))
 
   (if (findstring 1 (word 1 x))
       (uf-sub x (uf-sin-loop (u-add-ones k 11) x*m/k/k+1 m count))
@@ -842,9 +842,11 @@
     (xsin-reduce a b c count kname arg1 arg2 arg3))
 
   (define `F0.8 "0 + 011111111")
+  (define `-F0.8 "0 - 011111111")
   (define `F2.36 "01 + 011 0111 0111111")
   (define `F5.5 "01 + 011111 011111")
   (define `π (make-fp "01" "+" (const-pi (>>1 count))))
+  (define `-π (make-fp "01" "-" (const-pi (>>1 count))))
   (define `π/2 (make-fp "01" "+" (uf*0.5 (const-pi (>>1 count)))))
   (define `π*2
     (make-fp "01" "+" (uf*2 (const-pi
@@ -861,15 +863,15 @@
 
    ;; π/4 < x ≤ π*3/4:  sin/cos x = cos/sin (π/2 - x)
    ((fp-lt? fx F2.36)
-    (recur (fp-sub π/2 fx) (not is-sin) is-neg))
+    (recur (fp-sub-m π/2 fx) (not is-sin) is-neg))
 
    ;; π*3/4 < x ≤ π*7/4: sin/cos x = -sin/cos(x - π)
    ((fp-lt? fx F5.5)
-    (recur (fp-sub fx π) is-sin (not is-neg)))
+    (recur (f+ fx -π) is-sin (not is-neg)))
 
    ;; x > π*7/4 : sin/cos x = sin/cos(x - n*2π)
    (else
-    (recur (fp-norm (fp-sub (fp-mod (fp-add F0.8 fx) π*2) F0.8))
+    (recur (fp-norm (f+ (f-mod (f+ F0.8 fx) π*2) -F0.8))
            is-sin
            is-neg))))
 
@@ -937,7 +939,7 @@
 
   (and fx
        pod
-       (fp-round result (or result-pod pod) DIV-NEAREST)))
+       (fp-round result (or result-pod pod) ROUND-NEAR)))
 
 
 ;; Compute sin(X) or cos(X)
@@ -963,13 +965,13 @@
   (define `is-add-π (filter "|" flips))
 
   (if flips
-      (fp-add (if is-sub
-                  (subst " +" " -" theta)
-                  theta)
-              (make-fp "01" "+"
-                       (if is-add-π
-                           (const-pi small-count)
-                           (uf*0.5 (const-pi small-count)))))
+      (f+ (if is-sub
+              (subst " +" " -" theta)
+              theta)
+          (make-fp "01" "+"
+                   (if is-add-π
+                       (const-pi small-count)
+                       (uf*0.5 (const-pi small-count)))))
       theta))
 
 
@@ -1007,11 +1009,10 @@
         ;; Here we know the result will not have leading zeros, so
         ;; we can ignore the pod-is-digits case.
         (let& ((π/4 (make-fp "01" "+" (uf*0.25 (const-pi count))))
-               (a (fp-div (fp-sub FP1 fm)
-                          (fp-add fm FP1)
-                          (pod+1 pod)
-                          DIV-NEAREST)))
-          (fp-sub π/4 (fp-atan-tiny (fp2uf a 0) count nil)))))
+               (a (f/ (fp-sub-m FP1 fm)
+                      (f+ fm FP1)
+                      (pod+1 pod))))
+          (fp-sub-m π/4 (fp-atan-tiny (fp2uf a 0) count nil)))))
 
   (fp-atan-unflip theta flips count (pod-is-digits? pod)))
 
@@ -1030,5 +1031,5 @@
     (fp-atan2 fx fy pod (.. flip "/")))
 
    ((and (fp!=0? fx) fx fy)
-    (fp-atan-small (fp-div fy fx (pod+1 pod) DIV-NEAREST) flip pod
+    (fp-atan-small (f/ fy fx (pod+1 pod)) flip pod
                    (pod-to-count pod)))))

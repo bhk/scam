@@ -112,22 +112,22 @@
 
 (expect (UV 8765432191) (uv-complement (UV 1234567809)))
 
-;; u-add
+;; u+
 
-(expect (U -23) (u-add (U -20) (U -3)))
-(expect (U 10) (u-add (U -20) (U 30)))
-(expect (U 17) (u-add (U 20) (U -3)))
-(expect (U 0) (u-add (U -0) (U 0)))
-(expect (U 0) (u-add (U 0) (U -0)))
-(expect (U 0) (u-add (U -0) (U -0)))
-(expect (U 5) (u-add (U 2) (U 3)))
+(expect (U -23) (u+ (U -20) (U -3)))
+(expect (U 10) (u+ (U -20) (U 30)))
+(expect (U 17) (u+ (U 20) (U -3)))
+(expect (U 0) (u+ (U -0) (U 0)))
+(expect (U 0) (u+ (U 0) (U -0)))
+(expect (U 0) (u+ (U -0) (U -0)))
+(expect (U 5) (u+ (U 2) (U 3)))
 
-(expect (U 0) (u-add (U 2) (U -2)))
-(expect (U 0) (u-add (U -2) (U 2)))
+(expect (U 0) (u+ (U 2) (U -2)))
+(expect (U 0) (u+ (U -2) (U 2)))
 
-;; u-sub
+;; u-
 
-(expect (U 3) (u-sub (U 2) (U -1)))
+(expect (U 3) (u- (U 2) (U -1)))
 
 ;; uf-sub
 
@@ -275,13 +275,13 @@
 (expect (UV 086419752307) (uf*0.7_10 (UV 12345678901)))
 (expect (UV 111111110109) (uf*0.9_10 (UV 12345678901)))
 
-;; uf-mul-fixed
+;; uv-mul-fixed
 
-(define (uf-mul-fixed-fn a b)
-  (uf-mul-fixed a b))
+(define (uv-mul-fixed-fn a b)
+  (uv-mul-fixed a b))
 
 (define (umf a b)
-  (u2d (smash (uf-carry (uf-mul-fixed-fn (UV a) (UV b))))))
+  (u2d (smash (uf-carry (uv-mul-fixed-fn (UV a) (UV b))))))
 
 (expect 0246 (umf 123 2))
 (expect 02583 (umf 123 21))
@@ -292,26 +292,35 @@
 (expect 53580247 (umf 7 7654321))
 (expect 613580247 (umf 7 87654321))
 
-;; uf-mul
+;; uv-mul
 
-;; This is a simple reference implementation for uf-mul.
-(define (uf-mul-ref a b)
+;; This is a simple reference implementation for uv-mul.
+(define (uv-mul-ref a b)
   (if (word 2 b)
       (uf-add (uf*digit a (word 1 b))
-              (>>1 (uf-mul-ref a (rest b))))
+              (>>1 (uv-mul-ref a (rest b))))
       (uf*digit a b)))
 
-(define (uf-mul-check a b)
-  (expect (uf-mul-ref a b) (uf-mul a b)))
+(define (uv-mul-check a b)
+  (expect (uv-mul-ref a b) (uv-mul a b)))
 
 (define (uf-of-len len)
   (d2u (wordlist 1 len "1 2 3 4 5 6 7 8 9 1 2 3 4 5 6 7 8 9 1 2 4 5 6 7 8 9")))
 
 (foreach (len-b "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19")
   (foreach (len-a [1 2 len-b (1+ (1+ len-b))])
-    (uf-mul-check (uf-of-len len-a) (uf-of-len len-b))
-    (uf-mul-check (uf-of-len len-a) (.. (uf-of-len len-b)
+    (uv-mul-check (uf-of-len len-a) (uf-of-len len-b))
+    (uv-mul-check (uf-of-len len-a) (.. (uf-of-len len-b)
                                         " 0 0 0 0 0 0"))))
+
+;; u*
+
+;; test sign handling & normalization
+(expect U6 (u* U2 U3))
+(expect U6 (u* (U -2) (U -3)))
+(expect (U -6) (u* U2 (U -3)))
+(expect (U 16) (u* U4 U4))
+
 
 ;;------------------------------------------------------------------------
 ;; Division
@@ -357,10 +366,10 @@
 
 ;; uf-round
 
-(expect (UV 00) (uf-round 1 DIV-NEAREST (UV 05)))
-(expect (UV 01) (uf-round 1 DIV-CEILING (UV 05)))
-(expect (UV 01) (uf-round 1 DIV-NEAREST (UV 051)))
-(expect (UV 00) (uf-round 1 DIV-TRUNCATE (UV 051)))
+(expect (UV 00) (uf-round 1 ROUND-NEAR (UV 05)))
+(expect (UV 01) (uf-round 1 ROUND-CEIL (UV 05)))
+(expect (UV 01) (uf-round 1 ROUND-NEAR (UV 051)))
+(expect (UV 00) (uf-round 1 ROUND-TRUNC (UV 051)))
 
 ;; recip2
 
@@ -373,45 +382,45 @@
 ;; uf-div
 
 ;; trailing zero
-(expect (uf-div (UV 123) (UV 30) 4 DIV-NEAREST)
-        (uf-div (UV 123) (UV 3) 4 DIV-NEAREST))
+(expect (uf-div (UV 123) (UV 30) 4 ROUND-NEAR)
+        (uf-div (UV 123) (UV 3) 4 ROUND-NEAR))
 ;; zero-length result?
-(expect (UV 0) (uf-div (UV 2) (UV 4) 0 DIV-TRUNCATE))
-(expect (UV 2) (uf-div (UV 2) (UV 4) 0 DIV-REMAINDER))
+(expect (UV 0) (uf-div (UV 2) (UV 4) 0 ROUND-TRUNC))
+(expect (UV 2) (uf-div (UV 2) (UV 4) 0 ROUND-REMAINDER))
 ;; zero dividend?
-(expect 0 (uf-div (UV 0) (UV 4) 4 DIV-TRUNCATE))
+(expect 0 (uf-div (UV 0) (UV 4) 4 ROUND-TRUNC))
 ;; div-long case
-(expect (UV 06942) (uf-div (UV 3) (UV 4321) 4 DIV-TRUNCATE))
-(expect (UV 3618) (uf-div (UV 3) (UV 4321) 4 DIV-REMAINDER))
-(expect (UV 08) (uf-div (UV 16665) (UV 2222) 1 DIV-NEAREST))   ;; 7.5 --> 8
-(expect (UV 06) (uf-div (UV 14443) (UV 2222) 1 DIV-NEAREST))   ;; 6.5 --> 6
-(expect (UV 07) (uf-div (UV 1444301) (UV 2222) 1 DIV-NEAREST)) ;; 6.5x --> 7
-(expect (UV 10) (uf-div (UV 21109) (UV 2222) 1 DIV-NEAREST))   ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 13332) (UV 2222) 1 DIV-CEILING))
-(expect (UV 07) (uf-div (UV 1333201) (UV 2222) 1 DIV-CEILING))
+(expect (UV 06942) (uf-div (UV 3) (UV 4321) 4 ROUND-TRUNC))
+(expect (UV 3618) (uf-div (UV 3) (UV 4321) 4 ROUND-REMAINDER))
+(expect (UV 08) (uf-div (UV 16665) (UV 2222) 1 ROUND-NEAR))   ;; 7.5 --> 8
+(expect (UV 06) (uf-div (UV 14443) (UV 2222) 1 ROUND-NEAR))   ;; 6.5 --> 6
+(expect (UV 07) (uf-div (UV 1444301) (UV 2222) 1 ROUND-NEAR)) ;; 6.5x --> 7
+(expect (UV 10) (uf-div (UV 21109) (UV 2222) 1 ROUND-NEAR))   ;; 9.5 --> 10
+(expect (UV 06) (uf-div (UV 13332) (UV 2222) 1 ROUND-CEIL))
+(expect (UV 07) (uf-div (UV 1333201) (UV 2222) 1 ROUND-CEIL))
 ;; uf-remainder case
-(expect (UV 29) (uf-div (UV 3) (UV 41) 3 DIV-REMAINDER))
+(expect (UV 29) (uf-div (UV 3) (UV 41) 3 ROUND-REMAINDER))
 ;; div3 case
-(expect (UV 06944) (uf-div (UV 3) (UV 432) 4 DIV-TRUNCATE))
-(expect (UV 08) (uf-div (UV 1665) (UV 222) 1 DIV-NEAREST))   ;; 7.5 --> 8
-(expect (UV 06) (uf-div (UV 1443) (UV 222) 1 DIV-NEAREST))   ;; 6.5 --> 6
-(expect (UV 07) (uf-div (UV 144301) (UV 222) 1 DIV-NEAREST)) ;; 6.5x --> 7
-(expect (UV 10) (uf-div (UV 2109) (UV 222) 1 DIV-NEAREST))   ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 1332) (UV 222) 1 DIV-CEILING))
-(expect (UV 07) (uf-div (UV 133201) (UV 222) 1 DIV-CEILING))
+(expect (UV 06944) (uf-div (UV 3) (UV 432) 4 ROUND-TRUNC))
+(expect (UV 08) (uf-div (UV 1665) (UV 222) 1 ROUND-NEAR))   ;; 7.5 --> 8
+(expect (UV 06) (uf-div (UV 1443) (UV 222) 1 ROUND-NEAR))   ;; 6.5 --> 6
+(expect (UV 07) (uf-div (UV 144301) (UV 222) 1 ROUND-NEAR)) ;; 6.5x --> 7
+(expect (UV 10) (uf-div (UV 2109) (UV 222) 1 ROUND-NEAR))   ;; 9.5 --> 10
+(expect (UV 06) (uf-div (UV 1332) (UV 222) 1 ROUND-CEIL))
+(expect (UV 07) (uf-div (UV 133201) (UV 222) 1 ROUND-CEIL))
 ;; div2 case
-(expect (UV 06976) (uf-div (UV 3) (UV 43) 4 DIV-TRUNCATE))
-(expect (UV 08) (uf-div (UV 165) (UV 22) 1 DIV-NEAREST))     ;; 7.5 --> 8
-(expect (UV 06) (uf-div (UV 143) (UV 22) 1 DIV-NEAREST))     ;; 6.5 --> 6
-(expect (UV 07) (uf-div (UV 14301) (UV 22) 1 DIV-NEAREST))   ;; 6.5x --> 7
-(expect (UV 10) (uf-div (UV 209) (UV 22) 1 DIV-NEAREST))     ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 132) (UV 22) 1 DIV-CEILING))
-(expect (UV 07) (uf-div (UV 13201) (UV 22) 1 DIV-CEILING))
+(expect (UV 06976) (uf-div (UV 3) (UV 43) 4 ROUND-TRUNC))
+(expect (UV 08) (uf-div (UV 165) (UV 22) 1 ROUND-NEAR))     ;; 7.5 --> 8
+(expect (UV 06) (uf-div (UV 143) (UV 22) 1 ROUND-NEAR))     ;; 6.5 --> 6
+(expect (UV 07) (uf-div (UV 14301) (UV 22) 1 ROUND-NEAR))   ;; 6.5x --> 7
+(expect (UV 10) (uf-div (UV 209) (UV 22) 1 ROUND-NEAR))     ;; 9.5 --> 10
+(expect (UV 06) (uf-div (UV 132) (UV 22) 1 ROUND-CEIL))
+(expect (UV 07) (uf-div (UV 13201) (UV 22) 1 ROUND-CEIL))
 ;; div1 case
-(expect (UV 04285) (uf-div (UV 3) (UV 7) 4 DIV-TRUNCATE))
-(expect (UV 08) (uf-div (UV 15) (UV 2) 1 DIV-NEAREST))       ;; 7.5 --> 8
-(expect (UV 06) (uf-div (UV 13) (UV 2) 1 DIV-NEAREST))       ;; 6.5 --> 6
-(expect (UV 07) (uf-div (UV 13001) (UV 2) 1 DIV-NEAREST))    ;; 6.5x --> 7
-(expect (UV 10) (uf-div (UV 19) (UV 2) 1 DIV-NEAREST))       ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 12) (UV 2) 1 DIV-CEILING))
-(expect (UV 07) (uf-div (UV 1201) (UV 2) 1 DIV-CEILING))
+(expect (UV 04285) (uf-div (UV 3) (UV 7) 4 ROUND-TRUNC))
+(expect (UV 08) (uf-div (UV 15) (UV 2) 1 ROUND-NEAR))       ;; 7.5 --> 8
+(expect (UV 06) (uf-div (UV 13) (UV 2) 1 ROUND-NEAR))       ;; 6.5 --> 6
+(expect (UV 07) (uf-div (UV 13001) (UV 2) 1 ROUND-NEAR))    ;; 6.5x --> 7
+(expect (UV 10) (uf-div (UV 19) (UV 2) 1 ROUND-NEAR))       ;; 9.5 --> 10
+(expect (UV 06) (uf-div (UV 12) (UV 2) 1 ROUND-CEIL))
+(expect (UV 07) (uf-div (UV 1201) (UV 2) 1 ROUND-CEIL))

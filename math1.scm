@@ -61,7 +61,7 @@
         (define `norm-uf
           (subst (.. 9 (spread zeros)) nil (._. "9" (fp.uf x))))
 
-        (.. (u-sub (fp.xpo x) (u-add-ones "0" zeros-tally))
+        (.. (u-sub-m (fp.xpo x) (u-add-ones "0" zeros-tally))
             " " (fp.sign x) (or norm-uf " 0")))
       x))
 
@@ -291,7 +291,7 @@
 (define (fp-add-x ae as af be bs bf)
   (define `b-pad
     (and (filter-out ae be)
-         (pad (u-sub ae be))))
+         (pad (u-sub-m ae be))))
 
   (if (findstring as bs)
       ;; sign is same => add
@@ -303,7 +303,7 @@
 
 ;; Add A to B.
 ;;
-(define (fp-add a b)
+(define (f+ a b)
   &public
   (define `ae (fp.xpo a))
   (define `as (fp.sign a))
@@ -320,9 +320,14 @@
 
 ;; Subtract B from A.
 ;;
-(define `(fp-sub a b)
+(define `(fp-sub-m a b)
   &public
-  (fp-add a (fp-negate b)))
+  (f+ a (fp-negate b)))
+
+
+(define (f- a b)
+  &public
+  (fp-sub-m a b))
 
 
 (define `(sign-mul sign-a sign-b)
@@ -331,25 +336,26 @@
 
 ;; Multiply A by B.
 ;;
-(define (fp-mul a b)
+(define (f* a b)
   &public
-  (define `exp (u-add (fp.xpo a) (fp.xpo b)))
+  (define `exp (u+ (fp.xpo a) (fp.xpo b)))
   (define `sgn (sign-mul (fp.sign a) (fp.sign b)))
-  (define `m (uf-mul (fp.uf a) (fp.uf b)))
+  (define `m (uv-mul (fp.uf a) (fp.uf b)))
   (and a b (make-fp exp sgn m)))
 
 
-;; fp-mulp: Compute X*Y to the precision given by POD (see fp-div).
+;; f*~: Compute X*Y to the precision given by POD (see prec-to-pod).
 ;; Called via (prec-op "mulp" ...)
 ;;
 ;; X & Y must be normalized (no leading zeros in UF).
 ;;
-(define (fp-mulp x y pod)
+(define (f*~ x y pod)
+  &public
   (and
    pod x y
-   (foreach (exp (u-add (fp.xpo x) (fp.xpo y)))
+   (foreach (exp (u+ (fp.xpo x) (fp.xpo y)))
      (foreach (num-digits (if (pod-is-place? pod)
-                              (u2d (u-add exp pod))
+                              (u2d (u+ exp pod))
                               pod))
        ;; get up to NUM_DIGITS+1 digits of A
        (define `(in-digits a)
@@ -363,7 +369,7 @@
            ;; Non-zero num-digits
            (let ((exp exp)
                  (sgn (sign-mul (fp.sign x) (fp.sign y)))
-                 (uf (uf-mul (in-digits x) (in-digits y)))
+                 (uf (uv-mul (in-digits x) (in-digits y)))
                  (pod pod)
                  (num-digits num-digits))
 
@@ -408,39 +414,40 @@
 
   (define `mode
     (if round
-        DIV-NEAREST
+        ROUND-NEAR
         (if (filter "+" q.sgn)
-            DIV-TRUNCATE
-            DIV-CEILING)))
+            ROUND-TRUNC
+            ROUND-CEIL)))
 
   (foreach (num-digits (if (pod-is-place? pod)
-                           (u2d (u-add q.exp pod))
+                           (u2d (u+ q.exp pod))
                            pod))
 
     (if (filter "-%" num-digits)
         ;; Rounding place is to the left of Q.EXP => 0 unless mode=CEILING
-        (if (filter DIV-CEILING mode)
-            (make-fp (u-sub "01" pod) q.sgn "01")
+        (if (filter ROUND-CEIL mode)
+            (make-fp (u-sub-m "01" pod) q.sgn "01")
             FP0)
 
         ;; Non-negative num-digits
         (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits mode)))))
 
 
-(define (fp-div x y pod round)
+(define (f/ x y pod ?floor)
   &public
   (define `x.uf (fp.uf x))
   (define `y.uf (fp.uf y))
-  (define `q.exp (u-sub (fp.xpo x) (fp.xpo y)))
-  (define `q.exp+1 (u-sub (u+1 (fp.xpo x)) (fp.xpo y)))
+  (define `q.exp (u-sub-m (fp.xpo x) (fp.xpo y)))
+  (define `q.exp+1 (u-sub-m (u+1 (fp.xpo x)) (fp.xpo y)))
   (define `q.sgn (sign-mul (fp.sign x) (fp.sign y)))
+  (define `round (not floor))
 
   (cond
    ;; Normalized and non-zero?
    ((not (findstring 101 (.. (fp.msd x) (fp.msd y))))
     (if (findstring 1 y.uf)
         (if (findstring 1 x.uf)
-            (fp-div (fp-norm x) (fp-norm y) pod round)
+            (f/ (fp-norm x) (fp-norm y) pod floor)
             (if x FP0 nil))
         nil))
 
@@ -454,36 +461,48 @@
         (fp-div-x q.exp+1 q.sgn (>>1 x.uf) y.uf round pod)))))
 
 
+;; Not public, but called by `op`.
+(define (f// x y)
+  (f/ x y 0 1))
+
+
+;; Not public, but called by `op`.
+(define (u// x y)
+  (if (findstring "-" (.. x y))
+      (fp2u (f// (u2fp x) (u2fp y)))
+      (u-divx x y ROUND-TRUNC)))
+
+
 ;; Return the remainder after flooring division:  R = A - B*floor(A/B)
 ;;
 ;; For positive A, B:
 ;;    R = A - B*floor(A/B)
 ;;    A/B = AF/BF << (AE-BE)
 ;;    floor(A/B) = floor(AF/BF << (AE-BE))
-;;    (uf-div AF BF N=(AE-BE) DIV-REMAINDER) -->
+;;    (uf-div AF BF N=(AE-BE) ROUND-REMAINDER) -->
 ;;       REM = (AF - BF*Qt) << N
 ;;        Qt = floor(AF/BF << N) >> N
 ;;           = floor(A/B) >> N
 ;;       REM = (AF - BF*floor(A/B) >> AE << BE) << AE >> BE
 ;;           = (A - B*floor(A/B)) >> BE
 ;;
-(define (fp-mod a b)
+(define (f-mod a b)
   &public
   (cond
    ;; Normalized and non-zero?
    ((not (findstring 101 (.. (fp.msd a) (fp.msd b))))
     (if (findstring 1 (fp.uf b))
         (if (findstring 1 (fp.uf a))
-            (fp-mod (fp-norm a) (fp-norm b))
+            (f-mod (fp-norm a) (fp-norm b))
             (if a FP0 nil))
         nil))
 
    ;; signs differ?
    ((not (findstring (fp.sign a) (fp.sign b)))
-    (let ((m (fp-mod a (fp-negate b)))
+    (let ((m (f-mod a (fp-negate b)))
           (b b))
       (if (findstring 1 (fp.uf m))
-          (fp-add b m)
+          (f+ b m)
           m)))
 
    ((u-lt? (fp.xpo a) (fp.xpo b))
@@ -494,8 +513,8 @@
              (fp.sign a)
              (uf-div (>>1 (fp.uf a))
                      (fp.uf b)
-                     (u2d (u-sub (u+1 (fp.xpo a)) (fp.xpo b)))
-                     DIV-REMAINDER)))))
+                     (u2d (u-sub-m (u+1 (fp.xpo a)) (fp.xpo b)))
+                     ROUND-REMAINDER)))))
 
 
 ;; Round X to specified precision
@@ -504,22 +523,22 @@
   &public
   ;; Convert signed rounding direction to unsigned direction
   (define `udir
-    (or (filter [DIV-NEAREST DIV-TRUNCATE] dir)
+    (or (filter [ROUND-NEAR ROUND-TRUNC] dir)
         ;; FLOOR or CEILING
-        (if (findstring (fp.sign x) (if (filter DIV-CEILING dir) "+" "-"))
-            DIV-CEILING
-            DIV-TRUNCATE)))
+        (if (findstring (fp.sign x) (if (filter ROUND-CEIL dir) "+" "-"))
+            ROUND-CEIL
+            ROUND-TRUNC)))
 
   (cond
    ((findstring 1 (fp.msd x))
     ;; return NIL if POD is NIL
     (foreach (num-digits (if (pod-is-place? pod)
-                             (u2d (u-add (fp.xpo x) pod))
+                             (u2d (u+ (fp.xpo x) pod))
                              pod))
       (if (filter "-%" num-digits)
           ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
-          (if (filter DIV-CEILING udir)
-              (make-fp (u-sub "01" pod) (fp.sign x) "01")
+          (if (filter ROUND-CEIL udir)
+              (make-fp (u-sub-m "01" pod) (fp.sign x) "01")
                 FP0)
 
           (make-fp<<1 (fp.xpo x)
@@ -581,7 +600,7 @@
 
 ;; ASSERT: A and B are normalized (fp.uf >= 0.1)
 ;;
-(define (fp-cmp a b)
+(define (f-cmp a b)
   &public
   (cond
    ;; Both are positive
@@ -607,7 +626,7 @@
 
    ((fp<0? a)
     (if (fp<0? b)
-        (fp-cmp (fp-negate b) (fp-negate a))
+        (f-cmp (fp-negate b) (fp-negate a))
         "~"))
 
    (else 1)))
@@ -615,13 +634,13 @@
 
 (define `(fp-lt? fa fb)
   &public
-  (findstring 1 (fp-cmp fb fa)))
+  (findstring 1 (f-cmp fb fa)))
 
 
 ;; Return X*X.
 ;;
 (define (fp-sq x)
-  (fp-mul x x))
+  (f* x x))
 
 
 ;; Raise X to the power of N.
@@ -629,14 +648,14 @@
 ;; X = FP number
 ;; N = U-encoded non-negative integer
 ;;
-(define (fp-pwr x n)
+(define (fp-u-pwr x n)
   &public
   (foreach (n/2 (subst "11" 2 "10" "022222" n))
 
     (if (findstring 2 n/2)      ;; n > 1?
         (if (findstring 1 n/2)  ;; n is odd?
-            (fp-mul (fp-sq (fp-norm (fp-pwr x (subst 1 nil 2 1 n/2)))) x)
-            (fp-sq (fp-norm (fp-pwr x (subst 2 1 n/2)))))
+            (f* (fp-sq (fp-norm (fp-u-pwr x (subst 1 nil 2 1 n/2)))) x)
+            (fp-sq (fp-norm (fp-u-pwr x (subst 2 1 n/2)))))
         (if (findstring 1 n)
             x
             FP1))))

@@ -247,7 +247,7 @@
 ;; uf-exp-small
 
 (define `(uf-exp-small-round u digits)
-  (rest (uf-round digits DIV-NEAREST (uf-exp-small u (nzeros digits)))))
+  (rest (uf-round digits ROUND-NEAR (uf-exp-small u (nzeros digits)))))
 (expect (UV 1648721270700128)
         (uf-exp-small-round (UV 5) 16))
 (expect (UV 24596031111569)
@@ -274,10 +274,10 @@
 ;; cached-m-powers
 
 (expect (smash um/10) (word 1 cached-m-powers))
-(expect (smash (rest (uf-mul um/10 um/10)))
+(expect (smash (rest (uv-mul um/10 um/10)))
         (word 2 cached-m-powers))
 (expect 01
-        (word 1 (uf-mul (u2uv (lastword cached-m-powers)) um/10)))
+        (word 1 (uv-mul (u2uv (lastword cached-m-powers)) um/10)))
 
 ;; fp2su
 
