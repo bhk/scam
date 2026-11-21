@@ -136,23 +136,31 @@
 ;; prec-to-pod
 
 (expect 16 (prec-to-pod nil))
-;; +N -N
+;; +N, -N, 0
 (expect "011" (prec-to-pod "-2"))
 (expect "-011" (prec-to-pod "+2"))
 (expect "-0" (prec-to-pod "+0"))
+(expect -0 (prec-to-pod "-0"))
+(expect (U "-91") (prec-to-pod "+91"))
+(expect (U "91") (prec-to-pod "-91"))
+(expect 0 (prec-to-pod "0"))
+(expect 0 (prec-to-pod "00"))
+;; word-index?
+(expect 2 (prec-to-pod 2))
+(expect 2 (prec-to-pod "002"))
+(expect 91 (prec-to-pod 91))
+(expect 40 (prec-to-pod 40))
+;; garbage
+(expect nil (prec-to-pod "+-0"))
+(expect nil (prec-to-pod "-+0"))
+(expect nil (prec-to-pod " 0"))
+(expect nil (prec-to-pod "0 "))
+(expect nil (prec-to-pod "4 "))
+(expect nil (prec-to-pod "+"))
 (expect nil (prec-to-pod "0+"))
 (expect nil (prec-to-pod "0-"))
 (expect nil (prec-to-pod " -1"))
 (expect nil (prec-to-pod "-1-"))
-(expect (U "-91") (prec-to-pod "+91"))
-(expect (U "91") (prec-to-pod "-91"))
-;; word-index?
-(expect 1 (prec-to-pod 1))
-(expect 1 (prec-to-pod "001"))
-(expect 91 (prec-to-pod 91))
-(expect 40 (prec-to-pod 40))
-(expect nil (prec-to-pod 0))
-(expect nil (prec-to-pod " 01"))
 
 
 ;;--------------------------------
@@ -222,26 +230,26 @@
 ;; f/
 
 (define (df/ a b p)
-  (fp2d (f/ (d2fp a) (d2fp b) (prec-to-pod p) nil)))
+  (fp2d (f/ (d2fp a) (d2fp b) (prec-to-pod p) ROUND-NEAR)))
 
 (define (df/down a b p)
-  (fp2d (f/ (d2fp a) (d2fp b) (prec-to-pod p) 1)))
+  (fp2d (f/ (d2fp a) (d2fp b) (prec-to-pod p) ROUND-FLOOR)))
 
 ;; cond: (not "AF and BF begin with non-zero digit")
 ;; B nil
-(expect nil (f/ 1 nil 8))
-(expect nil (f/ 0 nil 8))
+(expect nil (f/ 1 nil 8 ROUND-NEAR))
+(expect nil (f/ 0 nil 8 ROUND-NEAR))
 ;; B zero
-(expect nil (f/ (FP 1) "011 + 0" 4))
-(expect nil (f/ (FP 1) "011 + 0" 4))
+(expect nil (f/ (FP 1) "011 + 0" 4 ROUND-NEAR))
+(expect nil (f/ (FP 1) "011 + 0" 4 ROUND-NEAR))
 ;; B non-normalized
-(expect 2 (fp2d (f/ (FP 4) "011 + 0 011" 4)))
+(expect 2 (fp2d (f/ (FP 4) "011 + 0 011" 4 ROUND-NEAR)))
 ;; A nil
 (expect "NaN" (df/ nil 1 8))
 ;; A zero
 (expect 0 (df/ 0 1 4))
 ;; A non-normalized
-(expect 2 (fp2d (f/ "011 + 0 011" (FP 1) 4)))
+(expect 2 (fp2d (f/ "011 + 0 011" (FP 1) 4 ROUND-NEAR)))
 ;; signs
 (expect 6.67   (df/ 20 3 3))
 (expect -6.67  (df/ 20 -3 3))
@@ -264,15 +272,7 @@
 ;; round(AF/BF) == 1
 (expect 100    (df/ 199 2 2))
 ;; cond: [else]
-(expect nil    (f/ (FP 3) (FP 2) nil 1))
-
-;; f//
-
-(expect (FP 7) (f// (FP 23) (FP 3)))
-
-;; u//
-
-(expect (U 7) (u// (U 23) U3))
+(expect nil    (f/ (FP 3) (FP 2) nil ROUND-FLOOR))
 
 ;; f-mod
 
@@ -307,6 +307,24 @@
 (expect "0 + 0" (fp-round "01111 + 0" 2 ROUND-NEAR))
 ;; exponent with large magnitude
 (expect "0 + 0" (fp-round (FP 1e-999999999) 0111 ROUND-NEAR))
+;; rounding modes
+(define `FP1.5 "01 + 01 011111")
+(define `FP-1.5 "01 - 01 011111")
+(define `FP1 "01 + 01")
+(define `FP-1 "01 - 01")
+(define `FP2 "01 + 011")
+(define `FP-2 "01 - 011")
+(expect FP2 (fp-round FP1.5 1 ROUND-NEAR))
+(expect FP-2 (fp-round FP-1.5 1 ROUND-NEAR))
+(expect FP1 (fp-round FP1.5 1 ROUND-TRUNC))
+(expect FP-1 (fp-round FP-1.5 1 ROUND-TRUNC))
+(expect FP2 (fp-round FP1.5 1 ROUND-AWAY))
+(expect FP-2 (fp-round FP-1.5 1 ROUND-AWAY))
+;; sign-sensitive rounding modes
+(expect FP2 (fp-round FP1.5 1 ROUND-CEIL))
+(expect FP-1 (fp-round FP-1.5 1 ROUND-CEIL))
+(expect FP1 (fp-round FP1.5 1 ROUND-FLOOR))
+(expect FP-2 (fp-round FP-1.5 1 ROUND-FLOOR))
 
 ;; f-cmp
 

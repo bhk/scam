@@ -240,14 +240,18 @@
 (expect "0" (adjust-digit-count "0 0" "01"))
 
 
+;; log
+
+(expect 0.6931 (fp2d (fp-ln (FP 2) (prec-to-pod 4))))
+
 ;;--------------------------------
-;; Exp
+;; exp
 ;;--------------------------------
 
 ;; uf-exp-small
 
 (define `(uf-exp-small-round u digits)
-  (rest (uf-round digits ROUND-NEAR (uf-exp-small u (nzeros digits)))))
+  (rest (uf-round-at digits ROUND-NEAR (uf-exp-small u (nzeros digits)))))
 (expect (UV 1648721270700128)
         (uf-exp-small-round (UV 5) 16))
 (expect (UV 24596031111569)
@@ -292,3 +296,15 @@
 (expect (UV 23) (fp2uf (FP 12.3) U1))
 (expect (UV 0) (fp2uf (FP 1e99) U1))
 (expect (UV 0) (fp2uf (FP 1.234e4294967297) U1))
+
+;; fp-exp
+
+(expect 2.7182818 (fp2d (fp-exp (FP 1) (prec-to-pod 8))))
+(expect 8 (fp2d (fp-exp (FP 2.0793) (prec-to-pod 3))))
+
+;;--------------------------------
+;; f-pow & u-pow
+;;--------------------------------
+
+(expect 8 (fp2d (f-pow (FP 2) (FP 3) (prec-to-pod 3))))
+(expect 8 (u2d (u-pow (U 2) (U 3) (prec-to-pod 3))))

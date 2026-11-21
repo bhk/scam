@@ -95,13 +95,6 @@
 ;;     (fMODE FX FY ?POD) --> F  : valid FP values
 
 
-(define (u-mod x y)
-  (if (findstring "-" (.. x y))
-      (fp2u (f-mod (u2fp x) (u2fp y)))
-      (or (u-divx x y ROUND-REMAINDER)
-          NaN)))
-
-
 (define (f-atan2 y x pod)
   (fp-round (fp-atan2 y x pod) pod ROUND-NEAR))
 
@@ -127,9 +120,7 @@
 
 
 ;; forward u->f
-(define (u-pow x y pod)   (fp2u (f-pow (u2fp x) (u2fp y) pod)))
 (define (u*~ x y pod)     (fp2u (f*~ (u2fp x) (u2fp y) pod)))
-(define (u/ x y pod)      (fp2u (f/ (u2fp x) (u2fp y) pod)))
 (define (u-log x b pod)   (fp2u (f-log (u2fp x) (u2fp b) pod)))
 (define (u-atan2 y x pod) (fp2u (f-atan2 (u2fp y) (u2fp x) pod)))
 
@@ -139,7 +130,7 @@
 ;; POD = (prec-to-pod ...) output
 ;; IS-CMP => pass nil values to f<NAME>, do not call convert result to decimal.
 ;;
-(define `(op-macro name x y pod is-cmp)
+(define `(op-macro name x y pod is-cmp ?arg4)
   (declare (u x y))
   (declare (f x y))
   (define `ufn (.. (native-name u) name))
@@ -155,34 +146,37 @@
      ;; At least one digit, and no non-digit characters except leading "-"?
      (if (filter 99 (subst ":-" ":" ":0" 9 1 nil 0 nil (.. ":" pair)))
          ;; unsigned integer
-         (native-call ufn ux uy pod)
+         (native-call ufn ux uy pod arg4)
          ;; not simple unsigned integers
          (if is-cmp
-             (native-call ffn (u2fp ux) (u2fp uy) pod)
+             (native-call ffn (u2fp ux) (u2fp uy) pod arg4)
              (fp2u
               (let ((fx (u2fp ux))
                     (fy (u2fp uy))
-                    (ffn ffn)
-                    (pod pod))
+                    (ffn ffn) (pod pod) (arg4 arg4))
                 (if (and fx fy)
-                   (native-call ffn fx fy pod))))))))
+                   (native-call ffn fx fy pod arg4))))))))
   (if is-cmp
       uresult
       (u2d uresult)))
 
 
 ;; The compiler optimizes this function body for the non-cmp case.
-(define (op name x y ?pod)
-  (op-macro name x y pod nil))
+(define (op name x y ?pod ?arg4)
+  (op-macro name x y pod nil arg4))
 
 (define `(op-cmp name x y pod)
   (op-macro name x y pod 1))
 
 
-(define `(check-dir dir)
+(define `(xlat-mode dir)
   (or (if dir
-          (filter [ROUND-FLOOR ROUND-CEIL ROUND-TRUNC]
-                  (subst "-" ROUND-FLOOR "+" ROUND-CEIL "|" ROUND-TRUNC dir)))
+          (filter [ROUND-FLOOR ROUND-CEIL ROUND-TRUNC ROUND-AWAY]
+                  (subst "-" ROUND-FLOOR
+                         "+" ROUND-CEIL
+                         "|" ROUND-TRUNC
+                         "<>" ROUND-AWAY
+                         dir)))
       ROUND-NEAR))
 
 
@@ -268,19 +262,21 @@
       (op "*" x y)))
 
 
-;; Return floor(X / Y): the largest integer less than or equal to X/Y.
-;;
-(define `(// x y)
-  &public
-  (op "//" x y))
-
-
 ;; Return X / Y to the [precision specified by P](#precision).  The answer
 ;; will be rounded to the *nearest* unit in the least significant digit.
 ;;
-(define `(/ x y ?p)
+;; MODE gives the rounding mode, as documented for `round`.
+;;
+(define `(/ x y ?p ?mode)
   &public
-  (op "/" x y (prec-to-pod p)))
+  (op "/" x y (prec-to-pod p) (xlat-mode mode)))
+
+
+;; Return floor(X / Y): the largest integer less than or equal to X/Y.
+;;
+(define (// x y)
+  &public
+  (op "/" x y 0 ROUND-FLOOR))
 
 
 ;; Compute X*Y to the [precision specified by P](#precision).  The result
@@ -378,13 +374,15 @@
 ;; precision values.
 ;;
 ;; DIR is one of the following:
+;;  - `nil` ⇒ round to the nearest integer, ties to even
 ;;  - `"+"` ⇒ round up (ceiling)
 ;;  - `"-"` ⇒ round down (floor)
 ;;  - `"|"` ⇒ round towards zero (truncate)
+;;  - `"<>"` ⇒ round away from zero
 ;;
 (define (round x ?p ?dir)
   &public
-  (raw-round x (if p (prec-to-pod p) 0) (check-dir dir)))
+  (raw-round x (if p (prec-to-pod p) 0) (xlat-mode dir)))
 
 
 ;; Return 1 if X > Y, nil otherwise.

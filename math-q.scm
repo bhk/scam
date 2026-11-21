@@ -30,6 +30,14 @@
 (expect 1.0 (abs 1.0))
 
 
+;; xlat-mode
+
+(expect ROUND-FLOOR (xlat-mode "-"))
+(expect ROUND-CEIL (xlat-mode "+"))
+(expect ROUND-TRUNC (xlat-mode "|"))
+(expect ROUND-AWAY (xlat-mode "<>"))
+(expect ROUND-NEAR (xlat-mode ""))
+
 ;;--------------------------------
 ;; Binary Operators
 ;;--------------------------------
@@ -57,7 +65,7 @@
 ;; verify computed function names
 
 (foreach (type "u f")
-  (foreach (mode "+ - * ^ // *~ / -cmp -mod -pow -log -atan2")
+  (foreach (mode "+ - * ^ *~ / -cmp -mod -pow -log -atan2")
     (define `name (.. (subst "op" type (native-name op)) mode))
     (expect name (if (native-bound? name) name))))
 
@@ -111,6 +119,9 @@
 (expect 0.1429 (/ 1.0 7 4))
 (expect NaN (/ 1.2 3 "x"))
 (expect 0.1428571428571429 (/ 1 7))
+(expect 0.1428 (/ 1 7 4 "-"))   ;; mode
+(expect -0.1429 (/ -1 7 4 "-")) ;; mode
+(expect -0.1428 (/ -1 7 4 "+")) ;; mode
 
 ;; pow
 

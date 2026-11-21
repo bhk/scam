@@ -110,6 +110,10 @@
   (filter "09" (.. u "9")))
 
 
+(define `(is-odd? digit)
+  (findstring 1 (subst "11" nil digit)))
+
+
 (define (u-carry-fn u nines zeros)
   (subst (.. nines 1) (.. 1 zeros)
          (if (findstring (.. nines nines 1) u)
@@ -158,6 +162,10 @@
 
 (define `(neg-swap u)
   (subst "~" "*" 1 "~" "*" 1 u))
+
+
+(define `(uf-cmp-digit uf u1)
+  (word 1 (subst (._. "~" u1) nil 0 nil (.. "~ " (smash uf)))))
 
 
 ;; Combine 1's with adjacent ~'s (anti-1's).
@@ -650,6 +658,86 @@
 
 
 ;;--------------------------------
+;; Rounding
+;;--------------------------------
+
+
+;; modes common to signed and unsigned operations:
+(define `ROUND-NEAR   &public "N")  ;; ordinary rounding
+(define `ROUND-TRUNC  &public "T")  ;; toward zero
+(define `ROUND-AWAY   &public "A")  ;; away from zero
+
+;; sign-sensitive modes used ONLY by signed operations
+(define `ROUND-CEIL   &public "C")  ;; up (+AWAY, -TRUNC)
+(define `ROUND-FLOOR  &public "F")  ;; down (+TRUNC, -AWAY)
+
+;; only u-div-uns/uf-div and their impl (uf-div-long, div-loop, div-round)
+(define `ROUND-REMAINDER &public "R")
+
+
+;; Convert sign-sensitive rounding modes to unsigned modes
+(define `(uns-round-mode mode sign)
+  &public
+  (or (filter-out [ROUND-CEIL ROUND-FLOOR] mode)
+      ;; FLOOR or CEILING
+      (if (filter (.. sign mode)
+                  (._. (.. "+" ROUND-FLOOR) (.. "-" ROUND-CEIL)) )
+          ROUND-TRUNC
+          ROUND-AWAY)))
+
+
+;; ROUND-NEAR: see uf-round
+(define (uf-round-N uf ra rb)
+  (define `round-up?
+    (findstring 1 (or (if rb
+                          (uf-cmp ra (uf*0.5 rb))
+                          (uf-cmp-digit ra U5))   ;; compare to 0.5
+                      (subst 11 nil (lastword uf)))))
+  (if round-up?
+      (uf-carry (.. uf 1))
+      uf))
+
+
+;; ROUND-TRUNC: see uf-round
+(define (uf-round-T uf _ _)
+  uf)
+
+
+;; ROUND-AWAY: see uf-round
+(define (uf-round-A uf ra _)
+  (if (findstring 1 ra)
+      (uf-carry (.. uf 1))
+      uf))
+
+
+;; Adjust result as per rounding mode, remainder and divisor.
+;;
+;; MODE = an unsigned mode
+;; UF = result computed to requested precision
+;; RA = UF value
+;; RB = UF value, or nil to represent 1 (not representable in UF)
+;;
+;; Computing RA/RB would give the value of digits to follow the last digit
+;; of UF for an exact answer.  For example, rounding NEAR should increment
+;; result when RA > RB/2.
+;;
+(define `(uf-round mode uf ra rb)
+  (declare (uf-round-))
+  (native-call (.. (native-name uf-round-) mode) uf ra rb))
+
+
+;; Round UF to the nearest N digits, returning UF/10.
+;; N is in decimal.  N > 0.
+;;
+(define (uf-round-at n mode uf)
+  &public
+  (uf-round mode
+            (>>1 (wordlist 1 n uf))
+            (nth-rest 2 (nth-rest n uf))
+            nil))
+
+
+;;--------------------------------
 ;; Division
 ;;--------------------------------
 
@@ -684,39 +772,18 @@
   (.. 0 (subst T10 T9 q)))
 
 
-(define `ROUND-NEAR   &public 1)  ;; ordinary rounding
-(define `ROUND-TRUNC  &public 2)  ;; toward zero
-(define `ROUND-AWAY   &public 3)  ;; away from zero
-(define `ROUND-CEIL   &public 4)  ;; up (+AWAY, -TRUNC)   only fp-round
-(define `ROUND-FLOOR  &public 5)  ;; down (+TRUNC, -AWAY) only fp-round
-
-(define `ROUND-REMAINDER &public 9)  ;; only uf-div/dix
-
-
-
 ;; Perform rounding of division result.  At this point, after dividing A/B,
 ;; A = B*Q + REM*10^(-N), where N is (words Q/10)-1.
 ;;
-;; MODE = one of ROUND-NEAR, ... (see above)
+;; MODE = an unsigned mode, or DIV-REMAINDER
 ;; Q/10 = UF initial digits of A/B, prefixed with "0 "
 ;; REM = UF remainder (always less than B)
 ;; B = divisor
 ;;
-(define (div-round mode q/10 rem b)
-  ;; Round last digit up when REM>B/2 or REM==B/2 and last digit is odd
-  (define `round-up
-    (if (filter [ROUND-NEAR ROUND-CEIL] mode)
-        (findstring 1 (if (filter ROUND-CEIL mode)
-                          rem
-                          (or (uf-cmp rem (uf*0.5 b))
-                              (subst "11" nil (lastword q/10)))))))
-
-  (if round-up
-      (uf-carry (.. q/10 1))
-      (if (filter ROUND-REMAINDER mode)
-          rem
-          ;; TRUNCATE or round down
-          q/10)))
+(define `(div-round mode result rem divisor)
+  (if (filter ROUND-REMAINDER mode)
+      rem
+      (uf-round mode result rem divisor)))
 
 
 ;; Compute A/B
@@ -800,10 +867,6 @@
 ;; X is longer than N.
 
 
-(define `(is-odd? digit)
-  (findstring 1 (subst "11" nil digit)))
-
-
 ;; Divide X by two, when last digit in X is even.
 ;;
 (define `(uf/2 x)
@@ -857,40 +920,6 @@
                    n0 n1)))
 
 
-;; Round U to the nearest N digits, returning U/10.
-;; N is in decimal.  N > 0.
-;;
-(define (uf-round n mode u)
-  &public
-  (define `q/10
-    (>>1 (wordlist 1 n u)))
-
-  (define `last-digit
-    (word n u))
-
-  (define `next-digit
-    (word 2 (nth-rest n u)))
-
-  (define `remaining-digits
-    (nth-rest 3 (nth-rest n u)))
-  (define `nearest-up?
-    (findstring U6 (or (filter-out U5 (or next-digit 0))
-                       (if (or (findstring 1 remaining-digits)
-                               (is-odd? last-digit))
-                           U6))))
-
-  (define `round-up?
-    (if (filter ROUND-NEAR mode)
-        nearest-up?
-        (if (filter ROUND-CEIL mode)
-            ;; Find any non-zero digit following the last digit.
-            (findstring " 01" (nth-rest n u)))))
-
-  (if round-up?
-      (uf-carry (.. q/10 1))
-      q/10))
-
-
 (define `(rdiv a b n zs m)
   ;; XMIN = x0+x1-1 = x0 + len(B) + 2
   ;; This conservative definition for x0 is faster to compute than
@@ -938,7 +967,7 @@
      (else
       (uf*2 a))))  ;; 5
 
-  (uf-round n mode product))
+  (uf-round-at n mode product))
 
 
 ;;--------------------------------
@@ -990,7 +1019,7 @@
         (uf-div2 (uf*0.5 x) (uf/2 y) n mode)))
 
    (else
-    (uf-round n mode (recip-div2 x y n (recip2 y))))))
+    (uf-round-at n mode (recip-div2 x y n (recip2 y))))))
 
 
 ;;--------------------------------
@@ -1037,7 +1066,7 @@
   (define `raw
     (sdiv-loop (tally3 y) (tally3 x) (nth-rest 4 x) n))
 
-  (uf-round n mode (native-strip (subst 0 1 " " " 0" raw))))
+  (uf-round-at n mode (native-strip (subst 0 1 " " " 0" raw))))
 
 
 (declare (uf-div a b n mode))
@@ -1058,13 +1087,13 @@
 ;;        A < B
 ;;        B >= 0.1
 ;;      N = number of digits of quotient to compute (in *DECIMAL*)
-;;      MODE = [see out, below]
+;;      MODE = an unsigned mode or ROUND-REMAINDER
 ;;
 ;; Out: The returned value (UF-encoded) depends on MODE:
 ;;
 ;;     ROUND-TRUNC  =>  Qt/10
 ;;     ROUND-NEAR   =>  Qn/10   [round to nearest, ties to even]
-;;     ROUND-CEIL   =>  Qc/10
+;;     ROUND-AWAY   =>  Qc/10
 ;;     ROUND-REMAINDER =>  REM
 ;;
 ;;   where Qt, Qn, Qc, and REM are defined as:
@@ -1111,12 +1140,16 @@
 ;; MODE = ROUND-TRUNC => quotient (truncated)
 ;;        ROUND-REMAINDER => remainder
 ;;
-(define (u-divx ua ub mode)
+(define (u-div-uns ua ub mode)
   &public
   (cond
+   ((not (eq? mode ROUND-REMAINDER))
+    (print "u-div-uns: mode = " mode)
+    nil)
+
    ;; extraneous leading zeros
-   ((filter "00%" (._. ua ub))
-    (u-divx (patsubst "00%" "0%" ua) (patsubst "00%" "0%" ub) mode))
+   ((findstring " 00" (._. "" ua ub))
+    (u-div-uns (patsubst "00%" "0%" ua) (patsubst "00%" "0%" ub) mode))
 
    ((and ua (findstring 1 ub))
     (define `_a (spread ua))  ;; has initial extraneous space

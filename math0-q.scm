@@ -364,12 +364,44 @@
         (power-seq-1 (UV 1234) "0" 3 3))    ;; MIN=5 => 4+len(B) = 4 digits
 
 
+;; uf-cmp-digit
+
+(expect 1 (findstring 1 (uf-cmp-digit (UV 6) U5)))
+(expect 1 (findstring 1 (uf-cmp-digit (UV 62) U5)))
+(expect 1 (findstring 1 (uf-cmp-digit (UV 50001) U5)))
+(expect nil (uf-cmp-digit (UV 5000) U5))
+(expect nil (uf-cmp-digit (UV 5) U5))
+(expect "~" (uf-cmp-digit (UV 49999) U5))
+(expect "~" (uf-cmp-digit (UV 0) U5))
+(expect "~" (uf-cmp-digit nil U5))
+(expect nil (uf-cmp-digit 0 0))
+
+;; uns-round-mode
+
+(foreach (sign "+ -")
+  (foreach (mode [ROUND-NEAR ROUND-TRUNC ROUND-AWAY])
+    (expect mode (uns-round-mode mode sign))))
+
+(expect ROUND-TRUNC (uns-round-mode ROUND-FLOOR "+"))
+(expect ROUND-AWAY (uns-round-mode ROUND-FLOOR "-"))
+(expect ROUND-AWAY (uns-round-mode ROUND-CEIL "+"))
+(expect ROUND-TRUNC (uns-round-mode ROUND-CEIL "-"))
+
 ;; uf-round
 
-(expect (UV 00) (uf-round 1 ROUND-NEAR (UV 05)))
-(expect (UV 01) (uf-round 1 ROUND-CEIL (UV 05)))
-(expect (UV 01) (uf-round 1 ROUND-NEAR (UV 051)))
-(expect (UV 00) (uf-round 1 ROUND-TRUNC (UV 051)))
+(expect "0 011" (uf-round ROUND-TRUNC "0 011" "011" "0111"))
+(expect "0 0111" (uf-round ROUND-AWAY "0 011" "011" "0111"))
+(expect "0 0111" (uf-round ROUND-NEAR "0 011" "011" "0111"))  ;; RA/RB = 2/3
+(expect "0 011" (uf-round ROUND-NEAR "0 01" "01" "011"))  ;; RA/RB = 0.5, odd RESULT
+(expect "0 011" (uf-round ROUND-NEAR "0 011" "01" "011"))  ;; RA/RB = 0.5, even RESULT
+(expect "0 01" (uf-round ROUND-NEAR "0 01" "011" "011111"))  ;; RA/RB < 0.5
+
+;; uf-round-at
+
+(expect (UV 00) (uf-round-at 1 ROUND-NEAR (UV 05)))
+(expect (UV 01) (uf-round-at 1 ROUND-AWAY (UV 05)))
+(expect (UV 01) (uf-round-at 1 ROUND-NEAR (UV 051)))
+(expect (UV 00) (uf-round-at 1 ROUND-TRUNC (UV 051)))
 
 ;; recip2
 
@@ -396,8 +428,8 @@
 (expect (UV 06) (uf-div (UV 14443) (UV 2222) 1 ROUND-NEAR))   ;; 6.5 --> 6
 (expect (UV 07) (uf-div (UV 1444301) (UV 2222) 1 ROUND-NEAR)) ;; 6.5x --> 7
 (expect (UV 10) (uf-div (UV 21109) (UV 2222) 1 ROUND-NEAR))   ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 13332) (UV 2222) 1 ROUND-CEIL))
-(expect (UV 07) (uf-div (UV 1333201) (UV 2222) 1 ROUND-CEIL))
+(expect (UV 06) (uf-div (UV 13332) (UV 2222) 1 ROUND-AWAY))
+(expect (UV 07) (uf-div (UV 1333201) (UV 2222) 1 ROUND-AWAY))
 ;; uf-remainder case
 (expect (UV 29) (uf-div (UV 3) (UV 41) 3 ROUND-REMAINDER))
 ;; div3 case
@@ -406,21 +438,21 @@
 (expect (UV 06) (uf-div (UV 1443) (UV 222) 1 ROUND-NEAR))   ;; 6.5 --> 6
 (expect (UV 07) (uf-div (UV 144301) (UV 222) 1 ROUND-NEAR)) ;; 6.5x --> 7
 (expect (UV 10) (uf-div (UV 2109) (UV 222) 1 ROUND-NEAR))   ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 1332) (UV 222) 1 ROUND-CEIL))
-(expect (UV 07) (uf-div (UV 133201) (UV 222) 1 ROUND-CEIL))
+(expect (UV 06) (uf-div (UV 1332) (UV 222) 1 ROUND-AWAY))
+(expect (UV 07) (uf-div (UV 133201) (UV 222) 1 ROUND-AWAY))
 ;; div2 case
 (expect (UV 06976) (uf-div (UV 3) (UV 43) 4 ROUND-TRUNC))
 (expect (UV 08) (uf-div (UV 165) (UV 22) 1 ROUND-NEAR))     ;; 7.5 --> 8
 (expect (UV 06) (uf-div (UV 143) (UV 22) 1 ROUND-NEAR))     ;; 6.5 --> 6
 (expect (UV 07) (uf-div (UV 14301) (UV 22) 1 ROUND-NEAR))   ;; 6.5x --> 7
 (expect (UV 10) (uf-div (UV 209) (UV 22) 1 ROUND-NEAR))     ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 132) (UV 22) 1 ROUND-CEIL))
-(expect (UV 07) (uf-div (UV 13201) (UV 22) 1 ROUND-CEIL))
+(expect (UV 06) (uf-div (UV 132) (UV 22) 1 ROUND-AWAY))
+(expect (UV 07) (uf-div (UV 13201) (UV 22) 1 ROUND-AWAY))
 ;; div1 case
 (expect (UV 04285) (uf-div (UV 3) (UV 7) 4 ROUND-TRUNC))
 (expect (UV 08) (uf-div (UV 15) (UV 2) 1 ROUND-NEAR))       ;; 7.5 --> 8
 (expect (UV 06) (uf-div (UV 13) (UV 2) 1 ROUND-NEAR))       ;; 6.5 --> 6
 (expect (UV 07) (uf-div (UV 13001) (UV 2) 1 ROUND-NEAR))    ;; 6.5x --> 7
 (expect (UV 10) (uf-div (UV 19) (UV 2) 1 ROUND-NEAR))       ;; 9.5 --> 10
-(expect (UV 06) (uf-div (UV 12) (UV 2) 1 ROUND-CEIL))
-(expect (UV 07) (uf-div (UV 1201) (UV 2) 1 ROUND-CEIL))
+(expect (UV 06) (uf-div (UV 12) (UV 2) 1 ROUND-AWAY))
+(expect (UV 07) (uf-div (UV 1201) (UV 2) 1 ROUND-AWAY))

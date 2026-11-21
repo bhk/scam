@@ -177,31 +177,31 @@
 ;; PREC and POD
 ;;--------------------------------
 
-;; Validate PREC (providing default when nil) and return POD value.
+;; Validate and convert PREC (public precision specification) to POD
+;; (internal precision specification).
 ;;
-;; PREC = positive integer => number of digits of precision
-;;        "+NNN", "-NNN" => place of lest significant digit
-;; Result = place-or-digits (POD) encoding:
-;;   Begins with "0" or "-0" => place, negated, and in signed U-encoded form
-;;   Begins with 1-9 => number of significant digits, in decimal
-;;   nil => mal-formed PREC error
+;;   PREC                      POD
+;;   ---------                 -------
+;;   +N, -N, 0 =>  place   =>  -U, U      (negated sign, U-encoded)
+;;   1-9+      =>  digits  =>  1-9+       (decimal)
+;;   nil       =>  digits  =>  16
+;;   other     => invalid  =>  nil
 ;;
 (define (prec-to-pod prec)
   &public
-  (if prec
-      (if (filter "+% -%" prec)
-          ;; If PREC contains spaces, return nil.
-          (foreach (w (d2u (findstring prec (word 1 prec))))
-            (if (filter-out "+ -" (subst 0 nil 1 nil w))
-                ;; Contains non-digit, non-sign characters
-                nil
-                (subst "-" nil "+" "-" w)))
-          (if (word-index? prec)
-              (if (filter "0%" prec)
-                  (prec-to-pod (patsubst "0%" "%" prec))
-                  prec)))
-      ;; default
-      16))
+  (if (not prec)
+      16
+      (if (findstring prec (word 1 prec))
+          (or (filter "0 -0 1 8 16" prec)
+              (foreach (u (d2u (patsubst "-%" "%" (subst "+" "-" prec))))
+                (if (not (subst 0 nil 1 nil u))
+                    (if (filter "-% +%" prec)
+                        ;; place
+                        (.. (if (findstring "+" prec) "-") u)
+                        ;; digits
+                        (if (filter "0%" prec)
+                            (prec-to-pod (patsubst "0%" "%" prec))
+                            prec))))))))
 
 
 ;; True if POD (Place-or-Digits) contains a "place" value: the number of
@@ -388,12 +388,9 @@
 ;;
 ;; X & Y must be normalized (no leading zeros in UF).
 ;; POD = see prec-to-pod
-;; ROUND = nearest (non-nil) or down (nil).  [When POD=0, this means round
-;;         down to the largest integer <= the quotient.]
+;; MODE = rounding mode.
 ;;
 ;; Results are not normalized.
-;;
-;; Notes:
 ;;
 ;; The numerical value of X/Y is given simply:
 ;;
@@ -408,69 +405,54 @@
 ;;  3. Rounding may result in Q.UF==1 overflowing the UF value result.  The
 ;;     rounding functions return Q.UF/10 to avoid overflow.
 ;;
-
-(define (fp-div-x q.exp q.sgn x.uf y.uf round pod)
-  ;; Now:   Y.UF > X.UF > Y.UF/10
-
-  (define `mode
-    (if round
-        ROUND-NEAR
-        (if (filter "+" q.sgn)
-            ROUND-TRUNC
-            ROUND-CEIL)))
-
-  (foreach (num-digits (if (pod-is-place? pod)
-                           (u2d (u+ q.exp pod))
-                           pod))
-
-    (if (filter "-%" num-digits)
-        ;; Rounding place is to the left of Q.EXP => 0 unless mode=CEILING
-        (if (filter ROUND-CEIL mode)
-            (make-fp (u-sub-m "01" pod) q.sgn "01")
-            FP0)
-
-        ;; Non-negative num-digits
-        (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits mode)))))
-
-
-(define (f/ x y pod ?floor)
+(define (f/ x y pod mode)
   &public
   (define `x.uf (fp.uf x))
   (define `y.uf (fp.uf y))
   (define `q.exp (u-sub-m (fp.xpo x) (fp.xpo y)))
-  (define `q.exp+1 (u-sub-m (u+1 (fp.xpo x)) (fp.xpo y)))
   (define `q.sgn (sign-mul (fp.sign x) (fp.sign y)))
-  (define `round (not floor))
 
   (cond
    ;; Normalized and non-zero?
    ((not (findstring 101 (.. (fp.msd x) (fp.msd y))))
     (if (findstring 1 y.uf)
         (if (findstring 1 x.uf)
-            (f/ (fp-norm x) (fp-norm y) pod floor)
+            (f/ (fp-norm x) (fp-norm y) pod mode)
             (if x FP0 nil))
         nil))
 
-   ;; Now: X.UF >= 0.1
-   ;; Now: X.UF >= 0.1
+   ;; Now: X.UF >= 0.1,  Y.UF >= 0.1
    (pod
-    (if (uf-lt? x.uf y.uf)
-        ;; X.UF < Y.UF
-        (fp-div-x q.exp q.sgn x.uf y.uf round pod)
-        ;; uf-div requires X.UF < Y.UF
-        (fp-div-x q.exp+1 q.sgn (>>1 x.uf) y.uf round pod)))))
+    (let ((q.exp_ q.exp)
+          (q.sgn q.sgn)
+          (x.uf_ x.uf)
+          (y.uf y.uf)
+          (pod pod)
+          (uns-mode (uns-round-mode mode q.sgn))
+          (xlt? (uf-lt? x.uf y.uf)))
+
+      ;; ensure X < Y when calling uf-div
+      (define `q.exp (if xlt? q.exp_ (u+1 q.exp_)))
+      (define `x.uf (if xlt? x.uf (>>1 x.uf)))
+
+      (foreach (num-digits (if (pod-is-place? pod)
+                               (u2d (u+ q.exp pod))
+                               pod))
+
+        (if (filter "-%" num-digits)
+            ;; Rounding place is to the left of Q.EXP
+            ;; result = 0 unless mode=AWAY
+            (if (filter ROUND-AWAY uns-mode)
+                (make-fp (u-sub-m "01" pod) q.sgn "01")
+                FP0)
+
+            ;; Non-negative num-digits
+            (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits uns-mode))))))))
 
 
-;; Not public, but called by `op`.
-(define (f// x y)
-  (f/ x y 0 1))
-
-
-;; Not public, but called by `op`.
-(define (u// x y)
-  (if (findstring "-" (.. x y))
-      (fp2u (f// (u2fp x) (u2fp y)))
-      (u-divx x y ROUND-TRUNC)))
+;; called from `op`
+(define (u/ x y pod mode)
+  (fp2u (f/ (u2fp x) (u2fp y) pod mode)))
 
 
 ;; Return the remainder after flooring division:  R = A - B*floor(A/B)
@@ -517,17 +499,24 @@
                      ROUND-REMAINDER)))))
 
 
+
+;; called from `op`
+(define (u-mod x y)
+  (if (findstring "-" (.. x y))
+      (fp2u (f-mod (u2fp x) (u2fp y)))
+      (or (u-div-uns x y ROUND-REMAINDER)
+          NaN)))
+
+
+
 ;; Round X to specified precision
 ;;
-(define (fp-round x pod dir)
+;; mode = one of {ROUND-NEAR/TRUNC/AWAY/CEIL/FLOOR}
+(define (fp-round x pod mode)
   &public
-  ;; Convert signed rounding direction to unsigned direction
-  (define `udir
-    (or (filter [ROUND-NEAR ROUND-TRUNC] dir)
-        ;; FLOOR or CEILING
-        (if (findstring (fp.sign x) (if (filter ROUND-CEIL dir) "+" "-"))
-            ROUND-CEIL
-            ROUND-TRUNC)))
+  ;; Convert signed rounding mode to unsigned mode
+  (define `uns-mode
+    (uns-round-mode mode (fp.sign x)))
 
   (cond
    ((findstring 1 (fp.msd x))
@@ -535,20 +524,21 @@
     (foreach (num-digits (if (pod-is-place? pod)
                              (u2d (u+ (fp.xpo x) pod))
                              pod))
-      (if (filter "-%" num-digits)
-          ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
-          (if (filter ROUND-CEIL udir)
-              (make-fp (u-sub-m "01" pod) (fp.sign x) "01")
+      (foreach (uns-mode uns-mode)
+        (if (filter "-%" num-digits)
+            ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
+            (if (filter ROUND-CEIL uns-mode)
+                (make-fp (u-sub-m "01" pod) (fp.sign x) "01")
                 FP0)
 
-          (make-fp<<1 (fp.xpo x)
-                      (fp.sign x)
-                      (if (filter 0 num-digits)
-                          (rest (uf-round 1 udir (>>1 (fp.uf x))))
-                          (uf-round num-digits udir (fp.uf x)))))))
+            (make-fp<<1 (fp.xpo x)
+                        (fp.sign x)
+                        (if (filter 0 num-digits)
+                            (rest (uf-round-at 1 uns-mode (>>1 (fp.uf x))))
+                            (uf-round-at num-digits uns-mode (fp.uf x))))))))
 
    ((findstring 1 (fp.uf x))
-    (fp-round (fp-norm x) pod dir))
+    (fp-round (fp-norm x) pod mode))
 
    (x
     ;; return NIL when X is NIL

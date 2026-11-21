@@ -57,7 +57,7 @@
   (define `value-var (.. fname "/v"))
   (define `count-var (.. fname "/c"))
   (define `(compute-value nw)
-    (rest (uf-round (words nw) ROUND-NEAR (native-call fname nw))))
+    (rest (uf-round-at (words nw) ROUND-NEAR (native-call fname nw))))
 
   (or (round-uf-const (native-var value-var) count)
       (if (word 1 count)
@@ -470,7 +470,7 @@
               (fp-log2 (fp.xpo fb) (fp.uf fb)
                        (adjust-digit-count count-pre b-size))
               (or result-pod pod)
-              nil)))))
+              ROUND-NEAR)))))
 
   (and pod
        (fp>0? fx)
@@ -648,7 +648,7 @@
   &public
   ;; Approximation FIA of I=floor(X/10); FIA >= I
   (define `fia
-    (f/ fx "01 + 011 0111" 0 1))
+    (f/ fx "01 + 011 0111" 0 ROUND-FLOOR))
 
   (define `out
     (let ((count  (if (pod-is-place? pod)
@@ -664,7 +664,7 @@
           ;; Compute i = x // log(10))
           (let ((fL10 (make-fp "01" "+" (const-log-10 KL)))
                 (fx fx) (count count))
-            (let ((fi (f/ fx fL10 "0" 1))
+            (let ((fi (f/ fx fL10 "0" ROUND-FLOOR))
                   (fx fx) (count count) (fL10 fL10))
               ;; FI = floor(X/log(10))
               (define `exp
@@ -755,6 +755,11 @@
                FP1
                (if (fp!=0? fy)
                    FP0)))))
+
+
+;; Called frop `op`
+(define (u-pow x y pod)
+  (fp2u (f-pow (u2fp x) (u2fp y) pod)))
 
 
 ;; Compute arctan(X).
@@ -1011,7 +1016,8 @@
         (let& ((π/4 (make-fp "01" "+" (uf*0.25 (const-pi count))))
                (a (f/ (fp-sub-m FP1 fm)
                       (f+ fm FP1)
-                      (pod+1 pod))))
+                      (pod+1 pod)
+                      ROUND-NEAR)))
           (fp-sub-m π/4 (fp-atan-tiny (fp2uf a 0) count nil)))))
 
   (fp-atan-unflip theta flips count (pod-is-digits? pod)))
@@ -1031,5 +1037,5 @@
     (fp-atan2 fx fy pod (.. flip "/")))
 
    ((and (fp!=0? fx) fx fy)
-    (fp-atan-small (f/ fy fx (pod+1 pod)) flip pod
+    (fp-atan-small (f/ fy fx (pod+1 pod) ROUND-NEAR) flip pod
                    (pod-to-count pod)))))
