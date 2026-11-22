@@ -17,6 +17,7 @@
            (or (findstring "-" m) "+")
            (UV (subst "-" nil m))))
 
+
 ;;--------------------------------
 ;; Tests
 ;;--------------------------------
@@ -226,6 +227,47 @@
 (expect (FP -124) (f* (FP 31) (FP -4)))
 (expect nil (f* nil (FP 4)))
 (expect nil (f* (FP 4) nil))
+
+;; f*~
+
+(define (d*~ x y p)
+  (fp2d (f*~ (d2fp x) (d2fp y) (prec-to-pod p))))
+
+;; 12 * 12 = 0144    MSD from uv-mul is zero
+;; 24 * 24 = 0576    MSD zero, but next digit rounds to MSD
+;; 32 * 32 = 1024    MSD non-zero
+;; 99 * 99 = 9801    MSD non-zero, rounds up to next place
+
+;; PREC as place
+
+(expect 144 (d*~ 12 12 "+0"))
+(expect 140 (d*~ 12 12 "+1"))
+(expect 100 (d*~ 12 12 "+2"))
+(expect 0 (d*~ 12 12 "+3"))
+(expect 0 (d*~ 12 12 "+4"))
+
+(expect 600 (d*~ 24 24 "+2"))
+(expect 1000 (d*~ 24 24 "+3"))
+(expect 0 (d*~ 24 24 "+4"))
+
+(expect 1000 (d*~ 32 32 "+3"))
+(expect 0 (d*~ 32 32 "+4"))
+
+(expect 9800 (d*~ 99 99 "+2"))
+(expect 10000 (d*~ 99 99 "+3"))
+(expect 10000 (d*~ 99 99 "+4"))
+(expect 0 (d*~ 99 99 "+5"))
+
+;; PREC as digits
+
+(expect 100 (d*~ 12 12 1))    ;; MSD 0
+(expect 600 (d*~ 24 24 1))    ;; MSD zero, rounds up
+(expect 1000 (d*~ 32 32 1))   ;; MSD non-zero
+(expect 10000 (d*~ 99 99 1))  ;; MSD rounds to next place
+
+;; u*~
+
+(expect (U 73930)  (u*~ (U 333) (U 222) (prec-to-pod "+1")))
 
 ;; f/
 

@@ -67,6 +67,11 @@
   (subst 0 nil (filter-out "-%" x)))
 
 
+(define `(n<0? x)
+  &public
+  (filter-out "-0" (filter "-%" x)))
+
+
 (define `(u<0? u)
   &public
   (findstring 1 (filter "-%" u)))
@@ -722,18 +727,21 @@
 ;; result when RA > RB/2.
 ;;
 (define `(uf-round mode uf ra rb)
+  &public
   (declare (uf-round-))
   (native-call (.. (native-name uf-round-) mode) uf ra rb))
 
 
 ;; Round UF to the nearest N digits, returning UF/10.
-;; N is in decimal.  N > 0.
+;; N is in decimal.  N >= 0.
 ;;
 (define (uf-round-at n mode uf)
   &public
   (uf-round mode
             (>>1 (wordlist 1 n uf))
-            (nth-rest 2 (nth-rest n uf))
+            (if (filter 0 n)
+                uf
+                (nth-rest 2 (nth-rest n uf)))
             nil))
 
 

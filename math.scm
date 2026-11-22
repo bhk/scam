@@ -96,7 +96,11 @@
 
 
 (define (f-atan2 y x pod)
-  (fp-round (fp-atan2 y x pod) pod ROUND-NEAR))
+  (if pod
+      (fp-round (fp-atan2 y x pod) pod ROUND-NEAR)))
+
+(define (u-atan2 y x pod)
+  (fp2u (f-atan2 (u2fp y) (u2fp x) pod)))
 
 
 (define `(fp>=0? x)
@@ -120,9 +124,7 @@
 
 
 ;; forward u->f
-(define (u*~ x y pod)     (fp2u (f*~ (u2fp x) (u2fp y) pod)))
 (define (u-log x b pod)   (fp2u (f-log (u2fp x) (u2fp b) pod)))
-(define (u-atan2 y x pod) (fp2u (f-atan2 (u2fp y) (u2fp x) pod)))
 
 
 ;; NAME = suffix for constructing `uNAME` and `fNAME` functions
@@ -498,22 +500,6 @@
                       (u2d (smash (uf-trim-tz (const-pi count)))))
             0))
 
-      "NaN:P"))
-
-
-;; Return the angle between the X axis and the line from the origin to the
-;; point (X,Y).  (**Note** that Y is the first argument and X is the
-;; second.)
-;;
-;; The result is in the range (-π,π).
-;;
-;; The [precision is given by P](#precision).
-;;
-(define (atan2 y x ?p)
-  &public
-  (or (foreach (pod (prec-to-pod p))
-        (fp2d (fp-round (fp-atan2 (d2fp y) (d2fp x) pod)
-                        (or result-pod pod) ROUND-NEAR)))
       "NaN:P"))
 
 

@@ -6,11 +6,7 @@
 (require "math0.scm")
 
 
-;; Construct an FP number
-;;
-(define `(make-fp exp sgn frac)
-  &public
-  (._. exp sgn frac))
+(define `NaN &public "NaN")
 
 
 (define `(fp.xpo n) &public (word 1 n))        ;; exponent (U-encoded)
@@ -20,7 +16,22 @@
 (define `(fp.uf<<1 n) &public (nth-rest 4 n))  ;; remainder of digits of UF
 
 
-(define `NaN &public "NaN")
+;; Construct an FP number
+;;
+(define `(make-fp exp sgn frac)
+  &public
+  (._. exp sgn frac))
+
+
+;; Construct FP number given FRAC/10, as returned by uf-round-at or uf-div,
+;; because the FRAC can sometimes overflow into the next higher digit after
+;; rounding.
+;;
+(define (make-fp<<1 exp sgn frac>>1)
+  (if (filter 0 (word 1 frac>>1))
+      (make-fp exp sgn (or (rest frac>>1) 0))
+      (make-fp (u+1 exp) sgn frac>>1)))
+
 
 ;; math.scm re-exports this
 (define `(abs x)
@@ -69,17 +80,6 @@
 (declare (u2fp u ?exp ?sgn ?ufrac))
 
 
-(define (u2fp-exp u)
-  (foreach (s (lastword (subst "E" " E" u)))
-    (foreach (en (subst "E" "" (subst "E+" "E" (subst "+-" "X" s))))
-      (if (non-digit? (patsubst "-%" "%" en))
-          nil
-          ;; If U ends with "E"+EN, then remove it cleanly.
-          ;; Otherwise, leave behind clearly invalid characters.
-          (u2fp (subst "E" "X" (u-rm-suffix s u))
-                en)))))
-
-
 ;; Validate U-encoded string and convert to normalized FP format.
 ;; Return NIL if the number is not properly formatted.
 ;;
@@ -100,7 +100,15 @@
 
    ;; Remove exponent
    ((findstring "E" (subst "e" "E" u))
-    (u2fp-exp (subst "e" "E" u)))
+    (let ((u (subst "e" "E" u)))
+      (foreach (s (lastword (subst "E" " E" u)))
+        (foreach (en (subst "+-" "X" "E+" "E" "E" "" s))
+          (if (non-digit? (patsubst "-%" "%" en))
+              nil
+              ;; If U ends with "E"+EN, then remove it cleanly.
+              ;; Otherwise, leave behind clearly invalid characters.
+              (u2fp (subst "E" "X" (u-rm-suffix s u))
+                    en))))))
 
    ;; Strip (valid) sign prefix: valid-signed("-" ++ N) <=> valid-unsigned(N)
    ((u-begins? "-0" u)
@@ -254,12 +262,40 @@
   (u2d (fp2u fx)))
 
 
-;; Construct FP number given frac>>1.
+;; Round X to specified precision
 ;;
-(define (make-fp<<1 exp sgn frac>>1)
-  (if (filter 0 (word 1 frac>>1))
-      (make-fp exp sgn (or (rest frac>>1) 0))
-      (make-fp (u+1 exp) sgn frac>>1)))
+;; mode = one of {ROUND-NEAR/TRUNC/AWAY/CEIL/FLOOR}
+(define (fp-round x pod mode)
+  &public
+  ;; Convert signed rounding mode to unsigned mode
+  (define `uns-mode
+    (uns-round-mode mode (fp.sign x)))
+
+  (cond
+   ((findstring 1 (fp.msd x))
+    ;; return NIL if POD is NIL
+    (foreach (num-digits (if (pod-is-place? pod)
+                             (u2d (u+ (fp.xpo x) pod))
+                             pod))
+      (foreach (uns-mode uns-mode)
+        (if (filter "-%" num-digits)
+            ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
+            (if (filter ROUND-CEIL uns-mode)
+                (make-fp (u-sub-m "01" pod) (fp.sign x) "01")
+                FP0)
+
+            (make-fp<<1 (fp.xpo x)
+                        (fp.sign x)
+                        (if (filter 0 num-digits)
+                            (rest (uf-round-at 1 uns-mode (>>1 (fp.uf x))))
+                            (uf-round-at num-digits uns-mode (fp.uf x))))))))
+
+   ((findstring 1 (fp.uf x))
+    (fp-round (fp-norm x) pod mode))
+
+   (x
+    ;; return NIL when X is NIL
+    FP0)))
 
 
 ;; Convert a multi-digit UV number to a single string of 1's where the count
@@ -353,35 +389,31 @@
   &public
   (and
    pod x y
+   ;; Add one to `exp` because the product might round up to the next place,
+   ;; so uf-round-at shifts the fraction (divides it by 10).
    (foreach (exp (u+ (fp.xpo x) (fp.xpo y)))
-     (foreach (num-digits (if (pod-is-place? pod)
-                              (u2d (u+ exp pod))
-                              pod))
-       ;; get up to NUM_DIGITS+1 digits of A
-       (define `(in-digits a)
-         (.. (word 3 a)
-             (if (word 4 a)
-                 (.. " " (wordlist 1 num-digits (nth-rest 4 a))))))
+     (foreach (digits (if (pod-is-place? pod)
+                          (u2d (u+ exp pod))
+                          pod))
 
-       (if (filter "-% 0" num-digits)
-           ;; Rounding place is to the left of EXP => 0
+       (define `(digits-from f)
+         (._. (wordlist 1 2 (fp.uf f))
+              (wordlist 1 digits (nth-rest 3 (fp.uf f)))))
+
+       (if (n<0? digits)
+           ;; Rounding place is more than one digits to the left of our result
            FP0
-           ;; Non-zero num-digits
-           (let ((exp exp)
-                 (sgn (sign-mul (fp.sign x) (fp.sign y)))
-                 (uf (uv-mul (in-digits x) (in-digits y)))
-                 (pod pod)
-                 (num-digits num-digits))
+           ;; Compute and round even when digits==0, because rounding can
+           ;; carry into the last digit place.
+           (fp-round (make-fp exp
+                              (sign-mul (fp.sign x) (fp.sign y))
+                              (uv-mul (digits-from x) (digits-from y)))
+                     pod ROUND-NEAR))))))
 
-             ;; If pod is given in terms of *significant* digits and the first result
-             ;; digit is zero, use NUM-DIGITS digits *after* the first digit.
-             (define `skip-zero
-               (and (filter-out "-0% 0%" pod)
-                    (filter 0 (word 1 uf))
-                    (addprefix " " (word 2 (nth-rest num-digits uf)))))
 
-             (make-fp exp sgn
-                      (.. (wordlist 1 num-digits uf) skip-zero))))))))
+;; Called from `op`.
+(define (u*~ x y pod)
+  (fp2u (f*~ (u2fp x) (u2fp y) pod)))
 
 
 ;; Divide X by Y.
@@ -432,22 +464,23 @@
           (xlt? (uf-lt? x.uf y.uf)))
 
       ;; ensure X < Y when calling uf-div
-      (define `q.exp (if xlt? q.exp_ (u+1 q.exp_)))
       (define `x.uf (if xlt? x.uf (>>1 x.uf)))
+      (define `q.exp (if xlt? q.exp_ (u+1 q.exp_)))
 
-      (foreach (num-digits (if (pod-is-place? pod)
-                               (u2d (u+ q.exp pod))
-                               pod))
+      (foreach (q.exp q.exp)
+        (foreach (num-digits (if (pod-is-place? pod)
+                                 (u2d (u+ q.exp pod))
+                                 pod))
 
-        (if (filter "-%" num-digits)
-            ;; Rounding place is to the left of Q.EXP
-            ;; result = 0 unless mode=AWAY
-            (if (filter ROUND-AWAY uns-mode)
-                (make-fp (u-sub-m "01" pod) q.sgn "01")
-                FP0)
+          (if (filter "-%" num-digits)
+              ;; Rounding place is to the left of Q.EXP
+              ;; result = 0 unless uns-mode=AWAY
+              (if (filter ROUND-AWAY uns-mode)
+                  (make-fp (u-sub-m "01" pod) q.sgn "01")
+                  FP0)
 
-            ;; Non-negative num-digits
-            (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits uns-mode))))))))
+              ;; Non-negative num-digits
+              (make-fp<<1 q.exp q.sgn (uf-div x.uf y.uf num-digits uns-mode)))))))))
 
 
 ;; called from `op`
@@ -507,42 +540,6 @@
       (or (u-div-uns x y ROUND-REMAINDER)
           NaN)))
 
-
-
-;; Round X to specified precision
-;;
-;; mode = one of {ROUND-NEAR/TRUNC/AWAY/CEIL/FLOOR}
-(define (fp-round x pod mode)
-  &public
-  ;; Convert signed rounding mode to unsigned mode
-  (define `uns-mode
-    (uns-round-mode mode (fp.sign x)))
-
-  (cond
-   ((findstring 1 (fp.msd x))
-    ;; return NIL if POD is NIL
-    (foreach (num-digits (if (pod-is-place? pod)
-                             (u2d (u+ (fp.xpo x) pod))
-                             pod))
-      (foreach (uns-mode uns-mode)
-        (if (filter "-%" num-digits)
-            ;; Rounding place is to the left of EXP => 0 unless mode=CEILING
-            (if (filter ROUND-CEIL uns-mode)
-                (make-fp (u-sub-m "01" pod) (fp.sign x) "01")
-                FP0)
-
-            (make-fp<<1 (fp.xpo x)
-                        (fp.sign x)
-                        (if (filter 0 num-digits)
-                            (rest (uf-round-at 1 uns-mode (>>1 (fp.uf x))))
-                            (uf-round-at num-digits uns-mode (fp.uf x))))))))
-
-   ((findstring 1 (fp.uf x))
-    (fp-round (fp-norm x) pod mode))
-
-   (x
-    ;; return NIL when X is NIL
-    FP0)))
 
 
 ;; Truncate FX (towards zero).
