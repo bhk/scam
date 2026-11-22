@@ -17,8 +17,7 @@
 ;; Strings not conforming to the above syntax are treated as non-number
 ;; values.  Functions in this library typically return `"NaN"` when a
 ;; numeric argument was given a non-number value, or when the results are
-;; otherwise undefined.  `"NaN:P"` may be returned when an invalid precision
-;; parameter is provided.
+;; otherwise undefined.
 ;;
 ;; Comparison operators treat non-number values as less than all numeric
 ;; values, but equivalent to all other non-number values.
@@ -37,10 +36,11 @@
 ;; 1. A positive decimal integer specifies a number of significant digits in the
 ;;    result.
 ;;
-;; 2. An integer N preceded by a `+` or `-` character specifies the *place*
-;;    (relative to the decimal point) of the least significant digit as the
-;;    place with with value of 10^N.  (Note that SCAM numeric literals may
-;;    not begin with "+", so places beginning with "+" must be quoted.)
+;; 2. A non-positive integer, or a non-negative integer preceded by a `+`
+;;    character specifies the *place* (relative to the decimal point) of the
+;;    least significant digit as the place with with value of 10^N.  (Note
+;;    that SCAM numeric literals may not begin with "+", so places beginning
+;;    with "+" must be quoted.)
 ;;
 ;; The functions `round` and `/` guarantee rounding to the *nearest* unit in
 ;; the least significant digit, but more generally the guarantee is within
@@ -62,10 +62,6 @@
 (require "math2.scm")
 
 
-(define (ln x ?p)
-  (fp2d (fp-ln (d2fp x) (prec-to-pod p))))
-
-
 ;; Return non-nil if either A or B are not simple integers: "-"? DIGIT+
 ;; Assumes that neither A nor B are nil.
 ;;
@@ -77,12 +73,25 @@
 ;;
 ;; X is decimal (raw input from client).
 ;; POD is in internal format (0% => place, else decimal)
-;; DIR = one of {ROUND-TRUNC, -FLOOR, -NEAR, -CEIL}
+;; MODE = rounding mode
 ;;
 ;; Result is decimal.
 ;;
-(define (raw-round x pod dir)
-  (fp2d (fp-round (d2fp x) pod dir)))
+(define (d-round x pod mode)
+  (fp2d (f-round (d2fp x) pod mode)))
+
+
+;; Convert public-facing rounding mode notation to internal IDs.
+;;
+(define `(xlat-mode mode)
+  (define `key (.. mode "!="))
+  (define `dict { "-": ROUND-FLOOR,
+                  "+": ROUND-CEIL,
+                  "|": ROUND-TRUNC,
+                  "<>": ROUND-AWAY})
+  (or (if mode
+          (subst key nil (filter (.. key "%") dict)))
+      ROUND-NEAR))
 
 
 ;;--------------------------------
@@ -93,38 +102,6 @@
 ;; input numbers.
 ;;     (uMODE UX UY ?POD) --> U  : valid U integers (no "." or "E...")
 ;;     (fMODE FX FY ?POD) --> F  : valid FP values
-
-
-(define (f-atan2 y x pod)
-  (if pod
-      (fp-round (fp-atan2 y x pod) pod ROUND-NEAR)))
-
-(define (u-atan2 y x pod)
-  (fp2u (f-atan2 (u2fp y) (u2fp x) pod)))
-
-
-(define `(fp>=0? x)
-  (or (findstring "+" x)
-      (not (findstring 1 (fp.uf x)))))
-
-
-;; currently defined only for non-negative integer y
-(define (f^ x y)
-  (if (fp>=0? y)
-      (let ((yuf (fp.uf y))
-            (len (u2d (fp.xpo y)))
-            (x x))
-        (and (n>0? len)
-             (not (findstring 1 (rest (nth-rest len yuf))))
-             (fp-u-pwr x (uf-fix yuf len))))))
-
-
-(define (u^ x y)
-  (fp2u (fp-u-pwr (u2fp x) y)))
-
-
-;; forward u->f
-(define (u-log x b pod)   (fp2u (f-log (u2fp x) (u2fp b) pod)))
 
 
 ;; NAME = suffix for constructing `uNAME` and `fNAME` functions
@@ -153,11 +130,7 @@
          (if is-cmp
              (native-call ffn (u2fp ux) (u2fp uy) pod arg4)
              (fp2u
-              (let ((fx (u2fp ux))
-                    (fy (u2fp uy))
-                    (ffn ffn) (pod pod) (arg4 arg4))
-                (if (and fx fy)
-                   (native-call ffn fx fy pod arg4))))))))
+              (native-call ffn (u2fp ux) (u2fp uy) pod arg4))))))
   (if is-cmp
       uresult
       (u2d uresult)))
@@ -171,53 +144,44 @@
   (op-macro name x y pod 1))
 
 
-(define `(xlat-mode dir)
-  (or (if dir
-          (filter [ROUND-FLOOR ROUND-CEIL ROUND-TRUNC ROUND-AWAY]
-                  (subst "-" ROUND-FLOOR
-                         "+" ROUND-CEIL
-                         "|" ROUND-TRUNC
-                         "<>" ROUND-AWAY
-                         dir)))
-      ROUND-NEAR))
+(define (num-reduce opfn v)
+  ;; quicker version of promote, valid for FP numbers
+  (define `(num-nth n vec)
+    (subst [" "] " " (word 1 v)))
 
-
-(define (reduce opfn v)
   (if (word 2 v)
-      (native-call opfn (first v) (reduce opfn (rest v)))
-      (first v)))
+      ;; number-specific promote
+      (native-call opfn (num-nth 1 v) (num-reduce opfn (rest v)))
+      (num-nth 1 v)))
 
 
-(define (u-mul x y) (u* x y))
-(define (u-add x y) (u+ x y))
-(define (fp-add x y) (f+ x y))
-(define (fp-mul x y) (f* x y))
-(define (fp-mulp x y p) (f*~ x y p))
-
-
-;; Use `fp-NAME` or `u-NAME` to add/multiply numbers in a vector.
+;; Use `fNAME` or `uNAME` to add/multiply numbers in a vector.
 ;;
 (define (vecop name uv ident)
-  (declare (u-))
-  (declare (fp-))
+  (declare (u x y))
+  (declare (f x y))
+  (define `ufn (.. (native-name u) name))
+  (define `ffn (.. (native-name f) name))
+
   (define `fpvec
     (foreach (u uv)
-      [ (u2fp u) ]))
+      ;; quicker version of demote, valid for FP numbers
+      (subst " " [" "] (u2fp u))))
 
   (if uv
       (u2d
        (if (non-digit? (smash uv))
-           (fp2u (reduce (.. (native-name fp-) name) fpvec))
-           (reduce (.. (native-name u-) name) uv)))
+           (fp2u (num-reduce ffn fpvec))
+           (num-reduce ufn uv)))
       ident))
 
 
 (define `(addv uv)
-  (vecop "add" uv 0))
+  (vecop "+" uv 0))
 
 
 (define `(mulv uv)
-  (vecop "mul" uv 1))
+  (vecop "*" uv 1))
 
 
 (define (sum-vec v ?prev)
@@ -306,6 +270,16 @@
   (op "-mod" x y))
 
 
+;; Calculate the natural logarithm of X to the [precision given by
+;; P](#precision).
+;;
+;; X must be be greater than 0.
+;;
+(define (ln x ?p)
+  &public
+  (fp2d (f-ln (d2fp x) (prec-to-pod p))))
+
+
 ;; Calculate the logarithm of X to the [precision given by P](#precision).
 ;;
 ;; B, if given, is the base; if nil, the natural logarithm of X will be
@@ -324,7 +298,7 @@
 ;;
 (define (exp x ?p)
   &public
-  (u2d (fp2u (fp-exp (u2fp (d2u x)) (prec-to-pod p)))))
+  (u2d (fp2u (f-exp (u2fp (d2u x)) (prec-to-pod p)))))
 
 
 ;; Compute xʸ to the [precision given by P](#precision).
@@ -353,21 +327,21 @@
 ;;
 (define `(floor x)
   &public
-  (raw-round x 0 ROUND-FLOOR))
+  (d-round x 0 ROUND-FLOOR))
 
 
 ;; Return the smallest integer greater than or equal to X.
 ;;
 (define `(ceil x)
   &public
-  (raw-round x 0 ROUND-CEIL))
+  (d-round x 0 ROUND-CEIL))
 
 
 ;; Return the integer portion of X (rounding towards zero).
 ;;
 (define `(trunc x)
   &public
-  (raw-round x 0 ROUND-TRUNC))
+  (d-round x 0 ROUND-TRUNC))
 
 
 ;; Round X to the [precision given by P](#precision).
@@ -375,16 +349,16 @@
 ;; **Note:** P defaults to `"+0"`, unlike other functions accepting
 ;; precision values.
 ;;
-;; DIR is one of the following:
+;; MODE is one of the following:
 ;;  - `nil` ⇒ round to the nearest integer, ties to even
 ;;  - `"+"` ⇒ round up (ceiling)
 ;;  - `"-"` ⇒ round down (floor)
 ;;  - `"|"` ⇒ round towards zero (truncate)
 ;;  - `"<>"` ⇒ round away from zero
 ;;
-(define (round x ?p ?dir)
+(define (round x ?p ?mode)
   &public
-  (raw-round x (if p (prec-to-pod p) 0) (xlat-mode dir)))
+  (d-round x (if p (prec-to-pod p) 0) (xlat-mode mode)))
 
 
 ;; Return 1 if X > Y, nil otherwise.
@@ -500,7 +474,7 @@
                       (u2d (smash (uf-trim-tz (const-pi count)))))
             0))
 
-      "NaN:P"))
+      "NaN"))
 
 
 ;; Return the arctangent of M to the [precision given by P](#precision).
@@ -523,10 +497,9 @@
   &public
   (let ((fx (uf-trim-tz (d2fp x))))
     (if (word 3 fx)
-        (u2d (.. (findstring "-" (fp.sign fx))
-                 (.. "0." (smash (fp.uf fx)))
-                 " "
-                 (fp.xpo fx)))
+        (u2d (._. (.. (findstring "-" (fp.sign fx))
+                      "0." (smash (fp.uf fx)))
+                  (fp.xpo fx)))
         (if fx
             "0 0"))))
 
@@ -579,7 +552,7 @@
    (if b<0 nil (uv-range (if a<0 0 ua) ub))))
 
 
-(define `(fp-range a b)
+(define `(f-range a b)
   nil)
 
 
@@ -592,7 +565,7 @@
 
   (strip
    (if (non-integers? a b)
-       (fp-range (u2fp a) (u2fp b))
+       (f-range (u2fp a) (u2fp b))
        (uv-sign-range (u-prep a) (u-prep b) (u<0? a) (u<0? b)))))
 
 
@@ -621,10 +594,10 @@
   (foreach (fmt (d2u (.. (or min-width 0) ":" (or decimals 0))))
     (define `udec (word 2 (subst ":" " " fmt)))
     (if (filter ":" (subst 0 nil 1 nil fmt))
-        (fp-fix (fp-round (d2fp x) udec ROUND-NEAR)
-                min-width
-                decimals
-                udec)
+        (f-fix (f-round (d2fp x) udec ROUND-NEAR)
+               min-width
+               decimals
+               udec)
         "[INVALID_FORMAT]")))
 
 
@@ -670,9 +643,9 @@
       (u-complement-digits (lex-uns (subst "-" nil u)))))
 
 
-(define (fp-lex n)
+(define (f-lex n)
   (if (fp<0? n)
-      (.. "-" (u-complement-digits (fp-lex (fp-negate n))) ":")
+      (.. "-" (u-complement-digits (f-lex (f-negate n))) ":")
       (if (findstring 1 (fp.uf n))
           (.. (lex-exp (fp.xpo n)) (fp.uf n))
           "0")))
@@ -687,11 +660,17 @@
 ;;
 ;; This can be used with `sort-by` to obtain numeric sort order.  E.g.:
 ;;
-;;     (sort-by (lambda (i) (num-lex (nth 2 i))) ...)
+;;    (sort-by num-lex list)
+;;
+;; sorts a list of numbers by their numeric value.  And:
+;;
+;;    (sort-by (lambda ([a b c]) (num-lex c)) dict)
+;;
+;; sorts a vector of vectors by the numeric value of their third element.
 ;;
 (define (num-lex n)
   &public
-  (u2d (smash (fp-lex (d2fp n)))))
+  (u2d (smash (f-lex (d2fp n)))))
 
 
 ;; Sort elements of V by the numeric order of the first sub-element.  V may

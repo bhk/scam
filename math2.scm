@@ -385,7 +385,7 @@
 
 ;; COUNT = the number of digits to the right of the decimal point
 ;;
-(define (fp-log2 exp uf count)
+(define (f-log2 exp uf count)
   ;; Calculate using:  log(z * 10ᵖ) = log(z) + p*log(10)
 
   ;; 0 .. ~0.23
@@ -425,9 +425,9 @@
       (nth-rest (words (subst 1 " 1" place)) count)))
 
 
-;; Compute natural logatirhm of FX.
+;; Compute natural logarithm of FX.
 ;;
-(define (fp-ln fx pod)
+(define (f-ln fx pod)
   &public
   (define `count
     (if (pod-is-place? pod)
@@ -438,8 +438,8 @@
 
   (and (fp>0? fx)
        pod
-       (fp-round (fp-log2 (fp.xpo fx) (fp.uf fx) count)
-                 (or result-pod pod) ROUND-NEAR)))
+       (f-round (f-log2 (fp.xpo fx) (fp.uf fx) count)
+                (or result-pod pod) ROUND-NEAR)))
 
 
 ;; Compute the logarithm of FX in base FB.
@@ -447,7 +447,7 @@
 (define (f-log fx fb pod)
   &public
   ;; ROUND-COUNT is a count (word list) representing the number of significant
-  ;; digits needed for the arguments to fp-div in order to obtain a result
+  ;; digits needed for the arguments to f-div in order to obtain a result
   ;; with precision as given by POD.  A-PLACE and B-PLACE given the place of
   ;; the most significant digit in A and B.
   (define `(div-count a-place b-place)
@@ -465,9 +465,9 @@
         (let ((count-pre (div-count x-size b-size))
               (fx fx) (fb fb) (pod pod) (x-size x-size) (b-size b-size))
 
-          (f/ (fp-log2 (fp.xpo fx) (fp.uf fx)
+          (f/ (f-log2 (fp.xpo fx) (fp.uf fx)
                        (adjust-digit-count count-pre x-size))
-              (fp-log2 (fp.xpo fb) (fp.uf fb)
+              (f-log2 (fp.xpo fb) (fp.uf fb)
                        (adjust-digit-count count-pre b-size))
               (or result-pod pod)
               ROUND-NEAR)))))
@@ -476,6 +476,11 @@
        (fp>0? fx)
        (fp>0? fb)
        result))
+
+
+;; Called from `op`
+(define (u-log x b pod)
+  (fp2u (f-log (u2fp x) (u2fp b) pod)))
 
 
 ;;--------------------------------
@@ -644,7 +649,7 @@
 
 ;; POD = place (0N, -0N) or digits (U)
 ;;
-(define (fp-exp fx pod)
+(define (f-exp fx pod)
   &public
   ;; Approximation FIA of I=floor(X/10); FIA >= I
   (define `fia
@@ -670,7 +675,7 @@
               (define `exp
                 (u-add-ones (fp2su fi) 11))
               (define `ua
-                (fp2uf (fp-sub-m fx (f* fi fL10)) "01"))
+                (fp2uf (f-sub-m fx (f* fi fL10)) "01"))
 
               ;; The largest result we expect from uf-exp-med is ~10.  The
               ;; exact value should always be less than 10, but rounding of
@@ -680,7 +685,7 @@
 
   (and fx
        pod
-       (fp-round out (or result-pod pod) ROUND-NEAR)))
+       (f-round out (or result-pod pod) ROUND-NEAR)))
 
 
 ;;----------------------------------------------------------------
@@ -736,11 +741,11 @@
 
     (define `fz
       (let-global ((result-pod nil))
-        (fp-ln fx zpod)))
+        (f-ln fx zpod)))
 
     (if (filter "-% 0" udigits)
         FP0
-        (fp-exp (f* fy fz) pod)))
+        (f-exp (f* fy fz) pod)))
 
   (define `x-and-y-non-zero?
     (findstring 101 (.. (word 3 fx) (word 3 fy))))
@@ -860,23 +865,23 @@
   (cond
    ;; x < 0 :  sin -x = -sin(x) ;  cos x = cos(x)
    ((findstring " -" fx)
-    (recur (fp-abs fx) is-sin (xor is-sin is-neg)))
+    (recur (f-abs fx) is-sin (xor is-sin is-neg)))
 
    ;; x ≤ ~π/4 : use series
-   ((fp-lt? fx F0.8)
+   ((f-lt? fx F0.8)
     (native-call kname fx is-sin is-neg count arg1 arg2 arg3))
 
    ;; π/4 < x ≤ π*3/4:  sin/cos x = cos/sin (π/2 - x)
-   ((fp-lt? fx F2.36)
-    (recur (fp-sub-m π/2 fx) (not is-sin) is-neg))
+   ((f-lt? fx F2.36)
+    (recur (f-sub-m π/2 fx) (not is-sin) is-neg))
 
    ;; π*3/4 < x ≤ π*7/4: sin/cos x = -sin/cos(x - π)
-   ((fp-lt? fx F5.5)
+   ((f-lt? fx F5.5)
     (recur (f+ fx -π) is-sin (not is-neg)))
 
    ;; x > π*7/4 : sin/cos x = sin/cos(x - n*2π)
    (else
-    (recur (fp-norm (f+ (f-mod (f+ F0.8 fx) π*2) -F0.8))
+    (recur (f-norm (f+ (f-mod (f+ F0.8 fx) π*2) -F0.8))
            is-sin
            is-neg))))
 
@@ -931,7 +936,7 @@
 
 ;; Compute sin(FX) or cos(FX)
 ;;
-(define (fp-xsin is-sin fx pod)
+(define (f-xsin is-sin fx pod)
   (define `result
     (if (fp!=0? fx)
         ;; Reduce FX to the range 0...~π/4, then call xsin-small
@@ -944,40 +949,19 @@
 
   (and fx
        pod
-       (fp-round result (or result-pod pod) ROUND-NEAR)))
+       (f-round result (or result-pod pod) ROUND-NEAR)))
 
 
 ;; Compute sin(X) or cos(X)
 ;;
 (define (xsin is-sin x prec)
   &public
-  (fp2d (fp-xsin is-sin (d2fp x) (prec-to-pod prec))))
+  (fp2d (f-xsin is-sin (d2fp x) (prec-to-pod prec))))
 
 
 ;;----------------
 ;; arctangent
 ;;----------------
-
-
-;; Apply transformations to theta to reverse the transformations
-;; applied to X & Y.
-;;
-(define (fp-atan-unflip theta flips count count-lz)
-  (define `small-count
-    (._. count (if count-lz (uf-get-lz (fp2uf theta 0)))))
-
-  (define `is-sub (filter "| /" flips))
-  (define `is-add-π (filter "|" flips))
-
-  (if flips
-      (f+ (if is-sub
-              (subst " +" " -" theta)
-              theta)
-          (make-fp "01" "+"
-                   (if is-add-π
-                       (const-pi small-count)
-                       (uf*0.5 (const-pi small-count)))))
-      theta))
 
 
 (define `(pod+1 pod)
@@ -988,14 +972,14 @@
 
 ;; Compute atan(UFM)
 ;;
-(define (fp-atan-tiny ufm count count-lz)
+(define (f-atan-tiny ufm count count-lz)
   (define `small-count
     (._. count (if count-lz (uf-get-lz ufm))))
 
   (make-fp "0" "+" (uf-atan ufm small-count)))
 
 
-;; Compute atan(FM) for FM <= ~1
+;; Compute atan(FX / FY)
 ;;
 ;; FLIPS describes lines around which we have reflected coordinates to
 ;;    arrive at FM: "/" => X=Y diagonal, "|" => Y axis.
@@ -1003,39 +987,61 @@
 ;; Note:  atan(X) = atan(1) + atan(A)   where A = (X-1)/(X+1)
 ;;        atan(X) = π/4 + atan(A)   where A = (X-1)/(X+1)
 ;;
-;;
-(define (fp-atan-small fm flips pod count)
-  (define `FP0.42 "0 + 01111 011")
-
-  (define `theta
-    (if (fp-lt? fm FP0.42)
-        (fp-atan-tiny (fp2uf fm 0) count (pod-is-digits? pod))
-        ;; atan(x) = π/4 - atan(a) where a = (1-x)/(x+1))
-        ;; Here we know the result will not have leading zeros, so
-        ;; we can ignore the pod-is-digits case.
-        (let& ((π/4 (make-fp "01" "+" (uf*0.25 (const-pi count))))
-               (a (f/ (fp-sub-m FP1 fm)
-                      (f+ fm FP1)
-                      (pod+1 pod)
-                      ROUND-NEAR)))
-          (fp-sub-m π/4 (fp-atan-tiny (fp2uf a 0) count nil)))))
-
-  (fp-atan-unflip theta flips count (pod-is-digits? pod)))
-
-
-(define (fp-atan2 fy fx pod ?flip)
+(define (f-atan2 fy fx pod ?flips)
   &public
+  (define `FP0.42 "0 + 01111 011")
+  (define `(round x)
+    (f-round x pod ROUND-NEAR))
 
   (cond
    ((findstring " -" fy)
-    (fp-negate (fp-atan2 (fp-abs fy) fx pod)))
+    (f-negate (f-atan2 (f-abs fy) fx pod)))
 
    ((fp<0? fx)
-    (fp-atan2 fy (fp-abs fx) pod "|"))
+    (f-atan2 fy (f-abs fx) pod "|"))
 
-   ((fp-lt? fx fy)
-    (fp-atan2 fx fy pod (.. flip "/")))
+   ((f-lt? fx fy)
+    (f-atan2 fx fy pod (.. flips "/")))
+
+   ((not pod)
+    nil)
 
    ((and (fp!=0? fx) fx fy)
-    (fp-atan-small (f/ fy fx (pod+1 pod) ROUND-NEAR) flip pod
-                   (pod-to-count pod)))))
+    ;; 0 < FY/FX <= 1
+    (round
+     (let ((fm (f/ fy fx (pod+1 pod) ROUND-NEAR))
+           (count (pod-to-count pod))
+           (flips flips) (pod pod))
+
+       (let ((theta
+              (if (f-lt? fm FP0.42)
+                  (f-atan-tiny (fp2uf fm 0) count (pod-is-digits? pod))
+                  ;; atan(x) = π/4 - atan(a) where a = (1-x)/(x+1))
+                  ;; Here we know the result will not have leading zeros, so
+                  ;; we can ignore the pod-is-digits case.
+                  (let& ((π/4 (make-fp "01" "+" (uf*0.25 (const-pi count))))
+                         (a (f/ (f-sub-m FP1 fm)
+                                (f+ fm FP1)
+                                (pod+1 pod)
+                                ROUND-NEAR)))
+                    (f-sub-m π/4 (f-atan-tiny (fp2uf a 0) count nil)))))
+             (count-lz (pod-is-digits? pod))
+             (flips flips) (count count))
+
+         ;; Transform theta to reverse the transformations applied to X & Y.
+         (define `small-count
+           (._. count (if count-lz (uf-get-lz (fp2uf theta 0)))))
+
+         (if flips
+             (f+ (if (filter "|/" flips)
+                     theta
+                     (subst " +" " -" theta))
+                  (make-fp "01" "+" (if (filter "|" flips)
+                                        (const-pi small-count)
+                                        (uf*0.5 (const-pi small-count)))))
+              theta)))))))
+
+
+;; Called from `op`
+(define (u-atan2 y x pod)
+  (fp2u (f-atan2 (u2fp y) (u2fp x) pod)))

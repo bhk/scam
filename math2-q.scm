@@ -108,6 +108,21 @@
 (expect 0 (uf-atanh "0" (nzeros 10)))
 (uf±1 (UV 01) (uf-atanh (UV 0008) "0 0 0"))
 
+;; f-atan2, u-atan2
+
+(define `(d-atan2 x y p)
+  (fp2d (f-atan2 (FP x) (FP y) (prec-to-pod p))))
+
+(expect "NaN" (d-atan2 1 1 "X"))
+(expect 0.1 (d-atan2 0.1 1 2))    ;; no flips
+(expect 3.04 (d-atan2 0.1 -1 3))  ;; flip: |
+(expect 1.47 (d-atan2 1 0.1 3))   ;; flip: /
+(expect 1.67 (d-atan2 1 -0.1 3))  ;; flip: | /
+(expect 0.786 (d-atan2 1 1 3))     ;; FM > 0.42
+
+(expect 0.1 (u2d (u-atan2 (U 1) (U 10) 2)))
+(expect 3.04 (u2d (u-atan2 (U 1) (U -10) 3)))
+
 ;; uf-log-pos, uf-log-neg
 
 ;; N digits usually yields N-1 valid digits to the right of the decimal.
@@ -239,10 +254,21 @@
 (expect "0" (adjust-digit-count "0 0" "01"))
 (expect "0" (adjust-digit-count "0 0" "01"))
 
-
 ;; log
 
-(expect 0.6931 (fp2d (fp-ln (FP 2) (prec-to-pod 4))))
+(expect 0.6931 (fp2d (f-ln (FP 2) (prec-to-pod 4))))
+
+(define `(d-log x b ?p)
+  (fp2d (f-log (FP x) (FP b) (prec-to-pod p))))
+
+;; place vs. digits
+(expect 2.322 (d-log 5 2 4))
+(expect 2.32 (d-log 5 2 -2))
+;; invalid
+(expect "NaN" (d-log 5 0))
+(expect "NaN" (d-log 5 nil))
+(expect "NaN" (d-log 5 1 "x"))
+
 
 ;;--------------------------------
 ;; exp
@@ -297,10 +323,10 @@
 (expect (UV 0) (fp2uf (FP 1e99) U1))
 (expect (UV 0) (fp2uf (FP 1.234e4294967297) U1))
 
-;; fp-exp
+;; f-exp
 
-(expect 2.7182818 (fp2d (fp-exp (FP 1) (prec-to-pod 8))))
-(expect 8 (fp2d (fp-exp (FP 2.0793) (prec-to-pod 3))))
+(expect 2.7182818 (fp2d (f-exp (FP 1) (prec-to-pod 8))))
+(expect 8 (fp2d (f-exp (FP 2.0793) (prec-to-pod 3))))
 
 ;;--------------------------------
 ;; f-pow & u-pow

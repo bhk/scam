@@ -819,8 +819,6 @@
 (define (div-loop za b bhi num-digits mode digits)
   (define `a (rest za))
   (define `z (word 1 za))
-  (define `(uf-carry uf)
-    (spread (u-carry (smash uf))))
 
   (cond
    ;; Z is non-zero only when the previous quotient digit was too large by

@@ -44,6 +44,10 @@
   (subst 0 "" 1 "" u))
 
 
+(define `(sign-mul sign-a sign-b)
+  (if (findstring sign-a sign-b) "+" "-"))
+
+
 ;; U-strings cannot contain 2; they have been converted to "011".
 (define `(u-begins? prefix u)
   (findstring (.. 2 prefix) (.. 2 u)))
@@ -60,9 +64,53 @@
   (subst (.. suffix 2) "" (.. u 2)))
 
 
+;;--------------------------------
+;; PREC and POD
+;;--------------------------------
+
+;; Validate and convert PREC (public precision specification) to POD
+;; (internal precision specification).
+;;
+;;   PREC                      POD
+;;   ---------                 -------
+;;   +N, -N, 0 =>  place   =>  -U, U      (negated sign, U-encoded)
+;;   1-9+      =>  digits  =>  1-9+       (decimal)
+;;   nil       =>  digits  =>  16
+;;   other     => invalid  =>  nil
+;;
+(define (prec-to-pod prec)
+  &public
+  (if (not prec)
+      16
+      (if (findstring prec (word 1 prec))
+          (or (filter "0 -0 1 8 16" prec)
+              (foreach (u (d2u (patsubst "-%" "%" (subst "+" "-" prec))))
+                (if (not (subst 0 nil 1 nil u))
+                    (if (filter "-% +%" prec)
+                        ;; place
+                        (.. (if (findstring "+" prec) "-") u)
+                        ;; digits
+                        (if (filter "0%" prec)
+                            (prec-to-pod (patsubst "0%" "%" prec))
+                            prec))))))))
+
+
+;; True if POD (Place-or-Digits) contains a "place" value: the number of
+;; digits to the right of the decimal place, U-encoded.
+;;
+(define `(pod-is-place? pod)
+  &public
+  (filter "0% -0%" pod))
+
+
+;;----------------------------------------------------------------
+;; FP construction, normalization, etc.
+;;----------------------------------------------------------------
+
+
 ;; Normalize N (ensure that UF >= 0.1 unless N is zero).
 ;;
-(define (fp-norm x)
+(define (f-norm x)
   &public
   (if (filter 0 (fp.msd x))
       (foreach (zeros (word 1 (subst "001" "0 01" (smash (fp.uf x)))))
@@ -92,23 +140,19 @@
    ((not (non-digit? u))
     (if u
         (if (or n-exp (word 10 (spread u)) (filter "00%" (.. u "0")))
-            (fp-norm (.. (u-add-ones (or n-exp 0) (subst 1 nil 0 1 u))
-                             " " (or n-sign "+")
-                             (spread u) n-frac))
+            (f-norm (.. (u-add-ones (or n-exp 0) (subst 1 nil 0 1 u))
+                        " " (or n-sign "+")
+                        (spread u) n-frac))
             (.. "0" (subst 1 nil 0 1 u)
-                    " " (or n-sign "+") (spread u) n-frac))))
+                " " (or n-sign "+") (spread u) n-frac))))
 
    ;; Remove exponent
    ((findstring "E" (subst "e" "E" u))
-    (let ((u (subst "e" "E" u)))
-      (foreach (s (lastword (subst "E" " E" u)))
-        (foreach (en (subst "+-" "X" "E+" "E" "E" "" s))
-          (if (non-digit? (patsubst "-%" "%" en))
-              nil
-              ;; If U ends with "E"+EN, then remove it cleanly.
-              ;; Otherwise, leave behind clearly invalid characters.
-              (u2fp (subst "E" "X" (u-rm-suffix s u))
-                    en))))))
+    (let ((parts (subst " " 8 "e" " E" "E" " E " u)))
+      (if (filter 3 (words parts))
+          (foreach (en (patsubst "+%" "%" (subst "+-" "X" (word 3 parts))))
+            (if (not (non-digit? (patsubst "-%" "%" en)))
+                (u2fp (word 1 parts) en))))))
 
    ;; Strip (valid) sign prefix: valid-signed("-" ++ N) <=> valid-unsigned(N)
    ((u-begins? "-0" u)
@@ -182,52 +226,13 @@
 
 
 ;;--------------------------------
-;; PREC and POD
-;;--------------------------------
-
-;; Validate and convert PREC (public precision specification) to POD
-;; (internal precision specification).
-;;
-;;   PREC                      POD
-;;   ---------                 -------
-;;   +N, -N, 0 =>  place   =>  -U, U      (negated sign, U-encoded)
-;;   1-9+      =>  digits  =>  1-9+       (decimal)
-;;   nil       =>  digits  =>  16
-;;   other     => invalid  =>  nil
-;;
-(define (prec-to-pod prec)
-  &public
-  (if (not prec)
-      16
-      (if (findstring prec (word 1 prec))
-          (or (filter "0 -0 1 8 16" prec)
-              (foreach (u (d2u (patsubst "-%" "%" (subst "+" "-" prec))))
-                (if (not (subst 0 nil 1 nil u))
-                    (if (filter "-% +%" prec)
-                        ;; place
-                        (.. (if (findstring "+" prec) "-") u)
-                        ;; digits
-                        (if (filter "0%" prec)
-                            (prec-to-pod (patsubst "0%" "%" prec))
-                            prec))))))))
-
-
-;; True if POD (Place-or-Digits) contains a "place" value: the number of
-;; digits to the right of the decimal place, U-encoded.
-;;
-(define `(pod-is-place? pod)
-  &public
-  (filter "0% -0%" pod))
-
-
-;;--------------------------------
 ;; FP operations
 ;;--------------------------------
 
 (define `FP0 &public "0 + 0")
 (define `FP1 &public "01 + 01")
 
-(define `(fp-negate n)
+(define `(f-negate n)
   &public
   (subst " +" " !" " -" " +" "!" "-" n))
 
@@ -247,7 +252,7 @@
   (findstring 1 (fp.uf fx)))
 
 
-(define `(fp-abs fx)
+(define `(f-abs fx)
   &public
   (subst " -" " +" fx))
 
@@ -265,7 +270,7 @@
 ;; Round X to specified precision
 ;;
 ;; mode = one of {ROUND-NEAR/TRUNC/AWAY/CEIL/FLOOR}
-(define (fp-round x pod mode)
+(define (f-round x pod mode)
   &public
   ;; Convert signed rounding mode to unsigned mode
   (define `uns-mode
@@ -291,7 +296,7 @@
                             (uf-round-at num-digits uns-mode (fp.uf x))))))))
 
    ((findstring 1 (fp.uf x))
-    (fp-round (fp-norm x) pod mode))
+    (f-round (f-norm x) pod mode))
 
    (x
     ;; return NIL when X is NIL
@@ -308,7 +313,7 @@
       (subst 0 nil uv)))
 
 
-;; Return a list with U words, all "0".  UX may have digits larger than 9.
+;; Return a list with U words, all "0".  U may have digits larger than 9.
 ;;
 (define (u-zeros u)
   &public
@@ -319,55 +324,46 @@
                  (subst 0 nil u)))))
 
 
-(define `(pad ui)
-  (subst 1 "0 " (tally (spread ui))))
-
-
-;; Note: AE must be >= BE
-(define (fp-add-x ae as af be bs bf)
+(define (f+x ae as af be bs bf)
   (define `b-pad
-    (and (filter-out ae be)
-         (pad (u-sub-m ae be))))
+    (if (findstring "-" (subst "10" "-" (._. ae be)))
+        ;; multi-digit ae or be
+        (subst 1 "0 " (tally (spread (u- ae be))))
+        ;; single-digit exponents
+        (subst be nil 1 "0 " ae)))
 
-  (if (findstring as bs)
-      ;; sign is same => add
-      (make-fp<<1 ae as (uf-add (>>1 af) (>>1 (.. b-pad bf))))
+  (cond
+   ((u-lt? ae be)
+    (f+x be bs bf ae as af))
 
-      ;; difference
-      (._. ae (uf-sign-sub af (.. b-pad bf) (findstring "-" as)))))
+   ((filter as bs)
+    ;; sign is same => add
+    (make-fp<<1 ae as (uf-add (>>1 af) (>>1 (.. b-pad bf)))))
+
+   (else
+    ;; difference
+    (._. ae (uf-sign-sub af (.. b-pad bf) (findstring "-" as))))))
 
 
-;; Add A to B.
+;; Add A to B.  FP-encoded numbers in and out.
 ;;
 (define (f+ a b)
   &public
-  (define `ae (fp.xpo a))
-  (define `as (fp.sign a))
-  (define `af (fp.uf a))
-  (define `be (fp.xpo b))
-  (define `bs (fp.sign b))
-  (define `bf (fp.uf b))
-
   (and a b
-       (if (u-lt? ae be)
-           (fp-add-x be bs bf ae as af)
-           (fp-add-x ae as af be bs bf))))
+       (f+x (fp.xpo a) (fp.sign a) (fp.uf a)
+            (fp.xpo b) (fp.sign b) (fp.uf b))))
 
 
 ;; Subtract B from A.
 ;;
-(define `(fp-sub-m a b)
+(define `(f-sub-m a b)
   &public
-  (f+ a (fp-negate b)))
+  (f+ a (f-negate b)))
 
 
 (define (f- a b)
   &public
-  (fp-sub-m a b))
-
-
-(define `(sign-mul sign-a sign-b)
-  (if (findstring sign-a sign-b) "+" "-"))
+  (f-sub-m a b))
 
 
 ;; Multiply A by B.
@@ -378,6 +374,12 @@
   (define `sgn (sign-mul (fp.sign a) (fp.sign b)))
   (define `m (uv-mul (fp.uf a) (fp.uf b)))
   (and a b (make-fp exp sgn m)))
+
+
+;; Return X².
+;;
+(define (f-sq x)
+  (f* x x))
 
 
 ;; f*~: Compute X*Y to the precision given by POD (see prec-to-pod).
@@ -405,10 +407,10 @@
            FP0
            ;; Compute and round even when digits==0, because rounding can
            ;; carry into the last digit place.
-           (fp-round (make-fp exp
-                              (sign-mul (fp.sign x) (fp.sign y))
-                              (uv-mul (digits-from x) (digits-from y)))
-                     pod ROUND-NEAR))))))
+           (f-round (make-fp exp
+                             (sign-mul (fp.sign x) (fp.sign y))
+                             (uv-mul (digits-from x) (digits-from y)))
+                    pod ROUND-NEAR))))))
 
 
 ;; Called from `op`.
@@ -449,7 +451,7 @@
    ((not (findstring 101 (.. (fp.msd x) (fp.msd y))))
     (if (findstring 1 y.uf)
         (if (findstring 1 x.uf)
-            (f/ (fp-norm x) (fp-norm y) pod mode)
+            (f/ (f-norm x) (f-norm y) pod mode)
             (if x FP0 nil))
         nil))
 
@@ -508,13 +510,13 @@
    ((not (findstring 101 (.. (fp.msd a) (fp.msd b))))
     (if (findstring 1 (fp.uf b))
         (if (findstring 1 (fp.uf a))
-            (f-mod (fp-norm a) (fp-norm b))
+            (f-mod (f-norm a) (f-norm b))
             (if a FP0 nil))
         nil))
 
    ;; signs differ?
    ((not (findstring (fp.sign a) (fp.sign b)))
-    (let ((m (f-mod a (fp-negate b)))
+    (let ((m (f-mod a (f-negate b)))
           (b b))
       (if (findstring 1 (fp.uf m))
           (f+ b m)
@@ -544,7 +546,7 @@
 
 ;; Truncate FX (towards zero).
 ;;
-(define (fp-trunc fx)
+(define (f-trunc fx)
   &public
   (if (n>0? (fp.xpo fx))
       ;; Avoid using EXP as a word index if it's too large
@@ -556,9 +558,9 @@
 
 ;; Raise N to the next integer equal to or larger (away from zero).
 ;;
-(define (fp-mag-ceiling n)
+(define (f-mag-ceiling n)
   (if (n>0? (fp.xpo n))
-      (let ((tr (fp-trunc n))
+      (let ((tr (f-trunc n))
             (n n))
         (if (findstring 1 (subst tr nil n))
             ;; round magnitude up
@@ -571,18 +573,18 @@
           (if n FP0))))
 
 
-(define (fp-floor n)
+(define (f-floor n)
   &public
   (cond
-   ((findstring " -" n) (fp-mag-ceiling n))
-   (n (fp-trunc n))))
+   ((findstring " -" n) (f-mag-ceiling n))
+   (n (f-trunc n))))
 
 
-(define (fp-ceil n)
+(define (f-ceil n)
   &public
   (cond
-   ((findstring " +" n) (fp-mag-ceiling n))
-   (n (fp-trunc n))))
+   ((findstring " +" n) (f-mag-ceiling n))
+   (n (f-trunc n))))
 
 
 ;; ASSERT: A and B are normalized (fp.uf >= 0.1)
@@ -613,21 +615,15 @@
 
    ((fp<0? a)
     (if (fp<0? b)
-        (f-cmp (fp-negate b) (fp-negate a))
+        (f-cmp (f-negate b) (f-negate a))
         "~"))
 
    (else 1)))
 
 
-(define `(fp-lt? fa fb)
+(define `(f-lt? fa fb)
   &public
   (findstring 1 (f-cmp fb fa)))
-
-
-;; Return X*X.
-;;
-(define (fp-sq x)
-  (f* x x))
 
 
 ;; Raise X to the power of N.
@@ -635,21 +631,21 @@
 ;; X = FP number
 ;; N = U-encoded non-negative integer
 ;;
-(define (fp-u-pwr x n)
+(define (f-u-pwr x n)
   &public
   (foreach (n/2 (subst "11" 2 "10" "022222" n))
 
     (if (findstring 2 n/2)      ;; n > 1?
         (if (findstring 1 n/2)  ;; n is odd?
-            (f* (fp-sq (fp-norm (fp-u-pwr x (subst 1 nil 2 1 n/2)))) x)
-            (fp-sq (fp-norm (fp-u-pwr x (subst 2 1 n/2)))))
+            (f* (f-sq (f-norm (f-u-pwr x (subst 1 nil 2 1 n/2)))) x)
+            (f-sq (f-norm (f-u-pwr x (subst 2 1 n/2)))))
         (if (findstring 1 n)
             x
             FP1))))
 
 
 ;;--------------------------------
-;; fp-fix
+;; f-fix
 ;;--------------------------------
 
 
@@ -676,7 +672,7 @@
 ;; DP = number of digits after the decimal point [decimal]
 ;; UP = (d2u DP)
 ;;
-(define (fp-fix x dw dp up)
+(define (f-fix x dw dp up)
   &public
   (define `uf (fp.uf x))
   (define `ue (fp.xpo x))
@@ -704,3 +700,26 @@
         "N a N"))
 
   (u2d (concat-vec (lpad text [" "] dw))))
+
+
+;; Compute X^Y.
+;;
+;; Y must be a non-negative integer.
+;;
+(define (f^ x y)
+  (define `(fp>=0? x)
+    (or (findstring "+" x)
+        (not (findstring 1 (fp.uf x)))))
+
+  (if (fp>=0? y)
+      (let ((yuf (fp.uf y))
+            (len (u2d (fp.xpo y)))
+            (x x))
+        (and (n>0? len)
+             (not (findstring 1 (rest (nth-rest len yuf))))
+             (f-u-pwr x (smash (uf-fix yuf len)))))))
+
+
+;; Called from `op`
+(define (u^ x y)
+  (fp2u (f-u-pwr (u2fp x) y)))
