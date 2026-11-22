@@ -838,6 +838,24 @@ binding that was in scope where the macro was defined.
     123
 
 
+### Macro Function Values
+
+When a compound macro appears in a context other than a list form --
+e.g. "(fn macro ...)" rather than `(macro ...)` -- the value it yields
+is an anonymous function equivalent to:
+
+    (lambda (ARGS) (macro ARGS))
+
+where "..." is all of the arguments accepted by the macro.
+
+Invoking this function value will ordinarily have the same result as
+invoking the macro directly, but it might differ because the order of
+evaluation of arguments may change.  In a function call, each argument is
+evaluated exactly once prior to evaluation of the function body, whereas
+macro arguments can be evaluated zero or more times, when and if they are
+used by the macro.
+
+
 ## Special Forms
 
 Special forms are expressions that have "special" handling -- they have

@@ -2297,4 +2297,3 @@ Example:
     [207 128 194 178]
     > (string-from-bytecodes [207 128 194 178])
     "π²"
-

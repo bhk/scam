@@ -179,6 +179,11 @@
 ;;     <-- f: 2
 ;;     2
 ;;
+;; `FN` may be a macro, in which case the function value of the macro will
+;; be invoked, which will change the order of evaluation and potentially
+;; change the number of times arguments are evaluated (to exactly once,
+;; versus zero or more in the case of a direct macro invocation).
+;;
 (declare (? fn ...args) &public)
 
 
