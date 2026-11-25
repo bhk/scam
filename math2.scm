@@ -179,7 +179,7 @@
 ;; Result = log(X)
 ;;
 (define (uf-log a b digit-zeros)
-  ;;(assert (uf-lt? a b))
+  ;;(assert (uf< a b))
   (uf*2 (uf-atanh (uf-div (or a 0) b (words digit-zeros) ROUND-NEAR)
                   digit-zeros)))
 
@@ -269,7 +269,7 @@
       ;; pick midpoint
       (foreach (ndx (words (subst "0 0" 0 (patsubst "%" 0 (._. values
                                                                valuesgt)))))
-        (if (uf-lt? ux (spread (word ndx values)))
+        (if (uf< ux (spread (word ndx values)))
             ;; midpoint > ux
             (psrch ux values (wordlist 1 ndx values))
             ;; midpoint <= ux
@@ -323,7 +323,7 @@
   (get-uf-const (native-name log-10) count))
 
 
-;; When non-nil, override POD for the final rounding step in log, exp, pow,
+;; When non-nil, override POD for the final rounding step in f-ln, f-exp,
 ;; sin, cos, atan, atan2.  [Used in testing.]
 ;;
 (declare result-pod &public)
@@ -397,7 +397,7 @@
   (define `log-10*0.1
     (const-log-10 (._. count "0 0" (spread (abs exp)))))
 
-  (if (uf-lt? um/10 uf)
+  (if (uf< um/10 uf)
       ;; 0.102 < X < 1
       (f+ (if (findstring 1 exp)
               (f* (.. "01 + " log-10*0.1)
@@ -613,6 +613,11 @@
 ;;----------------------------------------------------------------
 
 
+(define `(fp-is-int? x)
+  (and (u>0? (fp.xpo x))
+       (u>= (fp.xpo x) (d2u (words (uf-trim-tz (fp.uf x)))))))
+
+
 ;; Convert FX to a signed U-encoded integer, truncating to the nearest
 ;; integer.  (Get digits left of the decimal point.)
 ;;
@@ -680,7 +685,7 @@
               ;; The largest result we expect from uf-exp-med is ~10.  The
               ;; exact value should always be less than 10, but rounding of
               ;; the result and imprecision in A could yield 10 or greater.
-              (make-fp exp "+" (uf-exp-med ua (>>1 count)))))
+              (make-fp-norm exp "+" (uf-exp-med ua (>>1 count)))))
           FP0)))
 
   (and fx
@@ -688,83 +693,97 @@
        (f-round out (or result-pod pod) ROUND-NEAR)))
 
 
-;;----------------------------------------------------------------
-;; For pow, we need to compute the precision for (log x PREC) that will
-;; yield the appropriate precision for (pow x y).
+;; Raise X to the power of N.
 ;;
-;;  (pow x y) -> out where:
-;;     z = log(x)
-;;     out = exp(y*z)
+;; X = FP number
+;; N = U-encoded non-negative integer
 ;;
-;; Let NZ be the number of significant digits we request from `log`.
-;;    Eᵣ[z] = 1>>NZ,
-;;    Eᵣ[out] = y*z * Eᵣ[y*z]
-;;            = y*z * 1>>NZ
-;;            = y * log(x) * 1>>NZ
-;;            = 1>>(NZ - log₁₀(y * log(x)))
-;;
-;; When a number of significant digits N is specified by PREC:
-;;   Eᵣ[out] <= 1>>N
-;;   NZ >= N + log₁₀(y * log(x)))
-;;      >= N + log₁₀(y) + log₁₀(logₑ(x))
-;;      >= N + (exponent y) + (log-size x)
-;;
-;; When a place P is specified by PREC:
-;;   N = P + (exponent out)
-;;     = P + 1 + floor(log₁₀(out))
-;;     = P + 1 + floor(log₁₀(exp(y*z)))
-;;     = P + 1 + floor(y*log(x)/2.3)
-;;     = P + 1 + floor(y*log₁₀(x))
-;;----------------------------------------------------------------
+(define (f-u-raise x n)
+  &public
+  (foreach (_n2 (subst "11" 2 "10" "022222" n))
+    (define `n>1 (findstring 2 _n2))
+    (define `n-is-odd? (findstring 1 _n2))
+    (define `n//2 (subst 1 nil 2 1 _n2))
+    (define `n/2 (subst 2 1 _n2))
+
+    (if n>1
+        (if n-is-odd?
+            (f* (f-sq (f-u-raise x n//2)) x)
+            (f-sq (f-u-raise x n/2)))
+        (if (findstring 1 n)
+            x
+            FP1))))
+
 
 ;; Compute xʸ, defined as exp(y * log(x)).
 ;;
-(define (f-pow fx fy pod)
+(define (f^ fx fy pod)
   &public
-  ;; Note: this assumes normalized numbers (as returned by u2fp)
-  (define `(fp!=0? f)
-    (findstring 1 (word 3 f)))
 
-  ;; Convert PLACE to number of digits, if necessary.
-  (define `u-digits
-    (if (pod-is-place? pod)
-        ;; POD = place as U-value (positive = right of decimal)
-        (u+ (u+1 pod) (fp2su (f* fy (u2fp (u+1 (fp.xpo fx))))))
-        ;; POD = number of digits (decimal)
-        (d2u pod)))
+  (foreach (udigits
+            ;; Compute significant digits needed.  See `Precision` in math.md.
+            (if (pod-is-place? pod)
+               ;; max exponent of result - place + 1 (POD = -PLACE, U-encode)
+                (u+ (fp2su (f* fy (u2fp (fp.xpo fx))))
+                    (if (filter "-" (fp.sign fy))
+                        (u+ U2 pod)
+                        (u+1 pod)))
+                (d2u pod)))
 
-  (define `(compute udigits)
-    ;; ZPOD = precision needed for (log FX)
-    (define `zpod
-      (u2d (u+ udigits
-               (u+ (log-size fx) (fp.xpo fy)))))
+    (define `(non-zero? f)
+      (findstring 1 (word 3 f)))
 
-    (define `fz
-      (let-global ((result-pod nil))
-        (f-ln fx zpod)))
+    (define `x-or-y-zero?
+      (filter "00% %0" (.. (word 3 fx) (word 3 fy))))
 
-    (if (filter "-% 0" udigits)
-        FP0
-        (f-exp (f* fy fz) pod)))
+    ;; precision needed for (f-ln FX)
+    (define `ln-pod
+      (u2d (u+ udigits (u+ (log-size fx) (fp.xpo fy)))))
 
-  (define `x-and-y-non-zero?
-    (findstring 101 (.. (word 3 fx) (word 3 fy))))
+    (define `result-digits
+      (f* fy (d2fp (words (fp.uf fx)))))
 
-  (and fx
-       fy
-       pod
-       (if x-and-y-non-zero?
-           (foreach (ud u-digits)
-             (compute ud))
-           (if (fp!=0? fx)
-               FP1
-               (if (fp!=0? fy)
-                   FP0)))))
+    ;; We can use f-u-raise when Y is integer, Y>=0, and enough digits are
+    ;; requested.  (For very large results with limited precision, the
+    ;; exp/log approach is faster and less likely to fail.)
+    (define `can-raise?
+      (and (filter "+" (fp.sign fy))
+           (fp-is-int? fy)
+           (f< result-digits (u2fp (u*10 udigits)))))
+
+    (and
+     fx fy pod
+     (cond
+      (x-or-y-zero?
+       (cond ((non-zero? fx) FP1)
+             ((non-zero? fy) FP0)))
+
+      ((u<=0? udigits)
+       ;;(print "<0 udigits = " udigits)
+       FP0)
+
+      (can-raise?
+       ;;(print "pwr: " (fp2d result-digits) " < 10*" (u2d u-digits))
+       ;;(print "raise udigits = " udigits)
+       (f-round (f-u-raise fx (fp2su fy)) pod ROUND-NEAR))
+
+      (else
+       ;;(print "exp: " (fp2d result-digits) " > 10*" (u2d u-digits))
+       ;;(print "exp udigits = " udigits)
+       (f-exp (f* (f-ln fx ln-pod) fy) pod))))))
 
 
 ;; Called frop `op`
-(define (u-pow x y pod)
-  (fp2u (f-pow (u2fp x) (u2fp y) pod)))
+(define (u^ x y pod)
+  (fp2u
+   (if (and (filter "0% -0" y)
+            (filter "-0 0%" pod))
+       ;; When Y>=0 and rounding place is at or right of decimal (POD is
+       ;; U>=0), result will be exact, so use f-u-raise, which is faster.
+       (if (filter "0 -0" y)
+           FP0
+           (f-round (f-u-raise (u2fp x) y) pod ROUND-NEAR))
+       (f^ (u2fp x) (u2fp y) pod))))
 
 
 ;; Compute arctan(X).
@@ -839,6 +858,9 @@
     (uf-sub U1 (>>1 (uf-sin-loop U3 (uf*0.5 u²) u² count)))))
 
 
+(declare (xsin-small fx is-sin is-neg count fx-orig is-sin-orig n))
+
+
 ;; Find equivalent [FX IS-SIN IS-NEG] where 0 ≤ FX ≤ 0.8.
 ;;
 ;; IS-SIN : if true, compute `sin`, else compute `cos`
@@ -847,9 +869,9 @@
 ;; KNAME = name of continuation function to call:
 ;;     (K FX IS-SIN IS-NEG COUNT ARG1 ARG2 ARG3)
 ;;
-(define (xsin-reduce fx is-sin is-neg count kname arg1 arg2 arg3)
+(define (xsin-reduce fx is-sin is-neg count arg1 arg2 arg3)
   (define `(recur a b c)
-    (xsin-reduce a b c count kname arg1 arg2 arg3))
+    (xsin-reduce a b c count arg1 arg2 arg3))
 
   (define `F0.8 "0 + 011111111")
   (define `-F0.8 "0 - 011111111")
@@ -868,20 +890,20 @@
     (recur (f-abs fx) is-sin (xor is-sin is-neg)))
 
    ;; x ≤ ~π/4 : use series
-   ((f-lt? fx F0.8)
-    (native-call kname fx is-sin is-neg count arg1 arg2 arg3))
+   ((f< fx F0.8)
+    (xsin-small fx is-sin is-neg count arg1 arg2 arg3))
 
    ;; π/4 < x ≤ π*3/4:  sin/cos x = cos/sin (π/2 - x)
-   ((f-lt? fx F2.36)
+   ((f< fx F2.36)
     (recur (f-sub-m π/2 fx) (not is-sin) is-neg))
 
    ;; π*3/4 < x ≤ π*7/4: sin/cos x = -sin/cos(x - π)
-   ((f-lt? fx F5.5)
+   ((f< fx F5.5)
     (recur (f+ fx -π) is-sin (not is-neg)))
 
    ;; x > π*7/4 : sin/cos x = sin/cos(x - n*2π)
    (else
-    (recur (f-norm (f+ (f-mod (f+ F0.8 fx) π*2) -F0.8))
+    (recur (f+ (f-mod (f+ F0.8 fx) π*2) -F0.8)
            is-sin
            is-neg))))
 
@@ -911,14 +933,14 @@
          (not (findstring 1 (wordlist 1 count-extra (fp2uf fx 0))))
          (xsin-reduce fx-orig is-sin-orig nil
                       (._. xlz 0 (wordlist 1 n count))
-                      (native-name xsin-small) fx-orig is-sin-orig n)))
+                      fx-orig is-sin-orig n)))
 
   (or get-more-digits
-      (make-fp "01"
-               (if is-neg "-" "+")
-               (if is-sin
-                   (uf-sin-small (fp2uf fx 0) count)
-                   (uf-cos-small (fp2uf fx 0) count)))))
+      (make-fp-norm "01"
+                    (if is-neg "-" "+")
+                    (if is-sin
+                        (uf-sin-small (fp2uf fx 0) count)
+                        (uf-cos-small (fp2uf fx 0) count)))))
 
 
 ;; Conver POD to count of digits after the decimal place, assuming
@@ -940,7 +962,7 @@
   (define `result
     (if (fp!=0? fx)
         ;; Reduce FX to the range 0...~π/4, then call xsin-small
-        (xsin-reduce fx is-sin nil (pod-to-count pod) (native-name xsin-small)
+        (xsin-reduce fx is-sin nil (pod-to-count pod)
                      fx is-sin (pod-is-digits? pod))
         ;; sin(0) and cos(0) have exact answers.
         (if is-sin
@@ -976,7 +998,7 @@
   (define `small-count
     (._. count (if count-lz (uf-get-lz ufm))))
 
-  (make-fp "0" "+" (uf-atan ufm small-count)))
+  (make-fp-norm "0" "+" (uf-atan ufm small-count)))
 
 
 ;; Compute atan(FX / FY)
@@ -1000,7 +1022,7 @@
    ((fp<0? fx)
     (f-atan2 fy (f-abs fx) pod "|"))
 
-   ((f-lt? fx fy)
+   ((f< fx fy)
     (f-atan2 fx fy pod (.. flips "/")))
 
    ((not pod)
@@ -1014,12 +1036,12 @@
            (flips flips) (pod pod))
 
        (let ((theta
-              (if (f-lt? fm FP0.42)
+              (if (f< fm FP0.42)
                   (f-atan-tiny (fp2uf fm 0) count (pod-is-digits? pod))
                   ;; atan(x) = π/4 - atan(a) where a = (1-x)/(x+1))
                   ;; Here we know the result will not have leading zeros, so
                   ;; we can ignore the pod-is-digits case.
-                  (let& ((π/4 (make-fp "01" "+" (uf*0.25 (const-pi count))))
+                  (let& ((π/4 (make-fp "0" "+" (rest (uf*0.25 (const-pi count)))))
                          (a (f/ (f-sub-m FP1 fm)
                                 (f+ fm FP1)
                                 (pod+1 pod)
@@ -1036,9 +1058,9 @@
              (f+ (if (filter "|/" flips)
                      theta
                      (subst " +" " -" theta))
-                  (make-fp "01" "+" (if (filter "|" flips)
-                                        (const-pi small-count)
-                                        (uf*0.5 (const-pi small-count)))))
+                  (make-fp-norm "01" "+" (if (filter "|" flips)
+                                             (const-pi small-count)
+                                             (uf*0.5 (const-pi small-count)))))
               theta)))))))
 
 

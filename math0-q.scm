@@ -51,6 +51,8 @@
 
 (expect nil (u<0? 0))
 (expect nil (u<0? -0))
+(expect 1 (u<0? -1))
+(expect nil (u<0? 1))
 (assert (u<0? -01))
 
 ;; 0-
@@ -168,10 +170,10 @@
 (expect ">" (u-cmp-redux 2 -3))
 (expect "=" (u-cmp-redux -0 -0))
 
-;; u-lt?
+;; u<
 
-(expect 1 (u-lt? U1 U9))
-(expect nil (u-lt? U1 U1))
+(expect 1 (u< U1 U9))
+(expect nil (u< U1 U1))
 
 ;; uf-cmp
 
@@ -183,10 +185,10 @@
 (expect ">" (uf-cmp-redux "1245" "124"))
 (expect "<" (uf-cmp-redux "1235" "124"))
 
-;; uf-lt?
+;; uf<
 
-(expect 1 (uf-lt? (UV 19) (UV 30)))
-(expect nil (uf-lt? (UV 12) (UV 12)))
+(expect 1 (uf< (UV 19) (UV 30)))
+(expect nil (uf< (UV 12) (UV 12)))
 
 ;; uf-sign-sub
 

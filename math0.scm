@@ -77,6 +77,16 @@
   (findstring 1 (filter "-%" u)))
 
 
+(define `(u>0? u)
+  &public
+  (filter-out "-% 0" u))
+
+
+(define `(u<=0? u)
+  &public
+  (filter "-% 0" u))
+
+
 ;; This is exported later in math.scm
 (define `(0- x)
   &public
@@ -113,10 +123,6 @@
 
 (define `(uf-ends-in-0? u)
   (filter "09" (.. u "9")))
-
-
-(define `(is-odd? digit)
-  (findstring 1 (subst "11" nil digit)))
 
 
 (define (u-carry-fn u nines zeros)
@@ -325,9 +331,14 @@
       (u-cmp-unsigned a b)))
 
 
-(define `(u-lt? a b)
+(define `(u< a b)
   &public
   (findstring 1 (u-cmp b a)))
+
+
+(define `(u>= a b)
+  &public
+  (not (u< a b)))
 
 
 ;; Compare A to B.  The return value is as for `u-cmp`.
@@ -338,7 +349,7 @@
   (word 1 (cmp-reduce (join a (neg-digits b)))))
 
 
-(define `(uf-lt? a b)
+(define `(uf< a b)
   &public
   (findstring 1 (uf-cmp b a)))
 
@@ -350,8 +361,8 @@
 (define (uf-sign-sub a b negate?)
   &public
   ;; expect normalized numbers
-  (define `prefix+ (.. (if negate? "-" "+") " "))
-  (define `prefix- (.. (if negate? "+" "-") " "))
+  (define `prefix+ (if negate? "-" "+"))
+  (define `prefix- (if negate? "+" "-"))
 
   (define `(sub-reduce u)
     (subst "111110~~~~~" 0     ;; max remaining reduction is "11110~~~~"
@@ -368,10 +379,10 @@
          (borrow-macro
           (if (filter "~%" (subst 0 nil u))
               ;; negative
-              (.. prefix- (neg-swap u))
+              (._. prefix- (neg-swap u))
               ;; positive
-              (.. prefix+ u))))
-        (.. prefix+ (u2uv u)))))
+              (._. prefix+ u))))
+        (._. prefix+ (u2uv u)))))
 
 
 ;; Propagate carry until all digits are proper (9 or less).
@@ -407,6 +418,11 @@
   &public
   (or (filter-out "-% %1111111111" (.. u 1))
       (u+ u "01")))
+
+
+(define `(u*10 u)
+  &public
+  (.. u 0))
 
 
 ;;--------------------------------
@@ -607,6 +623,12 @@
   (native-var (.. (native-name uf*b) (words b))))
 
 
+(define `(uv-sq-fixed a)
+  (declare (uf*b a b))
+  ;; note: uf*bX requires two arguments to enclosing function!
+  (native-call (.. (native-name uf*b) (words a)) a a))
+
+
 (define (uf*b1 a b)
   (uf-xcarry (uf*digit_81 a b)))
 
@@ -651,6 +673,15 @@
       (uf-carry
        (or (uv-mul-fixed a b)
            (vmul a b)))))
+
+
+;; Square A.  Evaluates A only once.
+;;
+(define (uv-sq a)
+  &public
+  (uf-carry
+   (or (uv-sq-fixed a)
+       (vmul a a))))
 
 
 ;; Multiply X and Y.  Inputs and outputs are signed U-encoded numbers.
@@ -873,7 +904,7 @@
 ;; X is longer than N.
 
 
-;; Divide X by two, when last digit in X is even.
+;; Divide X by two, rounding up in last digit if odd.
 ;;
 (define `(uf/2 x)
   (subst "11" "2" "1 0" " 011111" "2" 1 x))

@@ -16,8 +16,8 @@
   (let ((delta (uf-carry (._. (patsubst "%" 0 ref) plus-or-minus)))
         (ref ref)
         (out out))
-    (if (or (uf-lt? (uf-add ref delta) out)
-            (uf-lt? out (uf-sub ref delta)))
+    (if (or (uf< (uf-add ref delta) out)
+            (uf< out (uf-sub ref delta)))
         (begin
           (print "ref = " (u2d (smash ref)))
           (print "out = " (u2d (smash out))))
@@ -328,9 +328,58 @@
 (expect 2.7182818 (fp2d (f-exp (FP 1) (prec-to-pod 8))))
 (expect 8 (fp2d (f-exp (FP 2.0793) (prec-to-pod 3))))
 
+;; f-u-raise
+
+(expect 1     (fp2d (f-u-raise (FP 2) (U 0))))
+(expect 1     (fp2d (f-u-raise (FP -2) (U 0))))
+(expect 2     (fp2d (f-u-raise (FP 2) (U 1))))
+(expect 4     (fp2d (f-u-raise (FP -2) (U 2))))
+(expect -2048 (fp2d (f-u-raise (FP -2) (U 11))))
+
 ;;--------------------------------
-;; f-pow & u-pow
+;; f^, u^
 ;;--------------------------------
 
-(expect 8 (fp2d (f-pow (FP 2) (FP 3) (prec-to-pod 3))))
-(expect 8 (u2d (u-pow (U 2) (U 3) (prec-to-pod 3))))
+(define `(d^ x y p)
+  (fp2d (f^ (FP x) (FP y) (prec-to-pod p))))
+
+(expect nil (f^ FP0 nil 3))
+(expect nil (f^ nil FP0 3))
+(expect nil (f^ FP1 FP1 nil))
+(expect nil (f^ FP0 FP0 3))
+
+(expect 0 (d^ 0 7 3))
+(expect 1 (d^ 7 0 3))
+(expect 10 (d^ 9 1 "+1"))
+(expect 0.25 (d^ 4 -1 4))
+(expect 1 (d^ 1.1 -1 0))
+(expect 100 (d^ 9 2 "+2"))
+
+;; selecting f-u-raise vs. f-exp vs. FP0
+(let-global ((f-exp (lambda () (FP 1)))
+             (f-u-raise (lambda () (FP 2e100))))
+  (expect 1 (d^ 4 -1 9))       ;; Y < 0
+  (expect 1 (d^ 9 10.1 9))     ;; Y non-integer
+  (expect 1 (d^ 9 100 "+91"))  ;; digits <= 1/10th of size
+  (expect 1 (d^ 9 100 10))     ;; digits <= 1/10th of size
+  (expect 2e+100 (d^ 9 100 "+90"))  ;; digits > 1/10th of size
+  (expect 2e+100 (d^ 9 100 11)))    ;; digits > 1/10th of size
+
+(expect 2.65613989e+95 (d^ 9 100 9))
+(expect 2.6561398888e+95 (d^ 9 100 11))
+
+;; f-u-pwr cases: Y = 0, positive  &  POD = +/-0 or negative place
+(define `(du^ x y p)
+  (u2d (u^ (U x) (U y) (prec-to-pod p))))
+
+(let-global ((f^ (lambda () (FP 1)))
+             (f-u-raise (lambda () (FP 2))))
+  (expect 0 (du^ 99 0 -0))
+  (expect 2 (du^ 2 3 -0))
+  (expect 2 (du^ 99 9 -2))
+  (expect 1 (du^ 2 3 "+1"))
+  (expect 1 (du^ 99 -1 -0)))
+
+(expect 8 (du^ 2 3 -0))
+(expect 0.25 (du^ 4 -1 -2))
+(expect 20 (du^ 4 2 "+1"))

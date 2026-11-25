@@ -99,11 +99,16 @@
 ;;--------------------------------
 
 ;; `op` dispatches to computed function names after validating the
-;; input numbers.
-;;     (uMODE UX UY ?POD) --> U  : valid U integers (no "." or "E...")
-;;     (fMODE FX FY ?POD) --> F  : valid FP values
-
-
+;; input numbers:
+;;
+;;   (uNAME UX UY ?POD) --> U
+;;       Inputs are valid U integers (no "." or "E..."); output
+;;       is U-encoded value, perhaps non-integer or "NaN".
+;;
+;;   (fNAME FX FY ?POD) --> F  : valid FP values
+;;       Inputs and outputs are FP-encoded.  Inputs are nil if invalid;
+;;       an output of nil is converted to "NaN".
+;;
 ;; NAME = suffix for constructing `uNAME` and `fNAME` functions
 ;; X, Y = decimal numbers
 ;; POD = (prec-to-pod ...) output
@@ -169,10 +174,9 @@
       (subst " " [" "] (u2fp u))))
 
   (if uv
-      (u2d
-       (if (non-digit? (smash uv))
-           (fp2u (num-reduce ffn fpvec))
-           (num-reduce ufn uv)))
+      (u2d (if (non-digit? (smash uv))
+               (fp2u (num-reduce ffn fpvec))
+               (num-reduce ufn uv)))
       ident))
 
 
@@ -253,12 +257,13 @@
   (op "*~" x y (prec-to-pod p)))
 
 
-;; Raise X to the power of Y.  Y must be an non-negative integer in "simple"
-;; format (without a decimal point or E-notation).
+;; Compute xʸ to the [precision given by P](#precision).
 ;;
-(define `(^ x y)
+;; X must be non-negative.
+;;
+(define `(^ x y ?p)
   &public
-  (op "^" x y))
+  (op "^" x y (prec-to-pod p)))
 
 
 ;; Return the remainder of floor(X/Y).
@@ -299,15 +304,6 @@
 (define (exp x ?p)
   &public
   (u2d (fp2u (f-exp (u2fp (d2u x)) (prec-to-pod p)))))
-
-
-;; Compute xʸ to the [precision given by P](#precision).
-;;
-;; X must be non-negative.
-;;
-(define (pow x y ?p)
-  &public
-  (op "-pow" x y (prec-to-pod p)))
 
 
 ;; Return the angle between the X axis and the line from the origin to the
@@ -532,7 +528,7 @@
       (.. n "0 " n "1 " n "2 " n "3 " n "4 "
           n "5 "n "6 " n "7 " n "8 " n "9 ")))
 
-  (if (u-lt? max min)
+  (if (u< max min)
       nil
       (uv-trim (lastword min)
                (subst (lastword max) "0" U9)
@@ -662,11 +658,11 @@
 ;;
 ;;    (sort-by num-lex list)
 ;;
-;; sorts a list of numbers by their numeric value.  And:
+;; sorts numbers by their numeric value.  And:
 ;;
 ;;    (sort-by (lambda ([a b c]) (num-lex c)) dict)
 ;;
-;; sorts a vector of vectors by the numeric value of their third element.
+;; sorts vectors by the numeric value of the third element of each vector.
 ;;
 (define (num-lex n)
   &public

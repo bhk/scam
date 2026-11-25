@@ -65,7 +65,7 @@
 ;; verify computed function names
 
 (foreach (type "u f")
-  (foreach (mode "+ - * ^ *~ / -cmp -mod -pow -log -atan2")
+  (foreach (mode "+ - * ^ *~ / -cmp -mod -log -atan2")
     (define `name (.. (subst "op" type (native-name op)) mode))
     (expect name (if (native-bound? name) name))))
 
@@ -106,6 +106,8 @@
 (expect 2048 (^ 2 11))
 (expect 10000 (^ 1e2 2))
 (expect 9.261 (^ 2.1 3))
+(expect 8.5741877 (^ 2 3.1 8))
+(expect 8 (^ 2.0 3))
 
 ;; *~
 
@@ -122,11 +124,6 @@
 (expect 0.1428 (/ 1 7 4 "-"))   ;; mode
 (expect -0.1429 (/ -1 7 4 "-")) ;; mode
 (expect -0.1428 (/ -1 7 4 "+")) ;; mode
-
-;; pow
-
-(expect 8 (pow 2 3))
-(expect 8 (pow 2.0 3))
 
 ;; log
 

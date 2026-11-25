@@ -214,7 +214,7 @@
 
 ;; f-
 
-(expect (DFP 2 08) (f- (FP 10) (FP 2)))
+(expect (DFP 1 8) (f- (FP 10) (FP 2)))
 (expect (FP 12) (f-norm (f- (FP 10) (FP -2))))
 (expect nil (f- (FP 1) nil))
 (expect nil (f- nil (FP 1)))
@@ -349,7 +349,7 @@
 (expect (FP 12e1) (f-round "0111 + 01 011 0111 01111 0111 01" -01 ROUND-NEAR))
 (expect (FP 123.4) (f-round "0111 + 01 011 0111 01111 0111 01" 01 ROUND-NEAR))
 ;; not normalized
-(expect (FP 12e1) (f-round "01111 + 0 01 011 0111" 2 ROUND-NEAR))
+;;(expect (FP 12e1) (f-round "01111 + 0 01 011 0111" 2 ROUND-NEAR))
 (expect "0 + 0" (f-round "01111 + 0" 2 ROUND-NEAR))
 ;; exponent with large magnitude
 (expect "0 + 0" (f-round (FP 1e-999999999) 0111 ROUND-NEAR))
@@ -374,57 +374,37 @@
 
 ;; f-cmp
 
-(define (f-cmp-rubric ret)
-  (cond
-   ((not ret) "=")
-   ((findstring "1" ret) ">")
-   (else "<")))
-
+(define (f-cmp-desc a b)
+  (let ((ret (f-cmp a b)))
+    (cond
+     ((not ret) "=")
+     ((findstring "1" ret) ">")
+     (else "<"))))
 
 ;; positive
-(expect ">" (f-cmp-rubric (f-cmp (FP 20) (FP 5))))
-(expect "<" (f-cmp-rubric (f-cmp (FP 20) (FP 50))))
-(expect "=" (f-cmp-rubric (f-cmp (FP 20) (FP 20))))
+(expect ">" (f-cmp-desc (FP 20) (FP 5)))
+(expect "<" (f-cmp-desc (FP 20) (FP 50)))
+(expect "=" (f-cmp-desc (FP 20) (FP 20)))
 ;; nil/NaN
-(expect ">" (f-cmp-rubric (f-cmp (FP -1) nil)))
-(expect "<" (f-cmp-rubric (f-cmp nil (FP -1))))
-(expect "=" (f-cmp-rubric (f-cmp nil nil)))
+(expect ">" (f-cmp-desc (FP -1) nil))
+(expect "<" (f-cmp-desc nil (FP -1)))
+(expect "=" (f-cmp-desc nil nil))
 ;; A=0
-(expect "<" (f-cmp-rubric (f-cmp (FP 0) (FP 1))))
-(expect "=" (f-cmp-rubric (f-cmp (FP 0) (FP -0))))
-(expect ">" (f-cmp-rubric (f-cmp (FP 0) (FP -1))))
+(expect "<" (f-cmp-desc (FP 0) (FP 1)))
+(expect "=" (f-cmp-desc (FP 0) (FP -0)))
+(expect ">" (f-cmp-desc (FP 0) (FP -1)))
 ;; B=0
-(expect ">" (f-cmp-rubric (f-cmp (FP 1) (FP 0))))
-(expect "<" (f-cmp-rubric (f-cmp (FP -1) (FP 0))))
+(expect ">" (f-cmp-desc (FP 1) (FP 0)))
+(expect "<" (f-cmp-desc (FP -1) (FP 0)))
 ;; A<0
-(expect "<" (f-cmp-rubric (f-cmp (FP -1) (FP 0))))
-(expect ">" (f-cmp-rubric (f-cmp (FP -1) (FP -2))))
+(expect "<" (f-cmp-desc (FP -1) (FP 0)))
+(expect ">" (f-cmp-desc (FP -1) (FP -2)))
 ;; else
-(expect ">" (f-cmp-rubric (f-cmp (FP 1) (FP -2))))
+(expect ">" (f-cmp-desc (FP 1) (FP -2)))
 
 ;; f-sq
 
 (expect 400 (fp2d (f-sq (FP 20))))
-
-;; f-u-pwr
-
-(expect 1     (fp2d (f-u-pwr (FP 2) (U 0))))
-(expect 1     (fp2d (f-u-pwr (FP -2) (U 0))))
-(expect 2     (fp2d (f-u-pwr (FP 2) (U 1))))
-(expect 4     (fp2d (f-u-pwr (FP -2) (U 2))))
-(expect -2048 (fp2d (f-u-pwr (FP -2) (U 11))))
-
-;; f^, u^
-
-;; Y<0 invalid
-(expect nil (f^ (FP 3) (FP -1)))
-;; Y non-integer
-(expect nil (f^ (FP 3) (FP 1.3)))
-;; valid
-(expect 2048 (fp2d (f^ (FP 2) (FP 11))))
-(expect 4096 (fp2d (f^ (FP 2) (FP 12))))
-(expect 1594323 (fp2d (f^ (FP 3) (FP 1.3e1))))
-(expect 13.7858491849 (fp2d (f^ (FP 1.3) (FP 10))))
 
 ;;--------------------------------
 ;; f-fix

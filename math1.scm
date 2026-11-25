@@ -9,30 +9,6 @@
 (define `NaN &public "NaN")
 
 
-(define `(fp.xpo n) &public (word 1 n))        ;; exponent (U-encoded)
-(define `(fp.sign n) &public (word 2 n))       ;; sign
-(define `(fp.uf n) &public (nth-rest 3 n))     ;; fraction (UF-encoded)
-(define `(fp.msd n) &public (word 3 n))        ;; most significant digit of UF
-(define `(fp.uf<<1 n) &public (nth-rest 4 n))  ;; remainder of digits of UF
-
-
-;; Construct an FP number
-;;
-(define `(make-fp exp sgn frac)
-  &public
-  (._. exp sgn frac))
-
-
-;; Construct FP number given FRAC/10, as returned by uf-round-at or uf-div,
-;; because the FRAC can sometimes overflow into the next higher digit after
-;; rounding.
-;;
-(define (make-fp<<1 exp sgn frac>>1)
-  (if (filter 0 (word 1 frac>>1))
-      (make-fp exp sgn (or (rest frac>>1) 0))
-      (make-fp (u+1 exp) sgn frac>>1)))
-
-
 ;; math.scm re-exports this
 (define `(abs x)
   &public
@@ -108,21 +84,72 @@
 ;;----------------------------------------------------------------
 
 
-;; Normalize N (ensure that UF >= 0.1 unless N is zero).
+(define `(fp.xpo n) &public (word 1 n))        ;; exponent (U-encoded)
+(define `(fp.sign n) &public (word 2 n))       ;; sign
+(define `(fp.uf n) &public (nth-rest 3 n))     ;; fraction (UF-encoded)
+(define `(fp.msd n) &public (word 3 n))        ;; most significant digit of UF
+(define `(fp.uf<<1 n) &public (nth-rest 4 n))  ;; remainder of digits of UF
+
+
+;; Construct an FP number
+;;
+(define `(make-fp exp sgn frac)
+  &public
+  (._. exp sgn frac))
+
+
+;; Construct a normalized FP number
+;;
+(define (make-fp-norm exp sign uf)
+  &public
+  (if (filter 0 (word 1 uf))
+      (if (findstring 1 (word 2 uf))
+          ;; fast path for common case
+          (make-fp (u-1 exp) sign (rest uf))
+          (let ((zeros (subst "001" "0 01" (smash uf)))
+                (sign sign)
+                (exp exp))
+            (make-fp (u-sub-m exp (u-add-ones 0 (subst 0 1 (word 1 zeros))))
+                     sign
+                     (or (native-strip (spread (rest zeros))) 0))))
+      (if uf
+          (make-fp exp sign uf)
+          "0 + 0")))
+
+
+;; Normalize X.
+;; (Evaluates X multiple times.)
+;;
+(define `(f-norm-m x)
+  (make-fp-norm (fp.xpo x) (fp.sign x) (fp.uf x)))
+
+
+;; Normalize X with fast path for already-normalized.
+;; (Evaluates X multiple times.)
+;;
+(define `(f-norm-if x)
+  (if (not (findstring 1 (fp.msd x)))
+      (f-norm-m x)
+      x))
+
+
+;; Normalize X (ensure that UF >= 0.1 unless N is zero).
 ;;
 (define (f-norm x)
-  &public
-  (if (filter 0 (fp.msd x))
-      (foreach (zeros (word 1 (subst "001" "0 01" (smash (fp.uf x)))))
-        (define `zeros-tally
-          (subst 0 1 zeros))
+  (f-norm-if x))
 
-        (define `norm-uf
-          (subst (.. 9 (spread zeros)) nil (._. "9" (fp.uf x))))
 
-        (.. (u-sub-m (fp.xpo x) (u-add-ones "0" zeros-tally))
-            " " (fp.sign x) (or norm-uf " 0")))
-      x))
+;; Construct a normalized FP number given FRAC/10.  FRAC/10 is returned by
+;; uf-round-at or uf-div.  because the FRAC can sometimes overflow into the
+;; next higher digit after rounding.  Here either increment the exponent OR
+;; shift the FRAC to multiply by 10.
+;;
+(define (make-fp<<1 exp sgn frac>>1)
+  (if (filter 0 (word 1 frac>>1))
+      (if (filter 0 (word 2 frac>>1))
+          (make-fp-norm exp sgn (rest frac>>1))
+          (make-fp exp sgn (or (rest frac>>1) 0)))
+      (make-fp (u+1 exp) sgn frac>>1)))
 
 
 (declare (u2fp u ?exp ?sgn ?ufrac))
@@ -139,12 +166,14 @@
    ;; simple integer
    ((not (non-digit? u))
     (if u
-        (if (or n-exp (word 10 (spread u)) (filter "00%" (.. u "0")))
-            (f-norm (.. (u-add-ones (or n-exp 0) (subst 1 nil 0 1 u))
-                        " " (or n-sign "+")
-                        (spread u) n-frac))
-            (.. "0" (subst 1 nil 0 1 u)
-                " " (or n-sign "+") (spread u) n-frac))))
+        (begin
+          (define `exp
+            (if (or n-exp (word 10 (spread u)) (filter "00%" (.. u "0")))
+                (u-add-ones (or n-exp 0) (subst 1 nil 0 1 u))
+                (.. "0" (subst 1 nil 0 1 u))))
+          (make-fp-norm exp
+                        (or n-sign "+")
+                        (native-strip (.. (spread u) n-frac))))))
 
    ;; Remove exponent
    ((findstring "E" (subst "e" "E" u))
@@ -176,18 +205,18 @@
 ;; are denoted in unary form (0, 01, 011, ...) but a decimal point and
 ;; exponent may also appear.
 ;;
-(define (fp2u fp)
+(define (fp2u x)
   &public
-  (define `exp (fp.xpo fp))
-  (define `sgn (fp.sign fp))
-  (define `frac (fp.uf fp))
-  (define `frac-msd (fp.msd fp))
-  (define `frac*10 (fp.uf<<1 fp))
+  (define `exp (fp.xpo x))
+  (define `sgn (fp.sign x))
+  (define `frac (fp.uf x))
+  (define `msd (fp.msd x))
+  (define `frac*10 (fp.uf<<1 x))
 
   (cond
-   ((findstring 1 frac-msd)
-    ;; We use fixed point when 1e-6 <= FP < 1e21; "E" notiation otherwise.
-    ;; FP is in this range when -5 <= EXP <= 21.  We reduce EXP to a string
+   ((findstring 1 msd)
+    ;; We use fixed point when 1e-6 <= X < 1e21; "E" notiation otherwise.
+    ;; X is in this range when -5 <= EXP <= 21.  We reduce EXP to a string
     ;; with which we can quickly check that range.  We also use the string
     ;; for padding 0's on the left/right in the fixed point representation.
 
@@ -203,7 +232,7 @@
                 (subst "10" "1" "00" "0"
                        (join frac (.. (subst 9 T9 1 " 0" et) "."))))
             ;; "E" notation
-            (.. frac-msd ". " frac*10
+            (.. msd ". " frac*10
                 ;; Two spaces before "e" allow preceding redundant
                 ;; zeros to be trimmed; "." after the exponent
                 ;; preserves its trailing zeros.
@@ -218,9 +247,10 @@
 
    ;; normalized?
    ((findstring 1 frac)
-    (fp2u (make-fp (u-1 exp) sgn frac*10)))
+    ;; not a normal path
+    (fp2u (f-norm x)))
 
-   (fp 0)
+   (x 0)
 
    (else NaN)))
 
@@ -296,7 +326,7 @@
                             (uf-round-at num-digits uns-mode (fp.uf x))))))))
 
    ((findstring 1 (fp.uf x))
-    (f-round (f-norm x) pod mode))
+    (or 0 (f-round (f-norm x) pod mode)))
 
    (x
     ;; return NIL when X is NIL
@@ -333,7 +363,7 @@
         (subst be nil 1 "0 " ae)))
 
   (cond
-   ((u-lt? ae be)
+   ((u< ae be)
     (f+x be bs bf ae as af))
 
    ((filter as bs)
@@ -342,7 +372,7 @@
 
    (else
     ;; difference
-    (._. ae (uf-sign-sub af (.. b-pad bf) (findstring "-" as))))))
+    (f-norm (._. ae (uf-sign-sub af (.. b-pad bf) (findstring "-" as)))))))
 
 
 ;; Add A to B.  FP-encoded numbers in and out.
@@ -368,17 +398,20 @@
 
 ;; Multiply A by B.
 ;;
+;; Note: Accepts non-normalized values.
+;;
 (define (f* a b)
   &public
   (define `exp (u+ (fp.xpo a) (fp.xpo b)))
   (define `sgn (sign-mul (fp.sign a) (fp.sign b)))
   (define `m (uv-mul (fp.uf a) (fp.uf b)))
-  (and a b (make-fp exp sgn m)))
+  (and a b (make-fp-norm exp sgn m)))
 
 
 ;; Return X².
 ;;
 (define (f-sq x)
+  &public
   (f* x x))
 
 
@@ -407,9 +440,9 @@
            FP0
            ;; Compute and round even when digits==0, because rounding can
            ;; carry into the last digit place.
-           (f-round (make-fp exp
-                             (sign-mul (fp.sign x) (fp.sign y))
-                             (uv-mul (digits-from x) (digits-from y)))
+           (f-round (make-fp-norm exp
+                                  (sign-mul (fp.sign x) (fp.sign y))
+                                  (uv-mul (digits-from x) (digits-from y)))
                     pod ROUND-NEAR))))))
 
 
@@ -423,8 +456,6 @@
 ;; X & Y must be normalized (no leading zeros in UF).
 ;; POD = see prec-to-pod
 ;; MODE = rounding mode.
-;;
-;; Results are not normalized.
 ;;
 ;; The numerical value of X/Y is given simply:
 ;;
@@ -463,7 +494,7 @@
           (y.uf y.uf)
           (pod pod)
           (uns-mode (uns-round-mode mode q.sgn))
-          (xlt? (uf-lt? x.uf y.uf)))
+          (xlt? (uf< x.uf y.uf)))
 
       ;; ensure X < Y when calling uf-div
       (define `x.uf (if xlt? x.uf (>>1 x.uf)))
@@ -522,17 +553,16 @@
           (f+ b m)
           m)))
 
-   ((u-lt? (fp.xpo a) (fp.xpo b))
+   ((u< (fp.xpo a) (fp.xpo b))
     a)
 
    (else
-    (make-fp (fp.xpo b)
-             (fp.sign a)
-             (uf-div (>>1 (fp.uf a))
-                     (fp.uf b)
-                     (u2d (u-sub-m (u+1 (fp.xpo a)) (fp.xpo b)))
-                     ROUND-REMAINDER)))))
-
+    (make-fp-norm (fp.xpo b)
+                  (fp.sign a)
+                  (uf-div (>>1 (fp.uf a))
+                          (fp.uf b)
+                          (u2d (u-sub-m (u+1 (fp.xpo a)) (fp.xpo b)))
+                          ROUND-REMAINDER)))))
 
 
 ;; called from `op`
@@ -541,7 +571,6 @@
       (fp2u (f-mod (u2fp x) (u2fp y)))
       (or (u-div-uns x y ROUND-REMAINDER)
           NaN)))
-
 
 
 ;; Truncate FX (towards zero).
@@ -621,30 +650,12 @@
    (else 1)))
 
 
-(define `(f-lt? fa fb)
+(define `(f< fa fb)
   &public
   (findstring 1 (f-cmp fb fa)))
 
 
-;; Raise X to the power of N.
-;;
-;; X = FP number
-;; N = U-encoded non-negative integer
-;;
-(define (f-u-pwr x n)
-  &public
-  (foreach (n/2 (subst "11" 2 "10" "022222" n))
-
-    (if (findstring 2 n/2)      ;; n > 1?
-        (if (findstring 1 n/2)  ;; n is odd?
-            (f* (f-sq (f-norm (f-u-pwr x (subst 1 nil 2 1 n/2)))) x)
-            (f-sq (f-norm (f-u-pwr x (subst 2 1 n/2)))))
-        (if (findstring 1 n)
-            x
-            FP1))))
-
-
-;;--------------------------------
+;--------------------------------
 ;; f-fix
 ;;--------------------------------
 
@@ -680,7 +691,7 @@
   (define `digits
     (foreach (de (u2d ue))
       (define `(umin ua ub)
-        (if (u-lt? ua ub) ua ub))
+        (if (u< ua ub) ua ub))
 
       ;; FRAC = digits to the right of the decimal point
       (define `frac
@@ -700,26 +711,3 @@
         "N a N"))
 
   (u2d (concat-vec (lpad text [" "] dw))))
-
-
-;; Compute X^Y.
-;;
-;; Y must be a non-negative integer.
-;;
-(define (f^ x y)
-  (define `(fp>=0? x)
-    (or (findstring "+" x)
-        (not (findstring 1 (fp.uf x)))))
-
-  (if (fp>=0? y)
-      (let ((yuf (fp.uf y))
-            (len (u2d (fp.xpo y)))
-            (x x))
-        (and (n>0? len)
-             (not (findstring 1 (rest (nth-rest len yuf))))
-             (f-u-pwr x (smash (uf-fix yuf len)))))))
-
-
-;; Called from `op`
-(define (u^ x y)
-  (fp2u (f-u-pwr (u2fp x) y)))
